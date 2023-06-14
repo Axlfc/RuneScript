@@ -22,11 +22,9 @@ def create_menu():
     edit_menu = Menu(menu)
     menu.add_cascade(label="Edit", menu=edit_menu, underline=0)
 
-    edit_menu.add_command(label="Undo", command=undo, compound='left', image=image_undo, accelerator='Ctrl+Z',
-                          underline=0)
-    edit_menu.add_command(label="Redo", command=redo, compound='left', image=image_redo, accelerator='Ctrl+Y',
-                          underline=0)
-    edit_menu.add_separator()
+    # edit_menu.add_command(label="Undo", command=undo, compound='left', image=image_undo, accelerator='Ctrl+Z', underline=0)
+    # edit_menu.add_command(label="Redo", command=redo, compound='left', image=image_redo, accelerator='Ctrl+Y', underline=0)
+    # edit_menu.add_separator()
     edit_menu.add_command(label="Cut", command=cut, compound='left', image=image_cut, accelerator='Ctrl+X', underline=0)
     edit_menu.add_command(label="Copy", command=copy, compound='left', image=image_copy, accelerator='Ctrl+C',
                           underline=1)
@@ -246,6 +244,8 @@ def main():
     create_execute_one_time_line()
 
     create_program_daily_line()
+
+
 
     root.grid_rowconfigure(2, weight=1)
     root.columnconfigure(0, weight=1)

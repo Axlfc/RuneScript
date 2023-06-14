@@ -707,6 +707,7 @@ def colorize_text():
 
 def run_script():
     script = script_text.get("1.0", "end-1c")
+    #print(script)
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
     generate_stderr = see_stderr.get()
@@ -714,15 +715,23 @@ def run_script():
     try:
         # Execute the script with provided arguments
         # Use the subprocess module to run the script as a separate process
-        result = subprocess.run([script] + arguments.split(), capture_output=True, text=True)
+        # result = subprocess.run([script] + arguments.split(), capture_output=True, shell=True)
+        # TODO "/"
+        process = subprocess.Popen(["bash"] + [directory_label.cget('text') + "/" + script_name_label.cget('text')] + arguments.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        stdout_data, stderr_data = process.communicate()
 
         # Print the stdout and stderr
         if generate_stdout:
-            print("stdout:")
-            print(result.stdout)
+            script_out_name = script_name_label.cget('text') + ".out"
+            print(script_out_name)
+            p = open(script_out_name, "w+")
+            p.write(stdout_data.decode())
+
         if generate_stderr:
-            print("stderr:")
-            print(result.stderr)
+            script_err_name = script_name_label.cget('text') + ".err"
+            p = open(script_err_name, "w+")
+            p.write(stderr_data.decode())
 
         messagebox.showinfo("Script Execution", "Script executed successfully.")
     except Exception as e:
