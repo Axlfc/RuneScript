@@ -494,16 +494,6 @@ one_time_frm = ttk.Frame(root, padding=0)
 
 daily_frm = ttk.Frame(root, padding=0)
 
-#minute_entry = ttk.Entry(program_frm, width=2)
-
-#hour_entry = ttk.Entry(program_frm, width=2)
-
-# program_frm = ttk.Frame(root, padding=0)
-# program_frm.grid(row=5, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
-
-# hour_entry = ttk.Entry(program_frm, width=2)
-# minute_entry = ttk.Entry(program_frm, width=2)
-
 
 class Tooltip:
     def __init__(self, widget, text):

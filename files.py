@@ -240,33 +240,6 @@ def create_program_daily_with_format():
     Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
 
 
-
-'''def create_execute_one_time_line():
-    ttk.Label(program_frm, text="Execute one time at").grid(column=0, row=0, sticky="ew")
-
-    hour_entry.grid(column=1, row=0, padx=(10, 0))  # Add padx to create spacing
-    ttk.Label(program_frm, text=":").grid(column=2, row=0)
-
-    minute_entry.grid(column=3, row=0, padx=(0, 10))  # Add padx to create spacing
-
-    execute_once_button = ttk.Button(program_frm, text="Execute Once", command=execute_once)
-    execute_once_button.grid(column=4, row=0, padx=(10, 0))  # Add padx to create spacing
-    Tooltip(execute_once_button, "Execute Script at Time")
-
-
-def create_program_daily_line():
-    ttk.Label(program_frm, text="Program daily at").grid(column=0, row=1, sticky="nsew")
-    hour_entry2 = ttk.Entry(program_frm, width=2)
-    hour_entry2.grid(column=1, row=1, padx=(10, 0))  # Add padx to create spacing
-    ttk.Label(program_frm, text=":").grid(column=2, row=1)
-    minute_entry2 = ttk.Entry(program_frm, width=2)
-    minute_entry2.grid(column=3, row=1, padx=(0, 10))  # Add padx to create spacing
-
-    program_daily_button = ttk.Button(program_frm, text="Program Daily", command=program_daily)
-    program_daily_button.grid(column=4, row=1, padx=(10, 0))  # Add padx to create spacing
-    Tooltip(program_daily_button, "Program Script to Run Daily")'''
-
-
 def main():
     # root.title("Untitled* - Script Editor")
     root.title("Scripts Editor")
@@ -298,10 +271,6 @@ def main():
     create_execute_one_time_with_format()
 
     create_program_daily_with_format()
-
-    # create_execute_one_time_line()
-
-    # create_program_daily_line()
 
     root.grid_rowconfigure(2, weight=1)
     root.columnconfigure(0, weight=1)
