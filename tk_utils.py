@@ -707,7 +707,6 @@ def colorize_text():
 
 def run_script():
     script = script_text.get("1.0", "end-1c")
-    #print(script)
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
     generate_stderr = see_stderr.get()
