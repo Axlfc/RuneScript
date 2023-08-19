@@ -59,7 +59,7 @@ def create_directory_line():
     directory_button.grid(column=0, row=0, sticky="w")
     Tooltip(directory_button, "Choose Working Directory")
 
-    directory_label.grid(column=1, row=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+    directory_label.grid(column=1, row=0, padx=5, sticky="ew")  # Set sticky to "ew" to fill horizontally
     Tooltip(directory_label, "Current directory")
 
 
@@ -117,8 +117,7 @@ def create_content_file_window():
         # Bind the <FocusOut> event to destroy the context menu when it loses focus
         context_menu.bind("<FocusOut>", lambda e: destroy_menu())
 
-
-    script_text.grid(row=2, column=0, padx=10, pady=0, sticky="nsew")
+    script_text.grid(row=2, column=0, padx=0, pady=0, sticky="nsew")
     script_text.configure(bg="#1f1f1f", fg="white")
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
     script_text.bind("<Button-3>", show_context_menu)
@@ -148,46 +147,102 @@ def duplicate():
 
 def create_arguments_lines():
     content_frm.grid(row=3, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
-    content_frm.columnconfigure(4, weight=1)  # Add this line to make the last column expandable
 
-    entry_arguments_label = ttk.Label(content_frm, text="Entry Arguments:", background="")
-    entry_arguments_label.grid(row=0, column=0, padx=0, pady=0, sticky="w")
+    entry_arguments_label = ttk.Label(content_frm, text="Entry Arguments:")
+    entry_arguments_label.grid(row=0, column=0, padx=5, pady=0, sticky="w")
 
     entry_placeholder = ""  # Enter arguments...
     entry_arguments_entry.insert(0, entry_placeholder)
-    entry_arguments_entry.grid(row=0, column=1, padx=10, sticky="e")
+    entry_arguments_entry.grid(row=0, column=1, sticky="e")
     Tooltip(entry_arguments_entry, "Enter arguments")
 
-    generate_stdin_check = ttk.Checkbutton(content_frm, text="stdout", variable=generate_stdin, style="TCheckbutton")
-    generate_stdin_check.grid(row=0, column=1, padx=(0, 10), pady=0,
-                              sticky="e")  # Set sticky to "e" for right alignment
+    generate_stdin_check = ttk.Checkbutton(content_frm, text="stdout", variable=generate_stdin)
+    generate_stdin_check.grid(row=0, column=2, sticky="e")  # sticky to "e" for right alignment
     Tooltip(generate_stdin_check, "Generate stdout")
 
-    see_stderr_check = ttk.Checkbutton(content_frm, text="stderr", variable=see_stderr, style="TCheckbutton")
-    see_stderr_check.grid(row=0, column=2, padx=(0, 10), pady=0, sticky="e")  # Set sticky to "e" for right alignment
+    see_stderr_check = ttk.Checkbutton(content_frm, text="stderr", variable=see_stderr)
+    see_stderr_check.grid(row=0, column=3, padx=10, sticky="e")  # Set sticky to "e" for right alignment
     Tooltip(see_stderr_check, "Generate stderr")
 
     stdout_button = ttk.Button(content_frm, text="👁 out", command=see_stderr)
-    stdout_button.grid(column=1, row=2, sticky="e")  # Align to the right
+    stdout_button.grid(column=1, row=1, sticky="e")  # Align to the right
     Tooltip(stdout_button, "Show Standard Output (stdout)")
 
     stderr_button = ttk.Button(content_frm, text="👁 err", command=see_stderr_check)
-    stderr_button.grid(column=2, row=2, sticky="e")  # Align to the right
+    stderr_button.grid(column=2, row=1, sticky="e")  # Align to the right
     Tooltip(stderr_button, "Show Standard Error (stderr)")
 
 
 def create_immediately_run_line():
+    run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
-    run_frm.grid(row=4, column=0, pady=0, sticky="e")  # Set sticky to "e" for right alignment
-
-    ttk.Label(run_frm, text="Run immediately", foreground="black").grid(column=0, row=0, sticky="e")
+    ttk.Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
     run_button = ttk.Button(run_frm, text=run_icon, command=run_script)
-    run_button.grid(column=1, row=0, padx=(10, 0))  # Add padx to create spacing
+    run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
     Tooltip(run_button, "Run Script")
 
 
-def create_execute_one_time_line():
-    ttk.Label(program_frm, text="Execute one time at", foreground="black").grid(column=0, row=0, sticky="e")
+def create_execute_in_line():
+    line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
+
+    ttk.Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+
+    seconds_entry = ttk.Entry(line_frm, width=15)
+    seconds_entry.grid(column=1, row=0, padx=(10, 0))
+    Tooltip(seconds_entry, "number of seconds")
+
+    run_button = ttk.Button(line_frm, text=run_icon, command=run_script)
+    run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+    Tooltip(run_button, "Set the duration in seconds for the script to execute.")
+
+
+def create_execute_one_time_with_format():
+    one_time_frm.grid(row=6, column=0, pady=0, sticky="nsew")
+
+    ttk.Label(one_time_frm, text="Scheduled Script Execution: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+
+    date_entry = ttk.Entry(one_time_frm, width=15)
+    date_entry.grid(column=1, row=0, padx=(10, 0))
+    Tooltip(date_entry, "HH:MM AM/PM")
+
+    run_button = ttk.Button(one_time_frm, text=run_icon, command=run_script)  # Change to at function
+    run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+    Tooltip(run_button, "Use the 'at' command to run the script at a specific time.")
+
+
+def create_program_daily_with_format():
+    daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
+
+    ttk.Label(daily_frm, text="Daily Script Scheduling: ").grid(row=0, column=0, sticky="w", padx=5, pady=0)
+
+    minute_entry = ttk.Entry(daily_frm, width=2)
+    minute_entry.grid(column=1, row=0, padx=(10, 0))
+    Tooltip(minute_entry, "every minute")
+
+    hour_entry = ttk.Entry(daily_frm, width=2)
+    hour_entry.grid(column=2, row=0, padx=(10, 0))
+    Tooltip(hour_entry, "every hour")
+
+    day_entry = ttk.Entry(daily_frm, width=2)
+    day_entry.grid(column=3, row=0, padx=(10, 0))
+    Tooltip(day_entry, "every day")
+
+    month_entry = ttk.Entry(daily_frm, width=2)
+    month_entry.grid(column=4, row=0, padx=(10, 0))
+    Tooltip(month_entry, "every month")
+
+    day_of_the_week_entry = ttk.Entry(daily_frm, width=2)
+    day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
+    Tooltip(day_of_the_week_entry, "every day of the week")
+
+    run_button = ttk.Button(daily_frm, text=run_icon, command=run_script)  # Change to crontab function
+    run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
+    Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
+
+
+
+'''def create_execute_one_time_line():
+    ttk.Label(program_frm, text="Execute one time at").grid(column=0, row=0, sticky="ew")
 
     hour_entry.grid(column=1, row=0, padx=(10, 0))  # Add padx to create spacing
     ttk.Label(program_frm, text=":").grid(column=2, row=0)
@@ -200,7 +255,7 @@ def create_execute_one_time_line():
 
 
 def create_program_daily_line():
-    ttk.Label(program_frm, text="Program daily at", foreground="black").grid(column=0, row=1, sticky="e")
+    ttk.Label(program_frm, text="Program daily at").grid(column=0, row=1, sticky="nsew")
     hour_entry2 = ttk.Entry(program_frm, width=2)
     hour_entry2.grid(column=1, row=1, padx=(10, 0))  # Add padx to create spacing
     ttk.Label(program_frm, text=":").grid(column=2, row=1)
@@ -209,7 +264,7 @@ def create_program_daily_line():
 
     program_daily_button = ttk.Button(program_frm, text="Program Daily", command=program_daily)
     program_daily_button.grid(column=4, row=1, padx=(10, 0))  # Add padx to create spacing
-    Tooltip(program_daily_button, "Program Script to Run Daily")
+    Tooltip(program_daily_button, "Program Script to Run Daily")'''
 
 
 def main():
@@ -220,9 +275,6 @@ def main():
     # setting resizable window
     root.resizable(True, True)
     root.minsize(600, 800)  # minimimum size possible
-
-    style = ttk.Style()
-    style.configure("TCheckbutton", foreground="black")
 
     is_modified = False
 
@@ -241,11 +293,15 @@ def main():
 
     create_immediately_run_line()
 
-    create_execute_one_time_line()
+    create_execute_in_line()
 
-    create_program_daily_line()
+    create_execute_one_time_with_format()
 
+    create_program_daily_with_format()
 
+    # create_execute_one_time_line()
+
+    # create_program_daily_line()
 
     root.grid_rowconfigure(2, weight=1)
     root.columnconfigure(0, weight=1)

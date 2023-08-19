@@ -470,10 +470,10 @@ menu = Menu(root)
 root.config(menu=menu)
 
 frm = ttk.Frame(root, padding=0)
-directory_label = Label(frm, text=os.getcwd(), anchor="center", justify="center")
+directory_label = Label(frm, text=os.getcwd(), anchor="center")
 
 script_frm = ttk.Frame(root, padding=0)
-script_name_label = Label(script_frm, text="Script Name: ")
+script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
 
 script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
 text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
@@ -488,11 +488,21 @@ see_stderr = IntVar()
 
 run_frm = ttk.Frame(root, padding=0)
 
-program_frm = ttk.Frame(root, padding=0)
-program_frm.grid(row=5, column=0, pady=0, sticky="e")  # Set sticky to "e" for right alignment
+line_frm = ttk.Frame(root, padding=0)
 
-hour_entry = ttk.Entry(program_frm, width=2)
-minute_entry = ttk.Entry(program_frm, width=2)
+one_time_frm = ttk.Frame(root, padding=0)
+
+daily_frm = ttk.Frame(root, padding=0)
+
+#minute_entry = ttk.Entry(program_frm, width=2)
+
+#hour_entry = ttk.Entry(program_frm, width=2)
+
+# program_frm = ttk.Frame(root, padding=0)
+# program_frm.grid(row=5, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+
+# hour_entry = ttk.Entry(program_frm, width=2)
+# minute_entry = ttk.Entry(program_frm, width=2)
 
 
 class Tooltip:
