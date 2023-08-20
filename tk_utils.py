@@ -7,7 +7,7 @@ from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.i
 import tkinter
 from crontab import CronTab
 import subprocess
-
+from time import sleep
 import os
 
 context_menu = None  # Define context_menu as a global variable
@@ -110,7 +110,7 @@ def update_modification_status(event):
 def on_text_change(event=None):
     global is_modified
 
-    if is_modified == False:
+    if not is_modified:
         is_modified = True
         root.title("*" + root.title())
 
@@ -201,12 +201,6 @@ def paste(event=None):
     text.insert(INSERT, root.clipboard_get())
 
 
-def delete():
-    if text.tag_ranges("sel"):
-        text.tag_add("sel", SEL_FIRST, SEL_LAST)
-        text.delete(SEL_FIRST, SEL_LAST)
-
-
 def undo():
     text.edit_undo()
 
@@ -223,30 +217,6 @@ def delete_all():
     text.delete(1.0, END)
 
 
-# EDIT MENU METHODS
-
-def cut(event=None):
-    # first clear the previous text on the clipboard.
-    root.clipboard_clear()
-    text.clipboard_append(string=text.selection_get())
-    # index of the first and yhe last letter of our selection.
-    text.delete(index1=SEL_FIRST, index2=SEL_LAST)
-
-
-def copy(event=None):
-    # first clear the previous text on the clipboard.
-    print(text.index(SEL_FIRST))
-    print(text.index(SEL_LAST))
-    root.clipboard_clear()
-    text.clipboard_append(string=text.selection_get())
-
-
-def paste(event=None):
-    # get gives everyting from the clipboard and paste it on the current cursor position
-    # it does'nt removes it from the clipboard.
-    text.insert(INSERT, root.clipboard_get())
-
-
 def duplicate(event=None):
     selected_text = text.get("sel.first", "sel.last")
     text.insert("insert", selected_text)
@@ -259,25 +229,8 @@ def show_context_menu(event):
         context_menu.grab_release()
 
 
-
 def delete():
     text.delete(index1=SEL_FIRST, index2=SEL_LAST)
-
-
-def undo():
-    text.edit_undo()
-
-
-def redo():
-    text.edit_redo()
-
-
-def select_all(event=None):
-    text.tag_add("sel", "1.0", "end")
-
-
-def delete_all():
-    text.delete(1.0, END)
 
 
 # TOOLS MENU METHODS
@@ -478,6 +431,10 @@ script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
 script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
 text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
             undo=True)
+
+all_fonts = StringVar()
+
+all_size = StringVar()
 
 entry_text = StringVar()
 content_frm = ttk.Frame(root, padding=0)
@@ -737,48 +694,70 @@ def run_script():
         messagebox.showerror("Script Execution", f"Error executing script:\n{str(e)}")
 
 
-def execute_once():
-    hour = hour_entry.get()
-    minute = minute_entry.get()
+def run_script_with_timeout(timeout_seconds):
+    script = script_text.get("1.0", "end-1c")
+    arguments = entry_arguments_entry.get()
+    generate_stdout = generate_stdin.get()
+    generate_stderr = see_stderr.get()
 
-    if validate_time(hour, minute):
-        time_str = f"{hour}:{minute}"
-        messagebox.showinfo("Execute Once", f"Scheduling script to run at {time_str} (HH:MM)")
+    try:
+        # Execute the script with provided arguments
+        # Use the subprocess module to run the script as a separate process
+        # result = subprocess.run([script] + arguments.split(), capture_output=True, shell=True)
+        # TODO "/"
+        process = subprocess.Popen(
+            ["bash"] + [directory_label.cget('text') + "/" + script_name_label.cget('text')] + arguments.split(),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        # Prepare the 'at' command
-        script = script_text.get("1.0", "end-1c")
-        arguments = entry_arguments_entry.get()
-        command = f"echo '{script} {arguments}' | at {time_str}"
+        sleep(timeout_seconds)
+        stdout_data, stderr_data = process.communicate()
 
-        # Execute the 'at' command
-        try:
-            subprocess.run(command, shell=True, check=True)
-            messagebox.showinfo("Execute Once", f"Script scheduled to run at {time_str} successfully.")
-        except subprocess.CalledProcessError as e:
-            messagebox.showerror("Execute Once", f"Error scheduling script:\n{e}")
+        # Print the stdout and stderr
+        if generate_stdout:
+            script_out_name = script_name_label.cget('text') + ".out"
+            print(script_out_name)
+            p = open(script_out_name, "w+")
+            p.write(stdout_data.decode())
+
+        if generate_stderr:
+            script_err_name = script_name_label.cget('text') + ".err"
+            p = open(script_err_name, "w+")
+            p.write(stderr_data.decode())
+
+        messagebox.showinfo("Script Execution", "Script executed successfully.")
+    except Exception as e:
+        messagebox.showerror("Script Execution", f"Error executing script:\n{str(e)}")
 
 
-def program_daily():
-    hour = hour_entry.get()
-    minute = minute_entry.get()
+def run_script_once(script_path):
+    stdout, stderr = run_script_with_timeout(script_path, timeout_seconds=float('inf'))
+    if stdout is not None:
+        print("Script executed successfully:")
+        print("STDOUT:")
+        print(stdout)
+        print("STDERR:")
+        print(stderr)
+    else:
+        print("Error executing script:", stderr)
 
-    if validate_time(hour, minute):
-        time_str = f"{hour}:{minute}"
-        messagebox.showinfo("Program Daily", f"Scheduling script to run daily at {time_str} (HH:MM)")
 
-        # Get the user's crontab
-        cron = CronTab(user=True)
+def run_script_crontab(script_path, schedule):
+    try:
+        arguments = entry_arguments_entry.get()  # Get arguments from entry widget
+        # Validate the cron schedule
+        cron = CronTab(tab=schedule)
 
-        # Create a new cron job
-        job = cron.new(command='python script.py')  # Replace 'script.py' with the actual script file name
+        # Create a job for the script
+        job = cron.new(command=f"bash {script_path} {arguments}")
 
-        # Set the schedule to run daily at the specified time
-        job.setall(f"{minute} {hour} * * *")
+        # Set the cron schedule
+        job.setall(schedule)
 
-        # Write the cron job to the crontab
+        # Write the job to the cron tab
         cron.write()
-
-        messagebox.showinfo("Program Daily", f"Script scheduled to run daily at {time_str} successfully.")
+        print("Script scheduled successfully.")
+    except Exception as e:
+        print("Error scheduling script:", str(e))
 
 
 def validate_time(hour, minute):
