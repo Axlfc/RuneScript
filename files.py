@@ -44,6 +44,13 @@ def create_menu():
     tool_menu.add_command(label="Change Color", command=change_color)
     tool_menu.add_command(label="Search", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
 
+    # Jobs Menu
+    jobs_menu = Menu(menu)
+    menu.add_cascade(label="Jobs", menu=jobs_menu, underline=0)
+
+    jobs_menu.add_command(label="at", command=open_at_window)
+    jobs_menu.add_command(label="crontab", command=open_crontab_window)
+
     help_menu = Menu(menu)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)
     help_menu.add_command(label="About", command=about, accelerator='Ctrl+H', underline=0)

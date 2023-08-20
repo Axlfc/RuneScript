@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry
+from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox
 from tkinter import END, INSERT, SEL_FIRST, SEL_LAST, SEL
 from tkinter import ttk, scrolledtext, filedialog, simpledialog
 import tkinter.messagebox as messagebox
@@ -833,7 +833,6 @@ def run_script_crontab(minute, hour, day, month, day_of_week):
         messagebox.showerror("Error Scheduling Script", f"An error occurred while scheduling the script:\n{str(e)}")
 
 
-
 def validate_time(hour, minute):
     try:
         hour = int(hour)
@@ -844,3 +843,99 @@ def validate_time(hour, minute):
     except ValueError:
         messagebox.showerror("Invalid Time", "Please enter a valid time in HH:MM format.")
         return False
+
+
+at_window = None
+crontab_window = None
+
+
+def open_at_window():
+    def update_at_jobs():
+        listbox.delete(0, END)  # Clear the listbox
+        populate_at_jobs(listbox)
+        at_window.after(5000, update_at_jobs)  # Schedule update every 5 seconds
+
+    at_window = Toplevel(root)
+    at_window.title("AT Jobs")
+
+    at_window.geometry("600x400")  # Set the window size as desired
+
+    listbox = Listbox(at_window, width=80)  # Adjust the width of the listbox
+    listbox.pack(fill="both", expand=True)  # Fill and expand to the entire window
+
+    populate_at_jobs(listbox)
+
+    remove_button = Button(at_window, text="Remove Selected", command=lambda: remove_selected_at_job(listbox))
+    remove_button.pack(side="bottom")  # Pack the button to the bottom
+
+    # Start the periodic update
+    at_window.after(0, update_at_jobs)
+
+    at_window.mainloop()
+
+
+def populate_at_jobs(listbox):
+    try:
+        at_output = subprocess.check_output(["atq"], text=True).splitlines()
+        for line in at_output:
+            listbox.insert(END, line)
+    except subprocess.CalledProcessError:
+        messagebox.showerror("Error", "Failed to retrieve AT jobs")
+
+
+def remove_selected_at_job(listbox):
+    selected_indices = listbox.curselection()
+    if not selected_indices:
+        return  # No item selected
+
+    selected_index = selected_indices[0]
+    selected_job = listbox.get(selected_index)
+    job_id = selected_job.split(" ")[0].split("	")[0]
+    print("OLA '" + job_id + "'")
+
+    try:
+        subprocess.run(["atrm", job_id], check=True)
+        listbox.delete(selected_index)  # Remove the item from the listbox
+    except subprocess.CalledProcessError:
+        messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
+
+
+def open_crontab_window():
+    global crontab_window
+    crontab_window = Toplevel(root)
+    crontab_window.title("Scheduled Jobs (crontab)")
+
+    # Create a list to store the scheduled tasks
+    scheduled_jobs = []
+
+    # Use the 'crontab -l' command to list the scheduled tasks
+    try:
+        crontab_output = subprocess.check_output(["crontab", "-l"], text=True)
+        for line in crontab_output.splitlines():
+            scheduled_jobs.append(line)
+    except subprocess.CalledProcessError:
+        pass  # Handle errors if needed
+
+    # Create a listbox to display the scheduled tasks
+    listbox = Listbox(crontab_window)
+    listbox.pack()
+
+    for job in scheduled_jobs:
+        listbox.insert(END, job)
+
+    remove_button = ttk.Button(crontab_window, text="Remove", command=remove_selected_crontab_job)
+    remove_button.pack()
+
+
+def remove_selected_crontab_job():
+    selected_job = crontab_window.focus_get()
+    if selected_job:
+        job_line = selected_job.get()
+        try:
+            # Remove the selected job using 'crontab -l' and 'crontab -'
+            crontab_output = subprocess.check_output(["crontab", "-l"], text=True)
+            updated_crontab = "\n".join(line for line in crontab_output.splitlines() if line != job_line)
+            subprocess.check_output(["echo", updated_crontab, "|", "crontab", "-"], text=True)
+            crontab_window.destroy()
+        except subprocess.CalledProcessError:
+            pass  # Handle errors if needed
