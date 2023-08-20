@@ -727,7 +727,7 @@ def run_script_with_timeout(timeout_seconds):
     script = script_text.get("1.0", "end-1c")
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
-    generate_stderr = see_stderr.get()
+    generate_stderr = generate_stdin_err.get()
 
     try:
         # Execute the script with provided arguments
@@ -791,7 +791,7 @@ def run_script_once(schedule_time):
         stdout_redirect = f">{script_name_label.cget('text')}.out" if generate_stdout else "/dev/null"
         stderr_redirect = f"2>{script_name_label.cget('text')}.err" if generate_stderr else "/dev/null"
 
-        at_command = f"at {at_time} <<EOF\n{script_path} {arguments} {stdout_redirect} {stderr_redirect}\nEOF"
+        at_command = f"atq; at {at_time} <<EOF\n{script_path} {arguments} {stdout_redirect} {stderr_redirect}\nEOF"
 
         process = subprocess.Popen(at_command, shell=True)
         process.wait()
@@ -801,23 +801,37 @@ def run_script_once(schedule_time):
         messagebox.showerror("Error Scheduling Script", f"An error occurred while scheduling the script:\n{str(e)}")
 
 
-def run_script_crontab(script_path, schedule):
+def run_script_crontab(minute, hour, day, month, day_of_week):
+    if not minute or not hour or not day or not month or not day_of_week:
+        messagebox.showerror("Error Scheduling Script", "All cron schedule fields must be filled.")
+        return
+
+    # Build the cron schedule string
+    cron_schedule = f"{minute} {hour} {day} {month} {day_of_week}"
+
+    script_path = os.path.join(directory_label.cget('text'), script_name_label.cget('text'))
+    arguments = entry_arguments_entry.get()
+
+    generate_stdout = generate_stdin.get()
+    generate_stderr = generate_stdin_err.get()
+
+    # Determine the full path for .out and .err files based on the selected directory
+    out_file = os.path.join(directory_label.cget('text'), f"{script_name_label.cget('text')}.out")
+    err_file = os.path.join(directory_label.cget('text'), f"{script_name_label.cget('text')}.err")
+
     try:
-        arguments = entry_arguments_entry.get()  # Get arguments from entry widget
-        # Validate the cron schedule
-        cron = CronTab(tab=schedule)
+        stdout_redirect = f">{out_file}" if generate_stdout else "/dev/null"
+        stderr_redirect = f"2>{err_file}" if generate_stderr else "/dev/null"
 
-        # Create a job for the script
-        job = cron.new(command=f"bash {script_path} {arguments}")
+        # Use the 'crontab' command to set up the script execution schedule
+        crontab_command = f"(crontab -l; echo '{cron_schedule} {script_path} {arguments} {stdout_redirect} {stderr_redirect}') | crontab -"
+        process = subprocess.Popen(crontab_command, shell=True)
+        process.wait()
 
-        # Set the cron schedule
-        job.setall(schedule)
-
-        # Write the job to the cron tab
-        cron.write()
-        print("Script scheduled successfully.")
+        messagebox.showinfo("Script Scheduled", f"Script scheduled with cron: {cron_schedule}")
     except Exception as e:
-        print("Error scheduling script:", str(e))
+        messagebox.showerror("Error Scheduling Script", f"An error occurred while scheduling the script:\n{str(e)}")
+
 
 
 def validate_time(hour, minute):

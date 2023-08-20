@@ -234,7 +234,10 @@ def create_program_daily_with_format():
     day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
     Tooltip(day_of_the_week_entry, "every day of the week")
 
-    run_button = ttk.Button(daily_frm, text=run_icon, command=run_script_crontab)  # Change to crontab function
+    run_button = ttk.Button(
+        daily_frm, text=run_icon,
+        command=lambda: run_script_crontab(minute_entry.get(), hour_entry.get(), day_entry.get(), month_entry.get(), day_of_the_week_entry.get())
+    )
     run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
     Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
 
