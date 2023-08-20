@@ -49,7 +49,7 @@ def create_menu():
     menu.add_cascade(label="Jobs", menu=jobs_menu, underline=0)
 
     jobs_menu.add_command(label="at", command=open_at_window)
-    jobs_menu.add_command(label="crontab", command=open_crontab_window)
+    jobs_menu.add_command(label="crontab", command=open_cron_window)
 
     help_menu = Menu(menu)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)

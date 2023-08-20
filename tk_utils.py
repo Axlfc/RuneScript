@@ -891,7 +891,6 @@ def remove_selected_at_job(listbox):
     selected_index = selected_indices[0]
     selected_job = listbox.get(selected_index)
     job_id = selected_job.split(" ")[0].split("	")[0]
-    print("OLA '" + job_id + "'")
 
     try:
         subprocess.run(["atrm", job_id], check=True)
@@ -900,42 +899,13 @@ def remove_selected_at_job(listbox):
         messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
 
 
-def open_crontab_window():
-    global crontab_window
-    crontab_window = Toplevel(root)
-    crontab_window.title("Scheduled Jobs (crontab)")
-
-    # Create a list to store the scheduled tasks
-    scheduled_jobs = []
-
-    # Use the 'crontab -l' command to list the scheduled tasks
-    try:
-        crontab_output = subprocess.check_output(["crontab", "-l"], text=True)
-        for line in crontab_output.splitlines():
-            scheduled_jobs.append(line)
-    except subprocess.CalledProcessError:
-        pass  # Handle errors if needed
-
-    # Create a listbox to display the scheduled tasks
-    listbox = Listbox(crontab_window)
-    listbox.pack()
-
-    for job in scheduled_jobs:
-        listbox.insert(END, job)
-
-    remove_button = ttk.Button(crontab_window, text="Remove", command=remove_selected_crontab_job)
-    remove_button.pack()
+def open_cron_window():
+    pass
 
 
-def remove_selected_crontab_job():
-    selected_job = crontab_window.focus_get()
-    if selected_job:
-        job_line = selected_job.get()
-        try:
-            # Remove the selected job using 'crontab -l' and 'crontab -'
-            crontab_output = subprocess.check_output(["crontab", "-l"], text=True)
-            updated_crontab = "\n".join(line for line in crontab_output.splitlines() if line != job_line)
-            subprocess.check_output(["echo", updated_crontab, "|", "crontab", "-"], text=True)
-            crontab_window.destroy()
-        except subprocess.CalledProcessError:
-            pass  # Handle errors if needed
+def populate_cron_jobs(listbox):
+    pass
+
+
+def remove_selected_cron_job(listbox):
+    pass
