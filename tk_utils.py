@@ -690,6 +690,10 @@ def see_stderr():
     except FileNotFoundError:
         stderr_text.insert("1.0", "No stderr data available.")
 
+    # Configure the text widget to use red font color
+    stderr_text.tag_configure("red", foreground="red")
+    stderr_text.tag_add("red", "1.0", "end")
+
 
 def run_script():
     script = script_text.get("1.0", "end-1c")
