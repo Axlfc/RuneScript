@@ -9,6 +9,7 @@ from crontab import CronTab
 import subprocess
 from time import sleep
 import os
+import re
 
 context_menu = None  # Define context_menu as a global variable
 
@@ -441,7 +442,7 @@ content_frm = ttk.Frame(root, padding=0)
 entry_arguments_entry = ttk.Entry(content_frm, textvariable=entry_text, width=40)
 
 generate_stdin = IntVar()
-see_stderr = IntVar()
+generate_stdin_err = IntVar()
 
 run_frm = ttk.Frame(root, padding=0)
 
@@ -662,11 +663,39 @@ def colorize_text():
     script_text.insert("1.0", script_content)
 
 
+def see_stdout():
+    stdout_window = Toplevel(root)
+    stdout_window.title("Standard Output (stdout)")
+    stdout_text = Text(stdout_window)
+    stdout_text.pack()
+
+    script_out_name = script_name_label.cget('text') + ".out"
+    try:
+        with open(script_out_name, "r") as f:
+            stdout_text.insert("1.0", f.read())
+    except FileNotFoundError:
+        stdout_text.insert("1.0", "No stdout data available.")
+
+
+def see_stderr():
+    stderr_window = Toplevel(root)
+    stderr_window.title("Standard Error (stderr)")
+    stderr_text = Text(stderr_window)
+    stderr_text.pack()
+
+    script_err_name = script_name_label.cget('text') + ".err"
+    try:
+        with open(script_err_name, "r") as f:
+            stderr_text.insert("1.0", f.read())
+    except FileNotFoundError:
+        stderr_text.insert("1.0", "No stderr data available.")
+
+
 def run_script():
     script = script_text.get("1.0", "end-1c")
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
-    generate_stderr = see_stderr.get()
+    generate_stderr = generate_stdin_err.get()
 
     try:
         # Execute the script with provided arguments
@@ -729,16 +758,47 @@ def run_script_with_timeout(timeout_seconds):
         messagebox.showerror("Script Execution", f"Error executing script:\n{str(e)}")
 
 
-def run_script_once(script_path):
-    stdout, stderr = run_script_with_timeout(script_path, timeout_seconds=float('inf'))
-    if stdout is not None:
-        print("Script executed successfully:")
-        print("STDOUT:")
-        print(stdout)
-        print("STDERR:")
-        print(stderr)
-    else:
-        print("Error executing script:", stderr)
+def run_script_once(schedule_time):
+    script_path = os.path.join(directory_label.cget('text'), script_name_label.cget('text'))
+    arguments = entry_arguments_entry.get()
+    generate_stdout = generate_stdin.get()
+    generate_stderr = generate_stdin_err.get()
+
+    # Extract hour, minute, and AM/PM from the input time string
+    match = re.match(r'(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?', schedule_time)
+    if not match:
+        messagebox.showerror("Invalid Time", "Please enter a valid time in HH:MM AM/PM format.")
+        return
+
+    hour = int(match.group(1))
+    minute = int(match.group(2))
+    am_pm = match.group(3)
+
+    # Adjust hour for 12-hour clock format
+    if am_pm and am_pm.lower() == 'pm' and hour != 12:
+        hour += 12
+
+    if am_pm and am_pm.lower() == 'am' and hour == 12:
+        hour = 0
+
+    if not validate_time(hour, minute):
+        return
+
+    try:
+        # Use the 'at' command to schedule the script execution and redirection
+        at_time = f"{hour:02d}:{minute:02d}"
+
+        stdout_redirect = f">{script_name_label.cget('text')}.out" if generate_stdout else "/dev/null"
+        stderr_redirect = f"2>{script_name_label.cget('text')}.err" if generate_stderr else "/dev/null"
+
+        at_command = f"at {at_time} <<EOF\n{script_path} {arguments} {stdout_redirect} {stderr_redirect}\nEOF"
+
+        process = subprocess.Popen(at_command, shell=True)
+        process.wait()
+
+        messagebox.showinfo("Script Scheduled", f"Script scheduled to run at {at_time}.")
+    except Exception as e:
+        messagebox.showerror("Error Scheduling Script", f"An error occurred while scheduling the script:\n{str(e)}")
 
 
 def run_script_crontab(script_path, schedule):
