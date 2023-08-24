@@ -1,7 +1,9 @@
 #!/usr/bin/python3
+from MainWindow import MainWindow
+
 
 def main():
-    pass
+    MainWindow()
 
 
 if __name__ == '__main__':
