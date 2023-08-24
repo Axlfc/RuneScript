@@ -12,20 +12,6 @@ from time import sleep
 import os
 import re
 
-context_menu = None  # Define context_menu as a global variable
-
-# MAIN MENU METHODS
-
-file_name = ""  # Current file name.
-current_font_family = "Liberation Mono"
-current_font_size = 12
-fontColor = '#000000'
-fontBackground = '#FFFFFF'
-
-new_name = ""  # Used for renaming the file
-
-is_modified = False  # Added is_modified variable
-
 
 def make_tag():
     current_tags = text.tag_names()
@@ -139,9 +125,6 @@ def save_as():
         save()
     else:
         messagebox.showinfo("Info", "File saving canceled.")
-
-
-new_name = ""  # Used for renaming the file
 
 
 def rename(event=None):
@@ -406,54 +389,6 @@ def change_size(event):
     make_tag()
 
 
-house_icon = "🏠"
-open_icon = "📂"
-save_icon = "💾"
-save_new_icon = "🆕"
-undo_icon = "⮪"
-redo_icon = "⮬"
-run_icon = "▶"
-
-root = Tk()
-
-# TOOLBAR
-toolbar = Frame(root, pady=2)
-
-# MENUBAR CREATION
-
-menu = Menu(root)
-root.config(menu=menu)
-
-frm = ttk.Frame(root, padding=0)
-directory_label = Label(frm, text=os.getcwd(), anchor="center")
-
-script_frm = ttk.Frame(root, padding=0)
-script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
-
-script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
-text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
-            undo=True)
-
-all_fonts = StringVar()
-
-all_size = StringVar()
-
-entry_text = StringVar()
-content_frm = ttk.Frame(root, padding=0)
-entry_arguments_entry = ttk.Entry(content_frm, textvariable=entry_text, width=40)
-
-generate_stdin = IntVar()
-generate_stdin_err = IntVar()
-
-run_frm = ttk.Frame(root, padding=0)
-
-line_frm = ttk.Frame(root, padding=0)
-
-one_time_frm = ttk.Frame(root, padding=0)
-
-daily_frm = ttk.Frame(root, padding=0)
-
-
 class Tooltip:
     def __init__(self, widget, text):
         self.widget = widget
@@ -479,86 +414,6 @@ class Tooltip:
             self.tooltip = None
 
 
-# TOOLBAR BUTTONS
-# new
-new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, height=20)
-photo_new = Image.open("icons/new.png")
-photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
-image_new = ImageTk.PhotoImage(photo_new)
-new_button.config(image=image_new)
-new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# save
-save_button = Button(name="toolbar_b1", borderwidth=1, command=save, width=20, height=20)
-photo_save = Image.open("icons/save.png")
-photo_save = photo_save.resize((18, 18), Image.ANTIALIAS)
-image_save = ImageTk.PhotoImage(photo_save)
-save_button.config(image=image_save)
-save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# open
-open_button = Button(name="toolbar_b3", borderwidth=1, command=open_file, width=20, height=20)
-photo_open = Image.open("icons/open.png")
-photo_open = photo_open.resize((18, 18), Image.ANTIALIAS)
-image_open = ImageTk.PhotoImage(photo_open)
-open_button.config(image=image_open)
-open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# copy
-copy_button = Button(name="toolbar_b4", borderwidth=1, command=copy, width=20, height=20)
-photo_copy = Image.open("icons/copy.png")
-photo_copy = photo_copy.resize((18, 18), Image.ANTIALIAS)
-image_copy = ImageTk.PhotoImage(photo_copy)
-copy_button.config(image=image_copy)
-copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# cut
-cut_button = Button(name="toolbar_b5", borderwidth=1, command=cut, width=20, height=20)
-photo_cut = Image.open("icons/cut.png")
-photo_cut = photo_cut.resize((18, 18), Image.ANTIALIAS)
-image_cut = ImageTk.PhotoImage(photo_cut)
-cut_button.config(image=image_cut)
-cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# paste
-paste_button = Button(name="toolbar_b6", borderwidth=1, command=paste, width=20, height=20)
-photo_paste = Image.open("icons/paste.png")
-photo_paste = photo_paste.resize((18, 18), Image.ANTIALIAS)
-image_paste = ImageTk.PhotoImage(photo_paste)
-paste_button.config(image=image_paste)
-paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# duplicate
-duplicate_button = Button(name="toolbar_b7", borderwidth=1, command=paste, width=20, height=20)
-photo_duplicate = Image.open("icons/duplicate.png")
-photo_duplicate = photo_paste.resize((18, 18), Image.ANTIALIAS)
-image_duplicate = ImageTk.PhotoImage(photo_paste)
-duplicate_button.config(image=image_duplicate)
-duplicate_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# redo
-redo_button = Button(name="toolbar_b8", borderwidth=1, command=redo, width=20, height=20)
-photo_redo = Image.open("icons/redo.png")
-photo_redo = photo_redo.resize((18, 18), Image.ANTIALIAS)
-image_redo = ImageTk.PhotoImage(photo_redo)
-redo_button.config(image=image_redo)
-redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# undo
-undo_button = Button(name="toolbar_b9", borderwidth=1, command=undo, width=20, height=20)
-photo_undo = Image.open("icons/undo.png")
-photo_undo = photo_undo.resize((18, 18), Image.ANTIALIAS)
-image_undo = ImageTk.PhotoImage(photo_undo)
-undo_button.config(image=image_undo)
-undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# find
-find_button = Button(name="toolbar_b10", borderwidth=1, command=find_text, width=20, height=20)
-photo_find = Image.open("icons/find.png")
-photo_find = photo_find.resize((18, 18), Image.ANTIALIAS)
-image_find = ImageTk.PhotoImage(photo_find)
-find_button.config(image=image_find)
-find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
 # Help Menu
@@ -572,14 +427,16 @@ def select_directory():
     if directory:
         os.chdir(directory)
         directory_label.config(text=f"{directory}")
-        open_first_text_file(directory)
+        # open_first_text_file(directory)
 
 
+'''
 def open_first_text_file(directory):
     text_files = get_text_files(directory)
     if text_files:
         file_path = os.path.join(directory, text_files[0])
         open_file(file_path)
+'''
 
 
 def get_text_files(directory):
@@ -850,10 +707,6 @@ def validate_time(hour, minute):
         return False
 
 
-at_window = None
-crontab_window = None
-
-
 def open_at_window():
     def update_at_jobs():
         listbox.delete(0, END)
@@ -907,7 +760,6 @@ def remove_selected_at_job(listbox):
             listbox.delete(selected_index)
         except subprocess.CalledProcessError:
             messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
-
 
 
 def open_cron_window():
@@ -990,3 +842,151 @@ def remove_selected_cron_job(listbox):
 
     except subprocess.CalledProcessError:
         messagebox.showerror("Error", "Failed to remove cron job")
+
+
+context_menu = None  # Define context_menu as a global variable
+
+# MAIN MENU METHODS
+
+file_name = ""  # Current file name.
+current_font_family = "Liberation Mono"
+current_font_size = 12
+fontColor = '#000000'
+fontBackground = '#FFFFFF'
+
+new_name = ""  # Used for renaming the file
+
+is_modified = False  # Added is_modified variable
+
+new_name = ""  # Used for renaming the file
+
+house_icon = "🏠"
+open_icon = "📂"
+save_icon = "💾"
+save_new_icon = "🆕"
+undo_icon = "⮪"
+redo_icon = "⮬"
+run_icon = "▶"
+
+root = Tk()
+
+# TOOLBAR
+toolbar = Frame(root, pady=2)
+
+# MENUBAR CREATION
+
+menu = Menu(root)
+root.config(menu=menu)
+
+frm = ttk.Frame(root, padding=0)
+directory_label = Label(frm, text=os.getcwd(), anchor="center")
+
+script_frm = ttk.Frame(root, padding=0)
+script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
+
+script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
+text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
+            undo=True)
+
+all_fonts = StringVar()
+
+all_size = StringVar()
+
+entry_text = StringVar()
+content_frm = ttk.Frame(root, padding=0)
+entry_arguments_entry = ttk.Entry(content_frm, textvariable=entry_text, width=40)
+
+generate_stdin = IntVar()
+generate_stdin_err = IntVar()
+
+run_frm = ttk.Frame(root, padding=0)
+
+line_frm = ttk.Frame(root, padding=0)
+
+one_time_frm = ttk.Frame(root, padding=0)
+
+daily_frm = ttk.Frame(root, padding=0)
+
+# TOOLBAR BUTTONS
+# new
+new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, height=20)
+photo_new = Image.open("icons/new.png")
+photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
+image_new = ImageTk.PhotoImage(photo_new)
+new_button.config(image=image_new)
+new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# save
+save_button = Button(name="toolbar_b1", borderwidth=1, command=save, width=20, height=20)
+photo_save = Image.open("icons/save.png")
+photo_save = photo_save.resize((18, 18), Image.ANTIALIAS)
+image_save = ImageTk.PhotoImage(photo_save)
+save_button.config(image=image_save)
+save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# open
+open_button = Button(name="toolbar_b3", borderwidth=1, command=open_file, width=20, height=20)
+photo_open = Image.open("icons/open.png")
+photo_open = photo_open.resize((18, 18), Image.ANTIALIAS)
+image_open = ImageTk.PhotoImage(photo_open)
+open_button.config(image=image_open)
+open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# copy
+copy_button = Button(name="toolbar_b4", borderwidth=1, command=copy, width=20, height=20)
+photo_copy = Image.open("icons/copy.png")
+photo_copy = photo_copy.resize((18, 18), Image.ANTIALIAS)
+image_copy = ImageTk.PhotoImage(photo_copy)
+copy_button.config(image=image_copy)
+copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# cut
+cut_button = Button(name="toolbar_b5", borderwidth=1, command=cut, width=20, height=20)
+photo_cut = Image.open("icons/cut.png")
+photo_cut = photo_cut.resize((18, 18), Image.ANTIALIAS)
+image_cut = ImageTk.PhotoImage(photo_cut)
+cut_button.config(image=image_cut)
+cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# paste
+paste_button = Button(name="toolbar_b6", borderwidth=1, command=paste, width=20, height=20)
+photo_paste = Image.open("icons/paste.png")
+photo_paste = photo_paste.resize((18, 18), Image.ANTIALIAS)
+image_paste = ImageTk.PhotoImage(photo_paste)
+paste_button.config(image=image_paste)
+paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# duplicate
+duplicate_button = Button(name="toolbar_b7", borderwidth=1, command=paste, width=20, height=20)
+photo_duplicate = Image.open("icons/duplicate.png")
+photo_duplicate = photo_paste.resize((18, 18), Image.ANTIALIAS)
+image_duplicate = ImageTk.PhotoImage(photo_paste)
+duplicate_button.config(image=image_duplicate)
+duplicate_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# redo
+redo_button = Button(name="toolbar_b8", borderwidth=1, command=redo, width=20, height=20)
+photo_redo = Image.open("icons/redo.png")
+photo_redo = photo_redo.resize((18, 18), Image.ANTIALIAS)
+image_redo = ImageTk.PhotoImage(photo_redo)
+redo_button.config(image=image_redo)
+redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# undo
+undo_button = Button(name="toolbar_b9", borderwidth=1, command=undo, width=20, height=20)
+photo_undo = Image.open("icons/undo.png")
+photo_undo = photo_undo.resize((18, 18), Image.ANTIALIAS)
+image_undo = ImageTk.PhotoImage(photo_undo)
+undo_button.config(image=image_undo)
+undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# find
+find_button = Button(name="toolbar_b10", borderwidth=1, command=find_text, width=20, height=20)
+photo_find = Image.open("icons/find.png")
+photo_find = photo_find.resize((18, 18), Image.ANTIALIAS)
+image_find = ImageTk.PhotoImage(photo_find)
+find_button.config(image=image_find)
+find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+at_window = None
+crontab_window = None
