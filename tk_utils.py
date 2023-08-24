@@ -1,4 +1,3 @@
-
 from crontab import CronTab
 import subprocess
 import tempfile
@@ -795,46 +794,5 @@ def populate_cron_jobs(listbox):
         listbox.insert(END, f"No cron jobs found for user {username}.")
         #messagebox.showwarning("Warning", "Failed to retrieve cron jobs")
 
-
-def remove_selected_cron_job(listbox):
-    selected_indices = listbox.curselection()
-    if not selected_indices:
-        return
-
-    selected_index = selected_indices[0]
-    selected_job = listbox.get(selected_index)
-
-    try:
-        # Create a temporary file to store modified crontab
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-
-        # Save the current crontab to the temporary file
-        subprocess.run(["crontab", "-l"], text=True, stdout=temp_file)
-
-        # Reset the file pointer to the beginning
-        temp_file.seek(0)
-
-        selected_job_bytes = selected_job.encode("utf-8")
-
-        # Filter out the selected job and write to a new temporary file
-        filtered_lines = [line for line in temp_file if selected_job_bytes not in line]
-
-        temp_file.close()
-
-        # Write the filtered content back to the temporary file
-        with open(temp_file.name, "wb") as f:
-            f.writelines(filtered_lines)
-
-        # Load the modified crontab from the temporary file
-        subprocess.run(["crontab", temp_file.name], check=True)
-
-        # Delete the temporary file
-        os.remove(temp_file.name)
-
-        # Remove the item from the listbox
-        listbox.delete(selected_index)
-
-    except subprocess.CalledProcessError:
-        messagebox.showerror("Error", "Failed to remove cron job")
 
 

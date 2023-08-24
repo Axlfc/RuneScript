@@ -247,11 +247,3 @@ def create_program_daily_with_format():
     )
     run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
     Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
-
-
-def main():
-
-
-
-if __name__ == '__main__':
-    main()
