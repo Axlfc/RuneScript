@@ -7,7 +7,7 @@ import tkinter.colorchooser as colorchooser
 from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.imagetk
 import tkinter
 import os
-from files import *
+from os_utils import *
 
 
 def show_context_menu(event):

@@ -38,6 +38,25 @@ def make_tag():
         text.tag_remove("BigTag", 1.0, END)
     text.tag_add("BigTag", 1.0, END)
 
+def cut():
+    set_modified_status(True)
+    script_text.event_generate("<<Cut>>")
+
+
+def copy():
+    set_modified_status(True)
+    script_text.event_generate("<<Copy>>")
+
+
+def paste():
+    set_modified_status(True)
+    script_text.event_generate("<<Paste>>")
+
+
+def duplicate():
+    set_modified_status(True)
+    script_text.event_generate("<<Duplicate>>")
+
 
 def new(event=None):
     global file_name
