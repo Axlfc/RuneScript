@@ -1,4 +1,4 @@
-from tk_utils import *
+from os_utils import *
 
 def cut():
     set_modified_status(True)

@@ -363,9 +363,7 @@ class MainWindow:
         run_button = ttk.Button(one_time_frm, text=run_icon, command=lambda: run_script_once(date_entry.get()))
         run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
         Tooltip(run_button, "Use the 'at' command to run the script at a specific time.")
-        
 
-        
         # create_program_daily_with_format
         daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
 
@@ -398,7 +396,6 @@ class MainWindow:
         )
         run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
         Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
-        
 
         root.grid_rowconfigure(2, weight=1)
         root.columnconfigure(0, weight=1)
