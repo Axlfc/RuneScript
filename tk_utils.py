@@ -12,50 +12,7 @@ from time import sleep
 import os
 import re
 
-context_menu = None  # Define context_menu as a global variable
 
-# MAIN MENU METHODS
-
-file_name = ""  # Current file name.
-current_font_family = "Liberation Mono"
-current_font_size = 12
-fontColor = '#000000'
-fontBackground = '#FFFFFF'
-
-new_name = ""  # Used for renaming the file
-
-is_modified = False  # Added is_modified variable
-
-
-def make_tag():
-    current_tags = text.tag_names()
-    if "bold" in current_tags:
-        weight = "bold"
-    else:
-        weight = "normal"
-
-    if "italic" in current_tags:
-        slant = "italic"
-    else:
-        slant = "roman"
-
-    if "underline" in current_tags:
-        underline = 1
-    else:
-        underline = 0
-
-    if "overstrike" in current_tags:
-        overstrike = 1
-    else:
-        overstrike = 0
-
-    big_font = tkinter.font.Font(text, text.cget("font"))
-    big_font.configure(slant=slant, weight=weight, underline=underline, overstrike=overstrike,
-                       family=current_font_family, size=current_font_size)
-    text.tag_config("BigTag", font=big_font, foreground=fontColor, background=fontBackground)
-    if "BigTag" in current_tags:
-        text.tag_remove("BigTag", 1.0, END)
-    text.tag_add("BigTag", 1.0, END)
 
 
 def new(event=None):
@@ -78,16 +35,6 @@ def open_file(event=None):
     text.insert(INSERT, file.read())
 
 
-'''def save(event=None):
-    global file_name
-    if file_name == "":
-        path = filedialog.asksaveasfilename()
-        file_name = path
-    root.title(file_name + " - Script Editor")
-    write = open(file_name, mode='w')
-    write.write(text.get("1.0", END))'''
-
-
 def save():
     global file_name
 
@@ -99,10 +46,13 @@ def save():
         # Update the window title
         root.title(file_name + " - Script Editor")
     else:
-        save_as()
+        path = filedialog.asksaveasfilename()
+        file_name = path
 
     # Remove the asterisk from the title
     root.title(root.title().replace('*', ''))
+    write = open(file_name, mode='w')
+    write.write(text.get("1.0", END))
 
 
 def update_modification_status(event):
@@ -117,7 +67,7 @@ def on_text_change(event=None):
         root.title("*" + root.title())
 
 
-'''def save_as(event=None):
+def save_as(event=None):
     if file_name == "":
         save()
         return "break"
@@ -126,22 +76,9 @@ def on_text_change(event=None):
         return
     text2save = str(text.get(1.0, END))
     f.write(text2save)
-    f.close()'''
+    f.close()
 
 
-def save_as():
-    global file_name
-
-    new_file_name = filedialog.asksaveasfilename(defaultextension=".txt",
-                                                 filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
-    if new_file_name:
-        file_name = new_file_name
-        save()
-    else:
-        messagebox.showinfo("Info", "File saving canceled.")
-
-
-new_name = ""  # Used for renaming the file
 
 
 def rename(event=None):
@@ -175,40 +112,88 @@ def rename(event=None):
 
 
 def close(event=None):
-    save()
-    root.quit()
+    global is_modified
+    if is_modified:
+        response = messagebox.askyesnocancel("Save Changes", "Do you want to save the changes?")
+        if response is None:  # User clicked "Cancel"
+            return
+        elif response:  # User clicked "Yes"
+            save_script()  # Replace with your save function
+
+    elif file_name == "" and len(script_text.get("1.0", "end-1c")) > 0:
+        response = messagebox.askyesnocancel("Create New File", "Do you want to create a new file from the current text?")
+        if response is None:  # User clicked "Cancel"
+            return
+        elif response:  # User clicked "Yes"
+            save_as_new_script()
+
+    root.quit()  # Close the application
+
+
 
 
 # EDIT MENU METHODS
 
 def cut(event=None):
-    # first clear the previous text on the clipboard.
+    set_modified_status(True)
+    script_text.event_generate("<<Cut>>")
+
+    # Get selected text
+    selected_text = text.selection_get()
+
+    # Clear the previous text on the clipboard and append selected text
     root.clipboard_clear()
-    text.clipboard_append(string=text.selection_get())
-    # index of the first and yhe last letter of our selection.
-    text.delete(index1=SEL_FIRST, index2=SEL_LAST)
+    root.clipboard_append(selected_text)
+
+    # Delete the selected text from the text widget
+    script_text.delete(SEL_FIRST, SEL_LAST)
+    script_text.insert(INSERT, clipboard_content)
 
 
 def copy(event=None):
-    # first clear the previous text on the clipboard.
-    print(text.index(SEL_FIRST))
-    print(text.index(SEL_LAST))
-    root.clipboard_clear()
-    text.clipboard_append(string=text.selection_get())
+    set_modified_status(True)
+    selected_text = text.selection_get()
+    print("Selected text:", repr(selected_text))  # Print the selected text for debugging
+    if selected_text:
+        root.clipboard_clear()
+        root.clipboard_append(selected_text)
 
 
 def paste(event=None):
-    # get gives everyting from the clipboard and paste it on the current cursor position
-    # it does'nt removes it from the clipboard.
-    text.insert(INSERT, root.clipboard_get())
+    set_modified_status(True)
+
+    # Get the clipboard content
+    clipboard_content = root.clipboard_get()
+
+    # If there's a selected text, replace it with the clipboard content
+    if script_text.tag_ranges(SEL):
+        script_text.delete(SEL_FIRST, SEL_LAST)
+        script_text.insert(INSERT, clipboard_content)
+    else:
+        script_text.insert(INSERT, clipboard_content)
+
+
+def duplicate(event=None):
+    set_modified_status(True)
+    script_text.event_generate("<<Duplicate>>")
+    selected_text = text.get("sel.first", "sel.last")
+    text.insert("insert", selected_text)
 
 
 def undo():
-    text.edit_undo()
+    try:
+        if text.edit_modified():
+            text.edit_undo()
+    except Exception as e:
+        print("Undo failed:", e)
 
 
 def redo():
-    text.edit_redo()
+    try:
+        if text.edit_modified():
+            text.edit_redo()
+    except Exception as e:
+        print("Redo failed:", e)
 
 
 def select_all(event=None):
@@ -217,11 +202,6 @@ def select_all(event=None):
 
 def delete_all():
     text.delete(1.0, END)
-
-
-def duplicate(event=None):
-    selected_text = text.get("sel.first", "sel.last")
-    text.insert("insert", selected_text)
 
 
 def show_context_menu(event):
@@ -236,21 +216,6 @@ def delete():
 
 
 # TOOLS MENU METHODS
-
-def change_color():
-    color = colorchooser.askcolor(initialcolor='#ff0000')
-    color_name = color[1]
-    global fontColor
-    fontColor = color_name
-    current_tags = text.tag_names()
-    if "font_color_change" in current_tags:
-        # first char is bold, so unbold the range
-        text.tag_delete("font_color_change", 1.0, END)
-    else:
-        # first char is normal, so bold the whole selection
-        text.tag_add("font_color_change", 1.0, END)
-    make_tag()
-
 
 # Adding Search Functionality
 
@@ -295,163 +260,7 @@ def find_text_cancel_button(search_toplevel):
     return "break"
 
 
-# FORMAT BAR METHODS
 
-def bold(event=None):
-    current_tags = text.tag_names()
-    if "bold" in current_tags:
-        # first char is bold, so unbold the range
-        text.tag_delete("bold", 1.0, END)
-    else:
-        # first char is normal, so bold the whole selection
-        text.tag_add("bold", 1.0, END)
-    make_tag()
-
-
-def italic(event=None):
-    current_tags = text.tag_names()
-    if "italic" in current_tags:
-        text.tag_add("roman", 1.0, END)
-        text.tag_delete("italic", 1.0, END)
-    else:
-        text.tag_add("italic", 1.0, END)
-    make_tag()
-
-
-def underline(event=None):
-    current_tags = text.tag_names()
-    if "underline" in current_tags:
-        text.tag_delete("underline", 1.0, END)
-    else:
-        text.tag_add("underline", 1.0, END)
-    make_tag()
-
-
-def strike():
-    current_tags = text.tag_names()
-    if "overstrike" in current_tags:
-        text.tag_delete("overstrike", "1.0", END)
-
-    else:
-        text.tag_add("overstrike", 1.0, END)
-
-    make_tag()
-
-
-def highlight():
-    color = colorchooser.askcolor(initialcolor='white')
-    color_rgb = color[1]
-    global fontBackground
-    fontBackground = color_rgb
-    current_tags = text.tag_names()
-    if "background_color_change" in current_tags:
-        text.tag_delete("background_color_change", "1.0", END)
-    else:
-        text.tag_add("background_color_change", "1.0", END)
-    make_tag()
-
-
-# To make align functions work properly
-def remove_align_tags():
-    all_tags = text.tag_names(index=None)
-    if "center" in all_tags:
-        text.tag_remove("center", "1.0", END)
-    if "left" in all_tags:
-        text.tag_remove("left", "1.0", END)
-    if "right" in all_tags:
-        text.tag_remove("right", "1.0", END)
-
-
-# align_center
-def align_center(event=None):
-    remove_align_tags()
-    text.tag_configure("center", justify='center')
-    text.tag_add("center", 1.0, "end")
-
-
-# align_justify
-def align_justify():
-    remove_align_tags()
-
-
-# align_left
-def align_left(event=None):
-    remove_align_tags()
-    text.tag_configure("left", justify='left')
-    text.tag_add("left", 1.0, "end")
-
-
-# align_right
-def align_right(event=None):
-    remove_align_tags()
-    text.tag_configure("right", justify='right')
-    text.tag_add("right", 1.0, "end")
-
-
-# Font and size change functions - BINDED WITH THE COMBOBOX SELECTION
-# change font and size are methods binded with combobox, calling fontit and sizeit
-# called when <<combobox>> event is called
-
-def change_font(event):
-    f = all_fonts.get()
-    global current_font_family
-    current_font_family = f
-    make_tag()
-
-
-def change_size(event):
-    sz = int(all_size.get())
-    global current_font_size
-    current_font_size = sz
-    make_tag()
-
-
-house_icon = "🏠"
-open_icon = "📂"
-save_icon = "💾"
-save_new_icon = "🆕"
-undo_icon = "⮪"
-redo_icon = "⮬"
-run_icon = "▶"
-
-root = Tk()
-
-# TOOLBAR
-toolbar = Frame(root, pady=2)
-
-# MENUBAR CREATION
-
-menu = Menu(root)
-root.config(menu=menu)
-
-frm = ttk.Frame(root, padding=0)
-directory_label = Label(frm, text=os.getcwd(), anchor="center")
-
-script_frm = ttk.Frame(root, padding=0)
-script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
-
-script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
-text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
-            undo=True)
-
-all_fonts = StringVar()
-
-all_size = StringVar()
-
-entry_text = StringVar()
-content_frm = ttk.Frame(root, padding=0)
-entry_arguments_entry = ttk.Entry(content_frm, textvariable=entry_text, width=40)
-
-generate_stdin = IntVar()
-generate_stdin_err = IntVar()
-
-run_frm = ttk.Frame(root, padding=0)
-
-line_frm = ttk.Frame(root, padding=0)
-
-one_time_frm = ttk.Frame(root, padding=0)
-
-daily_frm = ttk.Frame(root, padding=0)
 
 
 class Tooltip:
@@ -477,88 +286,6 @@ class Tooltip:
         if self.tooltip:
             self.tooltip.destroy()
             self.tooltip = None
-
-
-# TOOLBAR BUTTONS
-# new
-new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, height=20)
-photo_new = Image.open("icons/new.png")
-photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
-image_new = ImageTk.PhotoImage(photo_new)
-new_button.config(image=image_new)
-new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# save
-save_button = Button(name="toolbar_b1", borderwidth=1, command=save, width=20, height=20)
-photo_save = Image.open("icons/save.png")
-photo_save = photo_save.resize((18, 18), Image.ANTIALIAS)
-image_save = ImageTk.PhotoImage(photo_save)
-save_button.config(image=image_save)
-save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# open
-open_button = Button(name="toolbar_b3", borderwidth=1, command=open_file, width=20, height=20)
-photo_open = Image.open("icons/open.png")
-photo_open = photo_open.resize((18, 18), Image.ANTIALIAS)
-image_open = ImageTk.PhotoImage(photo_open)
-open_button.config(image=image_open)
-open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# copy
-copy_button = Button(name="toolbar_b4", borderwidth=1, command=copy, width=20, height=20)
-photo_copy = Image.open("icons/copy.png")
-photo_copy = photo_copy.resize((18, 18), Image.ANTIALIAS)
-image_copy = ImageTk.PhotoImage(photo_copy)
-copy_button.config(image=image_copy)
-copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# cut
-cut_button = Button(name="toolbar_b5", borderwidth=1, command=cut, width=20, height=20)
-photo_cut = Image.open("icons/cut.png")
-photo_cut = photo_cut.resize((18, 18), Image.ANTIALIAS)
-image_cut = ImageTk.PhotoImage(photo_cut)
-cut_button.config(image=image_cut)
-cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# paste
-paste_button = Button(name="toolbar_b6", borderwidth=1, command=paste, width=20, height=20)
-photo_paste = Image.open("icons/paste.png")
-photo_paste = photo_paste.resize((18, 18), Image.ANTIALIAS)
-image_paste = ImageTk.PhotoImage(photo_paste)
-paste_button.config(image=image_paste)
-paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# duplicate
-duplicate_button = Button(name="toolbar_b7", borderwidth=1, command=paste, width=20, height=20)
-photo_duplicate = Image.open("icons/duplicate.png")
-photo_duplicate = photo_paste.resize((18, 18), Image.ANTIALIAS)
-image_duplicate = ImageTk.PhotoImage(photo_paste)
-duplicate_button.config(image=image_duplicate)
-duplicate_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# redo
-redo_button = Button(name="toolbar_b8", borderwidth=1, command=redo, width=20, height=20)
-photo_redo = Image.open("icons/redo.png")
-photo_redo = photo_redo.resize((18, 18), Image.ANTIALIAS)
-image_redo = ImageTk.PhotoImage(photo_redo)
-redo_button.config(image=image_redo)
-redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# undo
-undo_button = Button(name="toolbar_b9", borderwidth=1, command=undo, width=20, height=20)
-photo_undo = Image.open("icons/undo.png")
-photo_undo = photo_undo.resize((18, 18), Image.ANTIALIAS)
-image_undo = ImageTk.PhotoImage(photo_undo)
-undo_button.config(image=image_undo)
-undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
-
-# find
-find_button = Button(name="toolbar_b10", borderwidth=1, command=find_text, width=20, height=20)
-photo_find = Image.open("icons/find.png")
-photo_find = photo_find.resize((18, 18), Image.ANTIALIAS)
-image_find = ImageTk.PhotoImage(photo_find)
-find_button.config(image=image_find)
-find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
 # Help Menu
@@ -595,6 +322,8 @@ def open_script():
     if file_path:
         open_file(file_path)
     set_modified_status(False)  # Reset the modification status
+
+
 
 
 def open_file(file_path):
@@ -637,8 +366,8 @@ def remove_asterisk_from_title():
 
 
 def save_as_new_script():
-    file_types = [("Python Scripts", "*.py"),
-                  ("Shell Scripts", "*.sh"),
+    file_types = [("Shell Scripts", "*.sh"),
+                  ("Python Scripts", "*.py"),
                   ("Text Files", "*.txt"),
                   ("LaTeX Files", "*.tex"),
                   ("All Files", "*.*")]
@@ -850,8 +579,7 @@ def validate_time(hour, minute):
         return False
 
 
-at_window = None
-crontab_window = None
+
 
 
 def open_at_window():
@@ -909,7 +637,6 @@ def remove_selected_at_job(listbox):
             messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
 
 
-
 def open_cron_window():
     def update_cron_jobs():
         listbox.delete(0, END)
@@ -948,6 +675,7 @@ def populate_cron_jobs(listbox):
         username = subprocess.check_output(["whoami"], text=True).strip()  # Get the current user
         listbox.insert(END, f"No cron jobs found for user {username}.")
         #messagebox.showwarning("Warning", "Failed to retrieve cron jobs")
+
 
 
 def remove_selected_cron_job(listbox):
@@ -990,3 +718,187 @@ def remove_selected_cron_job(listbox):
 
     except subprocess.CalledProcessError:
         messagebox.showerror("Error", "Failed to remove cron job")
+
+
+context_menu = None  # Define context_menu as a global variable
+
+# MAIN MENU METHODS
+
+file_name = ""  # Current file name.
+current_font_family = "Liberation Mono"
+current_font_size = 12
+fontColor = '#000000'
+fontBackground = '#FFFFFF'
+
+new_name = ""  # Used for renaming the file
+
+is_modified = False  # Added is_modified variable
+
+new_name = ""  # Used for renaming the file
+
+
+at_icon = "⌛"
+crontab_icon = "⏰"
+house_icon = "🏠"
+new_icon = "🆕"
+open_icon = "📂"
+save_icon = "💾"
+save_new_icon = "💿"
+undo_icon = "⮪"
+redo_icon = "⮬"
+run_icon = "▶"
+
+root = Tk()
+
+# TOOLBAR
+toolbar = Frame(root, pady=2)
+
+# MENUBAR CREATION
+
+menu = Menu(root)
+root.config(menu=menu)
+
+frm = ttk.Frame(root, padding=0)
+directory_label = Label(frm, text=os.getcwd(), anchor="center")
+
+script_frm = ttk.Frame(root, padding=0)
+script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
+
+script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
+text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
+            undo=True)
+
+all_fonts = StringVar()
+
+all_size = StringVar()
+
+entry_text = StringVar()
+content_frm = ttk.Frame(root, padding=0)
+entry_arguments_entry = ttk.Entry(content_frm, textvariable=entry_text, width=40)
+
+generate_stdin = IntVar()
+generate_stdin_err = IntVar()
+
+run_frm = ttk.Frame(root, padding=0)
+
+line_frm = ttk.Frame(root, padding=0)
+
+one_time_frm = ttk.Frame(root, padding=0)
+
+daily_frm = ttk.Frame(root, padding=0)
+
+at_window = None
+crontab_window = None
+
+# TOOLBAR BUTTONS
+# new
+new_button = Button(name="toolbar_b1", borderwidth=1, command=new, width=20, height=20)
+photo_new = Image.open("icons/new.png")
+photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
+image_new = ImageTk.PhotoImage(photo_new)
+new_button.config(image=image_new)
+new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# save
+save_button = Button(name="toolbar_b2", borderwidth=1, command=save, width=20, height=20)
+photo_save = Image.open("icons/save.png")
+photo_save = photo_save.resize((18, 18), Image.ANTIALIAS)
+image_save = ImageTk.PhotoImage(photo_save)
+save_button.config(image=image_save)
+save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# save as
+save_as_button = Button(name="toolbar_b3", borderwidth=1, command=save_as, width=20, height=20)
+photo_save_as = Image.open("icons/save_as.png")
+photo_save_as = photo_save_as.resize((18, 18), Image.ANTIALIAS)
+image_save_as = ImageTk.PhotoImage(photo_save_as)
+save_as_button.config(image=image_save_as)
+save_as_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# new
+new_button = Button(name="toolbar_b4", borderwidth=1, command=new, width=20, height=20)
+photo_new = Image.open("icons/new.png")
+photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
+image_new = ImageTk.PhotoImage(photo_new)
+new_button.config(image=image_new)
+new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# open
+open_button = Button(name="toolbar_b4", borderwidth=1, command=open_file, width=20, height=20)
+photo_open = Image.open("icons/open.png")
+photo_open = photo_open.resize((18, 18), Image.ANTIALIAS)
+image_open = ImageTk.PhotoImage(photo_open)
+open_button.config(image=image_open)
+open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# copy
+copy_button = Button(name="toolbar_b3", borderwidth=1, command=copy, width=20, height=20)
+photo_copy = Image.open("icons/copy.png")
+photo_copy = photo_copy.resize((18, 18), Image.ANTIALIAS)
+image_copy = ImageTk.PhotoImage(photo_copy)
+copy_button.config(image=image_copy)
+copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# cut
+cut_button = Button(name="toolbar_b4", borderwidth=1, command=cut, width=20, height=20)
+photo_cut = Image.open("icons/cut.png")
+photo_cut = photo_cut.resize((18, 18), Image.ANTIALIAS)
+image_cut = ImageTk.PhotoImage(photo_cut)
+cut_button.config(image=image_cut)
+cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# paste
+paste_button = Button(name="toolbar_b5", borderwidth=1, command=paste, width=20, height=20)
+photo_paste = Image.open("icons/paste.png")
+photo_paste = photo_paste.resize((18, 18), Image.ANTIALIAS)
+image_paste = ImageTk.PhotoImage(photo_paste)
+paste_button.config(image=image_paste)
+paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# delete
+delete_button = Button(name="toolbar_b6", borderwidth=1, command=delete, width=20, height=20)
+photo_delete = Image.open("icons/delete.png")
+photo_delete = photo_delete.resize((18, 18), Image.ANTIALIAS)
+image_delete = ImageTk.PhotoImage(photo_delete)
+delete_button.config(image=image_delete)
+delete_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# duplicate
+duplicate_button = Button(name="toolbar_b7", borderwidth=1, command=paste, width=20, height=20)
+photo_duplicate = Image.open("icons/duplicate.png")
+photo_duplicate = photo_duplicate.resize((18, 18), Image.ANTIALIAS)
+image_duplicate = ImageTk.PhotoImage(photo_duplicate)
+duplicate_button.config(image=image_duplicate)
+duplicate_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# redo
+redo_button = Button(name="toolbar_b8", borderwidth=1, command=redo, width=20, height=20)
+photo_redo = Image.open("icons/redo.png")
+photo_redo = photo_redo.resize((18, 18), Image.ANTIALIAS)
+image_redo = ImageTk.PhotoImage(photo_redo)
+redo_button.config(image=image_redo)
+redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# undo
+undo_button = Button(name="toolbar_b9", borderwidth=1, command=undo, width=20, height=20)
+photo_undo = Image.open("icons/undo.png")
+photo_undo = photo_undo.resize((18, 18), Image.ANTIALIAS)
+image_undo = ImageTk.PhotoImage(photo_undo)
+undo_button.config(image=image_undo)
+undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# find
+find_button = Button(name="toolbar_b10", borderwidth=1, command=find_text, width=20, height=20)
+photo_find = Image.open("icons/find.png")
+photo_find = photo_find.resize((18, 18), Image.ANTIALIAS)
+image_find = ImageTk.PhotoImage(photo_find)
+find_button.config(image=image_find)
+find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
+
+# close
+close_button = Button(name="toolbar_b11", borderwidth=1, command=save, width=20, height=20)
+photo_close = Image.open("icons/close.png")
+photo_close = photo_close.resize((18, 18), Image.ANTIALIAS)
+image_close = ImageTk.PhotoImage(photo_close)
+close_button.config(image=image_close)
+close_button.pack(in_=toolbar, side="left", padx=4, pady=4)

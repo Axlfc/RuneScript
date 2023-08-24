@@ -13,10 +13,12 @@ def create_menu():
     file_menu.add_separator()
     file_menu.add_command(label="Save", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
                           underline=0)
-    file_menu.add_command(label="Save As", command=save_as_new_script, accelerator='Ctrl+Shift+S', underline=1)
+    file_menu.add_command(label="Save As", command=save_as, compound='left', image=image_save_as,
+                          accelerator='Ctrl+Shift+S', underline=1)
     # file_menu.add_command(label="Rename", command=rename, accelerator='Ctrl+Shift+R', underline=0)
     file_menu.add_separator()
-    file_menu.add_command(label="Close", command=close, accelerator='Alt+F4', underline=0)
+    file_menu.add_command(label="Close", command=close, compound='left', image=image_close,
+                          accelerator='Alt+F4', underline=0)
 
     # Edit Menu.
     edit_menu = Menu(menu)
@@ -32,7 +34,8 @@ def create_menu():
                           underline=0)
     edit_menu.add_command(label="Duplicate", command=duplicate, compound='left', image=image_duplicate, accelerator='Ctrl+D',
                           underline=0)
-    # edit_menu.add_command(label="Delete", command=delete, underline=0)
+    edit_menu.add_command(label="Delete", command=delete, compound='left', image=image_delete, accelerator='Ctrl+K',
+                          underline=0)
     #edit_menu.add_separator()
     #edit_menu.add_command(label="Select All", command=select_all, accelerator='Ctrl+A', underline=0)
     #edit_menu.add_command(label="Clear All", command=delete_all, underline=6)
@@ -41,7 +44,7 @@ def create_menu():
     tool_menu = Menu(menu)
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
 
-    tool_menu.add_command(label="Change Color", command=change_color)
+    # tool_menu.add_command(label="Change Color", command=change_color)
     tool_menu.add_command(label="Search", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
 
     # Jobs Menu
@@ -60,7 +63,7 @@ def create_directory_line():
     frm.grid(row=0, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
     # Configure grid weights for the columns
     frm.columnconfigure(0, weight=0)  # First column doesn't expand
-    frm.columnconfigure(1, weight=1)  # Second column expands
+    frm.columnconfigure(1, weight=2)  # Second column expands
 
     directory_button = ttk.Button(frm, text=house_icon, command=select_directory)
     directory_button.grid(column=0, row=0, sticky="w")
@@ -74,8 +77,12 @@ def create_open_script_line():
     script_frm.grid(row=1, column=0, pady=0, sticky="ew")
     script_frm.grid_columnconfigure(2, weight=1)  # Make column 2 (file name entry) expandable
 
+    new_file_button = ttk.Button(script_frm, text=new_icon, command=save_as_new_script)
+    new_file_button.grid(column=0, row=0)
+    Tooltip(new_file_button, "New Script")
+
     open_button = ttk.Button(script_frm, text=open_icon, command=open_script)
-    open_button.grid(column=0, row=0)
+    open_button.grid(column=1, row=0)
     Tooltip(open_button, "Open Script")
 
     script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)  # Expand to the right
@@ -85,7 +92,7 @@ def create_open_script_line():
     save_button.grid(column=3, row=0, sticky="e")  # Align to the right
     Tooltip(save_button, "Save Script")
 
-    save_new_button = ttk.Button(script_frm, text=save_new_icon, command=save_as_new_script)
+    save_new_button = ttk.Button(script_frm, text=save_new_icon, command=save_as)
     save_new_button.grid(column=4, row=0, sticky="e")  # Align to the right
     Tooltip(save_new_button, "Save as New Script")
 
@@ -104,10 +111,11 @@ def create_content_file_window():
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label="Cut", command=cut)
-        context_menu.add_command(label="Copy", command=copy)
-        context_menu.add_command(label="Paste", command=paste)
-        context_menu.add_command(label="Duplicate", command=duplicate)
+        context_menu.add_command(command=cut, image=image_cut, accelerator='Cut')
+        context_menu.add_command(command=copy, image=image_copy, accelerator='Copy')
+        context_menu.add_command(command=paste, image=image_paste, accelerator='Paste')
+        context_menu.add_command(command=duplicate, image=image_duplicate, accelerator='Duplicate')
+        context_menu.add_command(command=delete, image=image_delete, accelerator='Delete')
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -129,26 +137,6 @@ def create_content_file_window():
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
-
-
-def cut():
-    set_modified_status(True)
-    script_text.event_generate("<<Cut>>")
-
-
-def copy():
-    set_modified_status(True)
-    script_text.event_generate("<<Copy>>")
-
-
-def paste():
-    set_modified_status(True)
-    script_text.event_generate("<<Paste>>")
-
-
-def duplicate():
-    set_modified_status(True)
-    script_text.event_generate("<<Duplicate>>")
 
 
 def create_arguments_lines():
