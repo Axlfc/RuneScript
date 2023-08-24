@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry
+from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox
 from tkinter import END, INSERT, SEL_FIRST, SEL_LAST, SEL
 from tkinter import ttk, scrolledtext, filedialog, simpledialog
 import tkinter.messagebox as messagebox
@@ -7,6 +7,7 @@ from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.i
 import tkinter
 from crontab import CronTab
 import subprocess
+import tempfile
 from time import sleep
 import os
 import re
@@ -690,6 +691,10 @@ def see_stderr():
     except FileNotFoundError:
         stderr_text.insert("1.0", "No stderr data available.")
 
+    # Configure the text widget to use red font color
+    stderr_text.tag_configure("red", foreground="red")
+    stderr_text.tag_add("red", "1.0", "end")
+
 
 def run_script():
     script = script_text.get("1.0", "end-1c")
@@ -833,7 +838,6 @@ def run_script_crontab(minute, hour, day, month, day_of_week):
         messagebox.showerror("Error Scheduling Script", f"An error occurred while scheduling the script:\n{str(e)}")
 
 
-
 def validate_time(hour, minute):
     try:
         hour = int(hour)
@@ -844,3 +848,145 @@ def validate_time(hour, minute):
     except ValueError:
         messagebox.showerror("Invalid Time", "Please enter a valid time in HH:MM format.")
         return False
+
+
+at_window = None
+crontab_window = None
+
+
+def open_at_window():
+    def update_at_jobs():
+        listbox.delete(0, END)
+        populate_at_jobs(listbox)
+        at_window.after(5000, update_at_jobs)
+
+    global at_window
+    at_window = Toplevel(root)
+    at_window.title("AT Jobs")
+    at_window.geometry("600x400")
+
+    listbox = Listbox(at_window, width=80)
+    listbox.pack(fill="both", expand=True)
+
+    populate_at_jobs(listbox)
+
+    remove_button = Button(at_window, text="Remove Selected", command=lambda: remove_selected_at_job(listbox))
+    remove_button.pack(side="bottom")
+
+    at_window.after(0, update_at_jobs)
+    at_window.mainloop()
+
+
+def populate_at_jobs(listbox):
+    try:
+        at_output = subprocess.check_output(["atq"], text=True).splitlines()
+        if not at_output:
+            username = subprocess.check_output(["whoami"], text=True).strip()  # Get the current user
+            listbox.insert(END, f"No AT jobs found for user {username}.")
+        else:
+            for line in at_output:
+                listbox.insert(END, line)
+    except subprocess.CalledProcessError:
+        messagebox.showerror("Error", "Failed to retrieve AT jobs")
+
+
+def remove_selected_at_job(listbox):
+    selected_indices = listbox.curselection()
+    if not selected_indices:
+        return
+
+    selected_index = selected_indices[0]
+    selected_item = listbox.get(selected_index)
+
+    if "No AT jobs found for user" in selected_item:
+        listbox.delete(selected_index)  # Delete the special message
+    else:
+        job_id = selected_item.split()[0]
+        try:
+            subprocess.run(["atrm", job_id], check=True)
+            listbox.delete(selected_index)
+        except subprocess.CalledProcessError:
+            messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
+
+
+
+def open_cron_window():
+    def update_cron_jobs():
+        listbox.delete(0, END)
+        populate_cron_jobs(listbox)
+        crontab_window.after(5000, update_cron_jobs)
+
+    global crontab_window
+    crontab_window = Toplevel(root)
+    crontab_window.title("Cron Jobs")
+    crontab_window.geometry("600x400")
+
+    listbox = Listbox(crontab_window, width=80)
+    listbox.pack(fill="both", expand=True)
+
+    listbox.insert(END, "Loading cron jobs...")  # Initial message while loading
+    populate_cron_jobs(listbox)
+
+    remove_button = Button(crontab_window, text="Remove Selected", command=lambda: remove_selected_cron_job(listbox))
+    remove_button.pack(side="bottom")
+
+    crontab_window.after(0, update_cron_jobs)
+    crontab_window.mainloop()
+
+
+def populate_cron_jobs(listbox):
+    try:
+        cron_output = subprocess.check_output(["crontab", "-l"], text=True).splitlines()
+        # print("hola" + cron_output)
+        if not cron_output:
+            username = subprocess.check_output(["whoami"], text=True).strip()  # Get the current user
+            listbox.insert(END, f"No cron jobs found for user {username}.")
+        else:
+            for line in cron_output:
+                listbox.insert(END, line)
+    except subprocess.CalledProcessError:
+        username = subprocess.check_output(["whoami"], text=True).strip()  # Get the current user
+        listbox.insert(END, f"No cron jobs found for user {username}.")
+        #messagebox.showwarning("Warning", "Failed to retrieve cron jobs")
+
+
+def remove_selected_cron_job(listbox):
+    selected_indices = listbox.curselection()
+    if not selected_indices:
+        return
+
+    selected_index = selected_indices[0]
+    selected_job = listbox.get(selected_index)
+
+    try:
+        # Create a temporary file to store modified crontab
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+
+        # Save the current crontab to the temporary file
+        subprocess.run(["crontab", "-l"], text=True, stdout=temp_file)
+
+        # Reset the file pointer to the beginning
+        temp_file.seek(0)
+
+        selected_job_bytes = selected_job.encode("utf-8")
+
+        # Filter out the selected job and write to a new temporary file
+        filtered_lines = [line for line in temp_file if selected_job_bytes not in line]
+
+        temp_file.close()
+
+        # Write the filtered content back to the temporary file
+        with open(temp_file.name, "wb") as f:
+            f.writelines(filtered_lines)
+
+        # Load the modified crontab from the temporary file
+        subprocess.run(["crontab", temp_file.name], check=True)
+
+        # Delete the temporary file
+        os.remove(temp_file.name)
+
+        # Remove the item from the listbox
+        listbox.delete(selected_index)
+
+    except subprocess.CalledProcessError:
+        messagebox.showerror("Error", "Failed to remove cron job")
