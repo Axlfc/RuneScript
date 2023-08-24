@@ -4,7 +4,9 @@ import tempfile
 from time import sleep
 import os
 import re
-
+from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox
+from tkinter import END, INSERT, SEL_FIRST, SEL_LAST, SEL
+from tkinter import ttk, scrolledtext, filedialog, simpledialog
 
 def make_tag():
     current_tags = text.tag_names()
