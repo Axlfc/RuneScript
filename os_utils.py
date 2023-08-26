@@ -164,3 +164,35 @@ def validate_time(hour, minute):
     except ValueError:
         messagebox.showerror("Invalid Time", "Please enter a valid time in HH:MM format.")
         return False
+
+
+def get_current_working_directory():
+    return os.getcwd()
+
+
+def remove_file(temp_file):
+    os.remove(temp_file)
+
+
+def change_directory(directory):
+    os.chdir(directory)
+
+
+def get_path_basename(file_path):
+    return os.path.basename(file_path)
+
+
+def path_join(directory, name):
+    os.path.join(directory, name)
+
+
+def path_split(file_name):
+    os.path.split(file_name)
+
+
+def path_exists(directory):
+    return os.path.exists(directory)
+
+
+def rename(file_name, new_path):
+    os.rename(file_name, new_path)

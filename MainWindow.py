@@ -71,7 +71,7 @@ class MainWindow:
         self.root.config(menu=self.menu)
 
         self.frm = Frame(self.root)
-        self.directory_label = Label(self.frm, text=os.getcwd(), anchor="center")
+        self.directory_label = Label(self.frm, text=get_current_working_directory(), anchor="center")
 
         self.script_frm = Frame(self.root)
         self.script_name_label = Label(self.script_frm, text="Script Name: ", anchor="center")
@@ -544,7 +544,7 @@ class MainWindow:
             subprocess.run(["crontab", temp_file.name], check=True)
 
             # Delete the temporary file
-            os.remove(temp_file.name)
+            remove_file(temp_file.name)
 
             # Remove the item from the listbox
             listbox.delete(selected_index)
@@ -560,7 +560,7 @@ class MainWindow:
     def select_directory(self):
         directory = filedialog.askdirectory()
         if directory:
-            os.chdir(directory)
+            change_directory(directory)
             self.directory_label.config(text=f"{directory}")
             # open_first_text_file(directory)
 
@@ -570,7 +570,7 @@ class MainWindow:
         self.script_text.insert("1.0", script_content)
 
     def open_file(self, file_path):
-        self.script_name_label.config(text=f"{os.path.basename(file_path)}")
+        self.script_name_label.config(text=f"{get_path_basename(file_path)}")
         with open(file_path, "r") as file:
             script_content = file.read()
         self.script_text.delete("1.0", "end")
@@ -758,7 +758,7 @@ class MainWindow:
             messagebox.showerror("Script Execution", f"Error executing script:\n{str(e)}")
 
     def run_script_once(self, schedule_time):
-        script_path = os.path.join(self.directory_label.cget('text'), self.script_name_label.cget('text'))
+        script_path = path_join(self.directory_label.cget('text'), self.script_name_label.cget('text'))
         arguments = self.entry_arguments_entry.get()
         generate_stdout = self.generate_stdin.get()
         generate_stderr = self.generate_stdin_err.get()
@@ -807,15 +807,15 @@ class MainWindow:
         # Build the cron schedule string
         cron_schedule = f"{minute} {hour} {day} {month} {day_of_week}"
 
-        script_path = os.path.join(self.directory_label.cget('text'), self.script_name_label.cget('text'))
+        script_path = path_join(self.directory_label.cget('text'), self.script_name_label.cget('text'))
         arguments = self.entry_arguments_entry.get()
 
         generate_stdout = self.generate_stdin.get()
         generate_stderr = self.generate_stdin_err.get()
 
         # Determine the full path for .out and .err files based on the selected directory
-        out_file = os.path.join(self.directory_label.cget('text'), f"{self.script_name_label.cget('text')}.out")
-        err_file = os.path.join(self.directory_label.cget('text'), f"{self.script_name_label.cget('text')}.err")
+        out_file = path_join(self.directory_label.cget('text'), f"{self.script_name_label.cget('text')}.out")
+        err_file = path_join(self.directory_label.cget('text'), f"{self.script_name_label.cget('text')}.err")
 
         try:
             stdout_redirect = f">{out_file}" if generate_stdout else "/dev/null"
@@ -1015,20 +1015,20 @@ class MainWindow:
                 return
 
             print("File path:", file_path)
-            if not os.path.exists(file_path):
+            if not path_exists(file_path):
                 messagebox.showerror("Error", "File does not exist")
                 return
 
             file_name = file_path
 
         # Extract the directory path and file name
-        dir_path, old_name = os.path.split(file_name)
+        dir_path, old_name = path_split(file_name)
         new_name = simpledialog.askstring("Rename", "Enter new name")
 
         try:
             # Rename the file
-            new_path = os.path.join(dir_path, new_name)
-            os.rename(file_name, new_path)
+            new_path = path_join(dir_path, new_name)
+            rename(file_name, new_path)
             file_name = new_path
             self.root.title(file_name + " - Script Editor")
         except OSError as e:
