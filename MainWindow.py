@@ -874,20 +874,20 @@ class MainWindow:
 
     def cut(self, event=None):
         self.set_modified_status(True)
-        self.script_text.event_generate("<<Cut>>")
         # first clear the previous text on the clipboard.
         self.root.clipboard_clear()
+        self.script_text.event_generate("<<Cut>>")
         self.text.clipboard_append(string=self.text.selection_get())
         # index of the first and yhe last letter of our selection.
         self.text.delete(index1=SEL_FIRST, index2=SEL_LAST)
 
     def copy(self, event=None):
         self.set_modified_status(True)
-        self.script_text.event_generate("<<Copy>>")
         # first clear the previous text on the clipboard.
         print(self.text.index(SEL_FIRST))
         print(self.text.index(SEL_LAST))
         self.root.clipboard_clear()
+        self.script_text.event_generate("<<Copy>>")
         self.text.clipboard_append(string=self.text.selection_get())
 
     def paste(self, event=None):
@@ -900,10 +900,15 @@ class MainWindow:
     def duplicate(self, event=None):
         self.set_modified_status(True)
         self.script_text.event_generate("<<Duplicate>>")
-        selected_text = self.text.get("sel.first", "sel.last")
+        selected_text = self.text.get(SEL_FIRST, SEL_LAST)
         self.text.insert("insert", selected_text)
 
     def delete(self):
+        #self.text.delete(index1=SEL_FIRST, index2=SEL_LAST)
+        self.set_modified_status(True)
+        # first clear the previous text on the clipboard.
+        self.root.clipboard_clear()
+        self.script_text.event_generate("<<Del>>")
         self.text.delete(index1=SEL_FIRST, index2=SEL_LAST)
 
     def undo(self):
