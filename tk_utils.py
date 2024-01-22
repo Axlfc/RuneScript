@@ -622,9 +622,125 @@ def get_text_files(directory):
     return text_files
 
 
+# Function to update menu based on file extension
+def update_menu_based_on_extension(ext):
+    # Clear existing dynamic menus
+    for menu_name in ["Python", "CSV", "JavaScript", "HTML", "CSS", "Java", "C++", "Text", "LaTeX"]:
+        try:
+            menu.delete(menu_name)
+        except Exception as e:
+            pass
+
+    # Add specific menu based on the file extension
+    if ext == ".py":
+        menu.add_cascade(label="Python", menu=create_python_menu())
+    elif ext == ".csv":
+        menu.add_cascade(label="CSV", menu=create_csv_menu())
+    elif ext == ".js":
+        menu.add_cascade(label="JavaScript", menu=create_javascript_menu())
+    elif ext == ".html":
+        menu.add_cascade(label="HTML", menu=create_html_menu())
+    elif ext == ".css":
+        menu.add_cascade(label="CSS", menu=create_css_menu())
+    elif ext == ".java":
+        menu.add_cascade(label="Java", menu=create_java_menu())
+    elif ext == ".cpp":
+        menu.add_cascade(label="C++", menu=create_cpp_menu())
+    elif ext == ".txt":
+        menu.add_cascade(label="Text", menu=create_generic_text_menu())
+    elif ext == ".tex":
+        menu.add_cascade(label="LaTeX", menu=create_latex_menu())
+    # Add more elif blocks for other file types as needed
+
+    # If the file type doesn't match any of the above, consider it as a generic text file
+    else:
+        menu.add_cascade(label="Text", menu=create_generic_text_menu())
+
+
+# Example function to handle Markdown preview
+def generate_markdown_preview():
+    # Convert Markdown content to HTML and display it in a new window
+    pass
+
+
+def analyze_csv_data():
+    # Logic to analyze CSV data
+    pass
+
+
+def create_csv_menu():
+    csv_menu = Menu(menu, tearoff=0)
+    csv_menu.add_command(label="Analyze Data", command=analyze_csv_data)
+    return csv_menu
+
+
+def create_javascript_menu():
+    javascript_menu = Menu(menu, tearoff=0)
+    javascript_menu.add_command(label="Analyze Data")
+    return javascript_menu
+
+
+def create_html_menu():
+    html_menu = Menu(menu, tearoff=0)
+    html_menu.add_command(label="Analyze Data")
+    return html_menu
+
+
+def create_css_menu():
+    css_menu = Menu(menu, tearoff=0)
+    css_menu.add_command(label="Analyze Data")
+    return css_menu
+
+
+def create_java_menu():
+    java_menu = Menu(menu, tearoff=0)
+    java_menu.add_command(label="Analyze Data")
+    return java_menu
+
+
+def create_cpp_menu():
+    cpp_menu = Menu(menu, tearoff=0)
+    cpp_menu.add_command(label="Analyze Data")
+    return cpp_menu
+
+
+def create_generic_text_menu():
+    txt_menu = Menu(menu, tearoff=0)
+    txt_menu.add_command(label="Analyze Data")
+    return txt_menu
+
+
+def create_latex_menu():
+    latex_menu = Menu(menu, tearoff=0)
+    latex_menu.add_command(label="Render PDF")
+    latex_menu.add_command(label="Generate PDF")
+    return latex_menu
+
+
+def create_python_menu():
+    python_menu = Menu(menu, tearoff=0)
+    python_menu.add_command(label="Execute Python Script", command=run_python_script)
+    python_menu.add_command(label="Change Interpreter", command=change_interpreter)
+    # Add more options as needed
+    return python_menu
+
+
+def run_python_script():
+    # Logic to run the Python script
+    pass
+
+
+def change_interpreter():
+    # Logic to change Python interpreter
+    pass
+
+
 def open_script():
     file_path = filedialog.askopenfilename(filetypes=[("All Files", "*.*"), ("Python Scripts", "*.py"), ("Shell Scripts", "*.sh"), ("Text Files", "*.txt"), ("TeX Files", "*.tex")])
     if file_path:
+        global file_extension
+        file_extension = os.path.splitext(file_path)[1]
+        update_menu_based_on_extension(file_extension)
         open_file(file_path)
     set_modified_status(False)  # Reset the modification status
 
@@ -673,11 +789,19 @@ import os
 
 
 def save_as_new_script():
-    file_types = [("Python Scripts", "*.py"),
-                  ("Shell Scripts", "*.sh"),
-                  ("Text Files", "*.txt"),
-                  ("LaTeX Files", "*.tex"),
-                  ("All Files", "*.*")]
+    file_types = [
+        ("Python Scripts", "*.py"),
+        ("Shell Scripts", "*.sh"),
+        ("Text Files", "*.txt"),
+        ("LaTeX Files", "*.tex"),
+        ("CSV Files", "*.csv"),
+        ("JavaScript Files", "*.js"),
+        ("HTML Files", "*.html"),
+        ("CSS Files", "*.css"),
+        ("Java Files", "*.java"),
+        ("C++ Files", "*.cpp"),
+        ("All Files", "*.*")
+    ]
     file_path = filedialog.asksaveasfilename(filetypes=file_types, defaultextension=".txt")
 
     # Si el usuario no selecciona un archivo, cancela la operación
