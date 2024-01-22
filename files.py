@@ -22,9 +22,11 @@ def create_menu():
     edit_menu = Menu(menu)
     menu.add_cascade(label="Edit", menu=edit_menu, underline=0)
 
-    # edit_menu.add_command(label="Undo", command=undo, compound='left', image=image_undo, accelerator='Ctrl+Z', underline=0)
-    # edit_menu.add_command(label="Redo", command=redo, compound='left', image=image_redo, accelerator='Ctrl+Y', underline=0)
-    # edit_menu.add_separator()
+    edit_menu.add_command(label="Undo", command=undo, compound='left', image=image_undo, accelerator='Ctrl+Z', underline=0)
+    edit_menu.add_command(label="Redo", command=redo, compound='left', image=image_redo, accelerator='Ctrl+Y', underline=0)
+
+    edit_menu.add_separator()
+
     edit_menu.add_command(label="Cut", command=cut, compound='left', image=image_cut, accelerator='Ctrl+X', underline=0)
     edit_menu.add_command(label="Copy", command=copy, compound='left', image=image_copy, accelerator='Ctrl+C',
                           underline=1)
@@ -43,6 +45,8 @@ def create_menu():
 
     tool_menu.add_command(label="Change Color", command=change_color)
     tool_menu.add_command(label="Search", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
+    tool_menu.add_command(label="Search and Replace", command=open_search_replace_dialog, compound='left',
+                          image=image_find, accelerator='Ctrl+R')
 
     # Jobs Menu
     jobs_menu = Menu(menu)
@@ -89,11 +93,11 @@ def create_open_script_line():
     save_new_button.grid(column=4, row=0, sticky="e")  # Align to the right
     Tooltip(save_new_button, "Save as New Script")
 
-    undo_button = Button(script_frm, text=undo_icon)
+    undo_button = Button(script_frm, text=undo_icon, command=undo)
     undo_button.grid(column=5, row=0, sticky="e")  # Align to the right
     Tooltip(undo_button, "Undo")
 
-    redo_button = Button(script_frm, text=redo_icon)
+    redo_button = Button(script_frm, text=redo_icon, command=redo)
     redo_button.grid(column=6, row=0, sticky="e")  # Align to the right
     Tooltip(redo_button, "Redo")
 
@@ -129,6 +133,15 @@ def create_content_file_window():
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
+
+
+def undo():
+    print("Undo function called.")
+    script_text.edit_undo()
+
+def redo():
+    print("Redo function called.")
+    script_text.edit_redo()
 
 
 def cut():
