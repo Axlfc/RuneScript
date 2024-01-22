@@ -26,6 +26,21 @@ new_name = ""  # Used for renaming the file
 
 is_modified = False  # Added is_modified variable
 
+file_types = [
+        ("Python Scripts", "*.py"),
+        ("Shell Scripts", "*.sh"),
+        ("PowerShell Scripts", "*.ps1"),
+        ("Text Files", "*.txt"),
+        ("LaTeX Files", "*.tex"),
+        ("CSV Files", "*.csv"),
+        ("JavaScript Files", "*.js"),
+        ("HTML Files", "*.html"),
+        ("CSS Files", "*.css"),
+        ("Java Files", "*.java"),
+        ("C++ Files", "*.cpp"),
+        ("All Files", "*.*")
+    ]
+
 
 def make_tag():
     current_tags = text.tag_names()
@@ -625,7 +640,7 @@ def get_text_files(directory):
 # Function to update menu based on file extension
 def update_menu_based_on_extension(ext):
     # Clear existing dynamic menus
-    for menu_name in ["Python", "CSV", "JavaScript", "HTML", "CSS", "Java", "C++", "Text", "LaTeX"]:
+    for menu_name in file_types:
         try:
             menu.delete(menu_name)
         except Exception as e:
@@ -650,6 +665,12 @@ def update_menu_based_on_extension(ext):
         menu.add_cascade(label="Text", menu=create_generic_text_menu())
     elif ext == ".tex":
         menu.add_cascade(label="LaTeX", menu=create_latex_menu())
+    elif ext == ".sh":
+        menu.add_cascade(label="Bash", menu=create_bash_menu())
+    elif ext == ".ps1":
+        menu.add_cascade(label="PowerShell", menu=create_powershell_menu())
+    elif ext == ".md":
+        menu.add_cascade(label="Markdown", menu=create_markdown_menu())
     # Add more elif blocks for other file types as needed
 
     # If the file type doesn't match any of the above, consider it as a generic text file
@@ -672,6 +693,25 @@ def create_csv_menu():
     csv_menu = Menu(menu, tearoff=0)
     csv_menu.add_command(label="Analyze Data", command=analyze_csv_data)
     return csv_menu
+
+
+def create_bash_menu():
+    bash_menu = Menu(menu, tearoff=0)
+    bash_menu.add_command(label="Analyze Data")
+    return bash_menu
+
+
+def create_powershell_menu():
+    powershell_menu = Menu(menu, tearoff=0)
+    powershell_menu.add_command(label="Analyze Data")
+    return powershell_menu
+
+
+def create_markdown_menu():
+    markdown_menu = Menu(menu, tearoff=0)
+    markdown_menu.add_command(label="Render HTML")
+    markdown_menu.add_command(label="Generate HTML")
+    return markdown_menu
 
 
 def create_javascript_menu():
@@ -736,7 +776,7 @@ def change_interpreter():
 
 
 def open_script():
-    file_path = filedialog.askopenfilename(filetypes=[("All Files", "*.*"), ("Python Scripts", "*.py"), ("Shell Scripts", "*.sh"), ("Text Files", "*.txt"), ("TeX Files", "*.tex")])
+    file_path = filedialog.askopenfilename(filetypes=file_types)
     if file_path:
         global file_extension
         file_extension = os.path.splitext(file_path)[1]
@@ -789,19 +829,6 @@ import os
 
 
 def save_as_new_script():
-    file_types = [
-        ("Python Scripts", "*.py"),
-        ("Shell Scripts", "*.sh"),
-        ("Text Files", "*.txt"),
-        ("LaTeX Files", "*.tex"),
-        ("CSV Files", "*.csv"),
-        ("JavaScript Files", "*.js"),
-        ("HTML Files", "*.html"),
-        ("CSS Files", "*.css"),
-        ("Java Files", "*.java"),
-        ("C++ Files", "*.cpp"),
-        ("All Files", "*.*")
-    ]
     file_path = filedialog.asksaveasfilename(filetypes=file_types, defaultextension=".txt")
 
     # Si el usuario no selecciona un archivo, cancela la operación
