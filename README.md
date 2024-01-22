@@ -34,3 +34,5 @@ We welcome contributions! If you'd like to contribute to ScriptsEditor, please c
 
 ScriptsEditor is open-source and licensed under the [GPL-2.0](LICENSE).
 
+
+

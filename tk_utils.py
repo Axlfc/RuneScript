@@ -203,14 +203,6 @@ def paste(event=None):
     text.insert(INSERT, root.clipboard_get())
 
 
-def undo():
-    text.edit_undo()
-
-
-def redo():
-    text.edit_redo()
-
-
 def select_all(event=None):
     text.tag_add(SEL, "1.0", END)
 
@@ -222,6 +214,14 @@ def delete_all():
 def duplicate(event=None):
     selected_text = text.get("sel.first", "sel.last")
     text.insert("insert", selected_text)
+
+
+def undo():
+    script_text.edit_undo()
+
+
+def redo():
+    script_text.edit_redo()
 
 
 def show_context_menu(event):
@@ -255,18 +255,50 @@ def change_color():
 # Adding Search Functionality
 
 def check(value):
-    text.tag_remove('found', '1.0', END)
-    text.tag_config('found', foreground='red')
-    list_of_words = value.split(' ')
-    for word in list_of_words:
+    script_text.tag_remove('found', '1.0', END)
+
+    if value:
+        script_text.tag_config('found', background='yellow')
         idx = '1.0'
         while idx:
-            idx = text.search(word, idx, nocase=1, stopindex=END)
+            idx = script_text.search(value, idx, nocase=1, stopindex=END)
             if idx:
-                lastidx = '%s+%dc' % (idx, len(word))
-                text.tag_add('found', idx, lastidx)
-                print(lastidx)
+                lastidx = f"{idx}+{len(value)}c"
+                script_text.tag_add('found', idx, lastidx)
                 idx = lastidx
+
+
+def search_and_replace(search_text, replace_text):
+    if search_text:
+        start_index = '1.0'
+        while True:
+            start_index = script_text.search(search_text, start_index, nocase=1, stopindex=END)
+            if not start_index:
+                break
+            end_index = f"{start_index}+{len(search_text)}c"
+            script_text.delete(start_index, end_index)
+            script_text.insert(start_index, replace_text)
+            start_index = end_index
+
+
+def open_search_replace_dialog():
+    search_replace_toplevel = Toplevel(root)
+    search_replace_toplevel.title('Search and Replace')
+    search_replace_toplevel.transient(root)
+    search_replace_toplevel.resizable(False, False)
+
+    # Campo de búsqueda
+    Label(search_replace_toplevel, text="Find:").grid(row=0, column=0, sticky='e')
+    search_entry_widget = Entry(search_replace_toplevel, width=25)
+    search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky='we')
+
+    # Campo de reemplazo
+    Label(search_replace_toplevel, text="Replace:").grid(row=1, column=0, sticky='e')
+    replace_entry_widget = Entry(search_replace_toplevel, width=25)
+    replace_entry_widget.grid(row=1, column=1, padx=2, pady=2, sticky='we')
+
+    # Botones
+    Button(search_replace_toplevel, text="Replace All", command=lambda: search_and_replace(search_entry_widget.get(), replace_entry_widget.get())).grid(row=2, column=1, sticky='e' + 'w', padx=2, pady=5)
 
 
 # implementation of search dialog box - calling the check method to search and find_text_cancel_button to close it
@@ -430,7 +462,7 @@ directory_label = Label(frm, text=os.getcwd(), anchor="center")
 script_frm = ttk.Frame(root, padding=0)
 script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
 
-script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60)
+script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60, undo=True)
 text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
             undo=True)
 
@@ -483,7 +515,7 @@ class Tooltip:
 # new
 new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, height=20)
 photo_new = Image.open("icons/new.png")
-photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
+photo_new = photo_new.resize((18, 18), Image.LANCZOS)
 image_new = ImageTk.PhotoImage(photo_new)
 new_button.config(image=image_new)
 new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -491,7 +523,7 @@ new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # save
 save_button = Button(name="toolbar_b1", borderwidth=1, command=save, width=20, height=20)
 photo_save = Image.open("icons/save.png")
-photo_save = photo_save.resize((18, 18), Image.ANTIALIAS)
+photo_save = photo_save.resize((18, 18), Image.LANCZOS)
 image_save = ImageTk.PhotoImage(photo_save)
 save_button.config(image=image_save)
 save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -499,7 +531,7 @@ save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # open
 open_button = Button(name="toolbar_b3", borderwidth=1, command=open_file, width=20, height=20)
 photo_open = Image.open("icons/open.png")
-photo_open = photo_open.resize((18, 18), Image.ANTIALIAS)
+photo_open = photo_open.resize((18, 18), Image.LANCZOS)
 image_open = ImageTk.PhotoImage(photo_open)
 open_button.config(image=image_open)
 open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -507,7 +539,7 @@ open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # copy
 copy_button = Button(name="toolbar_b4", borderwidth=1, command=copy, width=20, height=20)
 photo_copy = Image.open("icons/copy.png")
-photo_copy = photo_copy.resize((18, 18), Image.ANTIALIAS)
+photo_copy = photo_copy.resize((18, 18), Image.LANCZOS)
 image_copy = ImageTk.PhotoImage(photo_copy)
 copy_button.config(image=image_copy)
 copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -515,7 +547,7 @@ copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # cut
 cut_button = Button(name="toolbar_b5", borderwidth=1, command=cut, width=20, height=20)
 photo_cut = Image.open("icons/cut.png")
-photo_cut = photo_cut.resize((18, 18), Image.ANTIALIAS)
+photo_cut = photo_cut.resize((18, 18), Image.LANCZOS)
 image_cut = ImageTk.PhotoImage(photo_cut)
 cut_button.config(image=image_cut)
 cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -523,7 +555,7 @@ cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # paste
 paste_button = Button(name="toolbar_b6", borderwidth=1, command=paste, width=20, height=20)
 photo_paste = Image.open("icons/paste.png")
-photo_paste = photo_paste.resize((18, 18), Image.ANTIALIAS)
+photo_paste = photo_paste.resize((18, 18), Image.LANCZOS)
 image_paste = ImageTk.PhotoImage(photo_paste)
 paste_button.config(image=image_paste)
 paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -531,7 +563,7 @@ paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # duplicate
 duplicate_button = Button(name="toolbar_b7", borderwidth=1, command=paste, width=20, height=20)
 photo_duplicate = Image.open("icons/duplicate.png")
-photo_duplicate = photo_paste.resize((18, 18), Image.ANTIALIAS)
+photo_duplicate = photo_paste.resize((18, 18), Image.LANCZOS)
 image_duplicate = ImageTk.PhotoImage(photo_paste)
 duplicate_button.config(image=image_duplicate)
 duplicate_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -539,7 +571,7 @@ duplicate_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # redo
 redo_button = Button(name="toolbar_b8", borderwidth=1, command=redo, width=20, height=20)
 photo_redo = Image.open("icons/redo.png")
-photo_redo = photo_redo.resize((18, 18), Image.ANTIALIAS)
+photo_redo = photo_redo.resize((18, 18), Image.LANCZOS)
 image_redo = ImageTk.PhotoImage(photo_redo)
 redo_button.config(image=image_redo)
 redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -547,7 +579,7 @@ redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # undo
 undo_button = Button(name="toolbar_b9", borderwidth=1, command=undo, width=20, height=20)
 photo_undo = Image.open("icons/undo.png")
-photo_undo = photo_undo.resize((18, 18), Image.ANTIALIAS)
+photo_undo = photo_undo.resize((18, 18), Image.LANCZOS)
 image_undo = ImageTk.PhotoImage(photo_undo)
 undo_button.config(image=image_undo)
 undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -555,7 +587,7 @@ undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # find
 find_button = Button(name="toolbar_b10", borderwidth=1, command=find_text, width=20, height=20)
 photo_find = Image.open("icons/find.png")
-photo_find = photo_find.resize((18, 18), Image.ANTIALIAS)
+photo_find = photo_find.resize((18, 18), Image.LANCZOS)
 image_find = ImageTk.PhotoImage(photo_find)
 find_button.config(image=image_find)
 find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
@@ -636,20 +668,45 @@ def remove_asterisk_from_title():
         root.title(title[1:])
 
 
+from tkinter import filedialog, messagebox
+import os
+
+
 def save_as_new_script():
     file_types = [("Python Scripts", "*.py"),
                   ("Shell Scripts", "*.sh"),
                   ("Text Files", "*.txt"),
                   ("LaTeX Files", "*.tex"),
                   ("All Files", "*.*")]
-    file = filedialog.asksaveasfile(filetypes=file_types)
-    if file is not None:
-        # Get the selected file type
-        selected_extension = file.name.split('.')[-1]
-        # Append the selected extension to the file name
-        file_path = file.name + '.' + selected_extension
-        # Implement your save logic here using the file_path
-        file.close()
+    file_path = filedialog.asksaveasfilename(filetypes=file_types, defaultextension=".txt")
+
+    # Si el usuario no selecciona un archivo, cancela la operación
+    if not file_path:
+        return
+
+    # Verifica si el nombre del archivo tiene un punto (indicando una extensión)
+    if '.' not in os.path.basename(file_path):
+        response = messagebox.askquestion("Confirmar Extensión",
+                                          "No has especificado una extensión. ¿Quieres dejar el archivo sin extensión?",
+                                          icon='warning')
+        if response == 'no':
+            return  # El usuario decide no guardar el archivo
+
+    with open(file_path, "w") as file:
+        content = script_text.get("1.0", "end-1c")
+        file.write(content)
+    update_script_name_label(file_path)
+
+
+def update_script_name_label(file_path):
+    base_name = os.path.basename(file_path)
+    script_name_label.config(text=f"Nombre del Script: {base_name}")
+
+
+def update_title_with_filename(file_name):
+    # Esta función actualizará el título de la ventana con el nuevo nombre de archivo
+    base_name = os.path.basename(file_name)
+    root.title(f"{base_name} - Scripts Editor")
 
 
 def save_file(file_name, content):
