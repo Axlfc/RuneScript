@@ -17,4 +17,4 @@ TC15, Test Immediate Script Run, Click run icon in 'Run immediately' section., T
 TC16, Test Script Run with Timeout, Enter timeout and click run., The script should stop executing after the timeout.,,
 TC17, Test One-Time Script Execution, Enter time in 'Scheduled Script Execution' and click run., The script should be scheduled to run once at the specified time.,,
 TC18, Test Daily Script Scheduling, Fill fields in 'Daily Script Scheduling' and click run., The script should be scheduled to run daily at the specified time., ,
-TC15: ,Syntax Highlighting for Python Code,Open or create a .py file and write Python code. ,"The editor should apply syntax highlighting to Python keywords, strings, comments, etc. ",,Correctness of syntax highlighting and responsiveness. 
+TC15: ,Syntax Highlighting for Python Code,Open or create a .py file and write Python code. ,"The editor should apply syntax highlighting to Python keywords, strings, comments, etc. ",,Correctness of syntax highlighting and responsiveness.

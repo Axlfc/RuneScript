@@ -4,6 +4,7 @@ from tkinter import ttk, scrolledtext, filedialog, simpledialog
 import tkinter.messagebox as messagebox
 import tkinter.colorchooser as colorchooser
 from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.imagetk
+import chardet
 import tkinter
 from crontab import CronTab
 import subprocess
@@ -85,12 +86,43 @@ def new(event=None):
     root.title("*New file - Script Editor")
 
 
-def open_file(event=None):
-    new()
-    file = filedialog.askopenfile()
-    global file_name
-    file_name = file.name
-    text.insert(INSERT, file.read())
+def open_file(file_path):
+    global file_name, script_text
+    file_name = file_path
+    script_name_label.config(text=f"{os.path.basename(file_path)}")
+
+    # Try opening the file with different encodings
+    encodings = ['utf-8', 'cp1252', 'ISO-8859-1', 'utf-16']
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as file:
+                script_content = file.read()
+                break
+        except UnicodeDecodeError:
+            pass
+    else:
+        # If all encodings fail, use 'utf-8' with 'replace' option
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            script_content = file.read()
+
+    script_text.delete("1.0", END)
+    script_text.insert("1.0", script_content)
+
+    # Update dynamic menu and title based on file extension
+    ext = os.path.splitext(file_path)[1]
+    update_menu_based_on_extension(ext)
+    update_title_with_filename(file_path)
+
+
+def open_script():
+    file_path = filedialog.askopenfilename(filetypes=file_types)
+    if file_path:
+        global file_extension
+        file_extension = os.path.splitext(file_path)[1]
+        print("Opening file with extension:", file_extension)
+        open_file(file_path)
+    set_modified_status(False)  # Reset the modification status
+
 
 
 '''def save(event=None):
@@ -639,159 +671,202 @@ def get_text_files(directory):
 
 # Function to update menu based on file extension
 def update_menu_based_on_extension(ext):
-    # Clear existing dynamic menus
-    for menu_name in file_types:
+    print(f"Debug: Starting to update menu for extension: {ext}")
+    menu_creators = {
+        ".py": create_python_menu,
+        ".csv": create_csv_menu,
+        # Add other file types and their corresponding menu creators here...
+        ".txt": create_generic_text_menu,
+        # ...
+        ".md": create_csv_menu,
+        ".js": create_javascript_menu,
+        ".html": create_html_menu,
+        ".css": create_css_menu,
+        ".java": create_java_menu,
+        ".cpp": create_cpp_menu,
+        ".tex": create_latex_menu,
+        ".sh": create_bash_menu,
+        ".ps1": create_powershell_menu
+
+    }
+
+    # Define file type labels
+    file_type_labels = {
+        ".py": "Python",
+        ".csv": "CSV",
+        ".txt": "Text",
+        ".md": "Markdown",
+        ".js": "Javascript",
+        ".html": "HTML",
+        ".css": "CSS",
+        ".java": "Java",
+        ".cpp": "C++",
+        ".tex": "LaTeX",
+        ".sh": "Bash",
+        ".ps1": "PowerShell"
+        # ... (add labels for other file types)
+    }
+
+    # Find the index of the Help menu
+    help_menu_index = None
+    for index in range(menu.index('end'), -1, -1):
         try:
-            menu.delete(menu_name)
+            if 'Jobs' in menu.entrycget(index, 'label'):
+                jobs_menu_index = index
+                break
         except Exception as e:
-            pass
+            print(f"Debug: Skipping index {index} due to error: {e}")
 
-    # Add specific menu based on the file extension
-    if ext == ".py":
-        menu.add_cascade(label="Python", menu=create_python_menu())
-    elif ext == ".csv":
-        menu.add_cascade(label="CSV", menu=create_csv_menu())
-    elif ext == ".js":
-        menu.add_cascade(label="JavaScript", menu=create_javascript_menu())
-    elif ext == ".html":
-        menu.add_cascade(label="HTML", menu=create_html_menu())
-    elif ext == ".css":
-        menu.add_cascade(label="CSS", menu=create_css_menu())
-    elif ext == ".java":
-        menu.add_cascade(label="Java", menu=create_java_menu())
-    elif ext == ".cpp":
-        menu.add_cascade(label="C++", menu=create_cpp_menu())
-    elif ext == ".txt":
-        menu.add_cascade(label="Text", menu=create_generic_text_menu())
-    elif ext == ".tex":
-        menu.add_cascade(label="LaTeX", menu=create_latex_menu())
-    elif ext == ".sh":
-        menu.add_cascade(label="Bash", menu=create_bash_menu())
-    elif ext == ".ps1":
-        menu.add_cascade(label="PowerShell", menu=create_powershell_menu())
-    elif ext == ".md":
-        menu.add_cascade(label="Markdown", menu=create_markdown_menu())
-    # Add more elif blocks for other file types as needed
+    if jobs_menu_index is None:
+        print("Debug: Jobs menu not found. Cannot insert dynamic menu correctly.")
+        return  # Optionally, raise an exception or handle it as needed
 
-    # If the file type doesn't match any of the above, consider it as a generic text file
+    print(f"Debug: Found Jobs menu at index: {jobs_menu_index}")
+
+    # Check if the dynamic menu already exists, if so, delete it
+    dynamic_menu_index = None
+    for index, item in enumerate(menu.winfo_children()):
+        if isinstance(item, Menu) and item.winfo_name() == 'dynamic':
+            dynamic_menu_index = index
+            menu.delete(dynamic_menu_index)
+            print(f"Debug: Deleted existing dynamic menu at index: {dynamic_menu_index}")
+            break
+
+    # Create and insert the new dynamic menu
+    dynamic_menu = Menu(menu, tearoff=0, name='dynamic')
+    if ext in menu_creators:
+        menu_creators[ext](dynamic_menu)
+        label = file_type_labels.get(ext, "Other")
     else:
-        menu.add_cascade(label="Text", menu=create_generic_text_menu())
+        create_generic_text_menu(dynamic_menu)
+        label = "Other"
+
+    # Insert the dynamic menu after the Jobs menu
+    menu.insert_cascade(jobs_menu_index + 1, label=label, menu=dynamic_menu)
+    print(f"Debug: Inserted new dynamic menu '{label}' after Jobs menu at index: {jobs_menu_index + 1}")
 
 
-# Example function to handle Markdown preview
-def generate_markdown_preview():
-    # Convert Markdown content to HTML and display it in a new window
-    pass
+def run_javascript_analysis():
+    # Placeholder for JavaScript analysis logic
+    messagebox.showinfo("JavaScript Analysis", "Analyzing JavaScript code.")
+
+
+def analyze_generic_text_data():
+    # Placeholder for generic text data analysis logic
+    messagebox.showinfo("Text Data Analysis", "Analyzing generic text data.")
+
+
+def render_markdown_to_html():
+    # Placeholder for rendering Markdown to HTML logic
+    messagebox.showinfo("Markdown Rendering", "Rendering Markdown to HTML.")
+
+
+def generate_html_from_markdown():
+    # Placeholder for generating HTML from Markdown logic
+    messagebox.showinfo("HTML Generation", "Generating HTML from Markdown.")
+
+
+def generate_latex_pdf():
+    # Placeholder for generating LaTeX PDF logic
+    messagebox.showinfo("LaTeX PDF Generation", "Generating LaTeX PDF.")
+
+
+def render_latex_to_pdf():
+    # Placeholder for rendering LaTeX to PDF logic
+    messagebox.showinfo("LaTeX Rendering", "Rendering LaTeX to PDF.")
 
 
 def analyze_csv_data():
-    # Logic to analyze CSV data
-    pass
+    # Placeholder for CSV analysis logic
+    messagebox.showinfo("CSV Analysis", "Performing CSV analysis.")
 
 
-def create_csv_menu():
-    csv_menu = Menu(menu, tearoff=0)
-    csv_menu.add_command(label="Analyze Data", command=analyze_csv_data)
-    return csv_menu
+def create_csv_menu(parent_menu):
+    entries = {
+        "Analyze Data": analyze_csv_data
+    }
+    create_submenu(parent_menu, "CSV", entries)
 
 
-def create_bash_menu():
-    bash_menu = Menu(menu, tearoff=0)
-    bash_menu.add_command(label="Analyze Data")
-    return bash_menu
+def create_bash_menu(parent_menu):
+    parent_menu.add_command(label="Analyze Data")
 
 
-def create_powershell_menu():
-    powershell_menu = Menu(menu, tearoff=0)
-    powershell_menu.add_command(label="Analyze Data")
-    return powershell_menu
+def create_powershell_menu(parent_menu):
+    parent_menu.add_command(label="Analyze Data")
 
 
-def create_markdown_menu():
-    markdown_menu = Menu(menu, tearoff=0)
-    markdown_menu.add_command(label="Render HTML")
-    markdown_menu.add_command(label="Generate HTML")
-    return markdown_menu
+def create_markdown_menu(parent_menu):
+    entries = {
+        "Render HTML": render_markdown_to_html,
+        "Generate HTML": generate_html_from_markdown
+    }
+    create_submenu(parent_menu, "Markdown", entries)
 
 
-def create_javascript_menu():
-    javascript_menu = Menu(menu, tearoff=0)
-    javascript_menu.add_command(label="Analyze Data")
-    return javascript_menu
+def create_javascript_menu(parent_menu):
+    entries = {
+        "Analyze Data": run_javascript_analysis
+    }
+    create_submenu(parent_menu, "JavaScript", entries)
 
 
-def create_html_menu():
-    html_menu = Menu(menu, tearoff=0)
-    html_menu.add_command(label="Analyze Data")
-    return html_menu
+def create_html_menu(parent_menu):
+    parent_menu.add_command(label="Analyze Data")
 
 
-def create_css_menu():
-    css_menu = Menu(menu, tearoff=0)
-    css_menu.add_command(label="Analyze Data")
-    return css_menu
+def create_css_menu(parent_menu):
+    parent_menu.add_command(label="Analyze Data")
 
 
-def create_java_menu():
-    java_menu = Menu(menu, tearoff=0)
-    java_menu.add_command(label="Analyze Data")
-    return java_menu
+def create_java_menu(parent_menu):
+    parent_menu.add_command(label="Analyze Data")
 
 
-def create_cpp_menu():
-    cpp_menu = Menu(menu, tearoff=0)
-    cpp_menu.add_command(label="Analyze Data")
-    return cpp_menu
+def create_cpp_menu(parent_menu):
+    parent_menu.add_command(label="Analyze Data")
 
 
-def create_generic_text_menu():
-    txt_menu = Menu(menu, tearoff=0)
-    txt_menu.add_command(label="Analyze Data")
-    return txt_menu
+def create_generic_text_menu(parent_menu):
+    entries = {
+        "Analyze Data": analyze_generic_text_data
+    }
+    create_submenu(parent_menu, "Text", entries)
 
 
-def create_latex_menu():
-    latex_menu = Menu(menu, tearoff=0)
-    latex_menu.add_command(label="Render PDF")
-    latex_menu.add_command(label="Generate PDF")
-    return latex_menu
+def create_latex_menu(parent_menu):
+    entries = {
+        "Render PDF": render_latex_to_pdf,
+        "Generate PDF": generate_latex_pdf
+    }
+    create_submenu(parent_menu, "LaTeX", entries)
 
 
-def create_python_menu():
-    python_menu = Menu(menu, tearoff=0)
-    python_menu.add_command(label="Execute Python Script", command=run_python_script)
-    python_menu.add_command(label="Change Interpreter", command=change_interpreter)
-    # Add more options as needed
-    return python_menu
+def create_python_menu(parent_menu):
+    entries = {
+        "Execute Python Script": run_python_script,
+        "Change Interpreter": change_interpreter
+        # Add more options as needed
+    }
+    create_submenu(parent_menu, "Interpreter", entries)
+
+
+def create_submenu(parent_menu, title, entries):
+    submenu = Menu(parent_menu, tearoff=0)
+    parent_menu.add_cascade(label=title, menu=submenu)
+
+    for label, command in entries.items():
+        submenu.add_command(label=label, command=command)
 
 
 def run_python_script():
-    # Logic to run the Python script
-    pass
+    # Placeholder for running Python script logic
+    messagebox.showinfo("Run Python Script", "Running Python script.")
 
 
 def change_interpreter():
-    # Logic to change Python interpreter
-    pass
-
-
-def open_script():
-    file_path = filedialog.askopenfilename(filetypes=file_types)
-    if file_path:
-        global file_extension
-        file_extension = os.path.splitext(file_path)[1]
-        update_menu_based_on_extension(file_extension)
-        open_file(file_path)
-    set_modified_status(False)  # Reset the modification status
-
-
-def open_file(file_path):
-    script_name_label.config(text=f"{os.path.basename(file_path)}")
-    with open(file_path, "r") as file:
-        script_content = file.read()
-    script_text.delete("1.0", "end")
-    script_text.insert("1.0", script_content)
-    colorize_text()
+    # Placeholder for changing Python interpreter logic
+    messagebox.showinfo("Change Interpreter", "Changing Python interpreter.")
 
 
 def set_modified_status(value):

@@ -1,2 +1,4 @@
 crontab
 pillow
+chardet
+
