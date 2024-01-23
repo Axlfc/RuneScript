@@ -675,10 +675,8 @@ def update_menu_based_on_extension(ext):
     menu_creators = {
         ".py": create_python_menu,
         ".csv": create_csv_menu,
-        # Add other file types and their corresponding menu creators here...
         ".txt": create_generic_text_menu,
-        # ...
-        ".md": create_csv_menu,
+        ".md": create_markdown_menu,
         ".js": create_javascript_menu,
         ".html": create_html_menu,
         ".css": create_css_menu,
@@ -687,7 +685,7 @@ def update_menu_based_on_extension(ext):
         ".tex": create_latex_menu,
         ".sh": create_bash_menu,
         ".ps1": create_powershell_menu
-
+        # Add other file types and their corresponding menu creators here...
     }
 
     # Define file type labels
