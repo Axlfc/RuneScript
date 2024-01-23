@@ -643,7 +643,7 @@ find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 # Help Menu
 def about(event=None):
     messagebox.showinfo("About",
-                        "ScriptsEditor\nCreated in Python using Tkinter\nAxlfc, 2023")
+                        "ScriptsEditor\nCreated in Python using Tkinter\nAxlfc, 2023-2024")
 
 
 def select_directory():
