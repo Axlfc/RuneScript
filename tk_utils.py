@@ -5,7 +5,7 @@ import tkinter.messagebox as messagebox
 import tkinter.colorchooser as colorchooser
 from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.imagetk
 import tkinter
-from crontab import CronTab
+from crontab import CronTab  # pip install python-crontab
 import subprocess
 import tempfile
 from time import sleep
