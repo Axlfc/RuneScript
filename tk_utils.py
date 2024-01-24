@@ -4,7 +4,6 @@ from tkinter import ttk, scrolledtext, filedialog, simpledialog
 import tkinter.messagebox as messagebox
 import tkinter.colorchooser as colorchooser
 from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.imagetk
-import chardet
 import tkinter
 from crontab import CronTab
 import subprocess
