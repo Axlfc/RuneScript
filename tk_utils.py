@@ -1346,9 +1346,6 @@ def open_ai_assistant_window():
     status_label.pack()
 
     def stream_output(process, text_widget):
-        """
-        Read the output from the process and insert it into the text widget.
-        """
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
@@ -1356,7 +1353,38 @@ def open_ai_assistant_window():
             if output:
                 text_widget.insert(END, output)
                 text_widget.see(END)
-                ai_assistant_window.update_idletasks()  # Update the text widget
+                ai_assistant_window.update_idletasks()
+        entry.config(state='normal')  # Re-enable the entry after process is done
+        status_label_var.set("AI is ready for more input.")
+
+    def execute_ai_assistant_command():
+        ai_command = entry.get()
+        if ai_command.strip():
+            try:
+                status_label_var.set("AI is thinking...")
+                entry.config(state='disabled')  # Disable the entry to block new input
+                output_text.insert(END, f"Command: {ai_command}\n")  # Display user's command
+                ai_script_path = "ai_assistant_script_path_here"  # Path to your AI assistant script
+                command = ['python', ai_script_path]
+
+                # Start the subprocess and the streaming thread
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                           stdin=subprocess.PIPE, text=True, bufsize=1)
+                process.stdin.write(ai_command + '\n')
+                process.stdin.flush()
+                threading.Thread(target=stream_output, args=(process, output_text)).start()
+
+            except Exception as e:
+                output_text.insert(END, f"Error: {e}\n")
+                entry.config(state='normal')  # Re-enable the entry on error
+
+    def on_return_key(event):
+        threading.Thread(target=execute_ai_assistant_command).start()
+
+    entry = Entry(ai_assistant_window, width=30)
+    entry.pack(side='bottom', fill='x')
+    entry.focus()
+    entry.bind("<Return>", on_return_key)
 
     def execute_ai_assistant_command():
         ai_command = entry.get()
