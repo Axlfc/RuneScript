@@ -47,6 +47,9 @@ def create_menu():
     tool_menu.add_command(label="Search", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
     tool_menu.add_command(label="Search and Replace", command=open_search_replace_dialog, compound='left',
                           image=image_find, accelerator='Ctrl+R')
+    tool_menu.add_separator()
+    tool_menu.add_command(label="Terminal", command=open_terminal_window)
+    tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window)
 
     # Jobs Menu
     jobs_menu = Menu(menu)
@@ -54,6 +57,7 @@ def create_menu():
 
     jobs_menu.add_command(label="at", command=open_at_window)
     jobs_menu.add_command(label="crontab", command=open_cron_window)
+
 
     help_menu = Menu(menu)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)

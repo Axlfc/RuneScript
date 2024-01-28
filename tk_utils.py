@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox
+from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox, Scrollbar
 from tkinter import END, INSERT, SEL_FIRST, SEL_LAST, SEL
 from tkinter import ttk, scrolledtext, filedialog, simpledialog
 import tkinter.messagebox as messagebox
@@ -9,7 +9,9 @@ import tkinter
 from crontab import CronTab
 import subprocess
 import tempfile
+import time
 from time import sleep
+import threading
 import os
 import re
 
@@ -1271,3 +1273,114 @@ def remove_selected_cron_job(listbox):
 
     except subprocess.CalledProcessError:
         messagebox.showerror("Error", "Failed to remove cron job")
+
+
+def open_terminal_window():
+    terminal_window = Toplevel()
+    terminal_window.title("Python Terminal")
+    terminal_window.geometry("600x400")
+
+    # Create a ScrolledText widget to display terminal output
+    output_text = scrolledtext.ScrolledText(terminal_window, height=20, width=80)
+    output_text.pack(fill='both', expand=True)
+
+    # Initialize a list to store command history
+    command_history = []
+    # Initialize a pointer to the current position in the command history
+    history_pointer = [0]
+
+    # Function to execute the command from the entry widget
+    def execute_command(event=None):
+        # Get the command from entry widget
+        command = entry.get()
+        if command.strip():
+            # Add command to history and reset history pointer
+            command_history.append(command)
+            history_pointer[0] = len(command_history)
+
+            try:
+                # Run the command and get the output
+                output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, text=True, cwd=os.getcwd())
+                output_text.insert(END, f"{command}\n{output}\n")
+            except subprocess.CalledProcessError as e:
+                # If there's an error, print it to the output widget
+                output_text.insert(END, f"Error: {e.output}\n")
+            # Clear the entry widget
+            entry.delete(0, END)
+            output_text.see(END)  # Auto-scroll to the bottom
+
+    # Function to navigate the command history
+    def navigate_history(event):
+        if command_history:
+            # UP arrow key pressed
+            if event.keysym == 'Up':
+                history_pointer[0] = max(0, history_pointer[0] - 1)
+            # DOWN arrow key pressed
+            elif event.keysym == 'Down':
+                history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+            # Get the command from history
+            command = command_history[history_pointer[0]] if history_pointer[0] < len(command_history) else ''
+            # Set the command to the entry widget
+            entry.delete(0, END)
+            entry.insert(0, command)
+
+    # Create an Entry widget for typing commands
+    entry = Entry(terminal_window, width=80)
+    entry.pack(side='bottom', fill='x')
+    entry.focus()
+    entry.bind("<Return>", execute_command)
+    # Bind the UP and DOWN arrow keys to navigate the command history
+    entry.bind("<Up>", navigate_history)
+    entry.bind("<Down>", navigate_history)
+
+
+def open_ai_assistant_window():
+    ai_assistant_window = Toplevel()
+    ai_assistant_window.title("AI Assistant")
+    ai_assistant_window.geometry("600x400")
+
+    output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
+    output_text.pack(fill='both', expand=True)
+
+    status_label_var = StringVar()
+    status_label = Label(ai_assistant_window, textvariable=status_label_var)
+    status_label.pack()
+
+    def stream_output(process, text_widget):
+        """
+        Read the output from the process and insert it into the text widget.
+        """
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                text_widget.insert(END, output)
+                text_widget.see(END)
+                ai_assistant_window.update_idletasks()  # Update the text widget
+
+    def execute_ai_assistant_command():
+        ai_command = entry.get()
+        if ai_command.strip():
+            try:
+                status_label_var.set("Running...")
+                ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"  # Update with your actual path
+                command = ['python', ai_script_path, ai_command]
+
+                # Start the subprocess and the streaming thread
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                threading.Thread(target=stream_output, args=(process, output_text)).start()
+
+            except Exception as e:
+                output_text.insert(END, f"Error: {e}\n")
+            finally:
+                status_label_var.set("")
+                entry.delete(0, END)
+
+    def on_return_key(event):
+        threading.Thread(target=execute_ai_assistant_command).start()
+
+    entry = Entry(ai_assistant_window, width=80)
+    entry.pack(side='bottom', fill='x')
+    entry.focus()
+    entry.bind("<Return>", on_return_key)
