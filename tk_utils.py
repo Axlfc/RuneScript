@@ -1046,6 +1046,24 @@ def run_script_with_timeout(timeout_seconds):
         messagebox.showerror("Script Execution", f"Error executing script:\n{str(e)}")
 
 
+def remove_selected_at_job(listbox):
+    selected_indices = listbox.curselection()
+    if not selected_indices:
+        return
+
+    selected_index = selected_indices[0]
+    selected_item = listbox.get(selected_index)
+
+    if "No AT jobs found for user" in selected_item:
+        listbox.delete(selected_index)  # Delete the special message
+    else:
+        job_id = selected_item.split()[0]
+        try:
+            subprocess.run(["atrm", job_id], check=True)
+            listbox.delete(selected_index)
+        except subprocess.CalledProcessError:
+            messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
+
 def run_script_once(schedule_time):
     script_path = os.path.join(directory_label.cget('text'), script_name_label.cget('text'))
     arguments = entry_arguments_entry.get()
@@ -1326,7 +1344,8 @@ def open_terminal_window():
                 output_text.insert(END, f"{command}\n{output}\n")
             except subprocess.CalledProcessError as e:
                 # If there's an error, print it to the output widget
-                output_text.insert(END, f"Error: {e.output}\n")
+                output_text.tag_configure("error", foreground="red")
+                output_text.insert(END, f"Error: {e.output}", "error")
             # Clear the entry widget
             entry.delete(0, END)
             output_text.see(END)  # Auto-scroll to the bottom
