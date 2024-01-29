@@ -13,6 +13,7 @@ x /Query          Muestra todas las tareas programadas.
 /End            Detiene la tarea programada que se está ejecutando actualmente.
 /ShowSid        Muestra el identificador de seguridad correspondiente al nombre de una tarea programada.
 
+# https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/?view=windowsserver2019-ps
 '''
 
 windows_tasks_file_path = 'C:\\Windows\\System32\\schtasks.exe'
@@ -83,12 +84,14 @@ def parse_showsid_args(subparsers):
 
 def parse_at_args(subparsers):
     parser_at = subparsers.add_parser('at')
+    parser_at.add_argument('name')
     parser_at.add_argument('start_time')
     parser_at.add_argument('program')
 
 
 def parse_crontab_args(subparsers):
     parser_crontab = subparsers.add_parser('crontab')
+    parser_crontab.add_argument('name')
     parser_crontab.add_argument('minute')
     parser_crontab.add_argument('hour')
     parser_crontab.add_argument('day')
@@ -184,18 +187,19 @@ def list_tasks():
                 print(f"Error getting details for task {task_name}: {detail_error}")
             else:
                 # Extract the command or script path
-                command_match = re.search(r"Acción:\s*([^\r\n]+)", detail_output)
+                command_match = re.search(r"Tarea que se ejecutar :\s*([^\r\n]+)", detail_output)
                 command = command_match.group(1).strip() if command_match else "Unknown Command"
                 # Extract the next run time
                 next_run_time_match = re.search(r"Hora pr¢xima ejecuci¢n:\s*([^\r\n]+)", detail_output)
                 next_run_time = next_run_time_match.group(1).strip() if next_run_time_match else "Unknown Next Run Time"
-                detailed_task_info.append(f"Task Name: {task_name}, Command: {command}, Next Run Time: {next_run_time}")
+                task_name = task_name.split("\\")[1]
+                detailed_task_info.append(f"\"{task_name}\": ({command}) - {next_run_time}")
     # return detailed_task_info
 
     # Print the filtered_tasks
-    for task in filtered_tasks:
+    '''for task in detailed_task_info:
         print(task)
-        print('-' * 80)  # Separator for readability
+        print('-' * 80)  # Separator for readability'''
 
     return detailed_task_info
     #  return filtered_tasks  # Return the filtered list of tasks
@@ -258,7 +262,7 @@ def create_self_deleting_task(name, start_time, program):
         print(f"Error creating self-deleting task: {e}")
 
 
-def at_function(start_time, program):
+def at_function(name, start_time, program):
     formatted_start_time = format_time_input(start_time)
     current_time = datetime.datetime.now().time()
 
@@ -267,15 +271,11 @@ def at_function(start_time, program):
         return
 
     formatted_start_time_str = formatted_start_time.strftime('%H:%M:%S')
-    task_name = f"{formatted_start_time.strftime('%H%M')}"
 
-    create_self_deleting_task(task_name, formatted_start_time_str, program)
+    create_self_deleting_task(name, formatted_start_time_str, program)
 
 
-def crontab_function(minute, hour, day, month, day_of_week, script_path):
-    # Task name
-    task_name = "ScheduledScript"
-
+def crontab_function(task_name, minute, hour, day, month, day_of_week, script_path):
     # Ensure the script path is correctly quoted
     script_path = f'"{script_path}"' if ' ' in script_path else script_path
 
@@ -301,7 +301,7 @@ def crontab_function(minute, hour, day, month, day_of_week, script_path):
     start_time = f"{hour}:{minute}" if hour != "*" and minute != "*" else "00:00"
 
     # Full command for creating the task
-    full_command = f'schtasks /Create /TN "{task_name}" /TR {script_path} {schedule_type} {day_argument} {month_argument} /ST {start_time} /F'
+    full_command = f'{windows_tasks_file_path} /Create /TN "{task_name}" /TR {script_path} {schedule_type} {day_argument} {month_argument} /ST {start_time} /F'
 
     # Execute the command
     try:
@@ -331,9 +331,9 @@ def main():
     elif args.command == 'showsid':
         showsid_task(args.name)
     elif args.command == 'at':
-        at_function(args.start_time, args.program)
+        at_function(args.name, args.start_time, args.program)
     elif args.command == 'crontab':
-        crontab_function(args.minute, args.hour, args.day, args.month, args.day_of_week, args.script_path)
+        crontab_function(args.name, args.minute, args.hour, args.day, args.month, args.day_of_week, args.script_path)
 
 
 if __name__ == '__main__':

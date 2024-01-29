@@ -56,6 +56,9 @@ def create_menu():
     # Jobs Menu
     jobs_menu = Menu(menu)
     menu.add_cascade(label="Jobs", menu=jobs_menu, underline=0)
+    jobs_menu.add_command(label="New 'at'", command=open_new_at_task_window)
+    jobs_menu.add_command(label="New 'crontab'", command=open_new_crontab_task_window)
+    jobs_menu.add_separator()
     get_scheduled_tasks(jobs_menu)
 
 
@@ -66,7 +69,7 @@ def create_menu():
 
 def get_scheduled_tasks(submenu):
     if platform.system() == "Windows":
-        submenu.add_command(label="scheduled tasks", command=open_scheduled_tasks_window)
+        submenu.add_command(label="Scheduled Tasks", command=open_scheduled_tasks_window)
     else:
         submenu.add_command(label="at", command=open_at_window)
         submenu.add_command(label="crontab", command=open_cron_window)
