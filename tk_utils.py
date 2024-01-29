@@ -6,6 +6,7 @@ import tkinter.colorchooser as colorchooser
 from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.imagetk
 import tkinter
 from crontab import CronTab  # pip install python-crontab
+from winTaskScheduler import list_tasks, delete_task # Import the list_tasks function
 import subprocess
 import tempfile
 import time
@@ -1191,7 +1192,6 @@ def remove_selected_at_job(listbox):
             messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
 
 
-
 def open_cron_window():
     def update_cron_jobs():
         listbox.delete(0, END)
@@ -1361,35 +1361,6 @@ def open_ai_assistant_window():
         ai_command = entry.get()
         if ai_command.strip():
             try:
-                status_label_var.set("AI is thinking...")
-                entry.config(state='disabled')  # Disable the entry to block new input
-                output_text.insert(END, f"Command: {ai_command}\n")  # Display user's command
-                ai_script_path = "ai_assistant_script_path_here"  # Path to your AI assistant script
-                command = ['python', ai_script_path]
-
-                # Start the subprocess and the streaming thread
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                           stdin=subprocess.PIPE, text=True, bufsize=1)
-                process.stdin.write(ai_command + '\n')
-                process.stdin.flush()
-                threading.Thread(target=stream_output, args=(process, output_text)).start()
-
-            except Exception as e:
-                output_text.insert(END, f"Error: {e}\n")
-                entry.config(state='normal')  # Re-enable the entry on error
-
-    def on_return_key(event):
-        threading.Thread(target=execute_ai_assistant_command).start()
-
-    entry = Entry(ai_assistant_window, width=30)
-    entry.pack(side='bottom', fill='x')
-    entry.focus()
-    entry.bind("<Return>", on_return_key)
-
-    def execute_ai_assistant_command():
-        ai_command = entry.get()
-        if ai_command.strip():
-            try:
                 status_label_var.set("Running...")
                 ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"  # Update with your actual path
                 command = ['python', ai_script_path, ai_command]
@@ -1407,7 +1378,54 @@ def open_ai_assistant_window():
     def on_return_key(event):
         threading.Thread(target=execute_ai_assistant_command).start()
 
-    entry = Entry(ai_assistant_window, width=80)
+    entry = Entry(ai_assistant_window, width=30)
     entry.pack(side='bottom', fill='x')
     entry.focus()
     entry.bind("<Return>", on_return_key)
+
+
+def open_scheduled_tasks_window():
+    window = Toplevel()
+    window.title("Scheduled Tasks")
+    window.geometry("600x400")
+
+    listbox = Listbox(window, width=80)
+    listbox.pack(fill="both", expand=True)
+
+    def populate_tasks():
+        listbox.delete(0, END)
+        tasks = list_tasks()  # Get the list of tasks
+        for task in tasks:
+            listbox.insert(END, task)
+
+    def delete_selected_task():
+        selection = listbox.curselection()
+        if not selection:
+            messagebox.showerror("Error", "No task selected")
+            return
+
+        selected_task_info = listbox.get(selection[0])
+        print("DA TASK INFO ARE:\t", selected_task_info)
+        task_name = selected_task_info.split(':')[1].split(",")[0].split("\\")[1]
+
+        print("DA TASK NAME LINE IS:\t", task_name)
+
+        try:
+            delete_task(task_name)
+            populate_tasks()  # Refresh the list
+        except IndexError as e:
+            messagebox.showerror("Error", f"An error occurred while parsing the task information: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete task: {e}")
+
+    def update_tasks():
+        populate_tasks()
+        window.after(5000, update_tasks)  # Schedule next update
+
+    populate_tasks()  # Initial population of the list
+    update_tasks()    # Start the periodic update
+
+    delete_button = Button(window, text="Delete Selected", command=delete_selected_task)
+    delete_button.pack()
+
+    window.mainloop()

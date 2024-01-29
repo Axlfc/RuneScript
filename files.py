@@ -1,3 +1,5 @@
+import platform
+
 from tk_utils import *
 
 
@@ -54,14 +56,20 @@ def create_menu():
     # Jobs Menu
     jobs_menu = Menu(menu)
     menu.add_cascade(label="Jobs", menu=jobs_menu, underline=0)
-
-    jobs_menu.add_command(label="at", command=open_at_window)
-    jobs_menu.add_command(label="crontab", command=open_cron_window)
+    get_scheduled_tasks(jobs_menu)
 
 
     help_menu = Menu(menu)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)
     help_menu.add_command(label="About", command=about, accelerator='Ctrl+H', underline=0)
+
+
+def get_scheduled_tasks(submenu):
+    if platform.system() == "Windows":
+        submenu.add_command(label="scheduled tasks", command=open_scheduled_tasks_window)
+    else:
+        submenu.add_command(label="at", command=open_at_window)
+        submenu.add_command(label="crontab", command=open_cron_window)
 
 
 def create_directory_line():
