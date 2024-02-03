@@ -12,6 +12,7 @@ import tempfile
 import time
 from time import sleep
 import threading
+import queue
 import os
 import re
 
@@ -1387,44 +1388,71 @@ def open_ai_assistant_window():
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
     status_label.pack()
 
-    def stream_output(process, text_widget):
-        while True:
-            output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
-                break
-            if output:
-                text_widget.insert(END, output)
-                text_widget.see(END)
-                ai_assistant_window.update_idletasks()
-        entry.config(state='normal')  # Re-enable the entry after process is done
-        status_label_var.set("AI is ready for more input.")
+    def stream_output(process):
+        try:
+            output_buffer = ""  # Initialize an empty buffer
+            buffer_size = 2  # Set the size of the buffer to hold the last two characters
+
+            while True:
+                char = process.stdout.read(1)  # Read one character at a time
+                if char:
+                    output_text.insert(END, char)
+                    output_text.see(END)
+                    # Update the Tkinter window; use after method to ensure GUI updates
+                    ai_assistant_window.after(10, lambda: ai_assistant_window.update_idletasks())
+
+                    # Update the buffer with the latest character
+                    output_buffer += char
+                    output_buffer = output_buffer[-buffer_size:]  # Keep only the last 'buffer_size' characters
+
+                    # Check if the last two characters are '> ' indicating the end of the response
+                    if output_buffer == '> ':
+                        break
+                elif process.poll() is not None:
+                    break  # Break if the subprocess has finished
+
+        except Exception as e:
+            output_text.insert(END, f"Error: {e}\n")
+        finally:
+            on_processing_complete()
+
+    def on_processing_complete():
+        print("Debug: Processing complete, re-enabling entry widget.")  # Debug print
+        entry.config(state='normal')  # Re-enable the entry widget
 
     def execute_ai_assistant_command():
+        global process  # Define process as a global variable
+
         ai_command = entry.get()
         if ai_command.strip():
+            output_text.insert(END, f"You: {ai_command}\n")
+            output_text.see(END)
+            entry.delete(0, END)
+            entry.config(state='disabled')  # Disable entry while processing
+
+            ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
+            command = ['python', ai_script_path, ai_command]
+
+            # Terminate existing subprocess if it exists
+            if 'process' in globals() and process.poll() is None:
+                process.terminate()
+
             try:
-                status_label_var.set("Running...")
-                ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"  # Update with your actual path
-                command = ['python', ai_script_path, ai_command]
-
-                # Start the subprocess and the streaming thread
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                threading.Thread(target=stream_output, args=(process, output_text)).start()
-
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                           bufsize=1)
+                threading.Thread(target=stream_output, args=(process,)).start()
             except Exception as e:
                 output_text.insert(END, f"Error: {e}\n")
-            finally:
-                status_label_var.set("")
-                entry.delete(0, END)
-
-    def on_return_key(event):
-        threading.Thread(target=execute_ai_assistant_command).start()
+                on_processing_complete()
+        else:
+            entry.config(state='normal')  # Re-enable the entry widget if no command is entered
 
     entry = Entry(ai_assistant_window, width=30)
     entry.pack(side='bottom', fill='x')
     entry.focus()
-    entry.bind("<Return>", on_return_key)
+    entry.bind("<Return>", lambda event: execute_ai_assistant_command())
 
+    ai_assistant_window.mainloop()
 
 def open_scheduled_tasks_window():
     window = Toplevel()

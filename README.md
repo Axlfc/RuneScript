@@ -1,11 +1,9 @@
-# ScriptsEditor
+# ScriptsStudio: Your Versatile Script Editor
 
-ScriptsEditor is a powerful text editor tailored for scriptwriters and developers. 
-It provides essential features to enhance your scripting experience.
+ScriptsStudio is an innovative script editing platform, offering advanced features and tools for developers, scriptwriters, and coding enthusiasts. With its rich set of functionalities, including syntax highlighting, version control integration, and AI assistant, ScriptsStudio stands out as a versatile and user-friendly environment for coding and script management.
 
 
 Help us improve ScriptsEditor by tackling the [following tasks](https://github.com/Axlfc/ScriptsEditor/issues).
-
 
 ## Contributing
 
