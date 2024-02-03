@@ -1390,27 +1390,26 @@ def render_markdown_to_html(markdown_text):
     return markdown.markdown(markdown_text)
 
 
-def toggle_render_markdown(is_checked, text_widget):
-    global original_md_content, markdown_render_enabled
-
-    if is_checked:
-        # Save the original Markdown content
-        original_md_content = text_widget.get("1.0", "end-1c")
-        # Render Markdown to HTML
-        html_content = markdown.markdown(original_md_content)
-        text_widget.delete("1.0", "end")
-        text_widget.insert("1.0", html_content)
-        markdown_render_enabled = True
-    else:
-        # Restore the original Markdown content
-        text_widget.delete("1.0", "end")
-        text_widget.insert("1.0", original_md_content)
-        markdown_render_enabled = False
-
-
 def open_ai_assistant_window():
     original_md_content = None
     global render_markdown_var
+
+    def toggle_render_markdown(is_checked, text_widget):
+        global original_md_content, markdown_render_enabled
+
+        if is_checked:
+            # Save the original Markdown content
+            original_md_content = text_widget.get("1.0", "end-1c")
+            # Render Markdown to HTML
+            html_content = markdown.markdown(original_md_content)
+            text_widget.delete("1.0", "end")
+            text_widget.insert("1.0", html_content)
+            markdown_render_enabled = True
+        else:
+            # Restore the original Markdown content
+            text_widget.delete("1.0", "end")
+            text_widget.insert("1.0", original_md_content)
+            markdown_render_enabled = False
 
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
@@ -1437,6 +1436,7 @@ def open_ai_assistant_window():
         command=lambda: toggle_render_markdown(render_markdown_var.get(), output_text)
     )
 
+    # Create the output text widget
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
@@ -1466,7 +1466,7 @@ def open_ai_assistant_window():
             # Set the command to the entry widget
             entry.delete(0, END)
             entry.insert(0, command)
-    
+
     def stream_output(process):
         try:
             output_buffer = ""  # Initialize an empty buffer
