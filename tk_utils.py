@@ -1387,7 +1387,11 @@ def open_ai_assistant_window():
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
     status_label.pack()
+    status_label_var.set("READY")  # Initialize the status label as "READY"
 
+    output_text.insert(END, "> ")
+    output_text.see(END)
+    
     def stream_output(process):
         try:
             output_buffer = ""  # Initialize an empty buffer
@@ -1419,6 +1423,7 @@ def open_ai_assistant_window():
     def on_processing_complete():
         print("Debug: Processing complete, re-enabling entry widget.")  # Debug print
         entry.config(state='normal')  # Re-enable the entry widget
+        status_label_var.set("READY")  # Update label to show AI is processing
 
     def execute_ai_assistant_command():
         global process  # Define process as a global variable
@@ -1429,6 +1434,7 @@ def open_ai_assistant_window():
             output_text.see(END)
             entry.delete(0, END)
             entry.config(state='disabled')  # Disable entry while processing
+            status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
             ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
             command = ['python', ai_script_path, ai_command]
