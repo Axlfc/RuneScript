@@ -7,11 +7,13 @@ from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.i
 import tkinter
 from crontab import CronTab  # pip install python-crontab
 from winTaskScheduler import list_tasks, delete_task, at_function, crontab_function # Import the list_tasks function
+from tkhtmlview import HTMLLabel  # Import HTMLLabel from tkhtmlview
 import subprocess
 import tempfile
 import time
 from time import sleep
 import threading
+import markdown
 import queue
 import os
 import re
@@ -44,6 +46,10 @@ file_types = [
         ("C++ Files", "*.cpp"),
         ("All Files", "*.*")
     ]
+
+original_md_content = None
+markdown_render_enabled = False
+render_markdown_var = None
 
 
 def make_tag():
@@ -757,9 +763,9 @@ def analyze_generic_text_data():
     messagebox.showinfo("Text Data Analysis", "Analyzing generic text data.")
 
 
-def render_markdown_to_html():
-    # Placeholder for rendering Markdown to HTML logic
+def render_markdown_to_html(markdown_text):
     messagebox.showinfo("Markdown Rendering", "Rendering Markdown to HTML.")
+    return markdown.markdown(markdown_text)
 
 
 def generate_html_from_markdown():
@@ -1376,13 +1382,68 @@ def open_terminal_window():
     entry.bind("<Down>", navigate_history)
 
 
+def show_selected_model():
+    pass
+
+
+def render_markdown_to_html(markdown_text):
+    return markdown.markdown(markdown_text)
+
+
+def toggle_render_markdown(is_checked, text_widget):
+    global original_md_content, markdown_render_enabled
+
+    if is_checked:
+        # Save the original Markdown content
+        original_md_content = text_widget.get("1.0", "end-1c")
+        # Render Markdown to HTML
+        html_content = markdown.markdown(original_md_content)
+        text_widget.delete("1.0", "end")
+        text_widget.insert("1.0", html_content)
+        markdown_render_enabled = True
+    else:
+        # Restore the original Markdown content
+        text_widget.delete("1.0", "end")
+        text_widget.insert("1.0", original_md_content)
+        markdown_render_enabled = False
+
+
 def open_ai_assistant_window():
+    original_md_content = None
+    global render_markdown_var
+
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
     ai_assistant_window.geometry("600x400")
 
+    # Create a Menu Bar
+    menu_bar = Menu(ai_assistant_window)
+    ai_assistant_window.config(menu=menu_bar)
+
+    # Create a 'Settings' Menu
+    settings_menu = Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="Settings", menu=settings_menu)
+
+    # Add 'Selected Model' Menu Item
+    settings_menu.add_command(label="Selected Model", command=show_selected_model)
+
+    # Checkbox Variable for 'Render Markdown to HTML'
+    render_markdown_var = IntVar()
+    settings_menu.add_checkbutton(
+        label="Render Markdown to HTML",
+        onvalue=1,
+        offvalue=0,
+        variable=render_markdown_var,
+        command=lambda: toggle_render_markdown(render_markdown_var.get(), output_text)
+    )
+
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
+
+    # Initialize a list to store command history
+    command_history = []
+    # Initialize a pointer to the current position in the command history
+    history_pointer = [0]
 
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
@@ -1391,6 +1452,20 @@ def open_ai_assistant_window():
 
     output_text.insert(END, "> ")
     output_text.see(END)
+
+    def navigate_history(event):
+        if command_history:
+            # UP arrow key pressed
+            if event.keysym == 'Up':
+                history_pointer[0] = max(0, history_pointer[0] - 1)
+            # DOWN arrow key pressed
+            elif event.keysym == 'Down':
+                history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+            # Get the command from history
+            command = command_history[history_pointer[0]] if history_pointer[0] < len(command_history) else ''
+            # Set the command to the entry widget
+            entry.delete(0, END)
+            entry.insert(0, command)
     
     def stream_output(process):
         try:
@@ -1457,6 +1532,8 @@ def open_ai_assistant_window():
     entry.pack(side='bottom', fill='x')
     entry.focus()
     entry.bind("<Return>", lambda event: execute_ai_assistant_command())
+    entry.bind("<Up>", navigate_history)
+    entry.bind("<Down>", navigate_history)
 
     ai_assistant_window.mainloop()
 
