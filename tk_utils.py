@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox, Scrollbar
+from tkinter import Toplevel, Label, Button, Tk, StringVar, IntVar, Frame, Menu, Text, Entry, Listbox
 from tkinter import END, INSERT, SEL_FIRST, SEL_LAST, SEL
 from tkinter import ttk, scrolledtext, filedialog, simpledialog
 import tkinter.messagebox as messagebox
@@ -50,6 +50,7 @@ file_types = [
 original_md_content = None
 markdown_render_enabled = False
 render_markdown_var = None
+rendered_html_content = None
 
 
 def make_tag():
@@ -1391,25 +1392,36 @@ def render_markdown_to_html(markdown_text):
 
 
 def open_ai_assistant_window():
-    original_md_content = None
-    global render_markdown_var
+    global original_md_content, markdown_render_enabled, rendered_html_content
+    original_md_content = ""
+    rendered_html_content = ""
+    markdown_render_enabled = False
+    render_markdown_var = IntVar()
 
-    def toggle_render_markdown(is_checked, text_widget):
-        global original_md_content, markdown_render_enabled
+    def update_html_content():
+        global rendered_html_content
+        rendered_html_content = markdown.markdown(original_md_content)
+        print("Markdown Content:", original_md_content)
+        print("Rendered HTML Content:", rendered_html_content)
+        html_display.set_html(rendered_html_content)
 
-        if is_checked:
-            # Save the original Markdown content
-            original_md_content = text_widget.get("1.0", "end-1c")
-            # Render Markdown to HTML
-            html_content = markdown.markdown(original_md_content)
-            text_widget.delete("1.0", "end")
-            text_widget.insert("1.0", html_content)
-            markdown_render_enabled = True
+    def toggle_render_markdown(is_checked):
+        global markdown_render_enabled
+        markdown_render_enabled = bool(is_checked)
+
+        if markdown_render_enabled:
+            # Update and display HTML-rendered content
+            update_html_content()
+            output_text.pack_forget()
+            html_display.pack(fill='both', expand=True)
+            html_display.yview_moveto(1)  # Scroll to the bottom
         else:
-            # Restore the original Markdown content
-            text_widget.delete("1.0", "end")
-            text_widget.insert("1.0", original_md_content)
-            markdown_render_enabled = False
+            # Display original Markdown content
+            output_text.delete("1.0", "end")
+            output_text.insert("1.0", original_md_content)
+            html_display.pack_forget()
+            output_text.pack(fill='both', expand=True)
+            output_text.yview_moveto(1)  # Scroll to the bottom
 
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
@@ -1433,22 +1445,32 @@ def open_ai_assistant_window():
         onvalue=1,
         offvalue=0,
         variable=render_markdown_var,
-        command=lambda: toggle_render_markdown(render_markdown_var.get(), output_text)
+        command=lambda: toggle_render_markdown(render_markdown_var.get())
     )
 
     # Create the output text widget
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
-    # Initialize a list to store command history
-    command_history = []
-    # Initialize a pointer to the current position in the command history
-    history_pointer = [0]
+    # Create an HTMLLabel for rendering HTML
+    html_display = HTMLLabel(ai_assistant_window, html="")
+
+    # Create a scrollbar and attach it to the HTMLLabel
+    scrollbar = tkinter.Scrollbar(ai_assistant_window, command=html_display.yview)
+    html_display.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side='right', fill='y')
+    html_display.pack(fill='both', expand=False)
+    html_display.pack_forget()  # Initially hide the HTML display
 
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
     status_label.pack()
     status_label_var.set("READY")  # Initialize the status label as "READY"
+
+    # Initialize a list to store command history
+    command_history = []
+    # Initialize a pointer to the current position in the command history
+    history_pointer = [0]
 
     output_text.insert(END, "> ")
     output_text.see(END)
@@ -1471,12 +1493,21 @@ def open_ai_assistant_window():
         try:
             output_buffer = ""  # Initialize an empty buffer
             buffer_size = 2  # Set the size of the buffer to hold the last two characters
+            global original_md_content
 
             while True:
                 char = process.stdout.read(1)  # Read one character at a time
                 if char:
-                    output_text.insert(END, char)
-                    output_text.see(END)
+                    if markdown_render_enabled:
+                        # Append new char to Markdown content and update HTML content
+                        original_md_content += char
+                        update_html_content()
+                    else:
+                        # Append new char to Markdown content
+                        original_md_content += char
+                        output_text.insert(END, char)
+                        output_text.see(END)
+
                     # Update the Tkinter window; use after method to ensure GUI updates
                     ai_assistant_window.after(10, lambda: ai_assistant_window.update_idletasks())
 
@@ -1501,12 +1532,12 @@ def open_ai_assistant_window():
         status_label_var.set("READY")  # Update label to show AI is processing
 
     def execute_ai_assistant_command():
-        global process  # Define process as a global variable
+        global process, original_md_content  # Define process as a global variable
 
         ai_command = entry.get()
         if ai_command.strip():
+            original_md_content += "\n" + ai_command  # Append command to Markdown content
             output_text.insert(END, f"You: {ai_command}\n")
-            output_text.see(END)
             entry.delete(0, END)
             entry.config(state='disabled')  # Disable entry while processing
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
@@ -1525,8 +1556,11 @@ def open_ai_assistant_window():
             except Exception as e:
                 output_text.insert(END, f"Error: {e}\n")
                 on_processing_complete()
+            finally:
+                update_html_content()
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
+
 
     entry = Entry(ai_assistant_window, width=30)
     entry.pack(side='bottom', fill='x')
