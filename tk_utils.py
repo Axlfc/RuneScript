@@ -1455,10 +1455,6 @@ def open_ai_assistant_window():
     # Create an HTMLLabel for rendering HTML
     html_display = HTMLLabel(ai_assistant_window, html="")
 
-    # Create a scrollbar and attach it to the HTMLLabel
-    scrollbar = tkinter.Scrollbar(ai_assistant_window, command=html_display.yview)
-    html_display.configure(yscrollcommand=scrollbar.set)
-    scrollbar.pack(side='right', fill='y')
     html_display.pack(fill='both', expand=False)
     html_display.pack_forget()  # Initially hide the HTML display
 
