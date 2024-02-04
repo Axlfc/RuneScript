@@ -1281,48 +1281,6 @@ def populate_cron_jobs(listbox):
         #messagebox.showwarning("Warning", "Failed to retrieve cron jobs")
 
 
-def remove_selected_cron_job(listbox):
-    selected_indices = listbox.curselection()
-    if not selected_indices:
-        return
-
-    selected_index = selected_indices[0]
-    selected_job = listbox.get(selected_index)
-
-    try:
-        # Create a temporary file to store modified crontab
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-
-        # Save the current crontab to the temporary file
-        subprocess.run(["crontab", "-l"], text=True, stdout=temp_file)
-
-        # Reset the file pointer to the beginning
-        temp_file.seek(0)
-
-        selected_job_bytes = selected_job.encode("utf-8")
-
-        # Filter out the selected job and write to a new temporary file
-        filtered_lines = [line for line in temp_file if selected_job_bytes not in line]
-
-        temp_file.close()
-
-        # Write the filtered content back to the temporary file
-        with open(temp_file.name, "wb") as f:
-            f.writelines(filtered_lines)
-
-        # Load the modified crontab from the temporary file
-        subprocess.run(["crontab", temp_file.name], check=True)
-
-        # Delete the temporary file
-        os.remove(temp_file.name)
-
-        # Remove the item from the listbox
-        listbox.delete(selected_index)
-
-    except subprocess.CalledProcessError:
-        messagebox.showerror("Error", "Failed to remove cron job")
-
-
 def open_terminal_window():
     terminal_window = Toplevel()
     terminal_window.title("Python Terminal")
@@ -1387,10 +1345,6 @@ def show_selected_model():
     pass
 
 
-def render_markdown_to_html(markdown_text):
-    return markdown.markdown(markdown_text)
-
-
 def open_ai_assistant_window():
     global original_md_content, markdown_render_enabled, rendered_html_content
     original_md_content = ""
@@ -1398,30 +1352,38 @@ def open_ai_assistant_window():
     markdown_render_enabled = False
     render_markdown_var = IntVar()
 
+    def on_md_content_change(event=None):
+        global original_md_content
+        original_md_content = script_text.get("1.0", END)
+        print("on_md_content_change: original_md_content updated")  # Debug print
+        if markdown_render_enabled:
+            print("on_md_content_change: markdown_render_enabled is True, updating HTML content")  # Debug print
+            update_html_content()
+        else:
+            print("on_md_content_change: markdown_render_enabled is False")  # Debug print
+
     def update_html_content():
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
-        print("Markdown Content:", original_md_content)
-        print("Rendered HTML Content:", rendered_html_content)
+        print(
+            f"update_html_content: rendered_html_content updated, length: {len(rendered_html_content)}")  # Debug print
         html_display.set_html(rendered_html_content)
+        html_display.update_idletasks()  # Force an update to the HTML display
 
     def toggle_render_markdown(is_checked):
         global markdown_render_enabled
         markdown_render_enabled = bool(is_checked)
+        print(f"toggle_render_markdown: Markdown to HTML toggled: {markdown_render_enabled}")  # Debug print
 
         if markdown_render_enabled:
-            # Update and display HTML-rendered content
+            print("toggle_render_markdown: Calling update_html_content")  # Debug print
             update_html_content()
             output_text.pack_forget()
             html_display.pack(fill='both', expand=True)
-            html_display.yview_moveto(1)  # Scroll to the bottom
         else:
-            # Display original Markdown content
-            output_text.delete("1.0", "end")
-            output_text.insert("1.0", original_md_content)
+            print("toggle_render_markdown: Disabling HTML view, showing markdown")  # Debug print
             html_display.pack_forget()
             output_text.pack(fill='both', expand=True)
-            output_text.yview_moveto(1)  # Scroll to the bottom
 
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
@@ -1469,6 +1431,7 @@ def open_ai_assistant_window():
     history_pointer = [0]
 
     output_text.insert(END, "> ")
+    output_text.bind("<<TextModified>>", on_md_content_change)
     output_text.see(END)
 
     def navigate_history(event):
@@ -1565,7 +1528,10 @@ def open_ai_assistant_window():
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
 
+    print("open_ai_assistant_window: Window opened")  # Debug print
     ai_assistant_window.mainloop()
+    print("open_ai_assistant_window: Mainloop ended")  # Debug print
+
 
 def open_scheduled_tasks_window():
     window = Toplevel()
