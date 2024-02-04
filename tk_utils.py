@@ -1365,10 +1365,8 @@ def open_ai_assistant_window():
     def update_html_content():
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
-        print(
-            f"update_html_content: rendered_html_content updated, length: {len(rendered_html_content)}")  # Debug print
+        print("update_html_content: rendered_html_content updated")  # Debug print
         html_display.set_html(rendered_html_content)
-        html_display.update_idletasks()  # Force an update to the HTML display
 
     def toggle_render_markdown(is_checked):
         global markdown_render_enabled
@@ -1381,7 +1379,8 @@ def open_ai_assistant_window():
             output_text.pack_forget()
             html_display.pack(fill='both', expand=True)
         else:
-            print("toggle_render_markdown: Disabling HTML view, showing markdown")  # Debug print
+            output_text.delete("1.0", "end")
+            output_text.insert("1.0", original_md_content)
             html_display.pack_forget()
             output_text.pack(fill='both', expand=True)
 
