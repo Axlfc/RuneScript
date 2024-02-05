@@ -160,7 +160,10 @@ def create_execute_in_line():
     seconds_entry.grid(column=1, row=0, padx=(10, 0))
     Tooltip(seconds_entry, "number of seconds")
 
-    run_button = Button(line_frm, text=run_icon, command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get())))
+    run_button = Button(line_frm,
+                        text=run_icon,
+                        command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
+                        )
     run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
     Tooltip(run_button, "Set the duration in seconds for the script to execute.")
 

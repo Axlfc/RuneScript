@@ -1,8 +1,7 @@
 import os
 import subprocess
 import threading
-from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, Canvas, \
-    Scrollbar, RIGHT, Y, ALL, Frame
+from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar
 
 import markdown
 from tkhtmlview import HTMLLabel
@@ -69,13 +68,24 @@ def find_text(event=None):
     search_entry_widget = Entry(search_toplevel, width=25)
     search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky='we')
     search_entry_widget.focus_set()
-    Button(search_toplevel, text="Ok", underline=0, command=lambda: check(search_entry_widget.get())).grid(row=0,
-                                                                                                           column=2,
-                                                                                                           sticky='e' + 'w',
-                                                                                                           padx=2,
-                                                                                                           pady=5)
-    Button(search_toplevel, text="Cancel", underline=0, command=lambda: find_text_cancel_button(search_toplevel)).grid(
-        row=0, column=4, sticky='e' + 'w', padx=2, pady=2)
+    Button(search_toplevel,
+           text="Ok",
+           underline=0,
+           command=lambda: check(search_entry_widget.get())).grid(row=0,
+                                                                  column=2,
+                                                                  sticky='e' + 'w',
+                                                                  padx=2,
+                                                                  pady=5
+                                                                  )
+    Button(search_toplevel,
+           text="Cancel",
+           underline=0,
+           command=lambda: find_text_cancel_button(search_toplevel)).grid(row=0,
+                                                                          column=4,
+                                                                          sticky='e' + 'w',
+                                                                          padx=2,
+                                                                          pady=2
+                                                                          )
 
 
 # remove search tags and destroys the search box
@@ -102,7 +112,16 @@ def open_search_replace_dialog():
     replace_entry_widget.grid(row=1, column=1, padx=2, pady=2, sticky='we')
 
     # Botones
-    Button(search_replace_toplevel, text="Replace All", command=lambda: search_and_replace(search_entry_widget.get(), replace_entry_widget.get())).grid(row=2, column=1, sticky='e' + 'w', padx=2, pady=5)
+    Button(
+        search_replace_toplevel,
+        text="Replace All",
+        command=lambda: search_and_replace(search_entry_widget.get(),
+                                           replace_entry_widget.get())).grid(row=2,
+                                                                             column=1,
+                                                                             sticky='e' + 'w',
+                                                                             padx=2,
+                                                                             pady=5
+                                                                             )
 
 
 def open_terminal_window():
@@ -130,7 +149,11 @@ def open_terminal_window():
 
             try:
                 # Run the command and get the output
-                output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, text=True, cwd=os.getcwd())
+                output = subprocess.check_output(command,
+                                                 stderr=subprocess.STDOUT,
+                                                 shell=True,
+                                                 text=True,
+                                                 cwd=os.getcwd())
                 output_text.insert(END, f"{command}\n{output}\n")
             except subprocess.CalledProcessError as e:
                 # If there's an error, print it to the output widget
