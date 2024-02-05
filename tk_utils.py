@@ -3,24 +3,20 @@ from tkinter import scrolledtext
 import os
 
 
-new_name = ""  # Used for renaming the file
-context_menu = None  # Define context_menu as a global variable
+new_name = ""
+context_menu = None
+is_modified = False
+markdown_render_enabled = False
+original_md_content = None
+render_markdown_var = None
+rendered_html_content = None
 
-# MAIN MENU METHODS
 
 file_name = ""  # Current file name.
 current_font_family = "Liberation Mono"
 current_font_size = 12
 fontColor = '#000000'
 fontBackground = '#FFFFFF'
-
-new_name = ""  # Used for renaming the file
-
-is_modified = False  # Added is_modified variable
-markdown_render_enabled = False
-original_md_content = None
-render_markdown_var = None
-rendered_html_content = None
 
 
 root = Tk()
@@ -58,7 +54,3 @@ line_frm = Frame(root)
 one_time_frm = Frame(root)
 
 daily_frm = Frame(root)
-
-
-at_window = None
-crontab_window = None

@@ -1,7 +1,8 @@
 import os
 import subprocess
 import threading
-from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar
+from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, Canvas, \
+    Scrollbar, RIGHT, Y, ALL, Frame
 
 import markdown
 from tkhtmlview import HTMLLabel
@@ -171,38 +172,6 @@ def open_ai_assistant_window():
     markdown_render_enabled = False
     render_markdown_var = IntVar()
 
-    def on_md_content_change(event=None):
-        global original_md_content
-        original_md_content = script_text.get("1.0", END)
-        print("on_md_content_change: original_md_content updated")  # Debug print
-        if markdown_render_enabled:
-            print("on_md_content_change: markdown_render_enabled is True, updating HTML content")  # Debug print
-            update_html_content()
-        else:
-            print("on_md_content_change: markdown_render_enabled is False")  # Debug print
-
-    def update_html_content():
-        global rendered_html_content
-        rendered_html_content = markdown.markdown(original_md_content)
-        print("update_html_content: rendered_html_content updated")  # Debug print
-        html_display.set_html(rendered_html_content)
-
-    def toggle_render_markdown(is_checked):
-        global markdown_render_enabled
-        markdown_render_enabled = bool(is_checked)
-        print(f"toggle_render_markdown: Markdown to HTML toggled: {markdown_render_enabled}")  # Debug print
-
-        if markdown_render_enabled:
-            print("toggle_render_markdown: Calling update_html_content")  # Debug print
-            update_html_content()
-            output_text.pack_forget()
-            html_display.pack(fill='both', expand=True)
-        else:
-            output_text.delete("1.0", "end")
-            output_text.insert("1.0", original_md_content)
-            html_display.pack_forget()
-            output_text.pack(fill='both', expand=True)
-
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
     ai_assistant_window.geometry("600x400")
@@ -214,11 +183,7 @@ def open_ai_assistant_window():
     # Create a 'Settings' Menu
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
-
-    # Add 'Selected Model' Menu Item
     settings_menu.add_command(label="Selected Model", command=show_selected_model)
-
-    # Checkbox Variable for 'Render Markdown to HTML'
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
         label="Render Markdown to HTML",
@@ -232,25 +197,54 @@ def open_ai_assistant_window():
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
-    # Create an HTMLLabel for rendering HTML
-    html_display = HTMLLabel(ai_assistant_window, html="")
+    html_display = HTMLLabel(ai_assistant_window, html="", )
 
     html_display.pack(fill='both', expand=False)
     html_display.pack_forget()  # Initially hide the HTML display
 
+    entry = Entry(ai_assistant_window, width=30)
+    entry.pack(side='bottom', fill='x')
+
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
-    status_label.pack()
+    status_label.pack(side='bottom')  # This will keep the status label at the bottom
     status_label_var.set("READY")  # Initialize the status label as "READY"
 
-    # Initialize a list to store command history
-    command_history = []
-    # Initialize a pointer to the current position in the command history
-    history_pointer = [0]
-
     output_text.insert(END, "> ")
-    output_text.bind("<<TextModified>>", on_md_content_change)
-    output_text.see(END)
+
+    entry.focus()
+
+    def on_md_content_change(event=None):
+        global original_md_content
+        original_md_content = script_text.get("1.0", END)
+        print("on_md_content_change: original_md_content updated")  # Debug print
+        if markdown_render_enabled:
+            print("on_md_content_change: markdown_render_enabled is True, updating HTML content")  # Debug print
+            update_html_content()
+        else:
+            print("on_md_content_change: markdown_render_enabled is False")  # Debug print
+
+    def update_html_content():
+        global rendered_html_content
+        rendered_html_content = markdown.markdown(original_md_content)
+        html_display.set_html(rendered_html_content)
+
+        if hasattr(html_display, 'yview_moveto'):
+            html_display.yview_moveto(1.0)
+
+    def toggle_render_markdown(is_checked):
+        global markdown_render_enabled
+        markdown_render_enabled = bool(is_checked)
+
+        if markdown_render_enabled:
+            update_html_content()
+            output_text.pack_forget()
+            html_display.pack(fill='both', expand=True)
+        else:
+            output_text.delete("1.0", "end")
+            output_text.insert("1.0", original_md_content)
+            html_display.pack_forget()
+            output_text.pack(fill='both', expand=True)
 
     def navigate_history(event):
         if command_history:
@@ -270,34 +264,29 @@ def open_ai_assistant_window():
         try:
             output_buffer = ""  # Initialize an empty buffer
             buffer_size = 2  # Set the size of the buffer to hold the last two characters
-            global original_md_content
 
             while True:
                 char = process.stdout.read(1)  # Read one character at a time
                 if char:
+                    global original_md_content
+                    original_md_content += char
+
                     if markdown_render_enabled:
-                        # Append new char to Markdown content and update HTML content
-                        original_md_content += char
+                        # Update HTML content
                         update_html_content()
                     else:
-                        # Append new char to Markdown content
-                        original_md_content += char
+                        # Update Markdown content
                         output_text.insert(END, char)
                         output_text.see(END)
 
-                    # Update the Tkinter window; use after method to ensure GUI updates
-                    ai_assistant_window.after(10, lambda: ai_assistant_window.update_idletasks())
-
-                    # Update the buffer with the latest character
+                    # Update buffer
                     output_buffer += char
-                    output_buffer = output_buffer[-buffer_size:]  # Keep only the last 'buffer_size' characters
+                    output_buffer = output_buffer[-buffer_size:]
 
-                    # Check if the last two characters are '> ' indicating the end of the response
                     if output_buffer == '> ':
                         break
                 elif process.poll() is not None:
-                    break  # Break if the subprocess has finished
-
+                    break
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n")
         finally:
@@ -313,8 +302,11 @@ def open_ai_assistant_window():
 
         ai_command = entry.get()
         if ai_command.strip():
-            original_md_content += "\n" + ai_command  # Append command to Markdown content
-            output_text.insert(END, f"You: {ai_command}\n")
+            # Insert the user command with a newline and a visual separator
+            original_md_content += f"\n{ai_command}\n"
+            original_md_content += "-" * 80 + "\n"  # A line of dashes as a separator
+            output_text.insert("end", f"You: {ai_command}\n")
+            output_text.insert("end", "-" * 80 + "\n")
             entry.delete(0, END)
             entry.config(state='disabled')  # Disable entry while processing
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
@@ -338,13 +330,17 @@ def open_ai_assistant_window():
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
 
+    output_text.bind("<<TextModified>>", on_md_content_change)
+    output_text.see(END)
 
-    entry = Entry(ai_assistant_window, width=30)
-    entry.pack(side='bottom', fill='x')
-    entry.focus()
     entry.bind("<Return>", lambda event: execute_ai_assistant_command())
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
+
+    # Initialize a list to store command history
+    command_history = []
+    # Initialize a pointer to the current position in the command history
+    history_pointer = [0]
 
     print("open_ai_assistant_window: Window opened")  # Debug print
     ai_assistant_window.mainloop()
