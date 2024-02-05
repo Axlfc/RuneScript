@@ -12,7 +12,7 @@ from script_tasks import analyze_csv_data, render_markdown_to_html, generate_htm
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter
 
-from tk_utils import toolbar, menu, root, script_name_label, script_text
+from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name
 from tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
     open_ai_assistant_window
 
@@ -392,7 +392,6 @@ def save():
         Returns:
         None
     """
-    global file_name
 
     if file_name:
         # Save the file
@@ -402,7 +401,15 @@ def save():
         # Update the window title
         root.title(file_name + " - Script Editor")
     else:
-        save_as()
+        # Ask the user whether to save the file
+        response = messagebox.askyesnocancel("Save File", "Do you want to save changes to your file?")
+
+        if response:  # User chose 'Yes'
+            return save_as()  # Invoke save_as and return its result
+        elif response is None:  # User chose 'Cancel'
+            return False  # Cancel the operation
+
+        return True  # User chose 'No', proceed without saving
 
     # Remove the asterisk from the title
     root.title(root.title().replace('*', ''))
@@ -432,8 +439,8 @@ def save_as():
 
 
 def close(event=None):
-    save()
-    root.quit()
+    if save():  # Proceed only if the user saves the file or chooses not to save
+        root.quit()
 
 
 def save_file(file_name, content):
