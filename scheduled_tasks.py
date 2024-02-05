@@ -8,6 +8,18 @@ from winTaskScheduler import list_tasks, delete_task, at_function, crontab_funct
 
 
 def open_at_window():
+    """
+        Opens a window displaying the list of scheduled 'at' jobs.
+
+        This function creates a new window that lists all currently scheduled 'at' jobs. It provides
+        an interface for viewing and removing these jobs. The list is updated periodically.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     def update_at_jobs():
         listbox.delete(0, END)
         populate_at_jobs(listbox)
@@ -31,6 +43,18 @@ def open_at_window():
 
 
 def populate_at_jobs(listbox):
+    """
+        Populates the given listbox with the current 'at' jobs.
+
+        Retrieves the list of scheduled 'at' jobs and displays them in the provided listbox widget.
+        If there are no jobs or an error occurs, an appropriate message is displayed.
+
+        Parameters:
+        listbox (Listbox): The Listbox widget to populate with 'at' jobs.
+
+        Returns:
+        None
+    """
     try:
         at_output = subprocess.check_output(["atq"], text=True).splitlines()
         if not at_output:
@@ -44,6 +68,18 @@ def populate_at_jobs(listbox):
 
 
 def remove_selected_at_job(listbox):
+    """
+        Removes the selected 'at' job from the schedule.
+
+        This function deletes the 'at' job that is currently selected in the listbox. It also handles
+        exceptions if the job cannot be removed.
+
+        Parameters:
+        listbox (Listbox): The Listbox widget containing the list of 'at' jobs.
+
+        Returns:
+        None
+    """
     selected_indices = listbox.curselection()
     if not selected_indices:
         return
@@ -63,6 +99,18 @@ def remove_selected_at_job(listbox):
 
 
 def open_cron_window():
+    """
+        Opens a window displaying the list of scheduled 'cron' jobs.
+
+        This function creates a new window that lists all currently scheduled 'cron' jobs. It provides
+        an interface for viewing and removing these jobs. The list is updated periodically.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     def update_cron_jobs():
         listbox.delete(0, END)
         populate_cron_jobs(listbox)
@@ -87,6 +135,18 @@ def open_cron_window():
 
 
 def populate_cron_jobs(listbox):
+    """
+        Populates the given listbox with the current 'cron' jobs.
+
+        Retrieves the list of scheduled 'cron' jobs and displays them in the provided listbox widget.
+        If there are no jobs or an error occurs, an appropriate message is displayed.
+
+        Parameters:
+        listbox (Listbox): The Listbox widget to populate with 'cron' jobs.
+
+        Returns:
+        None
+    """
     try:
         cron_output = subprocess.check_output(["crontab", "-l"], text=True).splitlines()
         # print("hola" + cron_output)
@@ -103,6 +163,18 @@ def populate_cron_jobs(listbox):
 
 
 def remove_selected_cron_job(listbox):
+    """
+        Removes the selected 'cron' job from the schedule.
+
+        This function deletes the 'cron' job that is currently selected in the listbox. It handles
+        exceptions if the job cannot be removed and updates the crontab accordingly.
+
+        Parameters:
+        listbox (Listbox): The Listbox widget containing the list of 'cron' jobs.
+
+        Returns:
+        None
+    """
     selected_indices = listbox.curselection()
     if not selected_indices:
         return
@@ -145,6 +217,18 @@ def remove_selected_cron_job(listbox):
 
 
 def open_scheduled_tasks_window():
+    """
+        Opens a window for managing scheduled tasks.
+
+        This function creates a new window displaying all scheduled tasks, allowing the user to view and
+        delete them. It supports both 'at' and 'cron' jobs based on the operating system.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     window = Toplevel()
     window.title("Scheduled Tasks")
     window.geometry("600x400")
@@ -198,6 +282,18 @@ def open_scheduled_tasks_window():
 
 
 def open_new_at_task_window():
+    """
+        Opens a window for creating a new 'at' task.
+
+        Provides an interface for the user to schedule a new 'at' job by specifying the task name, time,
+        and program path. Includes error handling for task creation.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     # Create a new window
     new_task_window = Toplevel(root)
     new_task_window.title("New 'at' Task")
@@ -238,6 +334,18 @@ def open_new_at_task_window():
 
 
 def open_new_crontab_task_window():
+    """
+        Opens a window for creating a new 'crontab' task.
+
+        Offers an interface for scheduling a new 'cron' job with detailed time settings and script path.
+        It validates the input fields and handles the job creation process.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     # Create a new window
     new_cron_task_window = Toplevel(root)
     new_cron_task_window.title("New 'crontab' Task")

@@ -43,17 +43,52 @@ file_types = [
 
 # Help Menu
 def about(event=None):
+    """
+        Displays the 'About' information of the application.
+
+        This function triggers a messagebox that provides details about the ScriptsEditor, including its creation and version.
+
+        Parameters:
+        event (optional): An event object, not directly used in this function.
+
+        Returns:
+        None
+    """
     messagebox.showinfo("About",
                         "ScriptsEditor\nCreated in Python using Tkinter\nAxlfc, 2023-2024")
 
 
 def set_modified_status(value):
+    """
+        Sets the modified status of the current file.
+
+        This function updates the global 'is_modified' flag to the given value, indicating whether the current file
+        has unsaved changes.
+
+        Parameters:
+        value (bool): The modified status to set (True or False).
+
+        Returns:
+        None
+    """
     global is_modified
     is_modified = value
     update_title()
 
 
 def update_title():
+    """
+        Updates the application window's title based on the file's modified status.
+
+        If the current file is modified, an asterisk (*) is added to the beginning of the window title.
+        If the file is not modified, any existing asterisk is removed.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     title = root.title()
     if is_modified and not title.startswith("*"):
         root.title("*" + title)
@@ -62,6 +97,18 @@ def update_title():
 
 
 def new(event=None):
+    """
+        Creates a new file in the editor.
+
+        This function prompts the user to save the current file if it is modified, then clears the text editor
+        and sets up for a new file.
+
+        Parameters:
+        event (optional): An event object, not directly used in this function.
+
+        Returns:
+        None
+    """
     global file_name
 
     ans = messagebox.askquestion(title="Save File", message="Would you like to save this file?")
@@ -74,6 +121,18 @@ def new(event=None):
 
 
 def open_script():
+    """
+        Opens an existing file into the script editor.
+
+        This function displays a file dialog for the user to choose a file. Once a file is selected, it is opened
+        and its contents are displayed in the script editor.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     file_path = filedialog.askopenfilename(filetypes=file_types)
     if file_path:
         global file_extension
@@ -84,6 +143,18 @@ def open_script():
 
 
 def open_file(file_path):
+    """
+        Opens the specified file and updates the editor with its contents.
+
+        This function reads the content from the specified file path and updates the script editor. It tries various
+        encodings to ensure correct file reading and updates the UI based on the file extension.
+
+        Parameters:
+        file_path (str): The path of the file to open.
+
+        Returns:
+        None
+    """
     file_name = file_path
     script_name_label.config(text=f"{os.path.basename(file_path)}")
 
@@ -111,6 +182,17 @@ def open_file(file_path):
 
 
 def create_csv_menu(parent_menu):
+    """
+        Creates a submenu for CSV-related operations.
+
+        This function adds specific options related to CSV files, such as data analysis, to the given parent menu.
+
+        Parameters:
+        parent_menu (Menu): The parent menu to which the CSV submenu will be added.
+
+        Returns:
+        None
+    """
     entries = {
         "Analyze Data": analyze_csv_data
     }
@@ -180,8 +262,18 @@ def create_python_menu(parent_menu):
     create_submenu(parent_menu, "Interpreter", entries)
 
 
-
 def update_menu_based_on_extension(ext):
+    """
+        Updates the application menu based on the file extension of the currently open file.
+
+        This function creates and inserts a dynamic menu specific to the file type of the currently open file.
+
+        Parameters:
+        ext (str): The file extension of the currently open file.
+
+        Returns:
+        None
+    """
     print(f"Debug: Starting to update menu for extension: {ext}")
     menu_creators = {
         ".py": create_python_menu,
@@ -256,16 +348,50 @@ def update_menu_based_on_extension(ext):
 
 
 def update_title_with_filename(file_name):
+    """
+        Updates the window title with the name of the currently open file.
+
+        This function sets the application window's title to include the base name of the given file path.
+
+        Parameters:
+        file_name (str): The full path of the currently open file.
+
+        Returns:
+        None
+    """
     # Esta función actualizará el título de la ventana con el nuevo nombre de archivo
     base_name = os.path.basename(file_name)
     root.title(f"{base_name} - Scripts Editor")
 
 
 def update_modification_status(event):
+    """
+        Updates the modification status of the file to 'modified'.
+
+        This function should be called whenever a change is made to the text content, setting the file's status
+        as modified.
+
+        Parameters:
+        event: The event object representing the triggering event.
+
+        Returns:
+        None
+    """
     set_modified_status(True)
 
 
 def save():
+    """
+        Saves the current file.
+
+        If the file already has a name, it is saved directly. Otherwise, 'save_as' function is called to ask the user for a file name.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     global file_name
 
     if file_name:
@@ -283,6 +409,17 @@ def save():
 
 
 def save_as():
+    """
+        Opens a 'Save As' dialog to save the current file with a specified name.
+
+        Allows the user to choose a file name and path to save the current file content.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     global file_name
 
     new_file_name = filedialog.asksaveasfilename(defaultextension=".txt",
@@ -424,6 +561,18 @@ find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
 def create_menu():
+    """
+        Creates and adds the main menu to the application window.
+
+        This function sets up the menu bar at the top of the application, adding file, edit, and other menus
+        with their respective menu items and functionalities.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     # File menu.
     file_menu = Menu(menu)
     menu.add_cascade(label="File", menu=file_menu, underline=0)
@@ -521,6 +670,17 @@ def create_menu():
 
 
 def get_scheduled_tasks(submenu):
+    """
+        Populates the 'Jobs' submenu with options based on the operating system.
+
+        For Windows, it adds an option to view scheduled tasks. For other systems, it adds options for 'at' and 'crontab' jobs.
+
+        Parameters:
+        submenu (Menu): The submenu to which the job options will be added.
+
+        Returns:
+        None
+    """
     if platform.system() == "Windows":
         submenu.add_command(label="Scheduled Tasks", command=open_scheduled_tasks_window)
     else:
@@ -529,6 +689,17 @@ def get_scheduled_tasks(submenu):
 
 
 def create_submenu(parent_menu, title, entries):
+    """
+        Creates a submenu with specified entries under the given parent menu.
+
+        Parameters:
+        parent_menu (Menu): The parent menu to which the submenu will be added.
+        title (str): The title of the submenu.
+        entries (dict): A dictionary of menu item labels and their corresponding command functions.
+
+        Returns:
+        None
+    """
     submenu = Menu(parent_menu, tearoff=0)
     parent_menu.add_cascade(label=title, menu=submenu)
 

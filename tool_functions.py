@@ -12,6 +12,18 @@ from utility_functions import make_tag
 
 
 def change_color():
+    """
+        Changes the text color in the application's text widget.
+
+        This function opens a color chooser dialog, allowing the user to select a new color for the text.
+        It then applies this color to the text within the text widget.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     color = colorchooser.askcolor(initialcolor='#ff0000')
     color_name = color[1]
     global fontColor
@@ -27,12 +39,36 @@ def change_color():
 
 
 def colorize_text():
+    """
+        Applies color to the text in the script text widget.
+
+        This function retrieves the current content of the script text widget, deletes it, and reinserts it,
+        applying the currently selected color.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     script_content = script_text.get("1.0", "end")
     script_text.delete("1.0", "end")
     script_text.insert("1.0", script_content)
 
 
 def check(value):
+    """
+        Highlights all occurrences of a specified value in the script text widget.
+
+        This function searches for the given value in the script text widget and applies a 'found' tag with a
+        yellow background to each occurrence.
+
+        Parameters:
+        value (str): The string to be searched for in the text widget.
+
+        Returns:
+        None
+    """
     script_text.tag_remove('found', '1.0', END)
 
     if value:
@@ -47,6 +83,18 @@ def check(value):
 
 
 def search_and_replace(search_text, replace_text):
+    """
+        Replaces all occurrences of a specified search text with a replacement text in the script text widget.
+
+        This function finds each occurrence of the search text and replaces it with the provided replacement text.
+
+        Parameters:
+        search_text (str): The text to be replaced.
+        replace_text (str): The text to replace the search text.
+
+        Returns:
+        None
+    """
     if search_text:
         start_index = '1.0'
         while True:
@@ -60,6 +108,18 @@ def search_and_replace(search_text, replace_text):
 
 
 def find_text(event=None):
+    """
+        Opens a dialog for finding text within the script text widget.
+
+        This function creates a new window with an entry field where the user can input a text string
+        to find in the script text widget.
+
+        Parameters:
+        event (Event, optional): The event that triggered this function.
+
+        Returns:
+        None
+    """
     search_toplevel = Toplevel(root)
     search_toplevel.title('Find Text')
     search_toplevel.transient(root)
@@ -90,12 +150,36 @@ def find_text(event=None):
 
 # remove search tags and destroys the search box
 def find_text_cancel_button(search_toplevel):
+    """
+        Removes search highlights and closes the search dialog.
+
+        This function is called to close the search dialog and remove any search highlights
+        from the text widget.
+
+        Parameters:
+        search_toplevel (Toplevel): The top-level widget of the search dialog.
+
+        Returns:
+        None
+    """
     text.tag_remove('found', '1.0', END)
     search_toplevel.destroy()
     return "break"
 
 
 def open_search_replace_dialog():
+    """
+        Opens a dialog for searching and replacing text within the script text widget.
+
+        This function creates a new window with fields for inputting the search and replace texts
+        and a button to execute the replacement.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     search_replace_toplevel = Toplevel(root)
     search_replace_toplevel.title('Search and Replace')
     search_replace_toplevel.transient(root)
@@ -125,6 +209,18 @@ def open_search_replace_dialog():
 
 
 def open_terminal_window():
+    """
+        Opens a new window functioning as a terminal within the application.
+
+        This function creates a top-level window that simulates a terminal, allowing users to
+        enter and execute commands with output displayed in the window.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     terminal_window = Toplevel()
     terminal_window.title("Python Terminal")
     terminal_window.geometry("600x400")
@@ -189,6 +285,18 @@ def open_terminal_window():
 
 
 def open_ai_assistant_window():
+    """
+        Opens a window for interacting with an AI assistant.
+
+        This function creates a new window where users can input commands or queries, and the AI assistant
+        processes and displays the results. It also provides options for rendering Markdown to HTML.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     global original_md_content, markdown_render_enabled, rendered_html_content
     original_md_content = ""
     rendered_html_content = ""

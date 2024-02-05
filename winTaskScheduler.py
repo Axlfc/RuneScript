@@ -22,12 +22,13 @@ windows_cmd_file_path = 'C:\\Windows\\System32\\cmd.exe'
 
 def format_time_input(time_str):
     """
-    Formats the time input to HH:MM:SS format and returns a datetime.time object.
-    If hours, minutes, or seconds are missing, defaults them to '00'.
-    Examples:
-        '8' -> '08:00:00'
-        '8:30' -> '08:30:00'
-        '8:8:8' -> '08:08:08'
+        Formats a given time string into HH:MM:SS format.
+
+        Parameters:
+        time_str (str): The time string to format. Can be in various formats like '8', '8:30', '8:8:8'.
+
+        Returns:
+        datetime.time: A datetime.time object representing the formatted time.
     """
     # Split the input string by ':' and extend it to 3 elements if necessary
     parts = time_str.split(':')
@@ -43,6 +44,15 @@ def format_time_input(time_str):
 
 
 def parse_create_args(subparsers):
+    """
+        Adds argument parsing for the 'create' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_create = subparsers.add_parser('create')
     parser_create.add_argument('name')
     parser_create.add_argument('start_time')
@@ -52,15 +62,42 @@ def parse_create_args(subparsers):
 
 
 def parse_delete_args(subparsers):
+    """
+        Adds argument parsing for the 'delete' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_delete = subparsers.add_parser('delete')
     parser_delete.add_argument('name')
 
 
 def parse_list_args(subparsers):
+    """
+        Adds argument parsing for the 'list' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     subparsers.add_parser('list')
 
 
 def parse_change_args(subparsers):
+    """
+        Adds argument parsing for the 'change' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_change = subparsers.add_parser('change')
     parser_change.add_argument('name')
     parser_change.add_argument('--program', default=None)
@@ -68,21 +105,57 @@ def parse_change_args(subparsers):
 
 
 def parse_run_args(subparsers):
+    """
+        Adds argument parsing for the 'run' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_run = subparsers.add_parser('run')
     parser_run.add_argument('name')
 
 
 def parse_end_args(subparsers):
+    """
+        Adds argument parsing for the 'end' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_end = subparsers.add_parser('end')
     parser_end.add_argument('name')
 
 
 def parse_showsid_args(subparsers):
+    """
+        Adds argument parsing for the 'showsid' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_showsid = subparsers.add_parser('showsid')
     parser_showsid.add_argument('name')
 
 
 def parse_at_args(subparsers):
+    """
+        Adds argument parsing for the 'at' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_at = subparsers.add_parser('at')
     parser_at.add_argument('name')
     parser_at.add_argument('start_time')
@@ -90,6 +163,15 @@ def parse_at_args(subparsers):
 
 
 def parse_crontab_args(subparsers):
+    """
+        Adds argument parsing for the 'crontab' sub-command in the argparse parser.
+
+        Parameters:
+        subparsers (argparse._SubParsersAction): The subparsers action object from argparse.
+
+        Returns:
+        None
+    """
     parser_crontab = subparsers.add_parser('crontab')
     parser_crontab.add_argument('name')
     parser_crontab.add_argument('minute')
@@ -101,6 +183,12 @@ def parse_crontab_args(subparsers):
 
 
 def process_parse_args():
+    """
+        Sets up the argument parser and subparsers for different task scheduling commands.
+
+        Returns:
+        argparse.Namespace: The parsed arguments as a Namespace object.
+    """
     parser = argparse.ArgumentParser(description="Task Scheduler Wrapper")
     subparsers = parser.add_subparsers(dest='command')
 
@@ -119,6 +207,15 @@ def process_parse_args():
 
 
 def delete_task(name):
+    """
+        Deletes a scheduled task by name.
+
+        Parameters:
+        name (str): The name of the task to delete.
+
+        Returns:
+        None
+    """
     command = [windows_tasks_file_path, '/Delete', '/TN', name, '/F']
     try:
         subprocess.run(command, check=True)
@@ -128,6 +225,12 @@ def delete_task(name):
 
 
 def list_tasks():
+    """
+        Lists all scheduled tasks, excluding tasks in specified folders.
+
+        Returns:
+        list: A list of detailed information about each scheduled task.
+    """
     excluded_folders = [
         '\\Microsoft',
         '\\Adobe',
@@ -206,6 +309,17 @@ def list_tasks():
 
 
 def change_task(name, program=None, start_time=None):
+    """
+        Changes properties of an existing scheduled task.
+
+        Parameters:
+        name (str): The name of the task to change.
+        program (str, optional): The new program path for the task.
+        start_time (str, optional): The new start time for the task.
+
+        Returns:
+        None
+    """
     command = [windows_tasks_file_path, '/Change', '/TN', name]
     if program:
         command.extend(['/TR', program])
@@ -215,21 +329,61 @@ def change_task(name, program=None, start_time=None):
 
 
 def run_task(name):
+    """
+        Runs a scheduled task on demand.
+
+        Parameters:
+        name (str): The name of the task to run.
+
+        Returns:
+        None
+    """
     command = [windows_tasks_file_path, '/Run', '/TN', name]
     subprocess.run(command, check=True)
 
 
 def end_task(name):
+    """
+        Ends a currently running scheduled task.
+
+        Parameters:
+        name (str): The name of the task to end.
+
+        Returns:
+        None
+    """
     command = [windows_tasks_file_path, '/End', '/TN', name]
     subprocess.run(command, check=True)
 
 
 def showsid_task(name):
+    """
+        Displays the security identifier (SID) for a scheduled task.
+
+        Parameters:
+        name (str): The name of the task.
+
+        Returns:
+        None
+    """
     command = [windows_tasks_file_path, '/ShowSid', '/TN', name]
     subprocess.run(command, check=True)
 
 
 def create_task(name, start_time, schedule_type=None, interval=None, program=None):
+    """
+        Creates a new scheduled task.
+
+        Parameters:
+        name (str): The name of the new task.
+        start_time (str): The start time for the task.
+        schedule_type (str, optional): The type of schedule (e.g., daily, weekly).
+        interval (str, optional): The interval for the task repetition.
+        program (str, optional): The program path to execute.
+
+        Returns:
+        None
+    """
     command = [windows_tasks_file_path, '/Create', '/TN', name, '/ST', start_time]
     if interval:
         command.extend(['/MO', interval])
@@ -242,6 +396,17 @@ def create_task(name, start_time, schedule_type=None, interval=None, program=Non
 
 
 def create_self_deleting_task(name, start_time, program):
+    """
+        Creates a task that deletes itself after execution.
+
+        Parameters:
+        name (str): The name of the task.
+        start_time (str): The start time for the task.
+        program (str): The program path to execute.
+
+        Returns:
+        None
+    """
     # Ensure the program path is correctly quoted
     program_path = f'"{program}"' if ' ' in program else program
 
@@ -263,6 +428,17 @@ def create_self_deleting_task(name, start_time, program):
 
 
 def at_function(name, start_time, program):
+    """
+        Creates a task using 'at' command with a self-deleting feature.
+
+        Parameters:
+        name (str): The name of the task.
+        start_time (str): The start time for the task in HH:MM format.
+        program (str): The program path to execute.
+
+        Returns:
+        None
+    """
     formatted_start_time = format_time_input(start_time)
     current_time = datetime.datetime.now().time()
 
@@ -276,6 +452,21 @@ def at_function(name, start_time, program):
 
 
 def crontab_function(task_name, minute, hour, day, month, day_of_week, script_path):
+    """
+        Creates a scheduled task using crontab-like syntax.
+
+        Parameters:
+        task_name (str): The name of the task.
+        minute (str): Minute part of the schedule.
+        hour (str): Hour part of the schedule.
+        day (str): Day part of the schedule.
+        month (str): Month part of the schedule.
+        day_of_week (str): Day of the week part of the schedule.
+        script_path (str): The script path to execute.
+
+        Returns:
+        bool: True if the task was created successfully, False otherwise.
+    """
     # Ensure the script path is correctly quoted
     script_path = f'"{script_path}"' if ' ' in script_path else script_path
 
@@ -314,6 +505,12 @@ def crontab_function(task_name, minute, hour, day, month, day_of_week, script_pa
 
 
 def main():
+    """
+        Main function to process command line arguments and execute corresponding task scheduler functions.
+
+        Returns:
+        None
+    """
     args = process_parse_args()
 
     if args.command == 'create':

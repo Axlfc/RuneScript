@@ -10,36 +10,116 @@ from tk_utils import *
 
 
 def undo():
+    """
+        Reverts the last action taken in the script text editor.
+
+        This function undoes the last change made to the text in the script editor, allowing for simple
+        mistake correction.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     print("Undo function called.")
     script_text.edit_undo()
 
 
 def redo():
+    """
+        Redoes the last action that was undone in the script text editor.
+
+        If an action was undone using the undo function, this function allows the user to redo that action.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     print("Redo function called.")
     script_text.edit_redo()
 
 
 def cut():
+    """
+        Cuts the selected text from the script editor to the clipboard.
+
+        This function removes the currently selected text from the document and places it on the clipboard,
+        allowing it to be pasted elsewhere.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     set_modified_status(True)
     script_text.event_generate("<<Cut>>")
 
 
 def copy():
+    """
+        Copies the selected text from the script editor to the clipboard.
+
+        This function copies the currently selected text to the clipboard without removing it from the document.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     set_modified_status(True)
     script_text.event_generate("<<Copy>>")
 
 
 def paste():
+    """
+        Pastes text from the clipboard into the script editor at the cursor's current location.
+
+        This function inserts the contents of the clipboard into the document at the current cursor position.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     set_modified_status(True)
     script_text.event_generate("<<Paste>>")
 
 
 def duplicate():
+    """
+        Duplicates the selected text in the script editor.
+
+        This function creates a copy of the selected text and inserts it immediately after the current selection.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+        """
     set_modified_status(True)
     script_text.event_generate("<<Duplicate>>")
 
 
 def create_directory_line():
+    """
+        Creates and displays the directory selection interface in the application.
+
+        This interface element allows users to select and display the current working directory, facilitating
+        the process of opening and saving files in the chosen directory.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     frm.grid(row=0, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
     # Configure grid weights for the columns
     frm.columnconfigure(0, weight=0)  # First column doesn't expand
@@ -54,6 +134,17 @@ def create_directory_line():
 
 
 def create_open_script_line():
+    """
+        Creates the interface elements for opening a script file.
+
+        This includes buttons and labels to facilitate the opening of script files from the file system into the application.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     script_frm.grid(row=1, column=0, pady=0, sticky="ew")
     script_frm.grid_columnconfigure(2, weight=1)  # Make column 2 (file name entry) expandable
 
@@ -82,6 +173,18 @@ def create_open_script_line():
 
 
 def create_content_file_window():
+    """
+        Sets up the main text area for file content display and editing.
+
+        This function is responsible for initializing and configuring the main text area where the content of opened files
+        is displayed and can be edited by the user.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     original_text = script_text.get("1.0", "end-1c")  # Store the original text of the file
 
     def show_context_menu(event):
@@ -115,6 +218,18 @@ def create_content_file_window():
 
 
 def create_arguments_lines():
+    """
+        Creates the interface for entering script execution arguments.
+
+        This part of the UI allows users to input arguments that will be passed to scripts when they are run, enhancing the
+        flexibility and usability of script execution.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     content_frm.grid(row=3, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
 
     entry_arguments_label = Label(content_frm, text="Entry Arguments:")
@@ -143,6 +258,17 @@ def create_arguments_lines():
 
 
 def create_immediately_run_line():
+    """
+        Sets up the interface for immediate script execution.
+
+        This function adds a button or interface element that allows users to run the currently open script instantly.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
     Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
@@ -152,6 +278,18 @@ def create_immediately_run_line():
 
 
 def create_execute_in_line():
+    """
+        Creates the UI components for executing a script with a timeout.
+
+        This part of the interface allows the user to specify a timeout duration for script execution, providing
+        additional control over how scripts are run.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
 
     Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
@@ -169,6 +307,18 @@ def create_execute_in_line():
 
 
 def create_execute_one_time_with_format():
+    """
+        Sets up the interface elements for scheduling a one-time script execution.
+
+        This function allows users to schedule a script to be run at a specific time, enhancing the scheduler
+        capabilities of the application.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     one_time_frm.grid(row=6, column=0, pady=0, sticky="nsew")
 
     Label(one_time_frm, text="Scheduled Script Execution: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
@@ -183,6 +333,18 @@ def create_execute_one_time_with_format():
 
 
 def create_program_daily_with_format():
+    """
+        Creates UI components for setting up daily scheduled script execution.
+
+        This interface enables users to schedule scripts to run daily at specified times, supporting routine
+        automation tasks.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
     daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
 
     Label(daily_frm, text="Daily Script Scheduling: ").grid(row=0, column=0, sticky="w", padx=5, pady=0)
