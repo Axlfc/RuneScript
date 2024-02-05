@@ -42,7 +42,7 @@ toolbar = Frame(root, pady=2)
 # TOOLBAR BUTTONS
 # new
 new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, height=20)
-photo_new = Image.open("icons/new.png")
+photo_new = Image.open("../icons/new.png")
 photo_new = photo_new.resize((18, 18), Image.ANTIALIAS)
 image_new = ImageTk.PhotoImage(photo_new)
 new_button.config(image=image_new)
@@ -50,7 +50,7 @@ new_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # save
 save_button = Button(name="toolbar_b1", borderwidth=1, command=save, width=20, height=20)
-photo_save = Image.open("icons/save.png")
+photo_save = Image.open("../icons/save.png")
 photo_save = photo_save.resize((18, 18), Image.ANTIALIAS)
 image_save = ImageTk.PhotoImage(photo_save)
 save_button.config(image=image_save)
@@ -58,7 +58,7 @@ save_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # open
 open_button = Button(name="toolbar_b3", borderwidth=1, command=open_file, width=20, height=20)
-photo_open = Image.open("icons/open.png")
+photo_open = Image.open("../icons/open.png")
 photo_open = photo_open.resize((18, 18), Image.ANTIALIAS)
 image_open = ImageTk.PhotoImage(photo_open)
 open_button.config(image=image_open)
@@ -66,7 +66,7 @@ open_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # copy
 copy_button = Button(name="toolbar_b4", borderwidth=1, command=copy, width=20, height=20)
-photo_copy = Image.open("icons/copy.png")
+photo_copy = Image.open("../icons/copy.png")
 photo_copy = photo_copy.resize((18, 18), Image.ANTIALIAS)
 image_copy = ImageTk.PhotoImage(photo_copy)
 copy_button.config(image=image_copy)
@@ -74,7 +74,7 @@ copy_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # cut
 cut_button = Button(name="toolbar_b5", borderwidth=1, command=cut, width=20, height=20)
-photo_cut = Image.open("icons/cut.png")
+photo_cut = Image.open("../icons/cut.png")
 photo_cut = photo_cut.resize((18, 18), Image.ANTIALIAS)
 image_cut = ImageTk.PhotoImage(photo_cut)
 cut_button.config(image=image_cut)
@@ -82,7 +82,7 @@ cut_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # paste
 paste_button = Button(name="toolbar_b6", borderwidth=1, command=paste, width=20, height=20)
-photo_paste = Image.open("icons/paste.png")
+photo_paste = Image.open("../icons/paste.png")
 photo_paste = photo_paste.resize((18, 18), Image.ANTIALIAS)
 image_paste = ImageTk.PhotoImage(photo_paste)
 paste_button.config(image=image_paste)
@@ -90,7 +90,7 @@ paste_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # redo
 redo_button = Button(name="toolbar_b7", borderwidth=1, command=redo, width=20, height=20)
-photo_redo = Image.open("icons/redo.png")
+photo_redo = Image.open("../icons/redo.png")
 photo_redo = photo_redo.resize((18, 18), Image.ANTIALIAS)
 image_redo = ImageTk.PhotoImage(photo_redo)
 redo_button.config(image=image_redo)
@@ -98,7 +98,7 @@ redo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # undo
 undo_button = Button(name="toolbar_b8", borderwidth=1, command=undo, width=20, height=20)
-photo_undo = Image.open("icons/undo.png")
+photo_undo = Image.open("../icons/undo.png")
 photo_undo = photo_undo.resize((18, 18), Image.ANTIALIAS)
 image_undo = ImageTk.PhotoImage(photo_undo)
 undo_button.config(image=image_undo)
@@ -106,7 +106,7 @@ undo_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # find
 find_button = Button(name="toolbar_b9", borderwidth=1, command=find_text, width=20, height=20)
-photo_find = Image.open("icons/find.png")
+photo_find = Image.open("../icons/find.png")
 photo_find = photo_find.resize((18, 18), Image.ANTIALIAS)
 image_find = ImageTk.PhotoImage(photo_find)
 find_button.config(image=image_find)
@@ -137,7 +137,7 @@ size_menu.current(1)
 # FORMATBAR BUTTONS
 # bold
 bold_button = Button(name="formatbar_b1", borderwidth=1, command=bold, width=20, height=20, pady=10, padx=10)
-photo_bold = Image.open("icons/bold.png")
+photo_bold = Image.open("../icons/bold.png")
 photo_bold = photo_bold.resize((18, 18), Image.ANTIALIAS)
 image_bold = ImageTk.PhotoImage(photo_bold)
 bold_button.config(image=image_bold)
@@ -145,7 +145,7 @@ bold_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # italic
 italic_button = Button(name="formatbar_b2", borderwidth=1, command=italic, width=20, height=20)
-photo_italic = Image.open("icons/italic.png")
+photo_italic = Image.open("../icons/italic.png")
 photo_italic = photo_italic.resize((18, 18), Image.ANTIALIAS)
 image_italic = ImageTk.PhotoImage(photo_italic)
 italic_button.config(image=image_italic)
@@ -153,7 +153,7 @@ italic_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # underline
 underline_button = Button(name="formatbar_b3", borderwidth=1, command=underline, width=20, height=20)
-photo_underline = Image.open("icons/underline.png")
+photo_underline = Image.open("../icons/underline.png")
 photo_underline = photo_underline.resize((18, 18), Image.ANTIALIAS)
 image_underline = ImageTk.PhotoImage(photo_underline)
 underline_button.config(image=image_underline)
@@ -161,7 +161,7 @@ underline_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # strike
 strike_button = Button(name="formatbar_b4", borderwidth=1, command=strike, width=20, height=20)
-photo_strike = Image.open("icons/strike.png")
+photo_strike = Image.open("../icons/strike.png")
 photo_strike = photo_strike.resize((18, 18), Image.ANTIALIAS)
 image_strike = ImageTk.PhotoImage(photo_strike)
 strike_button.config(image=image_strike)
@@ -169,7 +169,7 @@ strike_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # font_color
 font_color_button = Button(name="formatbar_b5", borderwidth=1, command=change_color, width=20, height=20)
-photo_font_color = Image.open("icons/font-color.png")
+photo_font_color = Image.open("../icons/font-color.png")
 photo_font_color = photo_font_color.resize((18, 18), Image.ANTIALIAS)
 image_font_color = ImageTk.PhotoImage(photo_font_color)
 font_color_button.config(image=image_font_color)
@@ -177,7 +177,7 @@ font_color_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # highlight
 highlight_button = Button(name="formatbar_b6", borderwidth=1, command=highlight, width=20, height=20)
-photo_highlight = Image.open("icons/highlight.png")
+photo_highlight = Image.open("../icons/highlight.png")
 photo_highlight = photo_highlight.resize((18, 18), Image.ANTIALIAS)
 image_highlight = ImageTk.PhotoImage(photo_highlight)
 highlight_button.config(image=image_highlight)
@@ -185,7 +185,7 @@ highlight_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # align_center
 align_center_button = Button(name="formatbar_b7", borderwidth=1, command=align_center, width=20, height=20)
-photo_align_center = Image.open("icons/align-center.png")
+photo_align_center = Image.open("../icons/align-center.png")
 photo_align_center = photo_align_center.resize((18, 18), Image.ANTIALIAS)
 image_align_center = ImageTk.PhotoImage(photo_align_center)
 align_center_button.config(image=image_align_center)
@@ -193,7 +193,7 @@ align_center_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # align_justify
 align_justify_button = Button(name="formatbar_b8", borderwidth=1, command=align_justify, width=20, height=20)
-photo_align_justify = Image.open("icons/align-justify.png")
+photo_align_justify = Image.open("../icons/align-justify.png")
 photo_align_justify = photo_align_justify.resize((18, 18), Image.ANTIALIAS)
 image_align_justify = ImageTk.PhotoImage(photo_align_justify)
 align_justify_button.config(image=image_align_justify)
@@ -201,7 +201,7 @@ align_justify_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # align_left
 align_left_button = Button(name="formatbar_b9", borderwidth=1, command=align_left, width=20, height=20)
-photo_align_left = Image.open("icons/align-left.png")
+photo_align_left = Image.open("../icons/align-left.png")
 photo_align_left = photo_align_left.resize((18, 18), Image.ANTIALIAS)
 image_align_left = ImageTk.PhotoImage(photo_align_left)
 align_left_button.config(image=image_align_left)
@@ -209,7 +209,7 @@ align_left_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # align_right
 align_right_button = Button(name="formatbar_b10", borderwidth=1, command=align_right, width=20, height=20)
-photo_align_right = Image.open("icons/align-right.png")
+photo_align_right = Image.open("../icons/align-right.png")
 photo_align_right = photo_align_right.resize((18, 18), Image.ANTIALIAS)
 image_align_right = ImageTk.PhotoImage(photo_align_right)
 align_right_button.config(image=image_align_right)
