@@ -65,10 +65,15 @@ To get started with ScriptsEditor, you'll need to set up a Python environment an
 
 After installing the dependencies, you can run ScriptsEditor by executing the main script file.
 
-```bash
-python files.py
-```
+   - On Windows:
+       ```bash
+         .\venv\Scripts\python files.py
+       ```
 
+   - On macOS and Linux:
+     ```bash
+       venv/bin/python files.py
+     ```
 
 ## Contributing
 
