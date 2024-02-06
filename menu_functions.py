@@ -12,7 +12,7 @@ from script_tasks import analyze_csv_data, render_markdown_to_html, generate_htm
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter
 
-from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name
+from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified
 from tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
     open_ai_assistant_window
 
@@ -78,46 +78,54 @@ def set_modified_status(value):
 
 def update_title():
     """
-        Updates the application window's title based on the file's modified status.
-
-        If the current file is modified, an asterisk (*) is added to the beginning of the window title.
-        If the file is not modified, any existing asterisk is removed.
-
-        Parameters:
-        None
-
-        Returns:
-        None
+    Updates the application window's title based on the file's modified status and the current file name.
     """
-    title = root.title()
-    if is_modified and not title.startswith("*"):
-        root.title("*" + title)
-    elif not is_modified and title.startswith("*"):
-        root.title(title[1:])
+    title = os.path.basename(file_name) if file_name else "Untitled"
+    if is_modified:
+        root.title(f"*{title} - Scripts Editor")
+    else:
+        root.title(f"{title} - Scripts Editor")
 
 
 def new(event=None):
     """
         Creates a new file in the editor.
 
-        This function prompts the user to save the current file if it is modified, then clears the text editor
-        and sets up for a new file.
-
-        Parameters:
-        event (optional): An event object, not directly used in this function.
-
-        Returns:
-        None
+        Prompts the user to save the current file if it is modified, then clears the text editor.
     """
     global file_name
+    global is_modified
 
-    ans = messagebox.askquestion(title="Save File", message="Would you like to save this file?")
-    if ans == "yes":
-        save()
+    if is_modified:
+        ans = messagebox.askyesno(title="Save File", message="Do you want to save changes?")
+        if ans:
+            saved = save()
+            if not saved:
+                return  # Cancel new file if not saved
+    clear_editor()
 
-    file_name = ""
+
+def clear_editor():
+    """
+        Clears the text editor and resets the title and modified flag.
+    """
+    global file_name
+    global is_modified
+
     script_text.delete('1.0', 'end')
-    root.title("*New file - Script Editor")
+    file_name = ""
+    is_modified = False
+    update_title()
+
+
+def on_text_change(event=None):
+    """
+        Updates the modified flag when text in the editor changes.
+    """
+    global is_modified
+    if not is_modified:
+        is_modified = True
+        update_title()
 
 
 def open_script():
@@ -155,6 +163,8 @@ def open_file(file_path):
         Returns:
         None
     """
+    global is_modified
+    global file_name
     file_name = file_path
     script_name_label.config(text=f"{os.path.basename(file_path)}")
 
@@ -178,7 +188,9 @@ def open_file(file_path):
     # Update dynamic menu and title based on file extension
     ext = os.path.splitext(file_path)[1]
     update_menu_based_on_extension(ext)
+    is_modified = False
     update_title_with_filename(file_path)
+    update_title()
 
 
 def create_csv_menu(parent_menu):
@@ -384,58 +396,33 @@ def save():
     """
         Saves the current file.
 
-        If the file already has a name, it is saved directly. Otherwise, 'save_as' function is called to ask the user for a file name.
-
-        Parameters:
-        None
-
-        Returns:
-        None
+        If the file already has a name, it is saved directly. Otherwise, 'save_as' function is called.
     """
+    global is_modified
 
-    if file_name:
-        # Save the file
-        with open(file_name, 'w') as file:
-            file.write(script_text.get('1.0', 'end-1c'))
+    if not file_name:
+        return save_as()
 
-        # Update the window title
-        root.title(file_name + " - Script Editor")
-    else:
-        # Ask the user whether to save the file
-        response = messagebox.askyesnocancel("Save File", "Do you want to save changes to your file?")
-
-        if response:  # User chose 'Yes'
-            return save_as()  # Invoke save_as and return its result
-        elif response is None:  # User chose 'Cancel'
-            return False  # Cancel the operation
-
-        return True  # User chose 'No', proceed without saving
-
-    # Remove the asterisk from the title
-    root.title(root.title().replace('*', ''))
+    with open(file_name, 'w') as file:
+        file.write(script_text.get('1.0', 'end-1c'))
+    is_modified = False
+    update_title()
 
 
 def save_as():
     """
         Opens a 'Save As' dialog to save the current file with a specified name.
-
-        Allows the user to choose a file name and path to save the current file content.
-
-        Parameters:
-        None
-
-        Returns:
-        None
     """
     global file_name
+    global is_modified
 
-    new_file_name = filedialog.asksaveasfilename(defaultextension=".txt",
-                                                 filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
-    if new_file_name:
-        file_name = new_file_name
-        save()
-    else:
-        messagebox.showinfo("Info", "File saving canceled.")
+    new_file_name = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=file_types)
+    if not new_file_name:
+        return False
+
+    file_name = new_file_name
+    save()
+    return True
 
 
 def close(event=None):

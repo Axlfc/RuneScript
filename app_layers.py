@@ -2,7 +2,7 @@ from tkinter import Button, Checkbutton
 
 from file_operations import select_directory
 from menu_functions import run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
-    open_script, save_script, save_as_new_script, update_modification_status, set_modified_status
+    open_script, save_script, save_as_new_script, update_modification_status, set_modified_status, on_text_change
 from script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
     run_script_crontab
 from ui_elements import Tooltip
@@ -215,6 +215,7 @@ def create_content_file_window():
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
+    script_text.bind("<<Modified>>", on_text_change)
 
 
 def create_arguments_lines():
