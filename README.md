@@ -28,9 +28,15 @@ To get started with ScriptsEditor, you'll need to set up a Python environment an
    ```
 
 3. Create a virtual environment:
-   ```bash
-   python3 -m venv venv
-   ```
+   - On Windows:
+     ```bash
+     .\venv\Scripts\python -m venv venv
+     ```
+
+   - On macOS and Linux:
+     ```bash
+     venv/bin/python -m venv venv
+     ```
 
 4. Activate the virtual environment:
 
@@ -45,15 +51,15 @@ To get started with ScriptsEditor, you'll need to set up a Python environment an
      ```
 
 5. Install the required packages:
-- On Windows:
-    ```bash
-      .\venv\Scripts\pip install -r requirements.txt
-    ```
+   - On Windows:
+       ```bash
+         .\venv\Scripts\pip install -r requirements.txt
+       ```
 
-  - On macOS and Linux:
-    ```bash
-      venv/bin/pip install -r requirements.txt
-    ```
+   - On macOS and Linux:
+     ```bash
+       venv/bin/pip install -r requirements.txt
+     ```
 
 ### Running ScriptsEditor
 
