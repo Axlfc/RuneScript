@@ -8,7 +8,6 @@ from script_operations import see_stderr, see_stdout, run_script, run_script_wit
 from ui_elements import Tooltip
 from tk_utils import *
 
-
 def undo():
     """
         Reverts the last action taken in the script text editor.
@@ -120,6 +119,7 @@ def create_directory_line():
         Returns:
         None
     """
+    global current_directory
     frm.grid(row=0, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
     # Configure grid weights for the columns
     frm.columnconfigure(0, weight=0)  # First column doesn't expand

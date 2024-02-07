@@ -65,8 +65,10 @@ def select_directory():
     directory = filedialog.askdirectory()
     if directory:
         os.chdir(directory)
+        global current_directory  # Declare current_directory as global if it's not in the same file
+        current_directory = directory  # Update the current_directory variable
         directory_label.config(text=f"{directory}")
-        open_first_text_file(directory)
+        open_first_text_file(directory)  # Assuming this function is defined elsewhere
 
 
 def open_first_text_file(directory):

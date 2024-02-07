@@ -12,7 +12,7 @@ from script_tasks import analyze_csv_data, render_markdown_to_html, generate_htm
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter
 
-from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified
+from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified, last_saved_content
 from tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
     open_ai_assistant_window
 
@@ -23,6 +23,8 @@ save_new_icon = "🆕"
 undo_icon = "⮪"
 redo_icon = "⮬"
 run_icon = "▶"
+
+from git import git_icon
 
 
 file_types = [
@@ -133,8 +135,23 @@ def on_text_change(event=None):
     """
         Updates the modified flag when text in the editor changes.
     """
-    global is_modified
-    is_modified = True
+    global is_modified, last_saved_content
+    current_content = script_text.get("1.0", END).strip()
+
+    # Check if the content is empty and if the file is considered 'new' (i.e., not yet saved or loaded from disk)
+    if current_content != last_saved_content:
+        if not is_modified:  # Update only if there are changes
+            is_modified = True
+            update_title()
+            print("DEBUG: WE REACHED ORIGINAL FILE TEXT CONTENT")  # Debug print statement added
+    elif not current_content and (not file_name or file_name == "Untitled"):
+        if is_modified:  # Only update if the status is currently 'modified'
+            is_modified = False
+            update_title()
+    else:
+        if not is_modified:  # Only update if the status is currently 'not modified'
+            is_modified = True
+            update_title()
 
 
 def open_script():
@@ -181,7 +198,7 @@ def open_file(file_path):
         None
     """
     print("OPENING FILE!!!!")
-    global is_modified, file_name
+    global is_modified, file_name, last_saved_content
 
     file_name = file_path
     script_name_label.config(text=f"Script Name: {os.path.basename(file_path)}")
@@ -199,6 +216,7 @@ def open_file(file_path):
         # If all encodings fail, use 'utf-8' with 'replace' option
         with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
             script_content = file.read()
+            last_saved_content = script_content  # Update the last saved content
 
     script_text.delete("1.0", END)
     script_text.insert("1.0", script_content)
@@ -417,13 +435,16 @@ def save():
 
         If the file already has a name, it is saved directly. Otherwise, 'save_as' function is called.
     """
-    global is_modified, file_name
+    global is_modified, file_name, last_saved_content
+
+    content = script_text.get('1.0', 'end-1c')
 
     if not file_name or file_name == "Untitled":
         return save_as()
 
     with open(file_name, 'w') as file:
-        file.write(script_text.get('1.0', 'end-1c'))
+        file.write(content)
+        last_saved_content = content  # Update the last saved content
     is_modified = False
     update_title()
 

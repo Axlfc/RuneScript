@@ -2,8 +2,8 @@ from tkinter import Label, Tk, StringVar, IntVar, Frame, Menu, Text, Entry
 from tkinter import scrolledtext
 import os
 
-
 new_name = ""
+last_saved_content = None  # This will hold the content of the text editor after the last save or when a new file is opened.
 context_menu = None
 is_modified = False
 markdown_render_enabled = False
