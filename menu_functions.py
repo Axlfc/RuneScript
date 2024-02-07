@@ -80,11 +80,17 @@ def update_title():
     """
     Updates the application window's title based on the file's modified status and the current file name.
     """
+    global is_modified
+
     title = os.path.basename(file_name) if file_name else "Untitled"
+    print("IS MODIFIED¿??\t", is_modified)
+
     if is_modified:
         root.title(f"*{title} - Scripts Editor")
     else:
         root.title(f"{title} - Scripts Editor")
+
+    script_name_label.config(text=f"Script Name: {os.path.basename(title)}")
 
 
 def new(event=None):
@@ -97,12 +103,17 @@ def new(event=None):
 
     if is_modified:
         response = messagebox.askyesnocancel("Save File", f"Do you want to save changes in {file_name}?")
+        print("response is:\t", response)
         if response:  # User chose 'Yes'
             save()
             clear_editor()
         elif response is None:  # User chose 'Cancel'
             return  # Cancel new file operation
-        clear_editor()  # Clears the editor after handling the save dialog
+        elif not response:
+            clear_editor()
+
+    file_name = ""
+    clear_editor()  # Clears the editor after handling the save dialog
 
 
 def clear_editor():
@@ -123,9 +134,7 @@ def on_text_change(event=None):
         Updates the modified flag when text in the editor changes.
     """
     global is_modified
-    if not is_modified:
-        is_modified = True
-        update_title()
+    is_modified = True
 
 
 def open_script():
@@ -141,13 +150,21 @@ def open_script():
         Returns:
         None
     """
+    global is_modified, file_name
+
+    if is_modified:
+        response = messagebox.askyesnocancel("Save Changes",
+                                             "You have unsaved changes. Do you want to save them before opening another file?")
+        if response:  # User wants to save changes
+            if not save():
+                return  # If save was not successful, cancel the file open operation
+        elif response is None:  # User cancelled the prompt
+            return  # Cancel the file open operation
+
+    # If there are no unsaved changes, or the user has dealt with them, show the open file dialog
     file_path = filedialog.askopenfilename(filetypes=file_types)
     if file_path:
-        global file_extension
-        file_extension = os.path.splitext(file_path)[1]
-        print("Opening file with extension:", file_extension)
         open_file(file_path)
-    set_modified_status(False)  # Reset the modification status
 
 
 def open_file(file_path):
@@ -163,10 +180,11 @@ def open_file(file_path):
         Returns:
         None
     """
-    global is_modified
-    global file_name
+    print("OPENING FILE!!!!")
+    global is_modified, file_name
+
     file_name = file_path
-    script_name_label.config(text=f"{os.path.basename(file_path)}")
+    script_name_label.config(text=f"Script Name: {os.path.basename(file_path)}")
 
     # Try opening the file with different encodings
     encodings = ['utf-8', 'cp1252', 'ISO-8859-1', 'utf-16']
@@ -176,7 +194,7 @@ def open_file(file_path):
                 script_content = file.read()
                 break
         except UnicodeDecodeError:
-            pass
+            continue
     else:
         # If all encodings fail, use 'utf-8' with 'replace' option
         with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
@@ -188,8 +206,8 @@ def open_file(file_path):
     # Update dynamic menu and title based on file extension
     ext = os.path.splitext(file_path)[1]
     update_menu_based_on_extension(ext)
+    # Reset the modified flag after loading the file
     is_modified = False
-    update_title_with_filename(file_path)
     update_title()
 
 
@@ -393,14 +411,15 @@ def update_modification_status(event):
 
 
 def save():
+    print("ENTERING SAVE")
     """
         Saves the current file.
 
         If the file already has a name, it is saved directly. Otherwise, 'save_as' function is called.
     """
-    global is_modified
+    global is_modified, file_name
 
-    if not file_name:
+    if not file_name or file_name == "Untitled":
         return save_as()
 
     with open(file_name, 'w') as file:
@@ -410,18 +429,21 @@ def save():
 
 
 def save_as():
+    print("ENTERING SAVE AS")
     """
         Opens a 'Save As' dialog to save the current file with a specified name.
     """
     global file_name
     global is_modified
 
-    new_file_name = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=file_types)
+    new_file_name = filedialog.asksaveasfilename(defaultextension=".*", filetypes=file_types)
     if not new_file_name:
         return False
 
     file_name = new_file_name
     save()
+    update_script_name_label(new_file_name)
+    update_title()
     return True
 
 
@@ -437,17 +459,22 @@ def save_file(file_name, content):
 
 
 def save_script():
+    print("SAVE_SCRIPT TRIGGERED!!")
+    global file_name
     script_name = script_name_label.cget("text").split(": ")[-1]
-    if script_name:
+    if not file_name or file_name == "Untitled":
+        print("FILENAME IS NEW, SAVING NEW SCRIPT!!")
+        save_as_new_script()
+    else:
         script_content = script_text.get("1.0", "end")
         save_file(script_name, script_content)
         set_modified_status(False)  # Reset the modification status
-    else:
-        save_as_new_script()
 
 
 def save_as_new_script():
-    file_path = filedialog.asksaveasfilename(filetypes=file_types, defaultextension=".txt")
+    print("SAVE AS NEW SCRIPT TRIGGERED!!")
+    global is_modified
+    file_path = filedialog.asksaveasfilename(filetypes=file_types, defaultextension=".*")
 
     # Si el usuario no selecciona un archivo, cancela la operación
     if not file_path:
@@ -465,6 +492,7 @@ def save_as_new_script():
         content = script_text.get("1.0", "end-1c")
         file.write(content)
     update_script_name_label(file_path)
+    update_title()
 
 
 def update_script_name_label(file_path):
