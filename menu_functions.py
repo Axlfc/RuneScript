@@ -90,19 +90,19 @@ def update_title():
 def new(event=None):
     """
         Creates a new file in the editor.
-
         Prompts the user to save the current file if it is modified, then clears the text editor.
     """
     global file_name
     global is_modified
 
     if is_modified:
-        ans = messagebox.askyesno(title="Save File", message="Do you want to save changes?")
-        if ans:
-            saved = save()
-            if not saved:
-                return  # Cancel new file if not saved
-    clear_editor()
+        response = messagebox.askyesnocancel("Save File", f"Do you want to save changes in {file_name}?")
+        if response:  # User chose 'Yes'
+            save()
+            clear_editor()
+        elif response is None:  # User chose 'Cancel'
+            return  # Cancel new file operation
+        clear_editor()  # Clears the editor after handling the save dialog
 
 
 def clear_editor():
