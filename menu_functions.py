@@ -24,9 +24,6 @@ undo_icon = "⮪"
 redo_icon = "⮬"
 run_icon = "▶"
 
-from git import git_icon
-
-
 file_types = [
         ("Python Scripts", "*.py"),
         ("Shell Scripts", "*.sh"),
@@ -73,7 +70,7 @@ def set_modified_status(value):
         Returns:
         None
     """
-    global is_modified
+    global is_modified  # Add file_name to the global declaration
     is_modified = value
     update_title()
 
@@ -95,15 +92,14 @@ def update_title():
     script_name_label.config(text=f"Script Name: {os.path.basename(title)}")
 
 
-def new(event=None):
+def new():
     """
         Creates a new file in the editor.
         Prompts the user to save the current file if it is modified, then clears the text editor.
     """
-    global file_name, is_modified
-
+    global is_modified
     if is_modified:
-        response = messagebox.askyesnocancel("Save File", f"Do you want to save changes in {file_name}?")
+        response = messagebox.askyesnocancel("Save File", "Do you want to save changes?")
         print("response is:\t", response)
         if response:  # User chose 'Yes'
             save()
@@ -134,7 +130,7 @@ def on_text_change(event=None):
     """
         Updates the modified flag when text in the editor changes.
     """
-    global is_modified, last_saved_content
+    global is_modified
     current_content = script_text.get("1.0", END).strip()
 
     # Check if the content is empty and if the file is considered 'new' (i.e., not yet saved or loaded from disk)
@@ -166,8 +162,7 @@ def open_script():
         Returns:
         None
     """
-    global is_modified, file_name
-
+    global is_modified
     if is_modified:
         response = messagebox.askyesnocancel("Save Changes",
                                              "You have unsaved changes. Do you want to save them before opening another file?")
@@ -437,7 +432,7 @@ def save():
         return save_as()  # If no filename, use 'Save As' to get a new filename
 
     try:
-        with open(file_name, 'w') as file:
+        with open(file_name, 'w', encoding='utf-8') as file:
             file.write(script_text.get('1.0', 'end-1c'))
             is_modified = False
             update_title()
@@ -473,7 +468,7 @@ def close(event=None):
 
 
 def save_file(file_name, content):
-    with open(file_name, "w") as file:
+    with open(file_name, "w", encoding='utf-8') as file:
         file.write(content)
     messagebox.showinfo("Save", "Script saved successfully!")
 
@@ -493,7 +488,7 @@ def save_script():
         print("Saving existing script...")
         content = script_text.get("1.0", "end-1c")  # Get text from editor
         try:
-            with open(file_name, 'w') as file:
+            with open(file_name, 'w', encoding='utf-8') as file:
                 file.write(content)
             is_modified = False  # Reset modification status
             update_title()  # Update the window title
@@ -706,7 +701,6 @@ def create_menu():
     jobs_menu.add_command(label="New 'crontab'", command=open_new_crontab_task_window)
     jobs_menu.add_separator()
     get_scheduled_tasks(jobs_menu)
-
 
     help_menu = Menu(menu)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)

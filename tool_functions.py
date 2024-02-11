@@ -8,6 +8,7 @@ import webview
 import markdown
 from tkhtmlview import HTMLLabel
 
+from edit_operations import cut, copy, paste, duplicate
 from script_tasks import show_selected_model
 from tk_utils import text, script_text, root
 from utility_functions import make_tag
@@ -296,7 +297,6 @@ def add_current_selected_text(include_selected_text):
     include_selected_text_in_command = include_selected_text
 
 
-
 def open_ai_assistant_window():
     """
         Opens a window for interacting with an AI assistant.
@@ -496,7 +496,7 @@ def open_ai_assistant_window():
 
             try:
                 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                           bufsize=1)
+                                           encoding='utf-8', bufsize=1)
                 threading.Thread(target=stream_output, args=(process,)).start()
             except Exception as e:
                 output_text.insert(END, f"Error: {e}\n")
@@ -505,6 +505,31 @@ def open_ai_assistant_window():
                 update_html_content()
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
+
+    def show_context_menu(event):
+        # Create the context menu
+        context_menu = Menu(root, tearoff=0)
+        context_menu.add_command(label="Cut", command=cut)
+        context_menu.add_command(label="Copy", command=copy)
+        context_menu.add_command(label="Paste", command=paste)
+        context_menu.add_command(label="Duplicate", command=duplicate)
+
+        # Post the context menu at the cursor location
+        context_menu.post(event.x_root, event.y_root)
+
+        # Give focus to the context menu
+        context_menu.focus_set()
+
+        def destroy_menu():
+            context_menu.unpost()
+
+        # Bind the <Leave> event to destroy the context menu when the mouse cursor leaves it
+        context_menu.bind("<Leave>", lambda e: destroy_menu())
+
+        # Bind the <FocusOut> event to destroy the context menu when it loses focus
+        context_menu.bind("<FocusOut>", lambda e: destroy_menu())
+
+    output_text.bind("<Button-3>", show_context_menu)
 
     output_text.bind("<<TextModified>>", on_md_content_change)
     output_text.see(END)

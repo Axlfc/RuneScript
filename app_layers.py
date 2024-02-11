@@ -55,7 +55,7 @@ def cut():
         Returns:
         None
     """
-    set_modified_status(True)
+    #set_modified_status(True)
     script_text.event_generate("<<Cut>>")
 
 
@@ -71,7 +71,7 @@ def copy():
         Returns:
         None
     """
-    set_modified_status(True)
+    # set_modified_status(True)
     script_text.event_generate("<<Copy>>")
 
 
@@ -87,7 +87,7 @@ def paste():
         Returns:
         None
     """
-    set_modified_status(True)
+    # set_modified_status(True)
     script_text.event_generate("<<Paste>>")
 
 
@@ -103,7 +103,7 @@ def duplicate():
         Returns:
         None
         """
-    set_modified_status(True)
+    # set_modified_status(True)
     script_text.event_generate("<<Duplicate>>")
 
 

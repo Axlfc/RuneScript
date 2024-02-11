@@ -4,7 +4,7 @@ import tempfile
 from tkinter import END, Toplevel, Listbox, Button, messagebox, Label, Entry
 
 from tk_utils import root
-from winTaskScheduler import list_tasks, delete_task, at_function, crontab_function
+from lib.winTaskScheduler import list_tasks, delete_task, at_function, crontab_function
 
 
 def open_at_window():

@@ -7,41 +7,29 @@ from tk_utils import root, text, script_text
 def cut(event=None):
     """
         Cuts the selected text from the editor and places it into the clipboard.
-
-        This function clears any previous text on the clipboard, appends the currently selected text from the editor
-        to the clipboard, and then deletes the selected text from the editor.
-
-        Parameters:
-        event (optional): An event object representing the event that triggered this function.
-
-        Returns:
-        None
     """
-    # first clear the previous text on the clipboard.
-    root.clipboard_clear()
-    text.clipboard_append(string=text.selection_get())
-    # index of the first and yhe last letter of our selection.
-    text.delete(index1=SEL_FIRST, index2=SEL_LAST)
+    try:
+        # Check if there is selected text
+        selected_text = text.get(SEL_FIRST, SEL_LAST)
+        root.clipboard_clear()
+        root.clipboard_append(string=selected_text)
+        text.delete(SEL_FIRST, SEL_LAST)
+    except Exception as e:
+        # No text is selected
+        pass
 
 
 def copy(event=None):
     """
         Copies the selected text from the editor to the clipboard.
-
-        This function clears any previous text on the clipboard and then appends the currently selected text from the
-        editor to the clipboard without removing it from the editor.
-
-        Parameters:
-        event (optional): An event object representing the event that triggered this function.
-
-        Returns:
-        None
     """
-    # first clear the previous text on the clipboard.
-    print(text.index(SEL_FIRST))
-    print(text.index(SEL_LAST))
-    root.clipboard_clear()
-    text.clipboard_append(string=text.selection_get())
+    try:
+        selected_text = text.get(SEL_FIRST, SEL_LAST)
+        root.clipboard_clear()
+        root.clipboard_append(string=selected_text)
+    except Exception as e:
+        # No text is selected
+        pass
 
 
 def paste(event=None):
@@ -94,17 +82,13 @@ def delete_all():
 def duplicate(event=None):
     """
         Duplicates the selected text in the editor.
-
-        This function gets the selected text in the editor and inserts a copy of this text at the current cursor position.
-
-        Parameters:
-        event (optional): An event object representing the event that triggered this function.
-
-        Returns:
-        None
     """
-    selected_text = text.get("sel.first", "sel.last")
-    text.insert("insert", selected_text)
+    try:
+        selected_text = text.get(SEL_FIRST, SEL_LAST)
+        text.insert(INSERT, selected_text)
+    except Exception as e:
+        # No text is selected
+        pass
 
 
 def undo():
