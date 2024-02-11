@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import subprocess
 from time import sleep
@@ -254,3 +255,20 @@ def see_stderr():
     stderr_text.tag_configure("red", foreground="red")
     stderr_text.tag_add("red", "1.0", "end")
 
+
+def get_operative_system():
+    """
+        Populates the 'Jobs' submenu with options based on the operating system.
+
+        For Windows, it adds an option to view scheduled tasks. For other systems, it adds options for 'at' and 'crontab' jobs.
+
+        Parameters:
+        submenu (Menu): The submenu to which the job options will be added.
+
+        Returns:
+        None
+    """
+    if platform.system() == "Windows":
+        return "Windows"
+    else:
+        return platform.system()

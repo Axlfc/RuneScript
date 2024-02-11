@@ -1,7 +1,9 @@
+import multiprocessing
 import os
 import subprocess
 import threading
-from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar
+from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, messagebox
+import webview
 
 import markdown
 from tkhtmlview import HTMLLabel
@@ -284,6 +286,17 @@ def open_terminal_window():
     entry.bind("<Down>", navigate_history)
 
 
+def add_current_main_opened_script(include_main_script):
+    global include_main_script_in_command
+    include_main_script_in_command = include_main_script
+
+
+def add_current_selected_text(include_selected_text):
+    global include_selected_text_in_command
+    include_selected_text_in_command = include_selected_text
+
+
+
 def open_ai_assistant_window():
     """
         Opens a window for interacting with an AI assistant.
@@ -301,7 +314,6 @@ def open_ai_assistant_window():
     original_md_content = ""
     rendered_html_content = ""
     markdown_render_enabled = False
-    render_markdown_var = IntVar()
 
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
@@ -322,6 +334,24 @@ def open_ai_assistant_window():
         offvalue=0,
         variable=render_markdown_var,
         command=lambda: toggle_render_markdown(render_markdown_var.get())
+    )
+
+    add_current_main_opened_script_var = IntVar()
+    settings_menu.add_checkbutton(
+        label="Add main script to AI context",
+        onvalue=1,
+        offvalue=0,
+        variable=add_current_main_opened_script_var,
+        command=lambda: add_current_main_opened_script(add_current_main_opened_script_var.get())
+    )
+
+    add_current_selected_text_var = IntVar()
+    settings_menu.add_checkbutton(
+        label="Add current selected text from main opened script",
+        onvalue=1,
+        offvalue=0,
+        variable=add_current_selected_text_var,
+        command=lambda: add_current_selected_text(add_current_selected_text_var.get())
     )
 
     # Create the output text widget
@@ -428,22 +458,37 @@ def open_ai_assistant_window():
         entry.config(state='normal')  # Re-enable the entry widget
         status_label_var.set("READY")  # Update label to show AI is processing
 
-    def execute_ai_assistant_command():
-        global process, original_md_content  # Define process as a global variable
+    def execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var):
+        global process, original_md_content
 
         ai_command = entry.get()
         if ai_command.strip():
+            script_content = ""
+            if add_current_selected_text_var.get():
+                # Use only selected text from the main script window
+                try:
+                    script_content = "```\n" + script_text.get(script_text.tag_ranges("sel")[0],
+                                                               script_text.tag_ranges("sel")[1]) + "```\n\n"
+                except:
+                    messagebox.showerror("Error", "No text selected in main script window.")
+                    return
+            elif add_current_main_opened_script_var.get():
+                # Use full content of the main script window
+                script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
+
+            combined_command = f"{script_content}{ai_command}"
+
             # Insert the user command with a newline and a visual separator
-            original_md_content += f"\n{ai_command}\n"
+            original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"  # A line of dashes as a separator
-            output_text.insert("end", f"You: {ai_command}\n")
+            output_text.insert("end", f"You: {combined_command}\n")
             output_text.insert("end", "-" * 80 + "\n")
             entry.delete(0, END)
             entry.config(state='disabled')  # Disable entry while processing
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
             ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
-            command = ['python', ai_script_path, ai_command]
+            command = ['python', ai_script_path, combined_command]
 
             # Terminate existing subprocess if it exists
             if 'process' in globals() and process.poll() is None:
@@ -464,7 +509,11 @@ def open_ai_assistant_window():
     output_text.bind("<<TextModified>>", on_md_content_change)
     output_text.see(END)
 
-    entry.bind("<Return>", lambda event: execute_ai_assistant_command())
+    entry.bind("<Return>", lambda event: execute_ai_assistant_command(
+        add_current_main_opened_script_var,
+        add_current_selected_text_var)
+               )
+
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
 
@@ -476,3 +525,14 @@ def open_ai_assistant_window():
     print("open_ai_assistant_window: Window opened")  # Debug print
     ai_assistant_window.mainloop()
     print("open_ai_assistant_window: Mainloop ended")  # Debug print
+
+
+# Define _create_webview_process at the top level
+def _create_webview_process(title, url):
+    webview.create_window(title, url, width=800, height=600)
+    webview.start()
+
+
+def open_webview(title, url):
+    webview_process = multiprocessing.Process(target=_create_webview_process, args=(title, url,))
+    webview_process.start()

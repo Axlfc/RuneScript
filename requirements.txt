@@ -2,3 +2,5 @@ crontab
 pillow
 markdown
 tkhtmlview
+pywebview
+

@@ -4,9 +4,10 @@ from file_operations import select_directory
 from menu_functions import run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
     open_script, save_script, save_as_new_script, update_modification_status, set_modified_status, on_text_change
 from script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
-    run_script_crontab
+    run_script_crontab, get_operative_system
 from ui_elements import Tooltip
 from tk_utils import *
+
 
 def undo():
     """
@@ -270,12 +271,20 @@ def create_immediately_run_line():
         Returns:
         None
     """
-    run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+    if get_operative_system() != "Windows":
+        run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
-    Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
-    run_button = Button(run_frm, text=run_icon, command=run_script)
-    run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
-    Tooltip(run_button, "Run Script")
+        Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        run_button = Button(run_frm, text=run_icon, command=run_script)
+        run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
+        Tooltip(run_button, "Run Script")
+    else:
+        run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+
+        Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        run_button = Button(run_frm, text=run_icon, command=run_script)
+        run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
+        Tooltip(run_button, "Run Script")
 
 
 def create_execute_in_line():
@@ -291,20 +300,36 @@ def create_execute_in_line():
         Returns:
         None
     """
-    line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
+    if get_operative_system() != "Windows":
+        line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
 
-    Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
-    seconds_entry = Entry(line_frm, width=15)
-    seconds_entry.grid(column=1, row=0, padx=(10, 0))
-    Tooltip(seconds_entry, "number of seconds")
+        seconds_entry = Entry(line_frm, width=15)
+        seconds_entry.grid(column=1, row=0, padx=(10, 0))
+        Tooltip(seconds_entry, "number of seconds")
 
-    run_button = Button(line_frm,
-                        text=run_icon,
-                        command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
-                        )
-    run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-    Tooltip(run_button, "Set the duration in seconds for the script to execute.")
+        run_button = Button(line_frm,
+                            text=run_icon,
+                            command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
+                            )
+        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+        Tooltip(run_button, "Set the duration in seconds for the script to execute.")
+    else:
+        line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
+
+        Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+
+        seconds_entry = Entry(line_frm, width=15)
+        seconds_entry.grid(column=1, row=0, padx=(10, 0))
+        Tooltip(seconds_entry, "number of seconds")
+
+        run_button = Button(line_frm,
+                            text=run_icon,
+                            command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
+                            )
+        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+        Tooltip(run_button, "Set the duration in seconds for the script to execute.")
 
 
 def create_execute_one_time_with_format():
@@ -320,17 +345,18 @@ def create_execute_one_time_with_format():
         Returns:
         None
     """
-    one_time_frm.grid(row=6, column=0, pady=0, sticky="nsew")
+    if get_operative_system() != "Windows":
+        one_time_frm.grid(row=6, column=0, pady=0, sticky="nsew")
 
-    Label(one_time_frm, text="Scheduled Script Execution: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(one_time_frm, text="Scheduled Script Execution: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
-    date_entry = Entry(one_time_frm, width=15)
-    date_entry.grid(column=1, row=0, padx=(10, 0))
-    Tooltip(date_entry, "HH:MM AM/PM")
+        date_entry = Entry(one_time_frm, width=15)
+        date_entry.grid(column=1, row=0, padx=(10, 0))
+        Tooltip(date_entry, "HH:MM AM/PM")
 
-    run_button = Button(one_time_frm, text=run_icon, command=lambda: run_script_once(date_entry.get()))
-    run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-    Tooltip(run_button, "Use the 'at' command to run the script at a specific time.")
+        run_button = Button(one_time_frm, text=run_icon, command=lambda: run_script_once(date_entry.get()))
+        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+        Tooltip(run_button, "Use the 'at' command to run the script at a specific time.")
 
 
 def create_program_daily_with_format():
@@ -346,33 +372,34 @@ def create_program_daily_with_format():
         Returns:
         None
     """
-    daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
+    if get_operative_system() != "Windows":
+        daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
 
-    Label(daily_frm, text="Daily Script Scheduling: ").grid(row=0, column=0, sticky="w", padx=5, pady=0)
+        Label(daily_frm, text="Daily Script Scheduling: ").grid(row=0, column=0, sticky="w", padx=5, pady=0)
 
-    minute_entry = Entry(daily_frm, width=2)
-    minute_entry.grid(column=1, row=0, padx=(10, 0))
-    Tooltip(minute_entry, "every minute")
+        minute_entry = Entry(daily_frm, width=2)
+        minute_entry.grid(column=1, row=0, padx=(10, 0))
+        Tooltip(minute_entry, "every minute")
 
-    hour_entry = Entry(daily_frm, width=2)
-    hour_entry.grid(column=2, row=0, padx=(10, 0))
-    Tooltip(hour_entry, "every hour")
+        hour_entry = Entry(daily_frm, width=2)
+        hour_entry.grid(column=2, row=0, padx=(10, 0))
+        Tooltip(hour_entry, "every hour")
 
-    day_entry = Entry(daily_frm, width=2)
-    day_entry.grid(column=3, row=0, padx=(10, 0))
-    Tooltip(day_entry, "every day")
+        day_entry = Entry(daily_frm, width=2)
+        day_entry.grid(column=3, row=0, padx=(10, 0))
+        Tooltip(day_entry, "every day")
 
-    month_entry = Entry(daily_frm, width=2)
-    month_entry.grid(column=4, row=0, padx=(10, 0))
-    Tooltip(month_entry, "every month")
+        month_entry = Entry(daily_frm, width=2)
+        month_entry.grid(column=4, row=0, padx=(10, 0))
+        Tooltip(month_entry, "every month")
 
-    day_of_the_week_entry = Entry(daily_frm, width=2)
-    day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
-    Tooltip(day_of_the_week_entry, "every day of the week")
+        day_of_the_week_entry = Entry(daily_frm, width=2)
+        day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
+        Tooltip(day_of_the_week_entry, "every day of the week")
 
-    run_button = Button(
-        daily_frm, text=run_icon,
-        command=lambda: run_script_crontab(minute_entry.get(), hour_entry.get(), day_entry.get(), month_entry.get(), day_of_the_week_entry.get())
-    )
-    run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
-    Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
+        run_button = Button(
+            daily_frm, text=run_icon,
+            command=lambda: run_script_crontab(minute_entry.get(), hour_entry.get(), day_entry.get(), month_entry.get(), day_of_the_week_entry.get())
+        )
+        run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
+        Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")

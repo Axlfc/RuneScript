@@ -1,5 +1,4 @@
 import os
-import platform
 from tkinter import Menu, Button, messagebox, filedialog, END
 
 from PIL import Image, ImageTk
@@ -8,13 +7,14 @@ from edit_operations import copy, cut, paste, redo, undo, duplicate
 
 from scheduled_tasks import open_cron_window, open_at_window, open_scheduled_tasks_window, open_new_at_task_window, \
     open_new_crontab_task_window
+from script_operations import get_operative_system
 from script_tasks import analyze_csv_data, render_markdown_to_html, generate_html_from_markdown, \
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter
 
 from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified, last_saved_content
 from tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
-    open_ai_assistant_window
+    open_ai_assistant_window, open_webview
 
 house_icon = "🏠"
 open_icon = "📂"
@@ -100,8 +100,7 @@ def new(event=None):
         Creates a new file in the editor.
         Prompts the user to save the current file if it is modified, then clears the text editor.
     """
-    global file_name
-    global is_modified
+    global file_name, is_modified
 
     if is_modified:
         response = messagebox.askyesnocancel("Save File", f"Do you want to save changes in {file_name}?")
@@ -429,24 +428,24 @@ def update_modification_status(event):
 
 
 def save():
-    print("ENTERING SAVE")
     """
-        Saves the current file.
-
-        If the file already has a name, it is saved directly. Otherwise, 'save_as' function is called.
+    Saves the current file. If the file doesn't have a name, calls 'save_as' function.
     """
-    global is_modified, file_name, last_saved_content
-
-    content = script_text.get('1.0', 'end-1c')
+    global is_modified, file_name
 
     if not file_name or file_name == "Untitled":
-        return save_as()
+        return save_as()  # If no filename, use 'Save As' to get a new filename
 
-    with open(file_name, 'w') as file:
-        file.write(content)
-        last_saved_content = content  # Update the last saved content
-    is_modified = False
-    update_title()
+    try:
+        with open(file_name, 'w') as file:
+            file.write(script_text.get('1.0', 'end-1c'))
+            is_modified = False
+            update_title()
+            messagebox.showinfo("Save", "File saved successfully!")
+            return True
+    except Exception as e:
+        messagebox.showerror("Save Error", f"An error occurred: {e}")
+        return False
 
 
 def save_as():
@@ -480,40 +479,41 @@ def save_file(file_name, content):
 
 
 def save_script():
-    print("SAVE_SCRIPT TRIGGERED!!")
-    global file_name
-    script_name = script_name_label.cget("text").split(": ")[-1]
+    """
+    Triggered when 'Save' is clicked. Saves the current file or prompts to save as new if it's a new file.
+    """
+    global file_name, is_modified
+
     if not file_name or file_name == "Untitled":
-        print("FILENAME IS NEW, SAVING NEW SCRIPT!!")
+        # If the file is new (i.e., no file_name or it's 'Untitled'), use 'save_as_new_script'
+        print("Saving new script...")
         save_as_new_script()
     else:
-        script_content = script_text.get("1.0", "end")
-        save_file(script_name, script_content)
-        set_modified_status(False)  # Reset the modification status
+        # If the file exists, just save it
+        print("Saving existing script...")
+        content = script_text.get("1.0", "end-1c")  # Get text from editor
+        try:
+            with open(file_name, 'w') as file:
+                file.write(content)
+            is_modified = False  # Reset modification status
+            update_title()  # Update the window title
+            messagebox.showinfo("Save", "File saved successfully!")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"An error occurred while saving: {e}")
 
 
 def save_as_new_script():
-    print("SAVE AS NEW SCRIPT TRIGGERED!!")
-    global is_modified
-    file_path = filedialog.asksaveasfilename(filetypes=file_types, defaultextension=".*")
+    """
+    Saves the current content as a new file. Opens a file dialog for the user to choose where to save.
+    """
+    global file_name, is_modified
 
-    # Si el usuario no selecciona un archivo, cancela la operación
-    if not file_path:
-        return
+    new_file_name = filedialog.asksaveasfilename(defaultextension=".*", filetypes=file_types)
+    if not new_file_name:
+        return  # User cancelled the 'Save As' operation
 
-    # Verifica si el nombre del archivo tiene un punto (indicando una extensión)
-    if '.' not in os.path.basename(file_path):
-        response = messagebox.askquestion("Confirmar Extensión",
-                                          "No has especificado una extensión. ¿Quieres dejar el archivo sin extensión?",
-                                          icon='warning')
-        if response == 'no':
-            return  # El usuario decide no guardar el archivo
-
-    with open(file_path, "w") as file:
-        content = script_text.get("1.0", "end-1c")
-        file.write(content)
-    update_script_name_label(file_path)
-    update_title()
+    file_name = new_file_name  # Update file name
+    save_script()  # Call save_script to save the file
 
 
 def update_script_name_label(file_path):
@@ -697,6 +697,7 @@ def create_menu():
     tool_menu.add_separator()
     tool_menu.add_command(label="Terminal", command=open_terminal_window)
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window)
+    tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
 
     # Jobs Menu
     jobs_menu = Menu(menu)
@@ -724,7 +725,7 @@ def get_scheduled_tasks(submenu):
         Returns:
         None
     """
-    if platform.system() == "Windows":
+    if get_operative_system() == "Windows":
         submenu.add_command(label="Scheduled Tasks", command=open_scheduled_tasks_window)
     else:
         submenu.add_command(label="at", command=open_at_window)
