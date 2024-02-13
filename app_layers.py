@@ -5,6 +5,7 @@ from menu_functions import run_icon, redo_icon, undo_icon, save_new_icon, save_i
     open_script, save_script, save_as_new_script, update_modification_status, set_modified_status, on_text_change
 from script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
     run_script_crontab, get_operative_system
+from src.localization import localization_data
 from ui_elements import Tooltip
 from tk_utils import *
 
@@ -128,10 +129,10 @@ def create_directory_line():
 
     directory_button = Button(frm, text=house_icon, command=select_directory)
     directory_button.grid(column=0, row=0, sticky="w")
-    Tooltip(directory_button, "Choose Working Directory")
+    Tooltip(directory_button, localization_data['choose_working_directory'])
 
     directory_label.grid(column=1, row=0, padx=5, sticky="ew")  # Set sticky to "ew" to fill horizontally
-    Tooltip(directory_label, "Current directory")
+    Tooltip(directory_label, localization_data['current_directory'])
 
 
 def create_open_script_line():
@@ -151,26 +152,26 @@ def create_open_script_line():
 
     open_button = Button(script_frm, text=open_icon, command=open_script)
     open_button.grid(column=0, row=0)
-    Tooltip(open_button, "Open Script")
+    Tooltip(open_button, localization_data['open_script'])
 
     script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)  # Expand to the right
-    Tooltip(script_name_label, "File Name")
+    Tooltip(script_name_label, localization_data['file_name'])
 
     save_button = Button(script_frm, text=save_icon, command=save_script)
     save_button.grid(column=3, row=0, sticky="e")  # Align to the right
-    Tooltip(save_button, "Save Script")
+    Tooltip(save_button, localization_data['save_script'])
 
     save_new_button = Button(script_frm, text=save_new_icon, command=save_as_new_script)
     save_new_button.grid(column=4, row=0, sticky="e")  # Align to the right
-    Tooltip(save_new_button, "Save as New Script")
+    Tooltip(save_new_button, localization_data['save_as_new_script'])
 
     undo_button = Button(script_frm, text=undo_icon, command=undo)
     undo_button.grid(column=5, row=0, sticky="e")  # Align to the right
-    Tooltip(undo_button, "Undo")
+    Tooltip(undo_button, localization_data['undo'])
 
     redo_button = Button(script_frm, text=redo_icon, command=redo)
     redo_button.grid(column=6, row=0, sticky="e")  # Align to the right
-    Tooltip(redo_button, "Redo")
+    Tooltip(redo_button, localization_data['redo'])
 
 
 def create_content_file_window():
@@ -191,10 +192,10 @@ def create_content_file_window():
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label="Cut", command=cut)
-        context_menu.add_command(label="Copy", command=copy)
-        context_menu.add_command(label="Paste", command=paste)
-        context_menu.add_command(label="Duplicate", command=duplicate)
+        context_menu.add_command(label=localization_data['cut'], command=cut)
+        context_menu.add_command(label=localization_data['copy'], command=copy)
+        context_menu.add_command(label=localization_data['paste'], command=paste)
+        context_menu.add_command(label=localization_data['duplicate'], command=duplicate)
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -234,29 +235,29 @@ def create_arguments_lines():
     """
     content_frm.grid(row=3, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
 
-    entry_arguments_label = Label(content_frm, text="Entry Arguments:")
+    entry_arguments_label = Label(content_frm, text=localization_data['entry_arguments'])
     entry_arguments_label.grid(row=0, column=0, padx=5, pady=0, sticky="w")
 
     entry_placeholder = ""  # Enter arguments...
     entry_arguments_entry.insert(0, entry_placeholder)
     entry_arguments_entry.grid(row=0, column=1, sticky="e")
-    Tooltip(entry_arguments_entry, "Enter arguments")
+    Tooltip(entry_arguments_entry, localization_data['enter_arguments'])
 
-    generate_stdin_check = Checkbutton(content_frm, text="stdout", variable=generate_stdin)
+    generate_stdin_check = Checkbutton(content_frm, text=localization_data['stdout'], variable=generate_stdin)
     generate_stdin_check.grid(row=0, column=2, sticky="e")  # sticky to "e" for right alignment
-    Tooltip(generate_stdin_check, "Generate stdout")
+    Tooltip(generate_stdin_check, localization_data['generate_stdout'])
 
-    see_stderr_check = Checkbutton(content_frm, text="stderr", variable=generate_stdin_err)
+    see_stderr_check = Checkbutton(content_frm, text=localization_data['stderr'], variable=generate_stdin_err)
     see_stderr_check.grid(row=0, column=3, padx=10, sticky="e")  # Set sticky to "e" for right alignment
-    Tooltip(see_stderr_check, "Generate stderr")
+    Tooltip(see_stderr_check, localization_data['generate_stderr'])
 
-    stdout_button = Button(content_frm, text="👁 out", command=see_stdout)
+    stdout_button = Button(content_frm, text=localization_data['see_stdout'], command=see_stdout)
     stdout_button.grid(column=1, row=1, sticky="e")  # Align to the right
-    Tooltip(stdout_button, "Show Standard Output (stdout)")
+    Tooltip(stdout_button, localization_data['see_stdout_tooltip'])
 
-    stderr_button = Button(content_frm, text="👁 err", command=see_stderr)
+    stderr_button = Button(content_frm, text=localization_data['see_stderr'], command=see_stderr)
     stderr_button.grid(column=2, row=1, sticky="e")  # Align to the right
-    Tooltip(stderr_button, "Show Standard Error (stderr)")
+    Tooltip(stderr_button, localization_data['see_stderr_tooltip'])
 
 
 def create_immediately_run_line():
@@ -274,17 +275,17 @@ def create_immediately_run_line():
     if get_operative_system() != "Windows":
         run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
-        Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
         run_button = Button(run_frm, text=run_icon, command=run_script)
         run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
-        Tooltip(run_button, "Run Script")
+        Tooltip(run_button, localization_data['run_script'])
     else:
         run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
-        Label(run_frm, text="Run immediately").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
         run_button = Button(run_frm, text=run_icon, command=run_script)
         run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
-        Tooltip(run_button, "Run Script")
+        Tooltip(run_button, localization_data['run_script'])
 
 
 def create_execute_in_line():
@@ -303,33 +304,33 @@ def create_execute_in_line():
     if get_operative_system() != "Windows":
         line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
 
-        Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(line_frm, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
         seconds_entry = Entry(line_frm, width=15)
         seconds_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(seconds_entry, "number of seconds")
+        Tooltip(seconds_entry, localization_data['number_of_seconds'])
 
         run_button = Button(line_frm,
                             text=run_icon,
                             command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
                             )
         run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, "Set the duration in seconds for the script to execute.")
+        Tooltip(run_button, localization_data['set_duration_for_script_execution'])
     else:
         line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
 
-        Label(line_frm, text="Script Timeout: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(line_frm, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
         seconds_entry = Entry(line_frm, width=15)
         seconds_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(seconds_entry, "number of seconds")
+        Tooltip(seconds_entry, localization_data['number_of_seconds'])
 
         run_button = Button(line_frm,
                             text=run_icon,
                             command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
                             )
         run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, "Set the duration in seconds for the script to execute.")
+        Tooltip(run_button, localization_data['set_duration_for_script_execution'])
 
 
 def create_execute_one_time_with_format():
@@ -348,15 +349,15 @@ def create_execute_one_time_with_format():
     if get_operative_system() != "Windows":
         one_time_frm.grid(row=6, column=0, pady=0, sticky="nsew")
 
-        Label(one_time_frm, text="Scheduled Script Execution: ").grid(row=0, column=0, sticky="e", padx=5, pady=0)
+        Label(one_time_frm, text=localization_data['scheduled_script_execution']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
         date_entry = Entry(one_time_frm, width=15)
         date_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(date_entry, "HH:MM AM/PM")
+        Tooltip(date_entry, localization_data['time_format'])
 
         run_button = Button(one_time_frm, text=run_icon, command=lambda: run_script_once(date_entry.get()))
         run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, "Use the 'at' command to run the script at a specific time.")
+        Tooltip(run_button, localization_data['use_at_command'])
 
 
 def create_program_daily_with_format():
@@ -375,31 +376,31 @@ def create_program_daily_with_format():
     if get_operative_system() != "Windows":
         daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
 
-        Label(daily_frm, text="Daily Script Scheduling: ").grid(row=0, column=0, sticky="w", padx=5, pady=0)
+        Label(daily_frm, text=localization_data['daily_script_scheduling']).grid(row=0, column=0, sticky="w", padx=5, pady=0)
 
         minute_entry = Entry(daily_frm, width=2)
         minute_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(minute_entry, "every minute")
+        Tooltip(minute_entry, localization_data['every_minute'])
 
         hour_entry = Entry(daily_frm, width=2)
         hour_entry.grid(column=2, row=0, padx=(10, 0))
-        Tooltip(hour_entry, "every hour")
+        Tooltip(hour_entry, localization_data['every_hour'])
 
         day_entry = Entry(daily_frm, width=2)
         day_entry.grid(column=3, row=0, padx=(10, 0))
-        Tooltip(day_entry, "every day")
+        Tooltip(day_entry, localization_data['every_day'])
 
         month_entry = Entry(daily_frm, width=2)
         month_entry.grid(column=4, row=0, padx=(10, 0))
-        Tooltip(month_entry, "every month")
+        Tooltip(month_entry, localization_data['every_month'])
 
         day_of_the_week_entry = Entry(daily_frm, width=2)
         day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
-        Tooltip(day_of_the_week_entry, "every day of the week")
+        Tooltip(day_of_the_week_entry, localization_data['every_day_of_week'])
 
         run_button = Button(
             daily_frm, text=run_icon,
             command=lambda: run_script_crontab(minute_entry.get(), hour_entry.get(), day_entry.get(), month_entry.get(), day_of_the_week_entry.get())
         )
         run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, "Utilize 'crontab' to set up script execution on a daily basis. (* = always)")
+        Tooltip(run_button, localization_data['utilize_crontab'])

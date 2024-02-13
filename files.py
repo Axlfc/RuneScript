@@ -37,7 +37,7 @@ def main():
     root.resizable(True, True)
     root.minsize(width, height)  # minimimum size possible
 
-    is_modified = False
+    #  is_modified = False
 
     create_menu()
 
@@ -56,8 +56,6 @@ def main():
 
     create_execute_in_line()
 
-
-
     create_execute_one_time_with_format()
 
     create_program_daily_with_format()
@@ -66,7 +64,6 @@ def main():
     root.columnconfigure(0, weight=1)
 
     root.mainloop()
-
 
 
 if __name__ == '__main__':

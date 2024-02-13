@@ -326,10 +326,10 @@ def open_ai_assistant_window():
     # Create a 'Settings' Menu
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
-    settings_menu.add_command(label="Selected Model", command=show_selected_model)
+    settings_menu.add_command(label="Select AI Model", command=show_selected_model)
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
-        label="Render Markdown to HTML",
+        label="Toggle Markdown-to-HTML Rendering",
         onvalue=1,
         offvalue=0,
         variable=render_markdown_var,
@@ -338,7 +338,7 @@ def open_ai_assistant_window():
 
     add_current_main_opened_script_var = IntVar()
     settings_menu.add_checkbutton(
-        label="Add main script to AI context",
+        label="Include Main Script in AI Context",
         onvalue=1,
         offvalue=0,
         variable=add_current_main_opened_script_var,
@@ -347,7 +347,7 @@ def open_ai_assistant_window():
 
     add_current_selected_text_var = IntVar()
     settings_menu.add_checkbutton(
-        label="Add current selected text from main opened script",
+        label="Include Selected Text from Script",
         onvalue=1,
         offvalue=0,
         variable=add_current_selected_text_var,
@@ -509,10 +509,10 @@ def open_ai_assistant_window():
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label="Cut", command=cut)
-        context_menu.add_command(label="Copy", command=copy)
-        context_menu.add_command(label="Paste", command=paste)
-        context_menu.add_command(label="Duplicate", command=duplicate)
+        context_menu.add_command(label="Cut Text", command=cut)
+        context_menu.add_command(label="Copy Text", command=copy)
+        context_menu.add_command(label="Paste Text", command=paste)
+        context_menu.add_command(label="Duplicate Text", command=duplicate)
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
