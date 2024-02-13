@@ -5,9 +5,103 @@ import subprocess
 from time import sleep
 from tkinter import messagebox, Toplevel, Text
 
+from src.localization import localization_data
 from tk_utils import script_text, generate_stdin, generate_stdin_err, script_name_label, entry_arguments_entry, \
-    directory_label, root
+    directory_label, file_name, root
 from utility_functions import validate_time
+
+
+def get_execution_command(file_path, entry_arguments):
+    file_extension = os.path.splitext(file_path)[1].lower()
+    if file_extension == '.py':
+        try:
+            return ['python3', file_path] + entry_arguments
+        except Exception as e:
+            return ['python3', file_path] + entry_arguments
+    elif file_extension == '.sh':
+        return ['bash', file_path] + entry_arguments
+    elif file_extension == '.ps1':
+        return ['C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\powershell.exe', "-File",  file_path] + entry_arguments
+    elif file_extension == '.tex':
+        return ['pdflatex', file_path] + entry_arguments
+    elif file_extension == '.js':
+        return ['node', file_path] + entry_arguments
+    elif file_extension == '.html':
+        # HTML files are not typically "executed" in the traditional sense
+        return []
+    elif file_extension == '.css':
+        # CSS files are not executed independently
+        return []
+    elif file_extension == '.csv':
+        # CSS files are not executed independently
+        return []
+    elif file_extension == '.txt':
+        # CSS files are not executed independently
+        return []
+    elif file_extension == '.java':
+        return ['java', file_path] + entry_arguments
+    elif file_extension == '.cpp':
+        return ['g++', file_path, '-o', 'outputfile', '&&', './outputfile'] + entry_arguments
+    elif file_extension == '.rb':
+        return ['ruby', file_path] + entry_arguments
+    elif file_extension == '.pl':
+        return ['perl', file_path] + entry_arguments
+    elif file_extension == '.php':
+        return ['php', file_path] + entry_arguments
+    elif file_extension == '.ipynb':
+        # You might need a specialized handler for Jupyter notebooks
+        return ['jupyter', 'notebook', file_path] + entry_arguments
+    elif file_extension == '.swift':
+        # Swift scripts can be executed with the 'swift' command
+        return ['swift', file_path] + entry_arguments
+    elif file_extension == '.go':
+        return ['go', 'run', file_path] + entry_arguments
+    elif file_extension == '.r':
+        return ['Rscript', file_path] + entry_arguments
+    elif file_extension == '.rs':
+        return ['rustc', file_path, '&&', './' + os.path.splitext(file_path)[0]] + entry_arguments
+    elif file_extension == '.dart':
+        return ['dart', file_path] + entry_arguments
+    # For '.txt', '.csv', and other non-executable files, return an empty list or a viewer command
+    else:
+        return []
+
+
+def run_script_windows():
+    script = script_text.get("1.0", "end-1c")
+    entry_arguments = entry_arguments_entry.get().split()  # Splitting the string into a list
+    generate_stdout = generate_stdin.get()
+    generate_stderr = generate_stdin_err.get()
+
+    # Extract the file name from the script_name_label's text
+    file_name_with_prefix = script_name_label.cget('text')
+    file_name = file_name_with_prefix.replace(localization_data['script_name_label'], "").strip()
+
+    current_directory = directory_label.cget('text')
+    file_path = os.path.join(current_directory, file_name)
+
+    command = get_execution_command(file_path, entry_arguments)
+    if not command:
+        print(f"Cannot execute file: {file_name}")
+        return
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE if generate_stdout else None,
+                               stderr=subprocess.PIPE if generate_stderr else None,
+                               text=True)
+
+    stdout_data, stderr_data = process.communicate()
+
+    # Print the stdout and stderr
+    if generate_stdout:
+        script_out_name = script_name_label.cget('text') + ".out"
+        print(script_out_name)
+        with open(script_out_name, "w+") as p:
+            p.write(stdout_data)
+
+    if generate_stderr:
+        script_err_name = script_name_label.cget('text') + ".err"
+        with open(script_err_name, "w+") as p:
+            p.write(stderr_data)
 
 
 def run_script():

@@ -9,6 +9,7 @@ from app_layers import (
     create_program_daily_with_format
 )
 from menu_functions import create_menu
+from src.localization import localization_data
 from tk_utils import root
 
 
@@ -30,7 +31,7 @@ def main():
     height = int(width * (1 + 5 ** 0.5) / 2)
 
     # root.title("Untitled* - Script Editor")
-    root.title("Scripts Editor")
+    root.title(localization_data['scripts_editor'])
     root.geometry(f"{width}x{height}")
 
     # setting resizable window

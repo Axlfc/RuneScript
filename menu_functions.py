@@ -10,9 +10,11 @@ from scheduled_tasks import open_cron_window, open_at_window, open_scheduled_tas
 from script_operations import get_operative_system
 from script_tasks import analyze_csv_data, render_markdown_to_html, generate_html_from_markdown, \
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
-    change_interpreter
+    change_interpreter, render_markdown_to_latex
+from src.localization import localization_data
 
-from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified, last_saved_content
+from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified, last_saved_content, \
+    directory_label
 from tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
     open_ai_assistant_window, open_webview
 
@@ -25,19 +27,28 @@ redo_icon = "⮬"
 run_icon = "▶"
 
 file_types = [
-        ("Python Scripts", "*.py"),
-        ("Shell Scripts", "*.sh"),
-        ("PowerShell Scripts", "*.ps1"),
-        ("Text Files", "*.txt"),
-        ("LaTeX Files", "*.tex"),
-        ("CSV Files", "*.csv"),
-        ("JavaScript Files", "*.js"),
-        ("HTML Files", "*.html"),
-        ("CSS Files", "*.css"),
-        ("Java Files", "*.java"),
-        ("C++ Files", "*.cpp"),
-        ("All Files", "*.*")
-    ]
+    ("Python Scripts", "*.py"),
+    ("Shell Scripts", "*.sh"),
+    ("PowerShell Scripts", "*.ps1"),
+    ("Text Files", "*.txt"),
+    ("LaTeX Files", "*.tex"),
+    ("CSV Files", "*.csv"),
+    ("JavaScript Files", "*.js"),
+    ("HTML Files", "*.html"),
+    ("CSS Files", "*.css"),
+    ("Java Files", "*.java"),
+    ("C++ Files", "*.cpp"),
+    ("Ruby Scripts", "*.rb"),
+    ("Perl Scripts", "*.pl"),
+    ("PHP Scripts", "*.php"),
+    ("Python Notebooks", "*.ipynb"),
+    ("Swift Scripts", "*.swift"),
+    ("Go Files", "*.go"),
+    ("R Scripts", "*.r"),
+    ("Rust Files", "*.rs"),
+    ("Dart Files", "*.dart"),
+    ("All Files", "*.*")
+]
 
 
 # Help Menu
@@ -53,8 +64,8 @@ def about(event=None):
         Returns:
         None
     """
-    messagebox.showinfo("About",
-                        "ScriptsEditor\nCreated in Python using Tkinter\nAxlfc, 2023-2024")
+    messagebox.showinfo(localization_data['about_scripts_editor'],
+                        localization_data['scripts_editor_info'])
 
 
 def set_modified_status(value):
@@ -81,15 +92,14 @@ def update_title():
     """
     global is_modified
 
-    title = os.path.basename(file_name) if file_name else "Untitled"
-    print("IS MODIFIED¿??\t", is_modified)
+    title = os.path.basename(file_name) if file_name else localization_data['untitled']
 
     if is_modified:
-        root.title(f"*{title} - Scripts Editor")
+        root.title(f"*{title} - {localization_data['scripts_editor']}")
     else:
-        root.title(f"{title} - Scripts Editor")
+        root.title(f"{title} - {localization_data['scripts_editor']}")
 
-    script_name_label.config(text=f"Script Name: {os.path.basename(title)}")
+    script_name_label.config(text=f"{localization_data['script_name_label']}{os.path.basename(title)}")
 
 
 def new():
@@ -99,8 +109,7 @@ def new():
     """
     global is_modified
     if is_modified:
-        response = messagebox.askyesnocancel("Save File", "Do you want to save changes?")
-        print("response is:\t", response)
+        response = messagebox.askyesnocancel(localization_data['save_file'], localization_data['save_changes_confirmation'])
         if response:  # User chose 'Yes'
             save()
             clear_editor()
@@ -164,8 +173,8 @@ def open_script():
     """
     global is_modified
     if is_modified:
-        response = messagebox.askyesnocancel("Save Changes",
-                                             "You have unsaved changes. Do you want to save them before opening another file?")
+        response = messagebox.askyesnocancel(localization_data['save_changes'],
+                                             localization_data['save_confirmation'])
         if response:  # User wants to save changes
             if not save():
                 return  # If save was not successful, cancel the file open operation
@@ -191,11 +200,13 @@ def open_file(file_path):
         Returns:
         None
     """
-    print("OPENING FILE!!!!")
     global is_modified, file_name, last_saved_content
 
     file_name = file_path
-    script_name_label.config(text=f"Script Name: {os.path.basename(file_path)}")
+    # Update the directory label with the directory of the opened file
+    directory_path = os.path.dirname(file_path)
+    directory_label.config(text=f"{directory_path}")
+    script_name_label.config(text=f"{localization_data['save_changes']}{os.path.basename(file_path)}")
 
     # Try opening the file with different encodings
     encodings = ['utf-8', 'cp1252', 'ISO-8859-1', 'utf-16']
@@ -252,7 +263,8 @@ def create_powershell_menu(parent_menu):
 def create_markdown_menu(parent_menu):
     entries = {
         "Render HTML": render_markdown_to_html,
-        "Generate HTML": generate_html_from_markdown
+        "Generate HTML": generate_html_from_markdown,
+        "Render LaTeX PDF": render_markdown_to_latex
     }
     create_submenu(parent_menu, "Markdown", entries)
 
@@ -613,7 +625,7 @@ def create_menu():
     """
     # File menu.
     file_menu = Menu(menu)
-    menu.add_cascade(label="File", menu=file_menu, underline=0)
+    menu.add_cascade(label=localization_data['file'], menu=file_menu, underline=0)
 
     file_menu.add_command(label="New", command=new, compound='left', image=image_new, accelerator='Ctrl+N',
                           underline=0)  # command passed is here the method defined above.

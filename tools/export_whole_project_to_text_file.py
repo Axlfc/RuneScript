@@ -24,6 +24,6 @@ def export_python_scripts_to_txt(directory, output_filename):
 
 
 # Example usage
-directory_path = 'C:\\Users\\user\\Documents\\git\\ScriptsEditor'
+directory_path = 'X:\\Documents\\Python Projects\\ScriptsEditor'
 output_file = 'exported_scripts.txt'
 export_python_scripts_to_txt(directory_path, output_file)

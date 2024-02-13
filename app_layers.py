@@ -4,7 +4,7 @@ from file_operations import select_directory
 from menu_functions import run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
     open_script, save_script, save_as_new_script, update_modification_status, set_modified_status, on_text_change
 from script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
-    run_script_crontab, get_operative_system
+    run_script_crontab, get_operative_system, run_script_windows
 from src.localization import localization_data
 from ui_elements import Tooltip
 from tk_utils import *
@@ -192,10 +192,10 @@ def create_content_file_window():
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label=localization_data['cut'], command=cut)
-        context_menu.add_command(label=localization_data['copy'], command=copy)
-        context_menu.add_command(label=localization_data['paste'], command=paste)
-        context_menu.add_command(label=localization_data['duplicate'], command=duplicate)
+        context_menu.add_command(label=localization_data[localization_data['cut']], command=cut)
+        context_menu.add_command(label=localization_data[localization_data['copy']], command=copy)
+        context_menu.add_command(label=localization_data[localization_data['paste']], command=paste)
+        context_menu.add_command(label=localization_data[localization_data['duplicate']], command=duplicate)
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -283,7 +283,7 @@ def create_immediately_run_line():
         run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
         Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
-        run_button = Button(run_frm, text=run_icon, command=run_script)
+        run_button = Button(run_frm, text=run_icon, command=run_script_windows)
         run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
         Tooltip(run_button, localization_data['run_script'])
 

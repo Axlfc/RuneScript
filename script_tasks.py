@@ -70,6 +70,10 @@ def generate_html_from_markdown():
     messagebox.showinfo("HTML Generation", "Generating HTML from Markdown.")
 
 
+def render_markdown_to_latex():
+    messagebox.showinfo("Live PDF Generation", "Generating Live AI PDF from Markdown.")
+
+
 def run_javascript_analysis():
     """
         Analyzes JavaScript code.
