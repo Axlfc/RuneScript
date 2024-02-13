@@ -67,12 +67,12 @@ After installing the dependencies, you can run ScriptsEditor by executing the ma
 
    - On Windows:
        ```bash
-         .\venv\Scripts\python files.py
+         .\venv\Scripts\python main.py
        ```
 
    - On macOS and Linux:
      ```bash
-       venv/bin/python files.py
+       venv/bin/python main.py
      ```
 
 ## Contributing

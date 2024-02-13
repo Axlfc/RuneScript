@@ -1,7 +1,7 @@
 import tkinter
 from tkinter import END, messagebox, colorchooser
 
-from tk_utils import text, all_fonts, all_size, fontColor
+from src.views.tk_utils import text, all_fonts, all_size, fontColor
 
 
 def bold(event=None):

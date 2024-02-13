@@ -24,6 +24,18 @@ def export_python_scripts_to_txt(directory, output_filename):
 
 
 # Example usage
-directory_path = 'X:\\Documents\\Python Projects\\ScriptsEditor'
-output_file = 'exported_scripts.txt'
-export_python_scripts_to_txt(directory_path, output_file)
+main_directory_path = 'X:\\Documents\\Python Projects\\ScriptsEditor\\src'
+
+models = main_directory_path + "\\models"
+models_output_file = 'exported_models.txt'
+
+views = main_directory_path + "\\views"
+views_output_file = 'exported_views.txt'
+
+controllers = main_directory_path + "\\controllers"
+controllers_output_file = 'exported_controllers.txt'
+
+
+export_python_scripts_to_txt(models, models_output_file)
+export_python_scripts_to_txt(views, views_output_file)
+export_python_scripts_to_txt(controllers, controllers_output_file)

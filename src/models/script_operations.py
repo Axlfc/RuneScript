@@ -6,9 +6,8 @@ from time import sleep
 from tkinter import messagebox, Toplevel, Text
 
 from src.localization import localization_data
-from tk_utils import script_text, generate_stdin, generate_stdin_err, script_name_label, entry_arguments_entry, \
-    directory_label, file_name, root
-from utility_functions import validate_time
+from src.views.tk_utils import script_text, generate_stdin, generate_stdin_err, script_name_label, entry_arguments_entry, \
+    directory_label, root
 
 
 def get_execution_command(file_path, entry_arguments):

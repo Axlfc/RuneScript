@@ -3,19 +3,18 @@ from tkinter import Menu, Button, messagebox, filedialog, END
 
 from PIL import Image, ImageTk
 
-from edit_operations import copy, cut, paste, redo, undo, duplicate
+from src.views.edit_operations import copy, cut, paste, redo, undo, duplicate
 
-from scheduled_tasks import open_cron_window, open_at_window, open_scheduled_tasks_window, open_new_at_task_window, \
+from src.controllers.scheduled_tasks import open_cron_window, open_at_window, open_scheduled_tasks_window, open_new_at_task_window, \
     open_new_crontab_task_window
-from script_operations import get_operative_system
-from script_tasks import analyze_csv_data, render_markdown_to_html, generate_html_from_markdown, \
+from src.models.script_operations import get_operative_system
+from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_html, generate_html_from_markdown, \
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter, render_markdown_to_latex
 from src.localization import localization_data
 
-from tk_utils import toolbar, menu, root, script_name_label, script_text, file_name, is_modified, last_saved_content, \
-    directory_label
-from tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
+from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, file_name, last_saved_content
+from src.controllers.tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
     open_ai_assistant_window, open_webview
 
 house_icon = "🏠"
@@ -171,7 +170,6 @@ def open_script():
         Returns:
         None
     """
-    global is_modified
     if is_modified:
         response = messagebox.askyesnocancel(localization_data['save_changes'],
                                              localization_data['save_confirmation'])

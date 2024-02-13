@@ -1,27 +1,25 @@
-#!/usr/bin/python3
+#!/usr/bin/python2
 
-from tkinter import *
-import tkinter.filedialog as filedialog  # filedialog allows user to select where they want to save the file.
-import tkinter.font
-import tkinter.colorchooser as colorchooser
-import tkinter.ttk
-import tkinter.simpledialog as simpledialog
-import tkinter.messagebox as messagebox
-from PIL import Image, ImageTk  # sudo apt-get install python3-pil python3-pil.imagetk
+from Tkinter import *
+import tkFileDialog as filedialog  # filedialog allows user to select where they want to save the file.
+import tkFont
+import tkColorChooser as colorchooser
+import ttk
+import tkSimpleDialog as simpledialog
+import tkMessageBox as messagebox
+from PIL import Image, ImageTk
 import os
-import tkinter.messagebox as messagebox
-from tkinter.filedialog import askopenfilename
-
-from tk_utils import *
+import tkMessageBox as messagebox
+from tkFileDialog import askopenfilename
 
 # creating the root of the window.
-root = Tk()
-root.title("Untitled* - Script Editor")
-root.geometry("600x550")
+master = Tk()
+master.title("Untitled* - Script Editor")
+master.geometry("600x550")
 
 # setting resizable window
-root.resizable(True, True)
-root.minsize(600, 550)  # minimimum size possible
+master.resizable(True, True)
+master.minsize(600, 550)  # minimimum size possible
 
 # --------------- METHODS ---------------- #
 
@@ -34,10 +32,321 @@ fontColor = '#000000'
 fontBackground = '#FFFFFF'
 
 
+def make_tag():
+    current_tags = text.tag_names()
+    if "bold" in current_tags:
+        weight = "bold"
+    else:
+        weight = "normal"
+
+    if "italic" in current_tags:
+        slant = "italic"
+    else:
+        slant = "roman"
+
+    if "underline" in current_tags:
+        underline = 1
+    else:
+        underline = 0
+
+    if "overstrike" in current_tags:
+        overstrike = 1
+    else:
+        overstrike = 0
+
+    big_font = tkFont.Font(text, text.cget("font"))
+    big_font.configure(slant=slant, weight=weight, underline=underline, overstrike=overstrike,
+                       family=current_font_family, size=current_font_size)
+    text.tag_config("BigTag", font=big_font, foreground=fontColor, background=fontBackground)
+    if "BigTag" in current_tags:
+        text.tag_remove("BigTag", 1.0, END)
+    text.tag_add("BigTag", 1.0, END)
+
+
+def new(event=None):
+    file_name = ""
+    ans = messagebox.askquestion(title="Save File", message="Would you like to save this file")
+    if ans is True:
+        save()
+    delete_all()
+
+
+def open_file(event=None):
+    new()
+    file = filedialog.askopenfile()
+    global file_name
+    file_name = file.name
+    text.insert(INSERT, file.read())
+
+
+def save(event=None):
+    global file_name
+    if file_name == "":
+        path = filedialog.asksaveasfilename()
+        file_name = path
+    master.title(file_name + " - Script Editor")
+    write = open(file_name, mode='w')
+    write.write(text.get("1.0", END))
+
+
+def save_as(event=None):
+    if file_name == "":
+        save()
+        return "break"
+    f = filedialog.asksaveasfile(mode='w')
+    if f is None:
+        return
+    text2save = str(text.get(1.0, END))
+    f.write(text2save)
+    f.close()
+
+
+new_name = ""  # Used for renaming the file
+
+
+def rename(event=None):
+    global file_name
+    if file_name == "":
+        open_file()
+
+    arr = file_name.split('/')
+    path = ""
+    for i in range(0, len(arr) - 1):
+        path = path + arr[i] + '/'
+
+    new_name = simpledialog.askstring("Rename", "Enter new name")
+    os.rename(file_name, str(path) + str(new_name))
+    file_name = str(path) + str(new_name)
+    master.title(file_name + " - Script Editor")
+
+
+def close(event=None):
+    save()
+    master.quit()
+
+
+# EDIT MENU METHODS
+
+def cut(event=None):
+    # first clear the previous text on the clipboard.
+    master.clipboard_clear()
+    text.clipboard_append(string=text.selection_get())
+    # index of the first and yhe last letter of our selection.
+    text.delete(index1=SEL_FIRST, index2=SEL_LAST)
+
+
+def copy(event=None):
+    # first clear the previous text on the clipboard.
+    print
+    text.index(SEL_FIRST)
+    print
+    text.index(SEL_LAST)
+    master.clipboard_clear()
+    text.clipboard_append(string=text.selection_get())
+
+
+def paste(event=None):
+    # get gives everyting from the clipboard and paste it on the current cursor position
+    # it does'nt removes it from the clipboard.
+    text.insert(INSERT, master.clipboard_get())
+
+
+def delete():
+    text.delete(index1=SEL_FIRST, index2=SEL_LAST)
+
+
+def undo():
+    text.edit_undo()
+
+
+def redo():
+    text.edit_redo()
+
+
+def select_all(event=None):
+    text.tag_add(SEL, "1.0", END)
+
+
+def delete_all():
+    text.delete(1.0, END)
+
+
+# TOOLS MENU METHODS
+
+def change_color():
+    color = colorchooser.askcolor(initialcolor='#ff0000')
+    color_name = color[1]
+    global fontColor
+    fontColor = color_name
+    current_tags = text.tag_names()
+    if "font_color_change" in current_tags:
+        # first char is bold, so unbold the range
+        text.tag_delete("font_color_change", 1.0, END)
+    else:
+        # first char is normal, so bold the whole selection
+        text.tag_add("font_color_change", 1.0, END)
+    make_tag()
+
+
+# Adding Search Functionality
+
+def check(value):
+    text.tag_remove('found', '1.0', END)
+    text.tag_config('found', foreground='red')
+    list_of_words = value.split(' ')
+    for word in list_of_words:
+        idx = '1.0'
+        while idx:
+            idx = text.search(word, idx, nocase=1, stopindex=END)
+            if idx:
+                lastidx = '%s+%dc' % (idx, len(word))
+                text.tag_add('found', idx, lastidx)
+                print
+                lastidx
+                idx = lastidx
+
+
+# implementation of search dialog box - calling the check method to search and find_text_cancel_button to close it
+def find_text(event=None):
+    search_toplevel = Toplevel(master)
+    search_toplevel.title('Find Text')
+    search_toplevel.transient(master)
+    search_toplevel.resizable(False, False)
+    Label(search_toplevel, text="Find All:").grid(row=0, column=0, sticky='e')
+    search_entry_widget = Entry(search_toplevel, width=25)
+    search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky='we')
+    search_entry_widget.focus_set()
+    Button(search_toplevel, text="Ok", underline=0, command=lambda: check(search_entry_widget.get())).grid(row=0,
+                                                                                                           column=2,
+                                                                                                           sticky='e' + 'w',
+                                                                                                           padx=2,
+                                                                                                           pady=5)
+    Button(search_toplevel, text="Cancel", underline=0, command=lambda: find_text_cancel_button(search_toplevel)).grid(
+        row=0, column=4, sticky='e' + 'w', padx=2, pady=2)
+
+
+# remove search tags and destroys the search box
+def find_text_cancel_button(search_toplevel):
+    text.tag_remove('found', '1.0', END)
+    search_toplevel.destroy()
+    return "break"
+
+
+# FORMAT BAR METHODS
+
+def bold(event=None):
+    current_tags = text.tag_names()
+    if "bold" in current_tags:
+        # first char is bold, so unbold the range
+        text.tag_delete("bold", 1.0, END)
+    else:
+        # first char is normal, so bold the whole selection
+        text.tag_add("bold", 1.0, END)
+    make_tag()
+
+
+def italic(event=None):
+    current_tags = text.tag_names()
+    if "italic" in current_tags:
+        text.tag_add("roman", 1.0, END)
+        text.tag_delete("italic", 1.0, END)
+    else:
+        text.tag_add("italic", 1.0, END)
+    make_tag()
+
+
+def underline(event=None):
+    current_tags = text.tag_names()
+    if "underline" in current_tags:
+        text.tag_delete("underline", 1.0, END)
+    else:
+        text.tag_add("underline", 1.0, END)
+    make_tag()
+
+
+def strike():
+    current_tags = text.tag_names()
+    if "overstrike" in current_tags:
+        text.tag_delete("overstrike", "1.0", END)
+
+    else:
+        text.tag_add("overstrike", 1.0, END)
+
+    make_tag()
+
+
+def highlight():
+    color = colorchooser.askcolor(initialcolor='white')
+    color_rgb = color[1]
+    global fontBackground
+    fontBackground = color_rgb
+    current_tags = text.tag_names()
+    if "background_color_change" in current_tags:
+        text.tag_delete("background_color_change", "1.0", END)
+    else:
+        text.tag_add("background_color_change", "1.0", END)
+    make_tag()
+
+
+# To make align functions work properly
+def remove_align_tags():
+    all_tags = text.tag_names(index=None)
+    if "center" in all_tags:
+        text.tag_remove("center", "1.0", END)
+    if "left" in all_tags:
+        text.tag_remove("left", "1.0", END)
+    if "right" in all_tags:
+        text.tag_remove("right", "1.0", END)
+
+
+# align_center
+def align_center(event=None):
+    remove_align_tags()
+    text.tag_configure("center", justify='center')
+    text.tag_add("center", 1.0, "end")
+
+
+# align_justify
+def align_justify():
+    remove_align_tags()
+
+
+# align_left
+def align_left(event=None):
+    remove_align_tags()
+    text.tag_configure("left", justify='left')
+    text.tag_add("left", 1.0, "end")
+
+
+# align_right
+def align_right(event=None):
+    remove_align_tags()
+    text.tag_configure("right", justify='right')
+    text.tag_add("right", 1.0, "end")
+
+
+# Font and size change functions - BINDED WITH THE COMBOBOX SELECTION
+# change font and size are methods binded with combobox, calling fontit and sizeit
+# called when <<combobox>> event is called
+
+def change_font(event):
+    f = all_fonts.get()
+    global current_font_family
+    current_font_family = f
+    make_tag()
+
+
+def change_size(event):
+    sz = int(all_size.get())
+    global current_font_size
+    current_font_size = sz
+    make_tag()
+
+
 # ------------- CREATING - MENUBAR AND ITS MENUS, TOOLS BAR, FORMAT BAR, STATUS BAR AND TEXT AREA -----------#
 
 # TOOLBAR
-toolbar = Frame(root, pady=2)
+toolbar = Frame(master, pady=2)
 
 # TOOLBAR BUTTONS
 # new
@@ -113,12 +422,12 @@ find_button.config(image=image_find)
 find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 # FORMATTING BAR
-formattingbar = Frame(root, padx=2, pady=2)
+formattingbar = Frame(master, padx=2, pady=2)
 
 # FORMATTING BAR COMBOBOX - FOR FONT AND SIZE
 # font combobox
 all_fonts = StringVar()
-font_menu = tkinter.ttk.Combobox(formattingbar, textvariable=all_fonts, state="readonly")
+font_menu = ttk.Combobox(formattingbar, textvariable=all_fonts, state="readonly")
 font_menu.pack(in_=formattingbar, side="left", padx=4, pady=4)
 font_menu['values'] = (
 'Courier', 'Helvetica', 'Liberation Mono', 'OpenSymbol', 'Century Schoolbook L', 'DejaVu Sans Mono', 'Ubuntu Condensed',
@@ -128,7 +437,7 @@ font_menu.current(2)
 
 # size combobox
 all_size = StringVar()
-size_menu = tkinter.ttk.Combobox(formattingbar, textvariable=all_size, state='readonly', width=5)
+size_menu = ttk.Combobox(formattingbar, textvariable=all_size, state='readonly', width=5)
 size_menu.pack(in_=formattingbar, side="left", padx=4, pady=4)
 size_menu['values'] = ('10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30')
 size_menu.bind('<<ComboboxSelected>>', change_size)
@@ -216,10 +525,10 @@ align_right_button.config(image=image_align_right)
 align_right_button.pack(in_=formattingbar, side="left", padx=4, pady=4)
 
 # STATUS BAR
-status = Label(root, text="", bd=1, relief=SUNKEN, anchor=W)
+status = Label(master, text="", bd=1, relief=SUNKEN, anchor=W)
 
 # CREATING TEXT AREA - FIRST CREATED A FRAME AND THEN APPLIED TEXT OBJECT TO IT.
-text_frame = Frame(root, borderwidth=1, relief="sunken")
+text_frame = Frame(master, borderwidth=1, relief="sunken")
 text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
             undo=True)
 text.pack(in_=text_frame, side="left", fill="both", expand=True)  # pack text object.
@@ -233,8 +542,8 @@ text.focus_set()
 
 # MENUBAR CREATION
 
-menu = Menu(root)
-root.config(menu=menu)
+menu = Menu(master)
+master.config(menu=menu)
 
 # File menu.
 file_menu = Menu(menu)
@@ -411,6 +720,4 @@ strike_button.bind("<Enter>", lambda event, str="Strike": on_enter(event, str))
 strike_button.bind("<Leave>", on_leave)
 
 # MAINLOOP OF THE PROGRAM
-root.mainloop()
-
-
+master.mainloop()

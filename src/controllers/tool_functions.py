@@ -8,10 +8,10 @@ import webview
 import markdown
 from tkhtmlview import HTMLLabel
 
-from edit_operations import cut, copy, paste, duplicate
-from script_tasks import show_selected_model
-from tk_utils import text, script_text, root
-from utility_functions import make_tag
+from src.views.edit_operations import cut, copy, paste, duplicate
+from src.controllers.script_tasks import show_selected_model
+from src.views.tk_utils import text, script_text, root
+from src.controllers.utility_functions import make_tag
 
 
 def change_color():

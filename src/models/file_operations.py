@@ -1,9 +1,34 @@
 from tkinter import filedialog, messagebox, simpledialog
 import os
 
-from menu_functions import open_file
+from src.controllers.menu_functions import open_file
 
-from tk_utils import root, directory_label
+from src.views.tk_utils import root, directory_label
+
+
+def validate_time(hour, minute):
+    """
+        Validates the given hour and minute to ensure they form a valid time.
+
+        This function checks if the provided hour and minute values form a valid time (HH:MM format). It displays
+        an error message if the time is invalid.
+
+        Parameters:
+        hour (str or int): The hour part of the time.
+        minute (str or int): The minute part of the time.
+
+        Returns:
+        bool: True if the time is valid, False otherwise.
+    """
+    try:
+        hour = int(hour)
+        minute = int(minute)
+        if not (0 <= hour < 24) or not (0 <= minute < 60):
+            raise ValueError
+        return True
+    except ValueError:
+        messagebox.showerror("Invalid Time", "Please enter a valid time in HH:MM format.")
+        return False
 
 
 def rename(event=None):

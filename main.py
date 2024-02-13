@@ -1,4 +1,4 @@
-from app_layers import (
+from src.views.app_layers import (
     create_directory_line,
     create_open_script_line,
     create_content_file_window,
@@ -8,9 +8,9 @@ from app_layers import (
     create_execute_one_time_with_format,
     create_program_daily_with_format
 )
-from menu_functions import create_menu
+from src.controllers.menu_functions import create_menu
 from src.localization import localization_data
-from tk_utils import root
+from src.views.tk_utils import root
 
 
 def main():

@@ -1,7 +1,7 @@
 from tkinter import INSERT, SEL, END
 from tkinter.constants import SEL_FIRST, SEL_LAST
 
-from tk_utils import root, text, script_text
+from src.views.tk_utils import root, text, script_text
 
 
 def cut(event=None):
