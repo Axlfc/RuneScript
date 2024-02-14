@@ -13,14 +13,17 @@ from src.views.tk_utils import script_text, generate_stdin, generate_stdin_err, 
 def get_execution_command(file_path, entry_arguments):
     file_extension = os.path.splitext(file_path)[1].lower()
     if file_extension == '.py':
-        try:
-            return ['python3', file_path] + entry_arguments
-        except Exception as e:
+        if platform.system() == "Windows":
+            return ['python', file_path] + entry_arguments
+        else:
             return ['python3', file_path] + entry_arguments
     elif file_extension == '.sh':
         return ['bash', file_path] + entry_arguments
     elif file_extension == '.ps1':
-        return ['C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\powershell.exe', "-File",  file_path] + entry_arguments
+        if platform.system() == "Windows":
+            return ['C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\powershell.exe', "-File",  file_path] + entry_arguments
+        else:
+            return []
     elif file_extension == '.tex':
         return ['pdflatex', file_path] + entry_arguments
     elif file_extension == '.js':
