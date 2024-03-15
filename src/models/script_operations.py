@@ -5,6 +5,7 @@ import subprocess
 from time import sleep
 from tkinter import messagebox, Toplevel, Text
 
+from src.controllers.utility_functions import validate_time
 from src.localization import localization_data
 from src.views.tk_utils import script_text, generate_stdin, generate_stdin_err, script_name_label, entry_arguments_entry, \
     directory_label, root

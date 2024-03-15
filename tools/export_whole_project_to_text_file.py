@@ -24,7 +24,8 @@ def export_python_scripts_to_txt(directory, output_filename):
 
 
 # Example usage
-main_directory_path = 'X:\\Documents\\Python Projects\\ScriptsEditor\\src'
+# main_directory_path = 'X:\\Documents\\Python Projects\\ScriptsEditor\\src'
+main_directory_path = 'C:\\Users\\user\\Documents\\git\\ScriptsEditor\\src'
 
 models = main_directory_path + "\\models"
 models_output_file = 'exported_models.txt'
