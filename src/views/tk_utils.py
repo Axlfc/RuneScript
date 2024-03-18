@@ -23,6 +23,8 @@ fontBackground = '#FFFFFF'
 
 root = Tk()
 
+root.iconbitmap("src/views/icon.ico")
+
 toolbar = Frame(root, pady=2)
 
 menu = Menu(root)
