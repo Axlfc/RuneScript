@@ -15,7 +15,7 @@ from src.localization import localization_data
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, file_name, last_saved_content
 from src.controllers.tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
-    open_ai_assistant_window, open_webview
+    open_ai_assistant_window, open_webview, open_ipython_terminal_window
 
 house_icon = "🏠"
 open_icon = "📂"
@@ -502,6 +502,7 @@ def save_script():
                 file.write(content)
             is_modified = False  # Reset modification status
             update_title()  # Update the window title
+            update_script_name_label(file_name)  # Ensure the script name label is updated
             messagebox.showinfo("Save", "File saved successfully!")
         except Exception as e:
             messagebox.showerror("Save Error", f"An error occurred while saving: {e}")
@@ -522,8 +523,11 @@ def save_as_new_script():
 
 
 def update_script_name_label(file_path):
+    """
+    Updates the script name label with the base name of the provided file path.
+    """
     base_name = os.path.basename(file_path)
-    script_name_label.config(text=f"Nombre del Script: {base_name}")
+    script_name_label.config(text=f"File Name: {base_name}")
 
 
 # TOOLBAR BUTTONS
@@ -701,6 +705,7 @@ def create_menu():
                           image=image_find, accelerator='Ctrl+R')
     tool_menu.add_separator()
     tool_menu.add_command(label="Terminal", command=open_terminal_window)
+    tool_menu.add_command(label="IPython Terminal", command=open_ipython_terminal_window)
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window)
     tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
 

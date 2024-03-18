@@ -2,78 +2,59 @@ from tkinter import Toplevel, Label, Canvas
 
 
 class Tooltip:
-    """
-        A class to create a tooltip for a given widget.
-
-        The Tooltip class provides a simple way to add a tooltip to any tkinter widget. It displays a small popup
-        with a text message when the mouse hovers over the widget.
-
-        Attributes:
-        widget (Widget): The tkinter widget to which the tooltip is attached.
-        text (str): The text displayed in the tooltip.
-        tooltip (Toplevel, optional): The top-level widget used for displaying the tooltip. Initially None.
-
-        Methods:
-        enter(event): Displays the tooltip when the mouse enters the widget area.
-        leave(event): Destroys the tooltip when the mouse leaves the widget area.
-        """
     def __init__(self, widget, text):
-        """
-            Initializes the Tooltip instance.
-
-            Parameters:
-            widget (Widget): The tkinter widget to which the tooltip will be attached.
-            text (str): The text to be displayed in the tooltip.
-
-            Returns:
-            None
-        """
         self.widget = widget
         self.text = text
         self.tooltip = None
         self.widget.bind("<Enter>", self.enter)
         self.widget.bind("<Leave>", self.leave)
+        self.widget.bind("<Motion>", self.motion)
 
     def enter(self, event):
-        """
-            Handles the mouse entering the widget area, displaying the tooltip.
+        if not self.tooltip:
+            self.show_tooltip(event)
 
-            This method is triggered when the mouse pointer enters the widget area. It creates and positions
-            the tooltip near the widget.
+    def leave(self, event):
+        self.destroy_tooltip()
 
-            Parameters:
-            event (Event): The event object containing details of the mouse enter event.
+    def motion(self, event):
+        if self.tooltip:
+            self.adjust_tooltip_position(event.x_root, event.y_root)
 
-            Returns:
-            None
-        """
-        self.tooltip = Toplevel()
-        x, y, _, _ = self.widget.bbox("insert")
-        x += self.widget.winfo_rootx() + 25
-        y += self.widget.winfo_rooty() + 25
-        self.tooltip.wm_overrideredirect(True)
+    def adjust_tooltip_position(self, x, y):
+        # Get screen width and height
+        screen_width = self.tooltip.winfo_screenwidth()
+        screen_height = self.tooltip.winfo_screenheight()
+
+        # Tooltip dimensions (guessing a size, will adjust after widget update)
+        tooltip_width = 200
+        tooltip_height = 50
+
+        # Offset from cursor position to avoid directly covering it
+        offset_x = 14
+        offset_y = 14
+
+        # Adjust position to keep tooltip inside screen boundaries
+        x = min(x + offset_x, screen_width - tooltip_width)
+        y = min(y + offset_y, screen_height - tooltip_height)
+
         self.tooltip.wm_geometry(f"+{x}+{y}")
 
+    def show_tooltip(self, event):
+        self.tooltip = Toplevel()
+        # Set initial position offscreen to avoid flicker on Windows
+        self.tooltip.wm_geometry("+0+0")
+        self.tooltip.wm_overrideredirect(True)
         label = Label(self.tooltip, text=self.text, background="#ffffe0", relief="solid", borderwidth=1)
         label.pack()
 
-    def leave(self, event):
-        """
-            Handles the mouse leaving the widget area, hiding the tooltip.
+        # Adjust position now that we have the widget
+        self.adjust_tooltip_position(event.x_root, event.y_root)
 
-            This method is triggered when the mouse pointer leaves the widget area. It destroys the tooltip
-            window if it exists.
-
-            Parameters:
-            event (Event): The event object containing details of the mouse leave event.
-
-            Returns:
-            None
-        """
+    def destroy_tooltip(self):
         if self.tooltip:
             self.tooltip.destroy()
             self.tooltip = None
-
 
 class LineNumberCanvas(Canvas):
     def __init__(self, text_widget, *args, **kwargs):

@@ -6,6 +6,7 @@
     "script_name_label": "Script Name: ",
     "file": "File",
     "choose_working_directory": "Choose Working Directory",
+    "open_first_file_from_directory": "\"Do you want to open the first text file in the selected directory?\"",
     "current_directory": "Current directory",
     "open_script": "Open Script",
     "file_name": "File Name",

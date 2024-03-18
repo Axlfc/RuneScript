@@ -1,6 +1,6 @@
 from tkinter import Button, Checkbutton
 
-from src.models.file_operations import select_directory
+from src.models.file_operations import select_directory, prompt_rename_file, open_current_directory
 from src.controllers.menu_functions import run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
     open_script, save_script, save_as_new_script, update_modification_status, on_text_change
 from src.models.script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
@@ -132,6 +132,7 @@ def create_directory_line():
     Tooltip(directory_button, localization_data['choose_working_directory'])
 
     directory_label.grid(column=1, row=0, padx=5, sticky="ew")  # Set sticky to "ew" to fill horizontally
+    directory_label.bind("<Double-1>", lambda event: open_current_directory())
     Tooltip(directory_label, localization_data['current_directory'])
 
 
@@ -155,6 +156,7 @@ def create_open_script_line():
     Tooltip(open_button, localization_data['open_script'])
 
     script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)  # Expand to the right
+    script_name_label.bind("<Double-1>", lambda event: prompt_rename_file())
     Tooltip(script_name_label, localization_data['file_name'])
 
     save_button = Button(script_frm, text=save_icon, command=save_script)
@@ -192,10 +194,10 @@ def create_content_file_window():
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label=localization_data[localization_data['cut']], command=cut)
-        context_menu.add_command(label=localization_data[localization_data['copy']], command=copy)
-        context_menu.add_command(label=localization_data[localization_data['paste']], command=paste)
-        context_menu.add_command(label=localization_data[localization_data['duplicate']], command=duplicate)
+        context_menu.add_command(label=localization_data['cut'], command=cut)
+        context_menu.add_command(label=localization_data['copy'], command=copy)
+        context_menu.add_command(label=localization_data['paste'], command=paste)
+        context_menu.add_command(label=localization_data['duplicate'], command=duplicate)
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)

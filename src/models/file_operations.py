@@ -1,9 +1,12 @@
+import subprocess
+import sys
 from tkinter import filedialog, messagebox, simpledialog
 import os
 
 from src.controllers.menu_functions import open_file
+from src.localization import localization_data
 
-from src.views.tk_utils import root, directory_label
+from src.views.tk_utils import root, directory_label, script_name_label, file_name
 
 
 def validate_time(hour, minute):
@@ -93,7 +96,19 @@ def select_directory():
         global current_directory  # Declare current_directory as global if it's not in the same file
         current_directory = directory  # Update the current_directory variable
         directory_label.config(text=f"{directory}")
-        open_first_text_file(directory)  # Assuming this function is defined elsewhere
+        # Ask user if they want to open the first text file
+        if messagebox.askyesno(localization_data['open_script'], localization_data['open_first_file_from_directory']):
+            open_first_text_file(directory)
+
+
+def open_current_directory():
+    directory = directory_label.cget("text")
+    if sys.platform == "win32":
+        os.startfile(directory)
+    elif sys.platform == "darwin":
+        subprocess.run(["open", directory])
+    else:  # Assuming Linux or similar
+        subprocess.run(["xdg-open", directory])
 
 
 def open_first_text_file(directory):
@@ -132,6 +147,48 @@ def get_text_files(directory):
         if file.endswith(".txt"):
             text_files.append(file)
     return text_files
+
+
+def prompt_rename_file():
+    """
+    Prompts the user for a new file name and renames or creates the file.
+    """
+    new_name = simpledialog.askstring("Rename or Create File", "Enter new file name:")
+    if new_name:  # Proceed only if the user entered a name
+        clean_name = new_name.replace(" ", "_")
+        rename_or_create_file(clean_name)
+
+
+def rename_or_create_file(new_name):
+    """
+    Renames the current file to the new name provided by the user, or creates a new file if none exists.
+
+    Parameters:
+    new_name (str): The new name for the file.
+    """
+    global file_name
+    dir_path = os.path.dirname(file_name) if file_name else os.getcwd()  # Use current directory if file_name is not set
+    new_path = os.path.join(dir_path, new_name)
+
+    if file_name and os.path.exists(file_name):
+        # If there's a current file, rename it
+        try:
+            os.rename(file_name, new_path)
+            file_name = new_path  # Update the global file_name variable
+            script_name_label.config(text=f"File Name: {new_name}")
+            messagebox.showinfo("Rename Successful", f"File has been renamed to {new_name}")
+        except OSError as e:
+            messagebox.showerror("Error", f"Failed to rename file: {e}")
+    else:
+        # If no current file, try to create a new one
+        try:
+            with open(new_path, 'w') as new_file:
+                new_file.write("")  # Create an empty file
+            file_name = new_path  # Update the global file_name variable
+            script_name_label.config(text=f"File Name: {new_name}")
+            messagebox.showinfo("File Created", f"New file has been created: {new_name}")
+        except OSError as e:
+            messagebox.showerror("Error", f"Failed to create file: {e}")
 
 
 def remove_asterisk_from_title():

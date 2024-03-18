@@ -211,6 +211,10 @@ def open_search_replace_dialog():
                                                                              )
 
 
+def open_ipython_terminal_window():
+    print("OPEN IPYTHON TERMINAL")
+
+
 def open_terminal_window():
     """
         Opens a new window functioning as a terminal within the application.

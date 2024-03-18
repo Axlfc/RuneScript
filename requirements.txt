@@ -3,4 +3,3 @@ pillow
 markdown
 tkhtmlview
 pywebview
-
