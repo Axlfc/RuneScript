@@ -66,7 +66,6 @@ class LineNumberCanvas(Canvas):
         self.text_widget.bind("<Button-1>", self.on_text_change)
         self.text_widget.bind("<<Modified>>", self.on_text_change)
         self.text_widget.bind("<Configure>", self.on_text_change)
-        self.redraw()  # Initial draw
 
     def on_text_change(self, event=None):
         self.redraw()
@@ -74,6 +73,9 @@ class LineNumberCanvas(Canvas):
     def redraw(self):
         ''' Redraw line numbers '''
         self.delete("all")
+        max_chars = len(str(self.text_widget.index("end").split('.')[0]))
+        width = max_chars * 10  # Adjust the width based on the maximum number of characters
+        self.config(width=width)  # Set the width dynamically
         i = self.text_widget.index("@0,0")
         while True:
             dline = self.text_widget.dlineinfo(i)
@@ -81,5 +83,5 @@ class LineNumberCanvas(Canvas):
                 break
             y = dline[1]
             line_num = str(i).split(".")[0]
-            self.create_text(2, y, anchor="nw", text=line_num, fill="white")
+            self.create_text(2, y, anchor="nw", text=line_num, fill="black")  # Change text color to black
             i = self.text_widget.index(f"{i}+1line")
