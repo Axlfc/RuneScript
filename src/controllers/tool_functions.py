@@ -367,18 +367,43 @@ def open_ai_server_settings_window():
     settings_window.title("AI Server Settings")
     settings_window.geometry("400x300")
 
-    Label(settings_window, text="Server URL:").grid(row=0, column=0)
+    Label(settings_window, text="Select Server:").grid(row=0, column=0)
+    selected_server = StringVar(settings_window)
+    selected_server.set("lmstudio")  # Set default selection
+
+    # Dropdown menu options
+    server_options = ["lmstudio", "ollama", "openai"]
+    server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
+    server_dropdown.grid(row=0, column=1)
+
+    Label(settings_window, text="Server URL:").grid(row=1, column=0)
     server_url_entry = Entry(settings_window, width=25)
     server_url_entry.insert(0, "http://localhost:1234/v1")  # Default URL
-    server_url_entry.grid(row=0, column=1)
+    server_url_entry.grid(row=1, column=1)
 
-    Label(settings_window, text="API Key:").grid(row=1, column=0)
+    Label(settings_window, text="API Key:").grid(row=2, column=0)
     api_key_entry = Entry(settings_window, width=25)
     api_key_entry.insert(0, "not-needed")  # Default API Key
-    api_key_entry.grid(row=1, column=1)
+    api_key_entry.grid(row=2, column=1)
 
-    # Placeholder for listing and managing saved server connections
-    # This could be implemented using Listbox or similar widget
+    # Function to toggle display based on selected server
+    def toggle_display(selected_server):
+        if selected_server == "lmstudio":
+            server_url_entry.grid()
+            api_key_entry.grid()
+        else:
+            server_url_entry.grid_remove()
+            api_key_entry.grid_remove()
+
+    # Initial display based on default selection
+    toggle_display(selected_server.get())
+
+    # Callback function to handle dropdown selection changes
+    def on_server_selection_change(*args):
+        toggle_display(selected_server.get())
+
+    # Bind the callback function to the dropdown selection
+    selected_server.trace("w", on_server_selection_change)
 
     Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
 
@@ -606,10 +631,30 @@ def open_ai_assistant_window():
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label="Cut Text", command=cut)
-        context_menu.add_command(label="Copy Text", command=copy)
-        context_menu.add_command(label="Paste Text", command=paste)
-        context_menu.add_command(label="Duplicate Text", command=duplicate)
+        # TODO: Use locales
+        context_menu.add_command(label="Cut", command=cut)
+        context_menu.add_command(label="Copy", command=copy)
+        context_menu.add_command(label="Paste", command=paste)
+        context_menu.add_command(label="Duplicate", command=duplicate)
+        context_menu.add_command(label="Select All", command=duplicate)
+        context_menu.add_separator()
+        context_menu.add_command(label="Fix", command=duplicate)
+        context_menu.add_command(label="Refactor", command=duplicate)
+        context_menu.add_command(label="Explain", command=duplicate)
+        context_menu.add_command(label="Optimize", command=duplicate)
+        context_menu.add_command(label="Convert pseudo-code to code", command=duplicate)
+        context_menu.add_command(label="Generate documentation", command=duplicate)
+        context_menu.add_command(label="Generate tests", command=duplicate)
+        context_menu.add_separator()
+        context_menu.add_command(label="Analyze sentiment", command=duplicate)
+        context_menu.add_command(label="Identify topic", command=duplicate)
+        context_menu.add_command(label="Summarize", command=duplicate)
+        context_menu.add_command(label="Improve", command=duplicate)
+        context_menu.add_command(label="Expand", command=duplicate)
+        context_menu.add_command(label="Critique", command=duplicate)
+        context_menu.add_command(label="Translate", command=duplicate)
+        context_menu.add_separator()
+        context_menu.add_command(label="Custom AI request", command=duplicate)
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)

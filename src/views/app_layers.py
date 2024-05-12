@@ -191,15 +191,19 @@ def create_content_file_window():
     """
     original_text = script_text.get("1.0", "end-1c")  # Store the original text of the file
 
-    line_numbers = LineNumberCanvas(script_text, width=16)
+    line_numbers = LineNumberCanvas(script_text, width=0)
+    line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
 
     def show_context_menu(event):
+        # TODO: Locales
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
         context_menu.add_command(label=localization_data['cut'], command=cut)
         context_menu.add_command(label=localization_data['copy'], command=copy)
         context_menu.add_command(label=localization_data['paste'], command=paste)
         context_menu.add_command(label=localization_data['duplicate'], command=duplicate)
+        context_menu.add_command(label="Select All", command=duplicate)
+        context_menu.add_separator()
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -216,18 +220,20 @@ def create_content_file_window():
         # Bind the <FocusOut> event to destroy the context menu when it loses focus
         context_menu.bind("<FocusOut>", lambda e: destroy_menu())
 
-    # Configure script_text grid to accommodate line numbers
-    line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
-    #script_text.grid(row=2, column=1, padx=0, pady=0, sticky="nsew")
+    def show_changes_in_text_zone(event=None):
+        ''' Configure script_text grid to accommodate line numbers '''
+        offset = line_numbers.winfo_width()  # Add some padding
+        script_text.grid(row=2, column=0, padx=(offset, 0), pady=0, sticky="nsew")
 
-    script_text.grid(row=2, column=0, padx=0, pady=0, sticky="nsew")
+    #show_changes_in_text_zone()
     script_text.configure(bg="#1f1f1f", fg="white")
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
 
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
     script_text.bind("<<Modified>>", on_text_change)
-
+    script_text.bind("<Key>", show_changes_in_text_zone())
+    line_numbers.bind("<Configure>", show_changes_in_text_zone)
 
 def create_arguments_lines():
     """

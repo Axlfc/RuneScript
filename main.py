@@ -13,33 +13,7 @@ from src.localization import localization_data
 from src.views.tk_utils import root
 
 
-def main():
-    """
-        Initializes and runs the main application window.
-
-        This function sets up the main window for the Scripts Editor application. It defines window properties,
-        initializes the user interface components, and enters the main event loop to start the application.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-
-    width = 485
-    height = int(width * (1 + 5 ** 0.5) / 2)
-
-    # root.title("Untitled* - Script Editor")
-    root.title(localization_data['scripts_editor'])
-    root.geometry(f"{width}x{height}")
-
-    # setting resizable window
-    root.resizable(True, True)
-    root.minsize(width, height)  # minimimum size possible
-
-    #  is_modified = False
-
+def create_app():
     create_menu()
 
     create_directory_line()
@@ -61,8 +35,39 @@ def main():
 
     create_program_daily_with_format()
 
+
+def configure_app():
+    width = 485
+    height = int(width * (1 + 5 ** 0.5) / 2)
+
+    # root.title("Untitled* - Script Editor")
+    root.title(localization_data['scripts_editor'])
+    root.geometry(f"{width}x{height}")
+
+    # setting resizable window
+    root.resizable(True, True)
+    root.minsize(width, height)  # minimimum size possible
+
     root.grid_rowconfigure(2, weight=1)
     root.columnconfigure(0, weight=1)
+
+
+def main():
+    """
+        Initializes and runs the main application window.
+
+        This function sets up the main window for the Scripts Editor application. It defines window properties,
+        initializes the user interface components, and enters the main event loop to start the application.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+
+    create_app()
+    configure_app()
 
     root.mainloop()
 

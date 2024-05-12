@@ -75,6 +75,7 @@ class LineNumberCanvas(Canvas):
         ''' Redraw line numbers '''
         self.delete("all")
         max_chars = len(str(self.text_widget.index("end").split('.')[0]))
+        print("MAXCHARDS:\t", max_chars)
         width = max_chars * 10  # Adjust the width based on the maximum number of characters
         self.config(width=width)  # Set the width dynamically
         i = self.text_widget.index("@0,0")
