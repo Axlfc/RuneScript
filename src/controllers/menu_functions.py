@@ -1,3 +1,4 @@
+import json
 import os
 from tkinter import Menu, Button, messagebox, filedialog, END
 
@@ -14,8 +15,9 @@ from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_ht
 from src.localization import localization_data
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, file_name, last_saved_content
-from src.controllers.tool_functions import find_text, change_color, open_search_replace_dialog, open_terminal_window, \
-    open_ai_assistant_window, open_webview, open_ipython_terminal_window
+from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window, \
+    open_ai_assistant_window, open_webview, open_ipython_terminal_window, create_url_input_window,
+                                            open_change_theme_window)
 
 house_icon = "🏠"
 open_icon = "📂"
@@ -700,13 +702,16 @@ def create_menu():
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
 
     tool_menu.add_command(label="Change Color", command=change_color)
+    tool_menu.add_command(label="Change Theme", command=open_change_theme_window)
     tool_menu.add_command(label="Search", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
     tool_menu.add_command(label="Search and Replace", command=open_search_replace_dialog, compound='left',
                           image=image_find, accelerator='Ctrl+R')
     tool_menu.add_separator()
     tool_menu.add_command(label="Terminal", command=open_terminal_window)
-    tool_menu.add_command(label="IPython Terminal", command=open_ipython_terminal_window)
+    # tool_menu.add_command(label="IPython Terminal", command=open_ipython_terminal_window)
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window)
+    tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))
+    tool_menu.add_command(label="Web Browser", command=create_url_input_window)
     tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
 
     # Jobs Menu

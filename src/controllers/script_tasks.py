@@ -3,22 +3,6 @@ from tkinter import messagebox
 import markdown
 
 
-def show_selected_model():
-    """
-        Displays the currently selected model.
-
-        This function is a placeholder for the logic to display details about the currently selected model.
-        It can be expanded to show model parameters, status, or other relevant information.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    pass
-
-
 def analyze_csv_data():
     """
         Analyzes data from a CSV file.

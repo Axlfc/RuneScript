@@ -1,17 +1,78 @@
+import json
 import multiprocessing
 import os
 import subprocess
 import threading
-from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, messagebox
-import webview
+from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
+    messagebox, OptionMenu
+import webview  # pywebview
 
 import markdown
 from tkhtmlview import HTMLLabel
 
 from src.views.edit_operations import cut, copy, paste, duplicate
-from src.controllers.script_tasks import show_selected_model
-from src.views.tk_utils import text, script_text, root
+from src.views.tk_utils import text, script_text, root, style
 from src.controllers.utility_functions import make_tag
+
+
+THEME_SETTINGS_FILE = "data/theme_settings.json"
+
+
+def load_themes_from_json(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            return data.get('themes', [])
+    except FileNotFoundError:
+        messagebox.showerror("Error", "Themes file not found.")
+        return []
+    except json.JSONDecodeError:
+        messagebox.showerror("Error", "Error decoding themes file.")
+        return []
+
+
+def open_change_theme_window():
+    themes = load_themes_from_json("data/themes.json")
+
+    theme_window = Toplevel(root)
+    theme_window.title("Change Theme")
+    theme_window.geometry("300x250")
+
+    Label(theme_window, text="Select Theme:").pack(pady=10)
+
+    # Dropdown for theme selection
+    selected_theme = StringVar()
+    selected_theme.set(themes[0])  # default value
+    theme_dropdown = OptionMenu(theme_window, selected_theme, *themes)
+    theme_dropdown.pack()
+
+    def apply_theme():
+        chosen_theme = selected_theme.get()
+        style.theme_use(chosen_theme)
+        save_theme_setting(chosen_theme)  # Save the selected theme to the file
+
+    Button(theme_window, text="Apply", command=apply_theme).pack(pady=20)
+
+
+def save_theme_setting(theme_name):
+    """
+    Saves the given theme name to a settings file.
+    """
+    settings = {'theme': theme_name}
+    with open(THEME_SETTINGS_FILE, 'w') as file:
+        json.dump(settings, file)
+
+
+def load_theme_setting():
+    """
+    Loads the theme name from the settings file.
+    If the file does not exist, it returns the default theme.
+    """
+    if os.path.exists(THEME_SETTINGS_FILE):
+        with open(THEME_SETTINGS_FILE, 'r') as file:
+            settings = json.load(file)
+            return settings.get('theme', 'superhero')  # Replace 'default' with your actual default theme
+    return 'superhero'  # Replace 'default' with your actual default theme
 
 
 def change_color():
@@ -301,6 +362,37 @@ def add_current_selected_text(include_selected_text):
     include_selected_text_in_command = include_selected_text
 
 
+def open_ai_server_settings_window():
+    settings_window = Toplevel(root)
+    settings_window.title("AI Server Settings")
+    settings_window.geometry("400x300")
+
+    Label(settings_window, text="Server URL:").grid(row=0, column=0)
+    server_url_entry = Entry(settings_window, width=25)
+    server_url_entry.insert(0, "http://localhost:1234/v1")  # Default URL
+    server_url_entry.grid(row=0, column=1)
+
+    Label(settings_window, text="API Key:").grid(row=1, column=0)
+    api_key_entry = Entry(settings_window, width=25)
+    api_key_entry.insert(0, "not-needed")  # Default API Key
+    api_key_entry.grid(row=1, column=1)
+
+    # Placeholder for listing and managing saved server connections
+    # This could be implemented using Listbox or similar widget
+
+    Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
+
+    settings_window.mainloop()
+
+
+def save_ai_server_settings(server_url, api_key):
+    settings = {'server_url': server_url, 'api_key': api_key}
+    # TODO: Here you would save these settings to a file or database
+    # For now, we'll just print them
+    print("Saved AI Server Settings:", settings)
+    messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
+
+
 def open_ai_assistant_window():
     """
         Opens a window for interacting with an AI assistant.
@@ -330,7 +422,8 @@ def open_ai_assistant_window():
     # Create a 'Settings' Menu
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
-    settings_menu.add_command(label="Select AI Model", command=show_selected_model)
+    menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
+    # menu_bar.add_command(label="Manage Servers", command=manage_servers)
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
         label="Toggle Markdown-to-HTML Rendering",
@@ -558,10 +651,52 @@ def open_ai_assistant_window():
 
 # Define _create_webview_process at the top level
 def _create_webview_process(title, url):
-    webview.create_window(title, url, width=800, height=600)
-    webview.start()
+    webview.create_window(title, url, width=800, height=600, text_select=True, zoomable=True)
+    webview.start(private_mode=True)
 
 
 def open_webview(title, url):
     webview_process = multiprocessing.Process(target=_create_webview_process, args=(title, url,))
     webview_process.start()
+
+
+def open_url_in_webview(url):
+    webview.create_window("My Web Browser", url, width=800, height=600, text_select=True, zoomable=True,
+                          easy_drag=True, confirm_close=True, background_color="#1f1f1f")
+    webview.start(private_mode=True)
+
+
+def on_go_button_clicked(entry, window):
+    url = entry.get()
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url  # Prepend 'https://' if not present
+    on_close(window)
+    webview_process = multiprocessing.Process(target=open_url_in_webview, args=(url,))
+    webview_process.start()
+
+
+def create_url_input_window():
+    # Change this to Toplevel
+    window = Toplevel(root)  # Use the existing root from Tkinter
+    window.title("Enter URL")
+
+    entry = Entry(window, width=50)
+    entry.insert(0, "https://duckduckgo.com")
+    entry.pack(padx=10, pady=10)
+    entry.focus()
+
+    go_button = Button(window, text="Go", command=lambda: on_go_button_clicked(entry, window))
+    go_button.pack(pady=5)
+
+    window.bind('<Return>', lambda event: on_go_button_clicked(entry, window))
+
+
+def on_enter(event, entry, window):
+    """Event handler to trigger navigation when Enter key is pressed."""
+    on_go_button_clicked(entry, window)
+
+
+def on_close(window):
+    # Terminate the subprocesses here if any
+    # Clean up resources
+    window.destroy()

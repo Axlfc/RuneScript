@@ -55,31 +55,3 @@ class Tooltip:
         if self.tooltip:
             self.tooltip.destroy()
             self.tooltip = None
-
-class LineNumberCanvas(Canvas):
-    def __init__(self, text_widget, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.text_widget = text_widget
-        self.text_widget.bind("<KeyPress>", self.on_text_change)
-        self.text_widget.bind("<MouseWheel>", self.on_text_change)
-        self.text_widget.bind("<KeyRelease>", self.on_text_change)
-        self.text_widget.bind("<Button-1>", self.on_text_change)
-        self.text_widget.bind("<<Modified>>", self.on_text_change)
-        self.text_widget.bind("<Configure>", self.on_text_change)
-        self.redraw()  # Initial draw
-
-    def on_text_change(self, event=None):
-        self.redraw()
-
-    def redraw(self):
-        ''' Redraw line numbers '''
-        self.delete("all")
-        i = self.text_widget.index("@0,0")
-        while True:
-            dline = self.text_widget.dlineinfo(i)
-            if dline is None:
-                break
-            y = dline[1]
-            line_num = str(i).split(".")[0]
-            self.create_text(2, y, anchor="nw", text=line_num, fill="white")
-            i = self.text_widget.index(f"{i}+1line")

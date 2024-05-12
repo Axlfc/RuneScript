@@ -1,5 +1,7 @@
-from tkinter import Label, Tk, StringVar, IntVar, Frame, Menu, Text, Entry
-from tkinter import scrolledtext
+from ttkbootstrap import Style
+
+from tkinter import Label, StringVar, IntVar, Frame
+from tkinter import scrolledtext, Text, Entry, Menu
 import os
 
 new_name = ""
@@ -20,8 +22,9 @@ current_font_size = 12
 fontColor = '#000000'
 fontBackground = '#FFFFFF'
 
+style = Style(theme="cosmo")
 
-root = Tk()
+root = style.master
 
 root.iconbitmap("src/views/icon.ico")
 
