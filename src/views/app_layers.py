@@ -6,7 +6,7 @@ from src.controllers.menu_functions import run_icon, redo_icon, undo_icon, save_
 from src.models.script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
     run_script_crontab, get_operative_system, run_script_windows
 from src.localization import localization_data
-from src.views.ui_elements import Tooltip
+from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 
 
@@ -191,6 +191,8 @@ def create_content_file_window():
     """
     original_text = script_text.get("1.0", "end-1c")  # Store the original text of the file
 
+    line_numbers = LineNumberCanvas(script_text, width=16)
+
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
@@ -213,6 +215,10 @@ def create_content_file_window():
 
         # Bind the <FocusOut> event to destroy the context menu when it loses focus
         context_menu.bind("<FocusOut>", lambda e: destroy_menu())
+
+    # Configure script_text grid to accommodate line numbers
+    line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
+    #script_text.grid(row=2, column=1, padx=0, pady=0, sticky="nsew")
 
     script_text.grid(row=2, column=0, padx=0, pady=0, sticky="nsew")
     script_text.configure(bg="#1f1f1f", fg="white")
