@@ -79,7 +79,7 @@ class LineNumberCanvas(Canvas):
         end_line_num = int(self.text_widget.index("end-1c").split('.')[0])
         max_line_num_length = len(str(end_line_num))
 
-        width = max_line_num_length * 7  # Adjust the width based on the maximum number of characters
+        width = max_line_num_length * 8  # Adjust the width based on the maximum number of characters
         self.config(width=width)  # Set the width dynamically
         i = self.text_widget.index("@0,0")
         while True:
@@ -88,5 +88,5 @@ class LineNumberCanvas(Canvas):
                 break
             y = dline[1]
             line_num = str(i).split(".")[0]
-            self.create_text(2, y, anchor="nw", text=line_num, fill="red")  # Change text color automatically
+            self.create_text(2, y, anchor="nw", text=line_num, fill="#CE9178")  # Change text color automatically
             i = self.text_widget.index(f"{i}+1line")
