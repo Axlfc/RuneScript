@@ -866,6 +866,26 @@ def open_ai_assistant_window():
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
 
+    def fix():
+        selected_text = output_text.get("sel.first", "sel.last")
+
+        if selected_text.strip():
+            print(selected_text)
+        # TO-DO: Make call here so we get new response from LLM
+        # execute_ai_assistant_command(False, selected_text)
+
+    def refactor():
+        selected_text = output_text.get("sel.first", "sel.last")
+        print(selected_text)
+
+    def explain():
+        selected_text = output_text.get("sel.first", "sel.last")
+        print(selected_text)
+
+    def optimize():
+        selected_text = output_text.get("sel.first", "sel.last")
+        print(selected_text)
+
     def show_context_menu(event):
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
@@ -876,10 +896,11 @@ def open_ai_assistant_window():
         context_menu.add_command(label="Duplicate", command=duplicate)
         context_menu.add_command(label="Select All", command=duplicate)
         context_menu.add_separator()
-        context_menu.add_command(label="Fix", command=duplicate)
-        context_menu.add_command(label="Refactor", command=duplicate)
-        context_menu.add_command(label="Explain", command=duplicate)
-        context_menu.add_command(label="Optimize", command=duplicate)
+        context_menu.add_command(label="Fix", command=fix)
+        context_menu.add_command(label="Refactor", command=refactor)
+        context_menu.add_command(label="Explain", command=explain)
+        context_menu.add_command(label="Optimize", command=optimize)
+        context_menu.add_separator()
         context_menu.add_command(label="Convert pseudo-code to code", command=duplicate)
         context_menu.add_command(label="Generate documentation", command=duplicate)
         context_menu.add_command(label="Generate tests", command=duplicate)
