@@ -4,8 +4,7 @@
         "last_opened_script": "",
         "last_edited_script": "",
         "last_selected_theme": "darkly",
-        "last_selected_llm_server_provider": "",
-        "font_family": "Courier New",
+        "font_family": "Liberation Mono",
         "font_size": 12,
         "line_numbers_visible": true,
         "word_wrap": false,
@@ -53,10 +52,13 @@
         "high_contrast_mode": false,
         "keyboard_shortcuts_customization": {},
         "sandbox_mode": false,
-        "max_undo_redo_steps": 100,
+        "max_undo_redo_steps": 10000,
         "syntax_highlighting_performance": "auto",
         "user_name": "John Doe",
         "timestamp_format": "YYYY-MM-DD HH:mm:ss",
+        "last_selected_llm_server_provider": "ollama",
+        "server_url": "http://localhost:11434/api/generate",
+        "api_key": "not-needed",
         "startup_actions": []
     }
 }

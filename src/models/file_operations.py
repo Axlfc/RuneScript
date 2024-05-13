@@ -2,6 +2,7 @@ import subprocess
 import sys
 from tkinter import filedialog, messagebox, simpledialog
 import os
+import json
 
 from src.controllers.menu_functions import open_file
 from src.localization import localization_data

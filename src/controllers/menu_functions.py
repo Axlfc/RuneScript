@@ -16,8 +16,9 @@ from src.localization import localization_data
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, file_name, last_saved_content
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window, \
-    open_ai_assistant_window, open_webview, open_ipython_terminal_window, create_url_input_window,
-                                            open_change_theme_window)
+                                            open_ai_assistant_window, open_webview, open_ipython_terminal_window,
+                                            create_url_input_window,
+                                            open_change_theme_window, create_settings_window)
 
 house_icon = "🏠"
 open_icon = "📂"
@@ -28,6 +29,7 @@ redo_icon = "⮬"
 run_icon = "▶"
 
 file_types = [
+    ("All Files", "*.*"),
     ("Python Scripts", "*.py"),
     ("Shell Scripts", "*.sh"),
     ("PowerShell Scripts", "*.ps1"),
@@ -47,8 +49,7 @@ file_types = [
     ("Go Files", "*.go"),
     ("R Scripts", "*.r"),
     ("Rust Files", "*.rs"),
-    ("Dart Files", "*.dart"),
-    ("All Files", "*.*")
+    ("Dart Files", "*.dart")
 ]
 
 
@@ -640,6 +641,9 @@ def create_menu():
                           underline=0)
     file_menu.add_command(label="Save As", command=save_as_new_script, accelerator='Ctrl+Shift+S', underline=1)
     # file_menu.add_command(label="Rename", command=rename, accelerator='Ctrl+Shift+R', underline=0)
+    file_menu.add_separator()
+    file_menu.add_command(label="Settings", command=create_settings_window, compound='left', image=image_save, accelerator='Ctrl+S',
+                          underline=0)
     file_menu.add_separator()
     file_menu.add_command(label="Close", command=close, accelerator='Alt+F4', underline=0)
 

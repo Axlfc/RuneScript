@@ -4,14 +4,14 @@ import os
 import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
-    messagebox, OptionMenu
+    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font
 import webview  # pywebview
 
 import markdown
 from tkhtmlview import HTMLLabel
 
 from src.views.edit_operations import cut, copy, paste, duplicate
-from src.views.tk_utils import text, script_text, root, style
+from src.views.tk_utils import text, script_text, root, style, server_options
 from src.controllers.utility_functions import make_tag
 
 
@@ -276,6 +276,144 @@ def open_ipython_terminal_window():
     print("OPEN IPYTHON TERMINAL")
 
 
+def create_settings_window():
+    print("CREATING SETTINGS WINDOWS")
+    settings_window = Toplevel()
+    settings_window.title("ScriptsEditor Settings")
+    settings_window.geometry("600x400")
+
+    default_config_file = "data/config.json"
+    user_config_file = "data/user_config.json"
+
+    # Load configuration options from user_config.json if available; otherwise, fallback to config.json
+    if os.path.exists(user_config_file):
+        config_file_to_use = user_config_file
+    else:
+        config_file_to_use = default_config_file
+
+    try:
+        with open(config_file_to_use, 'r') as config_file:
+            config_data = json.load(config_file)
+    except FileNotFoundError:
+        messagebox.showerror("Error", f"Config file ({config_file_to_use}) not found.")
+        return
+    except json.JSONDecodeError:
+        messagebox.showerror("Error", f"Error decoding config file ({config_file_to_use}).")
+        return
+
+    # Create a canvas widget to contain settings
+    canvas = Canvas(settings_window, width=580, height=380)
+    canvas.pack(side='left', fill='both', expand=True)
+
+    # Add a scrollbar to the canvas
+    scrollbar = Scrollbar(settings_window, orient='vertical', command=canvas.yview)
+    scrollbar.pack(side='right', fill='y')
+
+    # Configure the canvas to use the scrollbar
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
+
+    # Create a frame inside the canvas to hold settings
+    settings_frame = Frame(canvas)
+    canvas.create_window((0, 0), window=settings_frame, anchor='nw')
+
+    # Display settings based on config data
+    setting_entries = {}
+
+    for section, options in config_data.items():
+        section_label = Label(settings_frame, text=f"{section.capitalize()} Settings", font=("Arial", 12, "bold"))
+        section_label.pack(pady=10, anchor='w')
+
+        for option_name, default_value in options.items():
+            if option_name.lower() == 'last_selected_llm_server_provider':
+                #  TO-DO: Here we need to link the same configs as the ai_assistant ai_server_settings so it has similar behavior and also writes the fields in the settings accordingly and is updated flawlessly.
+                pass
+            if option_name.lower() == 'font_family':
+                print("SETTING UP FONTS!")
+                # Create dropdown for font family selection
+                font_families = font.families()
+                default_font = default_value if default_value in font_families else 'Courier New'  # Default to Courier New if not found
+                var = StringVar(value=default_font)
+                font_label = Label(settings_frame, text="Font Family")
+                font_label.pack(anchor='w', padx=20, pady=5)
+                font_dropdown = OptionMenu(settings_frame, var, *font_families)
+                font_dropdown.pack(anchor='w', padx=20)
+                setting_entries[(section, option_name)] = var
+            elif isinstance(default_value, bool):
+                # Create checkbox for boolean options
+                var = IntVar(value=default_value)
+                checkbox = Checkbutton(settings_frame, text=option_name.capitalize(), variable=var)
+                checkbox.pack(anchor='w', padx=20)
+                setting_entries[(section, option_name)] = var
+            elif isinstance(default_value, str) or isinstance(default_value, int):
+                # Create entry field for string or integer options
+                entry_label = Label(settings_frame, text=option_name.capitalize())
+                entry_label.pack(anchor='w', padx=20, pady=5)
+                entry = Entry(settings_frame)
+                if user_config_file == user_config_file:  # Prefer user_config.json if available
+                    entry.insert(END, str(default_value))
+                else:
+                    entry.insert(END, str(config_data[section][option_name]))
+                entry.pack(anchor='w', padx=20)
+                setting_entries[(section, option_name)] = entry
+            else:
+                # Handle other types (e.g., lists, nested dicts) accordingly
+                pass
+
+    def save_settings():
+        # Save settings to user_config.json
+        updated_config_data = {}
+
+        for (section, option_name), widget in setting_entries.items():
+            value = widget.get()
+
+            if isinstance(value, str) and value.isdigit():
+                value = int(value)
+
+            updated_config_data.setdefault(section, {})[option_name] = value
+
+        with open(user_config_file, 'w') as user_config:
+            json.dump(updated_config_data, user_config, indent=4)
+
+        messagebox.showinfo("Settings Saved", "Settings saved successfully!")
+
+    def reset_settings():
+        # Reset settings to defaults
+        for (section, option_name), widget in setting_entries.items():
+            default_value = config_data[section][option_name]
+
+            if isinstance(widget, IntVar):
+                widget.set(default_value)
+            elif isinstance(widget, Entry):
+                widget.delete(0, END)
+                widget.insert(END, str(default_value))
+
+        # Delete user_config.json if it exists
+        if os.path.exists(user_config_file):
+            os.remove(user_config_file)
+            messagebox.showinfo("Reset Settings", "Settings reset to defaults. User configuration file deleted.")
+
+        # Display updated values in the settings window
+        for (section, option_name), widget in setting_entries.items():
+            updated_value = config_data[section][option_name]
+
+            if isinstance(widget, Entry):
+                widget.delete(0, END)
+                widget.insert(END, str(updated_value))
+            elif isinstance(widget, IntVar):
+                widget.set(updated_value)
+
+    # Save button to save changes
+    save_button = Button(settings_frame, text="Save Settings", command=save_settings)
+    save_button.pack(pady=20)
+
+    # Reset button to reset settings
+    reset_button = Button(settings_frame, text="Reset Settings", command=reset_settings)
+    reset_button.pack(pady=10)
+
+    # Bind the scrollbar to the canvas
+    canvas.bind_all("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+
 def open_terminal_window():
     """
         Opens a new window functioning as a terminal within the application.
@@ -362,38 +500,142 @@ def add_current_selected_text(include_selected_text):
     include_selected_text_in_command = include_selected_text
 
 
+def read_config_parameter(parameter_name):
+    """
+    Read a specific parameter from user_config.json (if available) or config.json.
+
+    Parameters:
+    - parameter_name: Name of the parameter to read.
+
+    Returns:
+    - The value of the parameter if found, otherwise None.
+    """
+    try:
+        # Try to read from user_config.json first
+        with open("data/user_config.json", 'r') as user_config_file:
+            user_config_data = json.load(user_config_file)
+            if parameter_name in user_config_data:
+                return user_config_data[parameter_name]
+    except FileNotFoundError:
+        pass  # No user_config.json file found, continue to read from config.json
+
+    # Read from config.json
+    with open("data/config.json", 'r') as config_file:
+        config_data = json.load(config_file)
+        if parameter_name in config_data:
+            return config_data[parameter_name]
+
+    # Parameter not found in both user_config.json and config.json
+    return None
+
+
+def write_config_parameter(parameter_name, parameter_value):
+    """
+    Write a parameter and its value to user_config.json, creating the file if necessary.
+
+    Parameters:
+    - parameter_name: Name of the parameter to write.
+    - parameter_value: Value to assign to the parameter.
+
+    Returns:
+    - True if the parameter was successfully written, otherwise False.
+    """
+    user_config_file_path = "data/user_config.json"
+    default_config_file_path = "data/config.json"
+
+    # Check if user_config.json exists and is not empty
+    if os.path.exists(user_config_file_path) and os.path.getsize(user_config_file_path) > 0:
+        try:
+            # Read existing user_config.json
+            with open(user_config_file_path, 'r') as user_config_file:
+                user_config_data = json.load(user_config_file)
+        except Exception as e:
+            print(f"Error reading user_config.json: {e}")
+            return False
+    else:
+        # Copy data from config.json to user_config.json
+        try:
+            with open(default_config_file_path, 'r') as default_config_file:
+                config_data = json.load(default_config_file)
+                user_config_data = {"options": config_data["options"]}  # Only copy the 'options' object
+        except Exception as e:
+            print(f"Error copying data from config.json: {e}")
+            return False
+
+        # Write the initial user_config.json
+        try:
+            with open(user_config_file_path, 'w') as user_config_file:
+                json.dump(user_config_data, user_config_file, indent=4)
+        except Exception as e:
+            print(f"Error writing user_config.json: {e}")
+            return False
+
+    # Update the specific parameter value within the options object
+    if 'options' not in user_config_data:
+        user_config_data['options'] = {}
+
+    user_config_data['options'][parameter_name] = parameter_value
+
+    # Write the updated user_config_data to user_config.json
+    try:
+        with open(user_config_file_path, 'w') as user_config_file:
+            json.dump(user_config_data, user_config_file, indent=4)
+        return True
+    except Exception as e:
+        print(f"Error writing user_config.json: {e}")
+        return False
+
+
 def open_ai_server_settings_window():
-    settings_window = Toplevel(root)
-    settings_window.title("AI Server Settings")
-    settings_window.geometry("400x300")
-
-    Label(settings_window, text="Select Server:").grid(row=0, column=0)
-    selected_server = StringVar(settings_window)
-    selected_server.set("lmstudio")  # Set default selection
-
-    # Dropdown menu options
-    server_options = ["lmstudio", "ollama", "openai"]
-    server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
-    server_dropdown.grid(row=0, column=1)
-
-    Label(settings_window, text="Server URL:").grid(row=1, column=0)
-    server_url_entry = Entry(settings_window, width=25)
-    server_url_entry.insert(0, "http://localhost:1234/v1")  # Default URL
-    server_url_entry.grid(row=1, column=1)
-
-    Label(settings_window, text="API Key:").grid(row=2, column=0)
-    api_key_entry = Entry(settings_window, width=25)
-    api_key_entry.insert(0, "not-needed")  # Default API Key
-    api_key_entry.grid(row=2, column=1)
-
-    # Function to toggle display based on selected server
     def toggle_display(selected_server):
+        # Get server details from llm_server_providers.json based on selected server
+        print("SERVER DETAILS:\n", server_details)
+
+        if selected_server in server_details:
+            print("SELECTED SERVER:\t", selected_server)
+            server_url_entry.delete(0, END)
+            server_url_entry.insert(0, server_details[selected_server]["server_url"])
+
+            api_key_entry.delete(0, END)
+            api_key_entry.insert(0, server_details[selected_server]["api_key"])
+
         if selected_server == "lmstudio":
+            server_url_entry.grid()
+            # api_key_entry.grid()
+        elif selected_server == "ollama":
+            server_url_entry.grid()
+            # api_key_entry.grid()
+        elif selected_server == "openai":
             server_url_entry.grid()
             api_key_entry.grid()
         else:
             server_url_entry.grid_remove()
             api_key_entry.grid_remove()
+
+    # Load server details from llm_server_providers.json
+    with open("data/llm_server_providers.json", 'r') as server_file:
+        server_details = json.load(server_file)
+
+    settings_window = Toplevel()
+    settings_window.title("AI Server Settings")
+    settings_window.geometry("400x300")
+
+    Label(settings_window, text="Select Server:").grid(row=0, column=0)
+    selected_server = StringVar(settings_window)
+    selected_server.set(read_config_parameter("options").get("last_selected_llm_server_provider", "lmstudio"))  # Set default selection
+
+    # Dropdown menu options based on available servers in llm_server_providers.json
+    server_options = list(server_details.keys())
+    server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
+    server_dropdown.grid(row=0, column=1)
+
+    Label(settings_window, text="Server URL:").grid(row=1, column=0)
+    server_url_entry = Entry(settings_window, width=25)
+    server_url_entry.grid(row=1, column=1)
+
+    Label(settings_window, text="API Key:").grid(row=2, column=0)
+    api_key_entry = Entry(settings_window, width=25)
+    api_key_entry.grid(row=2, column=1)
 
     # Initial display based on default selection
     toggle_display(selected_server.get())
@@ -405,18 +647,14 @@ def open_ai_server_settings_window():
     # Bind the callback function to the dropdown selection
     selected_server.trace("w", on_server_selection_change)
 
+    def save_ai_server_settings(server_url, api_key):
+        # Save settings to user_config.json
+        write_config_parameter("last_selected_llm_server_provider", selected_server.get())
+        write_config_parameter("server_url", server_url)
+        write_config_parameter("api_key", api_key)
+        messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
+
     Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
-
-    settings_window.mainloop()
-
-
-def save_ai_server_settings(server_url, api_key):
-    settings = {'server_url': server_url, 'api_key': api_key}
-    # TODO: Here you would save these settings to a file or database
-    # For now, we'll just print them
-    print("Saved AI Server Settings:", settings)
-    messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
-
 
 def open_ai_assistant_window():
     """

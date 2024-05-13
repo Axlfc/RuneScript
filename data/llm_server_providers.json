@@ -1,0 +1,14 @@
+{
+    "ollama": {
+        "server_url": "http://localhost:11434/api/generate",
+        "api_key": "not-needed"
+    },
+    "lmstudio": {
+        "server_url": "http://localhost:1234/v1",
+        "api_key": "not-needed"
+    },
+    "openai": {
+        "server_url": "https://api.openai.com/v1/chat/completions",
+        "api_key": "OPENAI_API_KEY"
+    }
+}

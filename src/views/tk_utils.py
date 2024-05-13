@@ -21,6 +21,7 @@ current_font_family = "Liberation Mono"
 current_font_size = 12
 fontColor = '#000000'
 fontBackground = '#FFFFFF'
+server_options = ["lmstudio", "ollama", "openai"]
 
 style = Style(theme="cosmo")
 
