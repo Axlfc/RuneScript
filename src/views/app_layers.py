@@ -1,13 +1,35 @@
 from tkinter import Button, Checkbutton
 
 from src.models.file_operations import select_directory, prompt_rename_file, open_current_directory
-from src.controllers.menu_functions import run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
+from src.controllers.menu_functions import create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
     open_script, save_script, save_as_new_script, update_modification_status, on_text_change
 from src.models.script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
     run_script_crontab, get_operative_system, run_script_windows
-from src.localization import localization_data
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
+
+
+def create_app():
+    create_menu()
+    create_body()
+    create_footer()
+
+
+def create_footer():
+    create_arguments_lines()
+    create_immediately_run_line()
+    create_execute_in_line()
+    create_execute_one_time_with_format()  # GNU/Linux only
+    create_program_daily_with_format()  # GNU/Linux only
+
+
+def create_body():
+    create_directory_line()  # Row 0
+    create_open_script_line()  # Row 1
+    create_content_file_window()  # Row 2
+    create_horizontal_scrollbar_lines()  # Row 3
+    create_interactive_textfield_lines()  # Row 4
+
 
 
 def undo():
@@ -108,6 +130,23 @@ def duplicate():
     script_text.event_generate("<<Duplicate>>")
 
 
+def create_footer_line():
+    """
+        Creates the interface elements for opening a script file.
+
+        This includes buttons and labels to facilitate the opening of script files from the file system into the application.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+
+    # TODO: print("Footer not seen")
+    pass
+
+
 def create_directory_line():
     """
         Creates and displays the directory selection interface in the application.
@@ -178,16 +217,16 @@ def create_open_script_line():
 
 def create_content_file_window():
     """
-        Sets up the main text area for file content display and editing.
+    Sets up the main text area for file content display and editing.
 
-        This function is responsible for initializing and configuring the main text area where the content of opened files
-        is displayed and can be edited by the user.
+    This function is responsible for initializing and configuring the main text area where the content of opened files
+    is displayed and can be edited by the user.
 
-        Parameters:
-        None
+    Parameters:
+    None
 
-        Returns:
-        None
+    Returns:
+    None
     """
     original_text = script_text.get("1.0", "end-1c")  # Store the original text of the file
 
@@ -222,18 +261,55 @@ def create_content_file_window():
 
     def show_changes_in_text_zone(event=None):
         ''' Configure script_text grid to accommodate line numbers '''
-        offset = line_numbers.winfo_width()  # Add some padding
+        offset = line_numbers.winfo_width() + 8  # Add some padding
         script_text.grid(row=2, column=0, padx=(offset, 0), pady=0, sticky="nsew")
 
-    #show_changes_in_text_zone()
+    # Bind the function to the event of line_numbers widget configuration change
+    line_numbers.bind("<Configure>", show_changes_in_text_zone)
+
     script_text.configure(bg="#1f1f1f", fg="white")
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
 
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
     script_text.bind("<<Modified>>", on_text_change)
-    script_text.bind("<Key>", show_changes_in_text_zone())
-    line_numbers.bind("<Configure>", show_changes_in_text_zone)
+
+
+def create_horizontal_scrollbar_lines():
+    """
+    Creates the horizontal scrollbar for the script_text widget.
+
+    This function adds a horizontal scrollbar to the script_text widget, allowing users to scroll horizontally
+    through the text content.
+
+    Parameters:
+    None
+
+    Returns:
+    None
+    """
+    scrollbar_frm.grid(row=3, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+    scrollbar = Scrollbar(root, orient=HORIZONTAL, command=script_text.xview)
+    scrollbar.grid(row=3, column=0, sticky="ew")
+    script_text.config(xscrollcommand=scrollbar.set)
+
+
+def create_interactive_textfield_lines():
+    """
+    Creates the interactive text field below the script_text widget.
+
+    This function adds an interactive text field below the script_text widget, allowing users to input or read text.
+
+    Parameters:
+    None
+
+    Returns:
+    None
+    """
+    interactive_frm.grid(row=4, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+    input_field = Text(interactive_frm, height=1)
+    input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
+
 
 def create_arguments_lines():
     """
@@ -248,7 +324,7 @@ def create_arguments_lines():
         Returns:
         None
     """
-    content_frm.grid(row=3, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+    content_frm.grid(row=5, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
 
     entry_arguments_label = Label(content_frm, text=localization_data['entry_arguments'])
     entry_arguments_label.grid(row=0, column=0, padx=5, pady=0, sticky="w")
@@ -267,11 +343,11 @@ def create_arguments_lines():
     Tooltip(see_stderr_check, localization_data['generate_stderr'])
 
     stdout_button = Button(content_frm, text=localization_data['see_stdout'], command=see_stdout)
-    stdout_button.grid(column=1, row=1, sticky="e")  # Align to the right
+    stdout_button.grid(column=2, row=1, padx=10, sticky="e")  # Align to the right
     Tooltip(stdout_button, localization_data['see_stdout_tooltip'])
 
     stderr_button = Button(content_frm, text=localization_data['see_stderr'], command=see_stderr)
-    stderr_button.grid(column=2, row=1, sticky="e")  # Align to the right
+    stderr_button.grid(column=3, row=1, padx=10, sticky="e")  # Align to the right
     Tooltip(stderr_button, localization_data['see_stderr_tooltip'])
 
 
@@ -288,14 +364,14 @@ def create_immediately_run_line():
         None
     """
     if get_operative_system() != "Windows":
-        run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+        run_frm.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
         Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
         run_button = Button(run_frm, text=run_icon, command=run_script)
         run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
         Tooltip(run_button, localization_data['run_script'])
     else:
-        run_frm.grid(row=4, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+        run_frm.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
 
         Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
         run_button = Button(run_frm, text=run_icon, command=run_script_windows)
@@ -317,7 +393,7 @@ def create_execute_in_line():
         None
     """
     if get_operative_system() != "Windows":
-        line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
+        line_frm.grid(row=9, column=0, pady=0, sticky="nsew")
 
         Label(line_frm, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
@@ -332,7 +408,7 @@ def create_execute_in_line():
         run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
         Tooltip(run_button, localization_data['set_duration_for_script_execution'])
     else:
-        line_frm.grid(row=5, column=0, pady=0, sticky="nsew")
+        line_frm.grid(row=9, column=0, pady=0, sticky="nsew")
 
         Label(line_frm, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
@@ -362,7 +438,7 @@ def create_execute_one_time_with_format():
         None
     """
     if get_operative_system() != "Windows":
-        one_time_frm.grid(row=6, column=0, pady=0, sticky="nsew")
+        one_time_frm.grid(row=8, column=0, pady=0, sticky="nsew")
 
         Label(one_time_frm, text=localization_data['scheduled_script_execution']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
 
@@ -389,7 +465,7 @@ def create_program_daily_with_format():
         None
     """
     if get_operative_system() != "Windows":
-        daily_frm.grid(row=7, column=0, pady=0, sticky="ew")
+        daily_frm.grid(row=9, column=0, pady=0, sticky="ew")
 
         Label(daily_frm, text=localization_data['daily_script_scheduling']).grid(row=0, column=0, sticky="w", padx=5, pady=0)
 
@@ -419,3 +495,4 @@ def create_program_daily_with_format():
         )
         run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
         Tooltip(run_button, localization_data['utilize_crontab'])
+

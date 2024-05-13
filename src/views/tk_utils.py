@@ -1,8 +1,26 @@
 from ttkbootstrap import Style
-
+from src.localization import localization_data
 from tkinter import Label, StringVar, IntVar, Frame
 from tkinter import scrolledtext, Text, Entry, Menu
+from tkinter import Scrollbar, HORIZONTAL
 import os
+
+
+def configure_app():
+    width = 485
+    height = int(width * (1 + 4 ** 0.5) / 2)
+
+    # root.title("Untitled* - Script Editor")
+    root.title(localization_data['scripts_editor'])
+    root.geometry(f"{width}x{height}")
+
+    # setting resizable window
+    root.resizable(True, True)
+    root.minsize(width, height)  # minimimum size possible
+
+    root.grid_rowconfigure(2, weight=1)
+    root.columnconfigure(0, weight=1)
+
 
 new_name = ""
 last_saved_content = None  # This will hold the content of the text editor after the last save or when a new file is opened.
@@ -41,7 +59,7 @@ script_frm = Frame(root)
 script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
 
 script_text = scrolledtext.ScrolledText(root, wrap="word", height=20, width=60, undo=True)
-text = Text(wrap="word", font=("Liberation Mono", 12), background="white", borderwidth=0, highlightthickness=0,
+text = Text(wrap="word", font=(current_font_family, 12), background="white", borderwidth=0, highlightthickness=0,
             undo=True)
 
 all_fonts = StringVar()
@@ -55,6 +73,10 @@ entry_arguments_entry = Entry(content_frm, textvariable=entry_text, width=40)
 generate_stdin = IntVar()
 generate_stdin_err = IntVar()
 
+interactive_frm = Frame(root)
+
+scrollbar_frm = Frame(root)
+
 run_frm = Frame(root)
 
 line_frm = Frame(root)
@@ -62,3 +84,5 @@ line_frm = Frame(root)
 one_time_frm = Frame(root)
 
 daily_frm = Frame(root)
+
+configure_app()
