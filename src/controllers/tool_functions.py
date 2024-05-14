@@ -10,6 +10,7 @@ import webview  # pywebview
 import markdown
 from tkhtmlview import HTMLLabel
 
+from src.models.script_operations import get_operative_system
 from src.views.edit_operations import cut, copy, paste, duplicate
 from src.views.tk_utils import text, script_text, root, style, server_options
 from src.controllers.utility_functions import make_tag
@@ -414,6 +415,7 @@ def create_settings_window():
     # Bind the scrollbar to the canvas
     canvas.bind_all("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
 
+
 def open_terminal_window():
     """
         Opens a new window functioning as a terminal within the application.
@@ -488,16 +490,6 @@ def open_terminal_window():
     # Bind the UP and DOWN arrow keys to navigate the command history
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
-
-
-def add_current_main_opened_script(include_main_script):
-    global include_main_script_in_command
-    include_main_script_in_command = include_main_script
-
-
-def add_current_selected_text(include_selected_text):
-    global include_selected_text_in_command
-    include_selected_text_in_command = include_selected_text
 
 
 def read_config_parameter(parameter_name):
@@ -656,6 +648,17 @@ def open_ai_server_settings_window():
 
     Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
 
+
+def add_current_main_opened_script(include_main_script):
+    global include_main_script_in_command
+    include_main_script_in_command = include_main_script
+
+
+def add_current_selected_text(include_selected_text):
+    global include_selected_text_in_command
+    include_selected_text_in_command = include_selected_text
+
+
 def open_ai_assistant_window():
     """
         Opens a window for interacting with an AI assistant.
@@ -714,6 +717,8 @@ def open_ai_assistant_window():
         command=lambda: add_current_selected_text(add_current_selected_text_var.get())
     )
 
+
+
     # Create the output text widget
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
@@ -746,6 +751,7 @@ def open_ai_assistant_window():
             print("on_md_content_change: markdown_render_enabled is False")  # Debug print
 
     def update_html_content():
+        # TODO: solve view jumping bug
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
@@ -818,13 +824,12 @@ def open_ai_assistant_window():
         entry.config(state='normal')  # Re-enable the entry widget
         status_label_var.set("READY")  # Update label to show AI is processing
 
-    def execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var):
-        global process, original_md_content
+    def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
+        global original_md_content
 
-        ai_command = entry.get()
         if ai_command.strip():
             script_content = ""
-            if add_current_selected_text_var.get():
+            if selected_text_var.get():
                 # Use only selected text from the main script window
                 try:
                     script_content = "```\n" + script_text.get(script_text.tag_ranges("sel")[0],
@@ -832,7 +837,7 @@ def open_ai_assistant_window():
                 except:
                     messagebox.showerror("Error", "No text selected in main script window.")
                     return
-            elif add_current_main_opened_script_var.get():
+            elif opened_script_var.get():
                 # Use full content of the main script window
                 script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
 
@@ -848,23 +853,194 @@ def open_ai_assistant_window():
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
             ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
-            command = ['python', ai_script_path, combined_command]
+            # ai_script_path = r"C:\Users\user\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
+            command = create_ai_command(ai_script_path, combined_command)
 
+            print("PROCESSING AI COMMAND!!!!!")
+            process_ai_command(command)
+        else:
+            entry.config(state='normal')  # Re-enable the entry widget if no command is entered
+
+    def create_ai_command(ai_script_path, user_prompt):
+        if get_operative_system() != "Windows":
+            return ['python3', ai_script_path, user_prompt]
+        else:
+            return ['python', ai_script_path, user_prompt]
+
+    def process_ai_command(command):
+        global process
+
+        try:
             # Terminate existing subprocess if it exists
             if 'process' in globals() and process.poll() is None:
                 process.terminate()
 
-            try:
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                           encoding='utf-8', bufsize=1)
-                threading.Thread(target=stream_output, args=(process,)).start()
-            except Exception as e:
-                output_text.insert(END, f"Error: {e}\n")
-                on_processing_complete()
-            finally:
-                update_html_content()
-        else:
-            entry.config(state='normal')  # Re-enable the entry widget if no command is entered
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                       encoding='utf-8', bufsize=1)
+            threading.Thread(target=stream_output, args=(process,)).start()
+
+        except Exception as e:
+            output_text.insert(END, f"Error: {e}\n")
+            on_processing_complete()
+        finally:
+            update_html_content()
+
+    def read_ai_command(command_name, user_prompt):
+        # Path to commands.json file
+        commands_file = "data/commands.json"
+        try:
+            # Load commands data from commands.json
+            with open(commands_file, 'r') as f:
+                commands_data = json.load(f)
+
+            # Retrieve the list of custom commands
+            custom_commands = commands_data.get("customCommands", [])
+
+            # Find the command with the specified command_name
+            matching_command = next((cmd for cmd in custom_commands if cmd.get("name") == command_name), None)
+
+            if matching_command:
+                # Extract the original prompt from the matching command
+                original_prompt = matching_command.get("prompt", "")
+
+                # Replace '{{{ input }}}' with the user-provided prompt
+                formatted_prompt = original_prompt.replace("{{{ input }}}", user_prompt)
+
+                # Return the formatted prompt
+                return formatted_prompt
+            else:
+                return f"Command '{command_name}' not found."
+
+        except FileNotFoundError:
+            return f"Error: File '{commands_file}' not found."
+        except json.JSONDecodeError:
+            return f"Error: Failed to decode JSON from '{commands_file}'."
+
+    def refactor():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("code-refactor", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def explain():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("code-explain", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def optimize():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("code-optimize", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def pseudocode():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("pseudo-to-code", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def documentate():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("doc-generate", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def generate_tests():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("test-generate", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_analyze_sentiment():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("nlp-sentiment", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_identify_topic():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("nlp-topic", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_summarize():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("nlp-summary", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_spellcheck():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("spell-check", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_improve():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("improve-text", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_expand():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("expand-text", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_critique():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("critique-text", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+
+
+    def nlp_translate():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            print(read_ai_command("translate", selected_text))
+            #  TODO: Add target language selection
+
+    def nlp_custom():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text.strip():
+            # print(selected_text)
+            print(read_ai_command("code-optimize", selected_text))
+            #  TODO: Add custom command window
+
+    def fix():
+        selected_text = output_text.get("sel.first", "sel.last")
+
+        if selected_text.strip():
+            # print(selected_text)
+            fix_user_prompt = read_ai_command("code-fix", selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
 
     def show_context_menu(event):
         # Create the context menu
@@ -876,23 +1052,25 @@ def open_ai_assistant_window():
         context_menu.add_command(label="Duplicate", command=duplicate)
         context_menu.add_command(label="Select All", command=duplicate)
         context_menu.add_separator()
-        context_menu.add_command(label="Fix", command=duplicate)
-        context_menu.add_command(label="Refactor", command=duplicate)
-        context_menu.add_command(label="Explain", command=duplicate)
-        context_menu.add_command(label="Optimize", command=duplicate)
-        context_menu.add_command(label="Convert pseudo-code to code", command=duplicate)
-        context_menu.add_command(label="Generate documentation", command=duplicate)
-        context_menu.add_command(label="Generate tests", command=duplicate)
+        context_menu.add_command(label="Fix", command=fix)
+        context_menu.add_command(label="Refactor", command=refactor)
+        context_menu.add_command(label="Explain", command=explain)
+        context_menu.add_command(label="Optimize", command=optimize)
         context_menu.add_separator()
-        context_menu.add_command(label="Analyze sentiment", command=duplicate)
-        context_menu.add_command(label="Identify topic", command=duplicate)
-        context_menu.add_command(label="Summarize", command=duplicate)
-        context_menu.add_command(label="Improve", command=duplicate)
-        context_menu.add_command(label="Expand", command=duplicate)
-        context_menu.add_command(label="Critique", command=duplicate)
-        context_menu.add_command(label="Translate", command=duplicate)
+        context_menu.add_command(label="Convert pseudo-code to code", command=pseudocode)
+        context_menu.add_command(label="Generate documentation", command=documentate)
+        context_menu.add_command(label="Generate tests", command=generate_tests)
         context_menu.add_separator()
-        context_menu.add_command(label="Custom AI request", command=duplicate)
+        context_menu.add_command(label="Analyze sentiment", command=nlp_analyze_sentiment)
+        context_menu.add_command(label="Identify topic", command=nlp_identify_topic)
+        context_menu.add_command(label="Summarize", command=nlp_summarize)
+        context_menu.add_command(label="Spell Check", command=nlp_spellcheck)
+        context_menu.add_command(label="Improve", command=nlp_improve)
+        context_menu.add_command(label="Expand", command=nlp_expand)
+        context_menu.add_command(label="Critique", command=nlp_critique)
+        context_menu.add_command(label="Translate", command=nlp_translate)
+        context_menu.add_separator()
+        context_menu.add_command(label="Custom AI request", command=nlp_custom)
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -916,7 +1094,8 @@ def open_ai_assistant_window():
 
     entry.bind("<Return>", lambda event: execute_ai_assistant_command(
         add_current_main_opened_script_var,
-        add_current_selected_text_var)
+        add_current_selected_text_var,
+        entry.get())
                )
 
     entry.bind("<Up>", navigate_history)

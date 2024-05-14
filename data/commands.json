@@ -1,0 +1,79 @@
+{
+  "customCommands": [
+    {
+      "name": "code-fix",
+      "description": "Fix selected code",
+      "prompt": "```{{{ input }}}```\n\n---\n\nFix the selected code and return the corrected version. Return only the fixed code. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "code-refactor",
+      "description": "Refactor selected code",
+      "prompt": "```{{{ input }}}```\n\n---\n\nRefactor the selected code to make it more readable, maintainable, and efficient. Return the refactored code. Return only the code. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "code-explain",
+      "description": "Explain selected code",
+      "prompt": "```{{{ input }}}```\n\n---\n\nExplain the functionality and purpose of the selected code. Return a detailed explanation of the code. Return only the explanation. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "code-optimize",
+      "description": "Optimize selected code",
+      "prompt": "```{{{ input }}}```\n\n---\n\nOptimize the selected code to improve its performance and efficiency. Return the optimized code. Return only the code. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "pseudo-to-code",
+      "description": "Convert pseudo-code to code",
+      "prompt": "{{{ input }}}\n\n---\n\nConvert the given pseudo-code to working code in a programming language of your choice. Return the converted code. Return only the code. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "doc-generate",
+      "description": "Generate documentation for selected code",
+      "prompt": "```{{{ input }}}```\n\n---\n\nGenerate documentation for the selected code. Return the documentation as a formatted text. Return only the documentation. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "test-generate",
+      "description": "Generate tests for selected code",
+      "prompt": "```{{{ input }}}```\n\n---\n\nGenerate tests for the selected code. Return the test code. Return only the test code. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "nlp-sentiment",
+      "description": "Analyze sentiment of selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nAnalyze the sentiment of the selected text and return a score between -1 (negative sentiment) and 1 (positive sentiment). Return only the score. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "nlp-topic",
+      "description": "Identify topic of selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nIdentify the topic of the selected text and return a short description of the topic. Return only the topic description. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "nlp-summary",
+      "description": "Summarize selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nSummarize the selected text and return a concise summary. Return only the summary. Do not include a preamble or any explanatory text."
+    },
+    {
+      "name": "spell-check",
+      "description": "Check spelling and grammar for the selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nCheck the selected text for typos and grammatical errors. Return the input text free from any typo or grammatical error. Return only the text. Do not include a preamble."
+    },
+    {
+      "name": "improve-text",
+      "description": "Improve the selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nImprove the selected text by making it sound smart and professional. Avoid using rare words or overselling. Return the input text free from any typo or grammatical error. Return only the text. Do not include a preamble."
+    },
+    {
+      "name": "expand-text",
+      "description": "Expand selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nExpand selected text as full paragraphs. Make it longer by adding details. Return the input text free from any typo or grammatical error. Return only the text. Do not include a preamble."
+    },
+    {
+      "name": "critique-text",
+      "description": "Critique the selected text",
+      "prompt": "{{{ input }}}\n\n---\n\nCritique the selected text and suggests ways to improve it."
+    },
+    {
+      "name": "translate",
+      "description": "Translate selected text to {GIVEN-LANGUAGE}",
+      "prompt": "{{{ input }}}\n\n---\n\nTranslate selected text to {{{ GIVEN-LANGUAGE }}}. Return the input text free from any typo or grammatical error. Return only the text. Do not include a preamble."
+    }
+  ]
+}

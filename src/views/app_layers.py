@@ -31,7 +31,6 @@ def create_body():
     create_interactive_textfield_lines()  # Row 4
 
 
-
 def undo():
     """
         Reverts the last action taken in the script text editor.
