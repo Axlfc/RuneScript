@@ -73,7 +73,7 @@
     {
       "name": "translate",
       "description": "Translate selected text to {GIVEN-LANGUAGE}",
-      "prompt": "{{{ input }}}\n\n---\n\nTranslate selected text to {GIVEN-LANGUAGE}. Return the input text free from any typo or grammatical error. Return only the text. Do not include a preamble."
+      "prompt": "{{{ input }}}\n\n---\n\nTranslate selected text to {{{ GIVEN-LANGUAGE }}}. Return the input text free from any typo or grammatical error. Return only the text. Do not include a preamble."
     }
   ]
 }
