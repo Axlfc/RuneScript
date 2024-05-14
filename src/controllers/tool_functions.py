@@ -852,7 +852,7 @@ def open_ai_assistant_window():
             entry.config(state='disabled')  # Disable entry while processing
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
-            ai_script_path = r"C:\Users\AxelFC\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
+            ai_script_path = 'src\\models\\ai_assistant.py'
             # ai_script_path = r"C:\Users\user\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
             command = create_ai_command(ai_script_path, combined_command)
 
@@ -916,109 +916,55 @@ def open_ai_assistant_window():
         except json.JSONDecodeError:
             return f"Error: Failed to decode JSON from '{commands_file}'."
 
-    def refactor():
+    def ai_assistant_rightclick_menu(command):
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("code-refactor", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+            fix_user_prompt = read_ai_command(command, selected_text)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var,
+                                         fix_user_prompt)
 
+    def fix():
+        ai_assistant_rightclick_menu("code-fix")
+
+    def refactor():
+        ai_assistant_rightclick_menu("code-refactor")
 
     def explain():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("code-explain", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("code-explain")
 
     def optimize():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("code-optimize", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("code-optimize")
 
     def pseudocode():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("pseudo-to-code", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("pseudo-to-code")
 
     def documentate():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("doc-generate", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("doc-generate")
 
     def generate_tests():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("test-generate", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("test-generate")
 
     def nlp_analyze_sentiment():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("nlp-sentiment", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("nlp-sentiment")
 
     def nlp_identify_topic():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("nlp-topic", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("nlp-topic")
 
     def nlp_summarize():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("nlp-summary", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
+        ai_assistant_rightclick_menu("nlp-summary")
 
 
     def nlp_spellcheck():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("spell-check", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("spell-check")
 
     def nlp_improve():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("improve-text", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("improve-text")
 
     def nlp_expand():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("expand-text", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("expand-text")
 
     def nlp_critique():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("critique-text", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
+        ai_assistant_rightclick_menu("critique-text")
 
     def nlp_translate():
         selected_text = output_text.get("sel.first", "sel.last")
@@ -1034,18 +980,14 @@ def open_ai_assistant_window():
             print(read_ai_command("code-optimize", selected_text))
             #  TODO: Add custom command window
 
-    def fix():
-        selected_text = output_text.get("sel.first", "sel.last")
-
-        if selected_text.strip():
-            # print(selected_text)
-            fix_user_prompt = read_ai_command("code-fix", selected_text)
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, fix_user_prompt)
-
     def show_context_menu(event):
+        # Load commands from JSON file
+
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
         # TODO: Use locales
+
+
         context_menu.add_command(label="Cut", command=cut)
         context_menu.add_command(label="Copy", command=copy)
         context_menu.add_command(label="Paste", command=paste)
