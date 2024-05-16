@@ -661,16 +661,16 @@ def add_current_selected_text(include_selected_text):
 
 def open_ai_assistant_window():
     """
-        Opens a window for interacting with an AI assistant.
+    Opens a window for interacting with an AI assistant.
 
-        This function creates a new window where users can input commands or queries, and the AI assistant
-        processes and displays the results. It also provides options for rendering Markdown to HTML.
+    This function creates a new window where users can input commands or queries, and the AI assistant
+    processes and displays the results. It also provides options for rendering Markdown to HTML.
 
-        Parameters:
-        None
+    Parameters:
+    None
 
-        Returns:
-        None
+    Returns:
+    None
     """
     global original_md_content, markdown_render_enabled, rendered_html_content
     original_md_content = ""
@@ -717,14 +717,11 @@ def open_ai_assistant_window():
         command=lambda: add_current_selected_text(add_current_selected_text_var.get())
     )
 
-
-
     # Create the output text widget
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
-    html_display = HTMLLabel(ai_assistant_window, html="", )
-
+    html_display = HTMLLabel(ai_assistant_window, html="")
     html_display.pack(fill='both', expand=False)
     html_display.pack_forget()  # Initially hide the HTML display
 
@@ -743,21 +740,13 @@ def open_ai_assistant_window():
     def on_md_content_change(event=None):
         global original_md_content
         original_md_content = script_text.get("1.0", END)
-        print("on_md_content_change: original_md_content updated")  # Debug print
         if markdown_render_enabled:
-            print("on_md_content_change: markdown_render_enabled is True, updating HTML content")  # Debug print
             update_html_content()
-        else:
-            print("on_md_content_change: markdown_render_enabled is False")  # Debug print
 
     def update_html_content():
-        # TODO: solve view jumping bug
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
-
-        if hasattr(html_display, 'yview_moveto'):
-            html_display.yview_moveto(1.0)
 
     def toggle_render_markdown(is_checked):
         global markdown_render_enabled
@@ -799,10 +788,8 @@ def open_ai_assistant_window():
                     original_md_content += char
 
                     if markdown_render_enabled:
-                        # Update HTML content
                         update_html_content()
                     else:
-                        # Update Markdown content
                         output_text.insert(END, char)
                         output_text.see(END)
 
@@ -820,7 +807,6 @@ def open_ai_assistant_window():
             on_processing_complete()
 
     def on_processing_complete():
-        print("Debug: Processing complete, re-enabling entry widget.")  # Debug print
         entry.config(state='normal')  # Re-enable the entry widget
         status_label_var.set("READY")  # Update label to show AI is processing
 
@@ -856,7 +842,6 @@ def open_ai_assistant_window():
             # ai_script_path = r"C:\Users\user\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
             command = create_ai_command(ai_script_path, combined_command)
 
-            print("PROCESSING AI COMMAND!!!!!")
             process_ai_command(command)
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
@@ -893,11 +878,19 @@ def open_ai_assistant_window():
             with open(commands_file, 'r') as f:
                 commands_data = json.load(f)
 
-            # Retrieve the list of custom commands
-            custom_commands = commands_data.get("customCommands", [])
+            # Helper function to find the command in a submenu recursively
+            def find_command(commands, command_name):
+                for command in commands:
+                    if command['name'] == command_name:
+                        return command
+                    if 'submenu' in command:
+                        result = find_command(command['submenu'], command_name)
+                        if result:
+                            return result
+                return None
 
-            # Find the command with the specified command_name
-            matching_command = next((cmd for cmd in custom_commands if cmd.get("name") == command_name), None)
+            # Find the matching command
+            matching_command = find_command(commands_data['customCommands'], command_name)
 
             if matching_command:
                 # Extract the original prompt from the matching command
@@ -923,56 +916,6 @@ def open_ai_assistant_window():
             execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var,
                                          fix_user_prompt)
 
-    def fix():
-        ai_assistant_rightclick_menu("code-fix")
-
-    def refactor():
-        ai_assistant_rightclick_menu("code-refactor")
-
-    def explain():
-        ai_assistant_rightclick_menu("code-explain")
-
-    def optimize():
-        ai_assistant_rightclick_menu("code-optimize")
-
-    def pseudocode():
-        ai_assistant_rightclick_menu("pseudo-to-code")
-
-    def documentate():
-        ai_assistant_rightclick_menu("doc-generate")
-
-    def generate_tests():
-        ai_assistant_rightclick_menu("test-generate")
-
-    def nlp_analyze_sentiment():
-        ai_assistant_rightclick_menu("nlp-sentiment")
-
-    def nlp_identify_topic():
-        ai_assistant_rightclick_menu("nlp-topic")
-
-    def nlp_summarize():
-        ai_assistant_rightclick_menu("nlp-summary")
-
-
-    def nlp_spellcheck():
-        ai_assistant_rightclick_menu("spell-check")
-
-    def nlp_improve():
-        ai_assistant_rightclick_menu("improve-text")
-
-    def nlp_expand():
-        ai_assistant_rightclick_menu("expand-text")
-
-    def nlp_critique():
-        ai_assistant_rightclick_menu("critique-text")
-
-    def nlp_translate():
-        selected_text = output_text.get("sel.first", "sel.last")
-        if selected_text.strip():
-            # print(selected_text)
-            print(read_ai_command("translate", selected_text))
-            #  TODO: Add target language selection
-
     def nlp_custom():
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
@@ -982,11 +925,32 @@ def open_ai_assistant_window():
 
     def show_context_menu(event):
         # Load commands from JSON file
+        commands_file = "data/commands.json"
+        def load_commands():
+            try:
+                with open(commands_file, 'r') as f:
+                    commands_data = json.load(f)
+                return commands_data['customCommands']
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                messagebox.showerror("Error", f"Failed to load commands: {e}")
+                return []
+
+        def add_commands_to_menu(menu, commands):
+            for command in commands:
+                if 'submenu' in command:
+                    submenu = Menu(menu, tearoff=0)
+                    menu.add_cascade(label=command['name'], menu=submenu)
+                    add_commands_to_menu(submenu, command['submenu'])
+                else:
+                    if command['name'] == "---":
+                        menu.add_separator()
+                    else:
+                        menu.add_command(label=command['name'],
+                                         command=lambda cmd=command: ai_assistant_rightclick_menu(cmd['name']))
 
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
         # TODO: Use locales
-
 
         context_menu.add_command(label="Cut", command=cut)
         context_menu.add_command(label="Copy", command=copy)
@@ -994,7 +958,12 @@ def open_ai_assistant_window():
         context_menu.add_command(label="Duplicate", command=duplicate)
         context_menu.add_command(label="Select All", command=duplicate)
         context_menu.add_separator()
-        context_menu.add_command(label="Fix", command=fix)
+
+        # Load and add custom commands from JSON
+        custom_commands = load_commands()
+        add_commands_to_menu(context_menu, custom_commands)
+
+        '''context_menu.add_command(label="Fix", command=fix)
         context_menu.add_command(label="Refactor", command=refactor)
         context_menu.add_command(label="Explain", command=explain)
         context_menu.add_command(label="Optimize", command=optimize)
@@ -1010,7 +979,7 @@ def open_ai_assistant_window():
         context_menu.add_command(label="Improve", command=nlp_improve)
         context_menu.add_command(label="Expand", command=nlp_expand)
         context_menu.add_command(label="Critique", command=nlp_critique)
-        context_menu.add_command(label="Translate", command=nlp_translate)
+        context_menu.add_command(label="Translate", command=nlp_translate)'''
         context_menu.add_separator()
         context_menu.add_command(label="Custom AI request", command=nlp_custom)
 
@@ -1048,9 +1017,7 @@ def open_ai_assistant_window():
     # Initialize a pointer to the current position in the command history
     history_pointer = [0]
 
-    print("open_ai_assistant_window: Window opened")  # Debug print
     ai_assistant_window.mainloop()
-    print("open_ai_assistant_window: Mainloop ended")  # Debug print
 
 
 # Define _create_webview_process at the top level
