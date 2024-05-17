@@ -1,0 +1,6 @@
+llama-cpp-python==0.2.39
+fastapi[all]
+asyncio
+sse-starlette
+streamlit
+langchain-community

@@ -949,7 +949,6 @@ def open_ai_assistant_window():
                     else:
                         menu.add_command(label=command['description'],
                                          command=lambda cmd=command: ai_assistant_rightclick_menu(cmd['name']))
-                        print("COMMMMMMAND:\t", command)
                         if 'description' in command:
                             Tooltip(menu, command['description'])
 

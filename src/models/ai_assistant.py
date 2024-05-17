@@ -16,7 +16,10 @@ except Exception as es:
 
 def initialize_client():
     # Point to the local server
-    client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
+    # TODO: Load base_url and api_key from settings
+    #  TODO: test local_ai_server.py API endpoints
+    client = openai.OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
+    #  client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
     return client
 
 
