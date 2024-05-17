@@ -14,7 +14,7 @@ from src.models.script_operations import get_operative_system
 from src.views.edit_operations import cut, copy, paste, duplicate
 from src.views.tk_utils import text, script_text, root, style, server_options
 from src.controllers.utility_functions import make_tag
-
+from src.views.ui_elements import Tooltip
 
 THEME_SETTINGS_FILE = "data/theme_settings.json"
 
@@ -727,6 +727,7 @@ def open_ai_assistant_window():
 
     entry = Entry(ai_assistant_window, width=30)
     entry.pack(side='bottom', fill='x')
+    Tooltip(entry, "Input text ")
 
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
@@ -926,6 +927,7 @@ def open_ai_assistant_window():
     def show_context_menu(event):
         # Load commands from JSON file
         commands_file = "data/commands.json"
+
         def load_commands():
             try:
                 with open(commands_file, 'r') as f:
@@ -945,8 +947,11 @@ def open_ai_assistant_window():
                     if command['name'] == "---":
                         menu.add_separator()
                     else:
-                        menu.add_command(label=command['name'],
+                        menu.add_command(label=command['description'],
                                          command=lambda cmd=command: ai_assistant_rightclick_menu(cmd['name']))
+                        print("COMMMMMMAND:\t", command)
+                        if 'description' in command:
+                            Tooltip(menu, command['description'])
 
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
@@ -963,23 +968,6 @@ def open_ai_assistant_window():
         custom_commands = load_commands()
         add_commands_to_menu(context_menu, custom_commands)
 
-        '''context_menu.add_command(label="Fix", command=fix)
-        context_menu.add_command(label="Refactor", command=refactor)
-        context_menu.add_command(label="Explain", command=explain)
-        context_menu.add_command(label="Optimize", command=optimize)
-        context_menu.add_separator()
-        context_menu.add_command(label="Convert pseudo-code to code", command=pseudocode)
-        context_menu.add_command(label="Generate documentation", command=documentate)
-        context_menu.add_command(label="Generate tests", command=generate_tests)
-        context_menu.add_separator()
-        context_menu.add_command(label="Analyze sentiment", command=nlp_analyze_sentiment)
-        context_menu.add_command(label="Identify topic", command=nlp_identify_topic)
-        context_menu.add_command(label="Summarize", command=nlp_summarize)
-        context_menu.add_command(label="Spell Check", command=nlp_spellcheck)
-        context_menu.add_command(label="Improve", command=nlp_improve)
-        context_menu.add_command(label="Expand", command=nlp_expand)
-        context_menu.add_command(label="Critique", command=nlp_critique)
-        context_menu.add_command(label="Translate", command=nlp_translate)'''
         context_menu.add_separator()
         context_menu.add_command(label="Custom AI request", command=nlp_custom)
 

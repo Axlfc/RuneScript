@@ -10,37 +10,37 @@
           "prompt": "```{{{ input }}}```\n\n---\n\nFix the selected code and return the corrected version. Return only the fixed code."
         },
         {
-          "name": "code-refactor",
+          "name": "refactor",
           "description": "Refactor selected code",
           "prompt": "```{{{ input }}}```\n\n---\n\nRefactor the selected code to make it more readable, maintainable, and efficient. Return only the refactored code."
         },
         {
-          "name": "code-explain",
+          "name": "explain",
           "description": "Explain selected code",
           "prompt": "```{{{ input }}}```\n\n---\n\nExplain the functionality and purpose of the selected code. Return only the explanation."
         },
         {
-          "name": "code-optimize",
+          "name": "optimize",
           "description": "Optimize selected code",
           "prompt": "```{{{ input }}}```\n\n---\n\nOptimize the selected code to improve its performance and efficiency. Return only the optimized code."
         },
         {
-          "name": "code-pseudo-to-code",
+          "name": "pseudo-to-code",
           "description": "Convert pseudo-code to code",
           "prompt": "```{{{ input }}}```\n\n---\n\nConvert the given pseudo-code to working code in a programming language of your choice. Return only the converted code."
         },
         {
-          "name": "code-snippet",
+          "name": "snippet",
           "description": "Insert code snippet",
           "prompt": "Provide a code snippet description.\n\n---\n\nInsert the provided code snippet into the document."
         },
         {
-          "name": "code-review",
+          "name": "review",
           "description": "Review code",
           "prompt": "```{{{ input }}}```\n\n---\n\nReview the selected code, providing feedback and suggestions for improvement."
         },
         {
-          "name": "code-search",
+          "name": "search",
           "description": "Search codebase",
           "prompt": "Enter keywords to search the codebase.\n\n---\n\nSearch the codebase for relevant code snippets."
         }
@@ -51,22 +51,22 @@
       "description": "Documentation",
       "submenu": [
         {
-          "name": "documentation-generate",
+          "name": "generate",
           "description": "Generate documentation for selected code",
           "prompt": "```{{{ input }}}```\n\n---\n\nGenerate documentation for the selected code. Return only the documentation."
         },
         {
-          "name": "documentation-template",
+          "name": "template",
           "description": "Provide documentation template",
           "prompt": "Specify the type of documentation template you need (e.g., API documentation, user manual).\n\n---\n\nReturn the requested documentation template."
         },
         {
-          "name": "documentation-proofread",
+          "name": "proofread",
           "description": "Proofread documentation",
           "prompt": "```{{{ input }}}```\n\n---\n\nProofread the provided documentation, correcting any grammatical or stylistic errors."
         },
         {
-          "name": "documentation-translate",
+          "name": "translate",
           "description": "Translate documentation",
           "prompt": "```{{{ input }}}```\n\n---\n\nTranslate the provided documentation to the specified language. Return only the translated documentation."
         }
@@ -77,47 +77,47 @@
       "description": "Test",
       "submenu": [
         {
-          "name": "test-generate",
+          "name": "generate",
           "description": "Generate tests for selected code",
           "prompt": "```{{{ input }}}```\n\n---\n\nGenerate tests for the selected code. Return only the test code."
         },
         {
-          "name": "test-coverage",
+          "name": "coverage",
           "description": "Analyze test coverage",
           "prompt": "```{{{ input }}}```\n\n---\n\nAnalyze test coverage for the selected code, suggesting areas that require additional testing."
         },
         {
-          "name": "test-debug",
+          "name": "debug",
           "description": "Assist in debugging test cases",
           "prompt": "```{{{ input }}}```\n\n---\n\nAssist in debugging test cases, identifying and resolving issues."
         },
         {
-          "name": "test-simulate-run",
+          "name": "simulate-run",
           "description": "Simulate running a test on a Linux terminal",
           "prompt": "Enter the command you want to run on the Linux terminal.\n\n---\n\nSimulate running the command on a Linux terminal and return the output as if it were from a system terminal."
         },
         {
-          "name": "test-simulate-debug",
+          "name": "simulate-debug",
           "description": "Simulate debugging a program on a Linux terminal",
           "prompt": "Enter the command or program you want to debug on the Linux terminal.\n\n---\n\nSimulate debugging the program on a Linux terminal and return the debug output as if it were from a system terminal."
         },
         {
-          "name": "test-simulate-build",
+          "name": "simulate-build",
           "description": "Simulate building a project on a Linux terminal",
           "prompt": "Enter the command to build the project on the Linux terminal.\n\n---\n\nSimulate building the project on a Linux terminal and return the build output as if it were from a system terminal."
         },
         {
-          "name": "test-simulate-deploy",
+          "name": "simulate-deploy",
           "description": "Simulate deploying a project on a Linux terminal",
           "prompt": "Enter the command to deploy the project on the Linux terminal.\n\n---\n\nSimulate deploying the project on a Linux terminal and return the deployment output as if it were from a system terminal."
         },
         {
-          "name": "test-simulate-network",
+          "name": "simulate-network",
           "description": "Simulate network-related operations on a Linux terminal",
           "prompt": "Enter the network-related command you want to simulate on the Linux terminal.\n\n---\n\nSimulate the network-related operation on a Linux terminal and return the output as if it were from a system terminal."
         },
         {
-          "name": "test-simulate-security",
+          "name": "simulate-security",
           "description": "Simulate security-related operations on a Linux terminal",
           "prompt": "Enter the security-related command you want to simulate on the Linux terminal.\n\n---\n\nSimulate the security-related operation on a Linux terminal and return the output as if it were from a system terminal."
         }
@@ -128,37 +128,37 @@
       "description": "Natural Language Processing (NLP)",
       "submenu": [
         {
-          "name": "nlp-sentiment",
+          "name": "sentiment",
           "description": "Analyze sentiment of selected text",
           "prompt": "{{{ input }}}\n\n---\n\nAnalyze the sentiment of the selected text and return a score between -1 (negative sentiment) and 1 (positive sentiment)."
         },
         {
-          "name": "nlp-topic",
+          "name": "topic",
           "description": "Identify topic of selected text",
           "prompt": "{{{ input }}}\n\n---\n\nIdentify the topic or subject matter of the selected text."
         },
         {
-          "name": "nlp-summary",
+          "name": "summary",
           "description": "Generate summary of selected text",
           "prompt": "{{{ input }}}\n\n---\n\nGenerate a concise summary of the selected text."
         },
         {
-          "name": "nlp-entity",
+          "name": "entity",
           "description": "Identify entities within selected text",
           "prompt": "{{{ input }}}\n\n---\n\nIdentify entities (e.g., names, organizations, locations) within the selected text."
         },
         {
-          "name": "nlp-keyphrase",
+          "name": "keyphrase",
           "description": "Extract key phrases from selected text",
           "prompt": "{{{ input }}}\n\n---\n\nExtract key phrases or keywords from the selected text."
         },
         {
-          "name": "nlp-similarity",
+          "name": "similarity",
           "description": "Determine similarity between texts",
           "prompt": "Provide a reference text or query to compare with the selected text.\n\n---\n\nDetermine the similarity between the selected text and the reference text or query."
         },
         {
-          "name": "nlp-ner",
+          "name": "ner",
           "description": "Perform Named Entity Recognition (NER)",
           "prompt": "{{{ input }}}\n\n---\n\nPerform Named Entity Recognition (NER) on the selected text, categorizing entities into predefined classes."
         }
@@ -169,22 +169,22 @@
       "description": "Writing",
       "submenu": [
         {
-          "name": "writing-prompt",
+          "name": "prompt",
           "description": "Generate writing prompts",
           "prompt": "Specify the type of writing prompt you need (e.g., creative writing, technical writing).\n\n---\n\nReturn the generated writing prompt."
         },
         {
-          "name": "writing-edit",
+          "name": "edit",
           "description": "Provide editing services",
           "prompt": "```{{{ input }}}```\n\n---\n\nProvide editing services for the written content, improving clarity, coherence, and correctness."
         },
         {
-          "name": "writing-format",
+          "name": "format",
           "description": "Format text according to style guidelines",
           "prompt": "Specify the style guidelines to be followed (e.g., APA, MLA, Chicago).\n\n---\n\nFormat the text according to the specified style guidelines.\n\n```{{{ input }}}```"
         },
         {
-          "name": "writing-research",
+          "name": "research",
           "description": "Assist in conducting research",
           "prompt": "Specify the topic you need assistance with for research.\n\n---\n\nAssist in conducting research on the given topic, providing relevant sources and information."
         }
@@ -195,27 +195,27 @@
       "description": "Other",
       "submenu": [
         {
-          "name": "other-spell-check",
+          "name": "spell-check",
           "description": "Check spelling of selected text",
           "prompt": "```{{{ input }}}```\n\n---\n\nCheck the spelling of the selected text and suggest corrections."
         },
         {
-          "name": "other-improve-text",
+          "name": "improve-text",
           "description": "Improve readability of text",
           "prompt": "```{{{ input }}}```\n\n---\n\nImprove the readability of the text by making stylistic enhancements."
         },
         {
-          "name": "other-expand-text",
+          "name": "expand-text",
           "description": "Expand text with additional details",
           "prompt": "```{{{ input }}}```\n\n---\n\nExpand the provided text by adding more details and elaboration."
         },
         {
-          "name": "other-critique-text",
+          "name": "critique-text",
           "description": "Provide constructive criticism",
           "prompt": "```{{{ input }}}```\n\n---\n\nProvide constructive criticism and feedback on the provided text."
         },
         {
-          "name": "other-translate",
+          "name": "translate",
           "description": "Translate text",
           "prompt": "```{{{ input }}}```\n\n---\n\nTranslate the provided text to the specified language. Return only the translated text."
         }
