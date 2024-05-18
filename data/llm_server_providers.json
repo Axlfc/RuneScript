@@ -1,6 +1,6 @@
 {
     "tinyllama": {
-        "server_url": "http://localhost:8000/api/generate",
+        "server_url": "http://localhost:8004/api/generate",
         "api_key": "not-needed"
     },
     "ollama": {

@@ -18,23 +18,9 @@ def initialize_client():
     # Point to the local server
     # TODO: Load base_url and api_key from settings
     #  TODO: test local_ai_server.py API endpoints
-    client = openai.OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
-    #  client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
+    client = openai.OpenAI(base_url="http://localhost:8004/v1", api_key="not-needed")
+    #client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
     return client
-
-
-def get_ai_response(client, user_input, history):
-    history.append({"role": "user", "content": user_input})
-    completion = client.chat.completions.create(
-        model="local-model",
-        messages=history,
-        temperature=0.7,
-        stream=False  # Set to False for single response
-    )
-    response = completion.choices[0].delta.content
-    history.append({"role": "assistant", "content": response})
-    return response
-
 
 def process_chat_completions(client, history):
     completion = client.chat.completions.create(
@@ -55,7 +41,7 @@ def process_chat_completions(client, history):
 
 def main_chat_loop(client, text_prompt):
     history = [
-        {"role": "system", "content": "You are an intelligent assistant. You always provide well-reasoned answers that are both correct and helpful."},
+        {"role": "system", "content": "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."},
         {"role": "user", "content": text_prompt},
     ]
 

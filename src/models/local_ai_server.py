@@ -1,10 +1,14 @@
 import sys
-from fastapi import FastAPI, Request
-import asyncio
-from langchain_community.llms import CTransformers  # Updated import
+import time
+import json
+from fastapi.encoders import jsonable_encoder
+from fastapi import FastAPI, Request, HTTPException
 import copy
 import uvicorn
 
+from pydantic import BaseModel
+
+from langchain_community.llms import CTransformers  # Updated import
 from langchain.callbacks.base import AsyncCallbackHandler
 from langchain.callbacks.manager import AsyncCallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -14,41 +18,19 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 verbose = False
 
 # Constants
-MODEL_PATH = "model/tinyllama-1.1b-1t-openorca.Q5_K_M.gguf"
+MODEL_PATH = "model/tinyllama-1.1b-1t-openorca.Q4_K_M.gguf"
 
 # Initialize the callback managers
 callback_manager = AsyncCallbackManager([AsyncCallbackHandler()])
 callbacks = AsyncCallbackManager([StreamingStdOutCallbackHandler()])
 
 # Model configuration
-config = {'max_new_tokens': 256, 'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 50}
+config = {'max_new_tokens': 256, 'repetition_penalty': 1.5, 'temperature': 0.42, 'top_k': 50}
 
 # Initialize the model
 llm = CTransformers(model=MODEL_PATH, config=config, model_type='llama',
-                    callbacks_manager=callback_manager, verbose=True,
+                    callbacks_manager=callback_manager, verbose=False,
                     callbacks=callbacks)
-
-'''question = "who is the president of the united states?"
-
-from langchain import PromptTemplate, LLMChain
-
-template = """User: {question}
-
-Assistant:"""
-
-prompt = PromptTemplate(template=template, input_variables=["question"])
-
-llm_chain = LLMChain(prompt=prompt, llm=llm)
-
-response = llm_chain.run(question=question)'''
-
-prompt = '''
-### User:
-Write a script for a episode of "Sherlock Holmes" with episode name "The Man in the High Castle".
-
-### Response:
-'''
-
 
 # Create FastAPI app
 app = FastAPI(
@@ -59,29 +41,29 @@ app = FastAPI(
 
 
 @app.get('/')
-async def hello():
+def hello():
     return {"hello": "Artificial Intelligence enthusiast"}
 
 
 @app.get('/model')
-async def model():
+def model():
     text = "Who is Tony Stark?"
     template = f"""system\nYou are a helpful ChatBot assistant.\nuser\n{text}\nassistant"""
-    res = llm(template)
+    res = llm.invoke(template)
     result = copy.deepcopy(res)
     return {"result": result['choices'][0]['text']}
 
 
 @app.get('/tinyllama')
-async def tinyllama(text: str):
+def tinyllama(text: str):
     template = f"""system\nYou are a helpful ChatBot assistant.\nuser\n{text}\nassistant"""
-    res = llm(template, temperature=0.42, repeat_penalty=1.5, max_tokens=300)
+    res = llm.invoke(template, temperature=0.42, repeat_penalty=1.5, max_tokens=300)
     result = copy.deepcopy(res)
     return {"result": result['choices'][0]['text']}
 
 
 def start_server():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8004)
 
 
 def test_app_server():
@@ -89,16 +71,78 @@ def test_app_server():
         question = input("Ask me a question: ")
         if question == "stop":
             sys.exit(1)
-        output = llm(
+        output = llm.invoke(
             question,
-            max_tokens=4096,
-            temperature=0.2,
-            # Nucleus sampling (mass probability index)
-            # Controls the cumulative probability of the generated tokens
-            # The higher top_p the more diversity in the output
-            top_p=0.1
+            max_tokens=32,
+            stop=["Q:", "\n"],
+            echo=True
         )
         print(f"\n{output}")
+
+
+# Pydantic models for request and response
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class CompletionRequest(BaseModel):
+    model: str
+    messages: list[Message]
+    max_tokens: int = 256
+    temperature: float = 0.7
+    top_p: float = 0.9
+    n: int = 1
+
+
+class CompletionResponseChoice(BaseModel):
+    message: dict
+    finish_reason: str
+
+
+class CompletionResponse(BaseModel):
+    id: str
+    object: str
+    created: int
+    model: str
+    choices: list[CompletionResponseChoice]
+    usage: dict
+
+
+@app.post('/v1/chat/completions')
+def chat_completions(request: CompletionRequest):
+    try:
+        messages = request.messages
+        prompt = '\n'.join([f"{msg.role}\n{msg.content}" for msg in messages])
+
+        res = llm.invoke(prompt,
+                         max_tokens=request.max_tokens,
+                         temperature=request.temperature,
+                         repeat_penalty=1.5)
+
+        # Debug the entire response
+        #print("MODEL RESPONSE:\n", res)
+
+        if 'choices' in res and len(res['choices']) > 0 and 'text' in res['choices'][0]:
+            output = {
+                "id": "chatcmpl-123",  # Generate or hardcode as needed
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": request.model,
+                "choices": [{
+                    "message": {"role": "assistant", "content": res['choices'][0]['text']},
+                    "finish_reason": "stop"  # Adjust if your model provides this info
+                }],
+                "usage": {}
+            }
+            return output
+        else:
+            #print("Unexpected response format:", res)
+            raise HTTPException(status_code=500, detail=f"Invalid response from model:\n{res}")
+
+    except Exception as e:
+        #print("ERROR in chat_completions endpoint:\t", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
