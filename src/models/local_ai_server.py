@@ -1,10 +1,9 @@
 import sys
-import time
-import json
-from fastapi.encoders import jsonable_encoder
-from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException
 import copy
 import uvicorn
+from langchain_core.messages import HumanMessage
 
 from pydantic import BaseModel
 
@@ -12,6 +11,11 @@ from langchain_community.llms import CTransformers  # Updated import
 from langchain.callbacks.base import AsyncCallbackHandler
 from langchain.callbacks.manager import AsyncCallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+
+from handlers import MyCustomHandler
+from queue import Queue
+import asyncio
+from threading import Thread
 
 
 # Enable verbose to debug the LLM's operation
@@ -27,10 +31,6 @@ callbacks = AsyncCallbackManager([StreamingStdOutCallbackHandler()])
 # Model configuration
 config = {'max_new_tokens': 256, 'repetition_penalty': 1.5, 'temperature': 0.42, 'top_k': 50}
 
-# Initialize the model
-llm = CTransformers(model=MODEL_PATH, config=config, model_type='llama',
-                    callbacks_manager=callback_manager, verbose=False,
-                    callbacks=callbacks)
 
 # Create FastAPI app
 app = FastAPI(
@@ -38,6 +38,37 @@ app = FastAPI(
     description="A simple API that uses TinyLlama OpenOrca as a chatbot",
     version="1.0",
 )
+
+streamer_queue = Queue()
+my_handler = MyCustomHandler(streamer_queue)
+
+
+# Initialize the model
+llm = CTransformers(model=MODEL_PATH, config=config, model_type='llama',
+                    callbacks_manager=callback_manager, verbose=False,
+                    callbacks=callbacks)
+
+# llm = ChatOpenAI(streaming=True, callbacks=[my_handler], temperature=0.7)
+
+
+def generate(query):
+    llm.invoke([HumanMessage(content=query)])
+
+
+def start_generation(query):
+    thread = Thread(target=generate, kwargs={"query": query})
+    thread.start()
+
+
+async def response_generator(query):
+    start_generation(query)
+    while True:
+        value = streamer_queue.get()
+        if value is None:
+            break
+        yield value
+        streamer_queue.task_done()
+        await asyncio.sleep(0.1)
 
 
 @app.get('/')
@@ -60,6 +91,12 @@ def tinyllama(text: str):
     res = llm.invoke(template, temperature=0.42, repeat_penalty=1.5, max_tokens=300)
     result = copy.deepcopy(res)
     return {"result": result['choices'][0]['text']}
+
+
+@app.get('/query-stream/')
+async def stream(query: str):
+    print(f'Query received: {query}')
+    return StreamingResponse(response_generator(query), media_type='text/event-stream')
 
 
 def start_server():
@@ -110,39 +147,26 @@ class CompletionResponse(BaseModel):
 
 
 @app.post('/v1/chat/completions')
-def chat_completions(request: CompletionRequest):
+async def chat_completions(request: CompletionRequest):
     try:
         messages = request.messages
         prompt = '\n'.join([f"{msg.role}\n{msg.content}" for msg in messages])
-
-        res = llm.invoke(prompt,
-                         max_tokens=request.max_tokens,
-                         temperature=request.temperature,
-                         repeat_penalty=1.5)
-
-        # Debug the entire response
-        #print("MODEL RESPONSE:\n", res)
+        res = llm.invoke(prompt, max_tokens=request.max_tokens, temperature=request.temperature, repeat_penalty=1.5)
 
         if 'choices' in res and len(res['choices']) > 0 and 'text' in res['choices'][0]:
-            output = {
-                "id": "chatcmpl-123",  # Generate or hardcode as needed
-                "object": "chat.completion",
-                "created": int(time.time()),
-                "model": request.model,
-                "choices": [{
-                    "message": {"role": "assistant", "content": res['choices'][0]['text']},
-                    "finish_reason": "stop"  # Adjust if your model provides this info
-                }],
-                "usage": {}
-            }
-            return output
+            async def generate():
+                for word in res['choices'][0]['text'].split():
+                    yield word + " "
+                yield ""
+
+            return StreamingResponse(generate(), media_type="text/plain")
         else:
-            #print("Unexpected response format:", res)
+            print("Unexpected response format:", res)
             raise HTTPException(status_code=500, detail=f"Invalid response from model:\n{res}")
 
     except Exception as e:
-        #print("ERROR in chat_completions endpoint:\t", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        print("ERROR in chat_completions endpoint:\t", e)
+        raise HTTPException(status_code=500, detail=f"Internal server error occurred.{e}")
 
 
 if __name__ == "__main__":

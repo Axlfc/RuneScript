@@ -19,7 +19,7 @@ def initialize_client():
     # TODO: Load base_url and api_key from settings
     #  TODO: test local_ai_server.py API endpoints
     client = openai.OpenAI(base_url="http://localhost:8004/v1", api_key="not-needed")
-    #client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
+    # client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
     return client
 
 def process_chat_completions(client, history):
@@ -45,21 +45,26 @@ def main_chat_loop(client, text_prompt):
         {"role": "user", "content": text_prompt},
     ]
 
-    new_message = process_chat_completions(client, history)
-    history.append(new_message)
+    try:
+        new_message = process_chat_completions(client, history)
+        history.append(new_message)
 
-    # Uncomment to see chat history
-    # import json
-    # gray_color = "\033[90m"
-    # reset_color = "\033[0m"
-    # print(f"{gray_color}\n{'-'*20} History dump {'-'*20}\n")
-    # print(json.dumps(history, indent=2))
-    # print(f"\n{'-'*55}\n{reset_color}")
+        # Uncomment to see chat history
+        # import json
+        # gray_color = "\033[90m"
+        # reset_color = "\033[0m"
+        # print(f"{gray_color}\n{'-'*20} History dump {'-'*20}\n")
+        # print(json.dumps(history, indent=2))
+        # print(f"\n{'-'*55}\n{reset_color}")
 
-    print()
-    user_input = input("> ")
-    if user_input.strip():
-        history.append({"role": "user", "content": user_input})
+        print()
+        user_input = input("> ")
+        if user_input.strip():
+            history.append({"role": "user", "content": user_input})
+    except Exception as e:
+        #print("ERROR!!!")
+        print(f"Error during processing: {e}")
+        return e
 
 
 if __name__ == "__main__":
