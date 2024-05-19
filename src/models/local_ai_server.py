@@ -110,7 +110,7 @@ def test_app_server():
             sys.exit(1)
         output = llm.invoke(
             question,
-            max_tokens=32,
+            max_tokens=512,
             stop=["Q:", "\n"],
             echo=True
         )
@@ -155,18 +155,18 @@ async def chat_completions(request: CompletionRequest):
 
         if 'choices' in res and len(res['choices']) > 0 and 'text' in res['choices'][0]:
             async def generate():
-                for word in res['choices'][0]['text'].split():
-                    yield word + " "
+                for line in res['choices'][0]['text'].split('\n'):
+                    yield line + "\n"
                 yield ""
 
-            return StreamingResponse(generate(), media_type="text/plain")
+            return StreamingResponse(generate(), media_type="text/event-stream")
         else:
             print("Unexpected response format:", res)
             raise HTTPException(status_code=500, detail=f"Invalid response from model:\n{res}")
 
     except Exception as e:
         print("ERROR in chat_completions endpoint:\t", e)
-        raise HTTPException(status_code=500, detail=f"Internal server error occurred.{e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error occurred. {e}")
 
 
 if __name__ == "__main__":

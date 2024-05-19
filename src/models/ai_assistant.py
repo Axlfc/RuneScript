@@ -19,7 +19,7 @@ def initialize_client():
     # TODO: Load base_url and api_key from settings
     #  TODO: test local_ai_server.py API endpoints
     client = openai.OpenAI(base_url="http://localhost:8004/v1", api_key="not-needed")
-    # client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
+    #  client = openai.OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
     return client
 
 def process_chat_completions(client, history):
@@ -62,9 +62,19 @@ def main_chat_loop(client, text_prompt):
         if user_input.strip():
             history.append({"role": "user", "content": user_input})
     except Exception as e:
+        # TODO: So dirty... We cannot stream real-time, but whatever...
         #print("ERROR!!!")
-        print(f"Error during processing: {e}")
-        return e
+        #print(f"Error during processing: {e}")
+        not_the_text = str(e)
+
+        output = not_the_text.split("model:")[1]
+        # TODO- BUG...
+        last_brace_index = output.rfind('}')
+        if last_brace_index != -1:
+            output = output[:last_brace_index]
+
+        print(output)
+        return output
 
 
 if __name__ == "__main__":
