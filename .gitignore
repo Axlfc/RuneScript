@@ -162,3 +162,7 @@ cython_debug/
 *user_config.json*
 
 *src/models/model*
+
+data/pdf_docs/*
+
+src/models/vectorstore

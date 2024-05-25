@@ -2,5 +2,7 @@ crontab
 pillow
 markdown
 tkhtmlview
+tkinterhtml
 pywebview
 ttkbootstrap
+markdown2

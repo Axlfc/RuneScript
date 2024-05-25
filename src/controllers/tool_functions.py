@@ -4,11 +4,12 @@ import os
 import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
-    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font
+    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font, filedialog, Listbox, ttk
 import webview  # pywebview
 
 import markdown
 from tkhtmlview import HTMLLabel
+from tkinterhtml import HtmlFrame
 
 from src.models.script_operations import get_operative_system
 from src.views.edit_operations import cut, copy, paste, duplicate
@@ -717,17 +718,70 @@ def open_ai_assistant_window():
         command=lambda: add_current_selected_text(add_current_selected_text_var.get())
     )
 
+    # --- Session List with Sessions and Documents Sections ---
+
+    session_list_frame = Frame(ai_assistant_window)  # Frame to hold the entire session_list structure
+    session_list_frame.pack(side="left", fill="y")
+
+    # --- Sessions Section ---
+    Label(session_list_frame, text="SESSIONS", font=("Helvetica", 10, "bold")).pack(fill="x")
+
+    sessions_list = Listbox(session_list_frame)  # Scrollable list for sessions
+    sessions_list.pack(fill="both", expand=True)
+
+    # --- Visual Separator ---
+    ttk.Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
+
+    # --- Documents Section ---
+    Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(fill="x")
+
+    documents_list = Listbox(session_list_frame)  # Scrollable list for documents
+    documents_list.pack(fill="both", expand=True)
+
+    # Function to refresh the documents list
+    def refresh_documents_list():
+        documents_list.delete(0, END)
+        for doc_path in document_paths:
+            doc_name = os.path.basename(doc_path)
+            documents_list.insert(END, doc_name)
+
+    # Function to add a new document
+    def add_new_document():
+        file_path = filedialog.askopenfilename(
+            initialdir=".",
+            title="Select a PDF document",
+            filetypes=(("PDF files", "*.pdf"), ("all files", "*.*"))
+        )
+        if file_path:
+            document_paths.append(file_path)
+            refresh_documents_list()
+
+    # List to store document paths (no local copies)
+    document_paths = []
+
+    # Populate the documents_list initially (you can start with an empty list)
+    refresh_documents_list()
+
+    # Create Right-Click Context Menu for Documents List
+    documents_context_menu = Menu(ai_assistant_window, tearoff=0)
+    documents_context_menu.add_command(label="Add New Document", command=add_new_document)
+
+    def show_documents_context_menu(event):
+        documents_context_menu.post(event.x_root, event.y_root)
+
+    documents_list.bind("<Button-3>", show_documents_context_menu)
+
     # Create the output text widget
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
     html_display = HTMLLabel(ai_assistant_window, html="")
-    html_display.pack(fill='both', expand=False)
+    html_display.pack(side='left', fill='both', expand=False)
     html_display.pack_forget()  # Initially hide the HTML display
 
     entry = Entry(ai_assistant_window, width=30)
     entry.pack(side='bottom', fill='x')
-    Tooltip(entry, "Input text ")
+    Tooltip(entry, "Input text prompt")
 
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
@@ -749,12 +803,17 @@ def open_ai_assistant_window():
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
 
+    def update_html_content_thread():
+        global rendered_html_content
+        rendered_html_content = markdown.markdown(original_md_content)
+        html_display.set_html(rendered_html_content)
+
     def toggle_render_markdown(is_checked):
         global markdown_render_enabled
         markdown_render_enabled = bool(is_checked)
 
         if markdown_render_enabled:
-            update_html_content()
+            threading.Thread(target=update_html_content_thread).start()
             output_text.pack_forget()
             html_display.pack(fill='both', expand=True)
         else:

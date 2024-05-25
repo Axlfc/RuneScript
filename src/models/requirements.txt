@@ -4,3 +4,8 @@ asyncio
 sse-starlette
 streamlit
 langchain-community
+starlette_context
+pypdf
+tiktoken
+sentence-transformers
+faiss-gpu
