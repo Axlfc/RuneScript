@@ -462,7 +462,6 @@ def open_terminal_window():
                 output_text.insert(END, f"{command}\n{output}\n")
             except subprocess.CalledProcessError as e:
                 # If there's an error, print it to the output widget
-                output_text.tag_configure("error", foreground="red")
                 output_text.insert(END, f"Error: {e.output}", "error")
             # Clear the entry widget
             entry.delete(0, END)
@@ -631,7 +630,7 @@ def open_ai_server_settings_window():
     api_key_entry.grid(row=2, column=1)
 
     # Initial display based on default selection
-    toggle_display(selected_server.get())
+    # toggle_display(selected_server.get())
 
     # Callback function to handle dropdown selection changes
     def on_server_selection_change(*args):
@@ -673,14 +672,15 @@ def open_ai_assistant_window():
     Returns:
     None
     """
-    global original_md_content, markdown_render_enabled, rendered_html_content
+    global original_md_content, markdown_render_enabled, rendered_html_content, session_data
     original_md_content = ""
     rendered_html_content = ""
     markdown_render_enabled = False
+    session_data = []
 
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
-    ai_assistant_window.geometry("600x400")
+    ai_assistant_window.geometry("800x600")
 
     # Create a Menu Bar
     menu_bar = Menu(ai_assistant_window)
@@ -690,7 +690,6 @@ def open_ai_assistant_window():
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
     menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
-    # menu_bar.add_command(label="Manage Servers", command=manage_servers)
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
         label="Toggle Markdown-to-HTML Rendering",
@@ -735,17 +734,23 @@ def open_ai_assistant_window():
     # --- Documents Section ---
     Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(fill="x")
 
-    documents_list = Listbox(session_list_frame)  # Scrollable list for documents
-    documents_list.pack(fill="both", expand=True)
+    documents_frame = Frame(session_list_frame)
+    documents_frame.pack(fill="both", expand=True)
 
-    # Function to refresh the documents list
+    # List to store document paths and checkbutton states (no local copies)
+    document_paths = []
+    document_checkbuttons = []
+
     def refresh_documents_list():
-        documents_list.delete(0, END)
-        for doc_path in document_paths:
+        for widget in documents_frame.winfo_children():
+            widget.destroy()
+        for idx, doc_path in enumerate(document_paths):
             doc_name = os.path.basename(doc_path)
-            documents_list.insert(END, doc_name)
+            var = IntVar()
+            checkbutton = Checkbutton(documents_frame, text=doc_name, variable=var)
+            checkbutton.pack(anchor="w")
+            document_checkbuttons.append((doc_path, var))
 
-    # Function to add a new document
     def add_new_document():
         file_path = filedialog.askopenfilename(
             initialdir=".",
@@ -755,9 +760,6 @@ def open_ai_assistant_window():
         if file_path:
             document_paths.append(file_path)
             refresh_documents_list()
-
-    # List to store document paths (no local copies)
-    document_paths = []
 
     # Populate the documents_list initially (you can start with an empty list)
     refresh_documents_list()
@@ -769,7 +771,7 @@ def open_ai_assistant_window():
     def show_documents_context_menu(event):
         documents_context_menu.post(event.x_root, event.y_root)
 
-    documents_list.bind("<Button-3>", show_documents_context_menu)
+    documents_frame.bind("<Button-3>", show_documents_context_menu)
 
     # Create the output text widget
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
@@ -787,8 +789,10 @@ def open_ai_assistant_window():
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
     status_label.pack(side='bottom')  # This will keep the status label at the bottom
     status_label_var.set("READY")  # Initialize the status label as "READY"
-
-    output_text.insert(END, "> ")
+    output_text.tag_configure("user", foreground="#a84699")
+    output_text.tag_configure("ai", foreground="#6a7fd2")
+    output_text.tag_configure("error", foreground="red")
+    output_text.insert(END, "> ", "ai")
 
     entry.focus()
 
@@ -850,7 +854,7 @@ def open_ai_assistant_window():
                     if markdown_render_enabled:
                         update_html_content()
                     else:
-                        output_text.insert(END, char)
+                        output_text.insert(END, char, "ai")
                         output_text.see(END)
 
                     # Update buffer
@@ -862,7 +866,7 @@ def open_ai_assistant_window():
                 elif process.poll() is not None:
                     break
         except Exception as e:
-            output_text.insert(END, f"Error: {e}\n")
+            output_text.insert(END, f"Error: {e}\n", "error")
         finally:
             on_processing_complete()
 
@@ -892,14 +896,13 @@ def open_ai_assistant_window():
             # Insert the user command with a newline and a visual separator
             original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"  # A line of dashes as a separator
-            output_text.insert("end", f"You: {combined_command}\n")
+            output_text.insert("end", f"You: {combined_command}\n", "user")
             output_text.insert("end", "-" * 80 + "\n")
             entry.delete(0, END)
             entry.config(state='disabled')  # Disable entry while processing
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
             ai_script_path = 'src\\models\\ai_assistant.py'
-            # ai_script_path = r"C:\Users\user\Documents\git\UE5-python\Content\Python\src\text\ai_assistant.py"
             command = create_ai_command(ai_script_path, combined_command)
 
             process_ai_command(command)
@@ -979,7 +982,6 @@ def open_ai_assistant_window():
     def nlp_custom():
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
-            # print(selected_text)
             print(read_ai_command("code-optimize", selected_text))
             #  TODO: Add custom command window
 
@@ -1013,8 +1015,6 @@ def open_ai_assistant_window():
 
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        # TODO: Use locales
-
         context_menu.add_command(label="Cut", command=cut)
         context_menu.add_command(label="Copy", command=copy)
         context_menu.add_command(label="Paste", command=paste)
@@ -1062,6 +1062,61 @@ def open_ai_assistant_window():
     command_history = []
     # Initialize a pointer to the current position in the command history
     history_pointer = [0]
+
+    def create_session():
+        session_id = len(session_data) + 1
+        session_data.append({"id": session_id, "name": f"Session {session_id}", "content": ""})
+        update_sessions_list()
+
+    def update_sessions_list():
+        sessions_list.delete(0, END)
+        for session in session_data:
+            sessions_list.insert(END, session["name"])
+
+    def show_session_context_menu(event, session_index):
+        session_context_menu = Menu(ai_assistant_window, tearoff=0)
+        session_context_menu.add_command(label="Share Chat", command=lambda: save_session(session_index))
+        session_context_menu.add_command(label="Change Name", command=lambda: rename_session(session_index))
+        session_context_menu.add_command(label="Archive", command=lambda: archive_session(session_index))
+        session_context_menu.add_command(label="Delete", command=lambda: delete_session(session_index))
+        session_context_menu.post(event.x_root, event.y_root)
+
+    def save_session(session_index):
+        session = session_data[session_index]
+        with open(f"session_{session['id']}.txt", "w") as f:
+            f.write(session["content"])
+        messagebox.showinfo("Session Saved", f"Session {session['id']} saved successfully.")
+
+    def rename_session(session_index):
+        session = session_data[session_index]
+        new_name = simpledialog.askstring("Rename Session", "Enter new session name:")
+        if new_name:
+            session["name"] = new_name
+            update_sessions_list()
+
+    def archive_session(session_index):
+        # Placeholder function for archiving a session
+        messagebox.showinfo("Archive Session", f"Session {session_data[session_index]['id']} archived successfully.")
+
+    def delete_session(session_index):
+        session = session_data.pop(session_index)
+        update_sessions_list()
+        messagebox.showinfo("Delete Session", f"Session {session['id']} deleted successfully.")
+
+    def handle_session_click(event):
+        session_index = sessions_list.curselection()[0]
+        session = session_data[session_index]
+        session_context_menu = Menu(ai_assistant_window, tearoff=0)
+        session_context_menu.add_command(label="Share Chat", command=lambda: save_session(session_index))
+        session_context_menu.add_command(label="Change Name", command=lambda: rename_session(session_index))
+        session_context_menu.add_command(label="Archive", command=lambda: archive_session(session_index))
+        session_context_menu.add_command(label="Delete", command=lambda: delete_session(session_index))
+        session_context_menu.post(event.x_root, event.y_root)
+
+    sessions_list.bind("<Button-3>", handle_session_click)
+
+    create_session_button = Button(ai_assistant_window, text="Create New Session", command=create_session)
+    create_session_button.pack(side="left")
 
     ai_assistant_window.mainloop()
 
