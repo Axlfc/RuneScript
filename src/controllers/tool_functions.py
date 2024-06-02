@@ -4,7 +4,8 @@ import os
 import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
-    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font, filedialog, Listbox, ttk
+    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font, filedialog, Listbox, ttk, \
+    simpledialog
 import webview  # pywebview
 
 import markdown
@@ -578,7 +579,7 @@ def write_config_parameter(parameter_name, parameter_value):
         return False
 
 
-def open_ai_server_settings_window():
+'''def open_ai_server_settings_window():
     def toggle_display(selected_server):
         # Get server details from llm_server_providers.json based on selected server
         print("SERVER DETAILS:\n", server_details)
@@ -647,6 +648,7 @@ def open_ai_server_settings_window():
         messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
 
     Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
+'''
 
 
 def add_current_main_opened_script(include_main_script):
@@ -673,6 +675,64 @@ def open_ai_assistant_window():
     None
     """
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data
+
+    def open_ai_server_agent_settings_window():
+        def load_agents():
+            # Get the directory of the current script
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Construct the path to the JSON file
+            json_file_path = os.path.join(current_dir, "../../data/agents.json")
+
+            # Load agents from the JSON file
+            with open(json_file_path, "r") as file:
+                agents = json.load(file)
+            return agents
+
+        def update_instructions(selected_agent):
+            for agent in agents:
+                if agent["name"] == selected_agent:
+                    instructions_text.delete("1.0", "end")
+                    instructions_text.insert("1.0", agent["instructions"])
+                    break
+
+        def save_agent_settings(selected_agent_var):
+            # Save selected agent and temperature to user_config.json
+            selected_agent = selected_agent_var.get()
+            temperature = temperature_entry.get()
+            # Pass selected_agent_var to execute_ai_assistant_command
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, entry.get(),
+                                         selected_agent)
+            messagebox.showinfo("Agent Settings", "Settings saved successfully!")
+            settings_window.destroy()
+
+        agents = load_agents()
+
+        settings_window = Toplevel()
+        settings_window.title("AI Server Agent Settings")
+
+        Label(settings_window, text="Select Agent:").grid(row=0, column=0)
+        selected_agent_var = StringVar(settings_window)
+        selected_agent_var.set(agents[0]["name"])  # Set default selection
+
+        agent_options = [agent["name"] for agent in agents]
+        agent_dropdown = OptionMenu(settings_window, selected_agent_var, *agent_options, command=update_instructions)
+        agent_dropdown.grid(row=0, column=1)
+
+        Label(settings_window, text="Instructions:").grid(row=1, column=0)
+        instructions_text = scrolledtext.ScrolledText(settings_window, height=7, width=50)
+        instructions_text.grid(row=1, column=1, columnspan=2)
+
+        Label(settings_window, text="Temperature:").grid(row=2, column=0)
+        temperature_entry = Entry(settings_window)
+        temperature_entry.grid(row=2, column=1)
+
+        Button(settings_window, text="Save", command=lambda: save_agent_settings(selected_agent_var)).grid(row=3, column=0)
+        Button(settings_window, text="Cancel", command=settings_window.destroy).grid(row=3, column=1)
+
+        # Initial update of instructions
+        update_instructions(selected_agent_var.get())
+
+
     original_md_content = ""
     rendered_html_content = ""
     markdown_render_enabled = False
@@ -689,7 +749,8 @@ def open_ai_assistant_window():
     # Create a 'Settings' Menu
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
-    menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
+    #menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
+    menu_bar.add_command(label="Agent Options", command=open_ai_server_agent_settings_window)
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
         label="Toggle Markdown-to-HTML Rendering",
@@ -874,7 +935,7 @@ def open_ai_assistant_window():
         entry.config(state='normal')  # Re-enable the entry widget
         status_label_var.set("READY")  # Update label to show AI is processing
 
-    def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
+    def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command, selected_agent_var=None):
         global original_md_content
 
         if ai_command.strip():
@@ -903,15 +964,21 @@ def open_ai_assistant_window():
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
             ai_script_path = 'src\\models\\ai_assistant.py'
-            command = create_ai_command(ai_script_path, combined_command)
+
+            if selected_agent_var:
+                # If an agent is selected, include it as an argument
+                command = create_ai_command(ai_script_path, combined_command, selected_agent_var.get())
+            else:
+                # Otherwise, call the command without the agent argument
+                command = create_ai_command(ai_script_path, combined_command)
 
             process_ai_command(command)
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
 
-    def create_ai_command(ai_script_path, user_prompt):
-        if get_operative_system() != "Windows":
-            return ['python3', ai_script_path, user_prompt]
+    def create_ai_command(ai_script_path, user_prompt, agent_name=None):
+        if agent_name:
+            return ['python', ai_script_path, user_prompt, agent_name]
         else:
             return ['python', ai_script_path, user_prompt]
 

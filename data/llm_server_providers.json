@@ -1,14 +1,14 @@
 {
     "tinyllama": {
-        "server_url": "http://localhost:8004/api/generate",
+        "server_url": "http://192.168.1.133:8004/api/generate",
         "api_key": "not-needed"
     },
     "ollama": {
-        "server_url": "http://localhost:11434/api/generate",
+        "server_url": "http://192.168.1.133:11434/api/generate",
         "api_key": "not-needed"
     },
     "lmstudio": {
-        "server_url": "http://localhost:1234/v1",
+        "server_url": "http://192.168.1.133:1234/v1",
         "api_key": "not-needed"
     },
     "openai": {

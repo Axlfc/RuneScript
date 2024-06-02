@@ -66,6 +66,8 @@ all_fonts = StringVar()
 
 all_size = StringVar()
 
+selected_agent_var = StringVar()
+
 entry_text = StringVar()
 content_frm = Frame(root)
 entry_arguments_entry = Entry(content_frm, textvariable=entry_text, width=40)
