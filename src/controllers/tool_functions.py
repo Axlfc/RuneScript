@@ -5,7 +5,7 @@ import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font, filedialog, Listbox, ttk, \
-    simpledialog
+    simpledialog, Text
 import webview  # pywebview
 
 import markdown
@@ -14,9 +14,10 @@ from tkinterhtml import HtmlFrame
 
 from src.models.script_operations import get_operative_system
 from src.views.edit_operations import cut, copy, paste, duplicate
-from src.views.tk_utils import text, script_text, root, style, server_options
+from src.views.tk_utils import text, script_text, root, style, server_options, selected_agent_var
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip
+
 
 THEME_SETTINGS_FILE = "data/theme_settings.json"
 
@@ -678,34 +679,63 @@ def open_ai_assistant_window():
 
     def open_ai_server_agent_settings_window():
         def load_agents():
-            # Get the directory of the current script
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            # Construct the path to the JSON file
-            json_file_path = os.path.join(current_dir, "../../data/agents.json")
+            """
+            Load agents from the JSON file located at ScriptsEditor/data/agents.json.
 
-            # Load agents from the JSON file
-            with open(json_file_path, "r") as file:
-                agents = json.load(file)
-            return agents
+            Returns:
+            agents (list): A list of agents loaded from the JSON file.
+            """
+            # Get the directory of the current script (tool_functions.py)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Construct the path to the JSON file relative to the current script
+            json_file_path = os.path.join(current_dir, '..', '..', 'data', 'agents.json')
+
+            # Normalize the path to handle different operating systems
+            json_file_path = os.path.normpath(json_file_path)
+
+            # Print the JSON path for debugging
+            print("JSON PATH:", json_file_path)
+
+            try:
+                with open(json_file_path, "r") as file:
+                    agents = json.load(file)
+                return agents
+            except FileNotFoundError:
+                messagebox.showerror("Error", f"File not found: {json_file_path}")
+                return []
+            except json.JSONDecodeError:
+                messagebox.showerror("Error", f"Error decoding JSON from file: {json_file_path}")
+                return []
 
         def update_instructions(selected_agent):
+            global selected_agent_var
+            selected_agent_var = selected_agent
             for agent in agents:
                 if agent["name"] == selected_agent:
                     instructions_text.delete("1.0", "end")
                     instructions_text.insert("1.0", agent["instructions"])
+                    # Update the temperature entry with the corresponding temperature
+                    temperature_entry.delete(0, "end")  # Clear the content of the Entry widget
+                    temperature_entry.insert(0, agent["temperature"])  # Insert the temperature
                     break
 
-        def save_agent_settings(selected_agent_var):
+        def save_agent_settings():
+            global selected_agent_var
             # Save selected agent and temperature to user_config.json
-            selected_agent = selected_agent_var.get()
+            selected_agent = selected_agent_var
+            print("SAVE_AGENT_SETTINTS!!!\n", selected_agent, "\n", "* " * 25)
+            selected_agent_var = selected_agent
             temperature = temperature_entry.get()
             # Pass selected_agent_var to execute_ai_assistant_command
-            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, entry.get(),
-                                         selected_agent)
+            execute_ai_assistant_command(add_current_main_opened_script_var, add_current_selected_text_var, entry.get())
+            # Update the status label with the name of the selected agent
+            status_label_var.set(selected_agent)
             messagebox.showinfo("Agent Settings", "Settings saved successfully!")
             settings_window.destroy()
 
         agents = load_agents()
+        if not agents:
+            return
 
         settings_window = Toplevel()
         settings_window.title("AI Server Agent Settings")
@@ -722,12 +752,17 @@ def open_ai_assistant_window():
         instructions_text = scrolledtext.ScrolledText(settings_window, height=7, width=50)
         instructions_text.grid(row=1, column=1, columnspan=2)
 
+        agent_temperature = [agent["temperature"] for agent in agents]
         Label(settings_window, text="Temperature:").grid(row=2, column=0)
         temperature_entry = Entry(settings_window)
         temperature_entry.grid(row=2, column=1)
 
-        Button(settings_window, text="Save", command=lambda: save_agent_settings(selected_agent_var)).grid(row=3, column=0)
-        Button(settings_window, text="Cancel", command=settings_window.destroy).grid(row=3, column=1)
+        # Add Persistent Agent Selection checkbox
+        persistent_agent_selection_checkbox = Checkbutton(settings_window, text="Persistent Agent Selection", variable=persistent_agent_selection_var)
+        persistent_agent_selection_checkbox.grid(row=3, columnspan=2)
+
+        Button(settings_window, text="Save", command=lambda: save_agent_settings()).grid(row=4, column=0)
+        Button(settings_window, text="Cancel", command=settings_window.destroy).grid(row=4, column=1)
 
         # Initial update of instructions
         update_instructions(selected_agent_var.get())
@@ -777,6 +812,15 @@ def open_ai_assistant_window():
         variable=add_current_selected_text_var,
         command=lambda: add_current_selected_text(add_current_selected_text_var.get())
     )
+
+    persistent_agent_selection_var = IntVar()
+    '''settings_menu.add_checkbutton(
+        label="Persistent Agent Selection",
+        onvalue=1,
+        offvalue=0,
+        variable=persistent_agent_selection_var,
+        #command=lambda: add_current_selected_text(add_current_selected_text_var.get())
+    )'''
 
     # --- Session List with Sessions and Documents Sections ---
 
@@ -849,7 +893,7 @@ def open_ai_assistant_window():
     status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
     status_label.pack(side='bottom')  # This will keep the status label at the bottom
-    status_label_var.set("READY")  # Initialize the status label as "READY"
+    status_label_var.set("READY")
     output_text.tag_configure("user", foreground="#a84699")
     output_text.tag_configure("ai", foreground="#6a7fd2")
     output_text.tag_configure("error", foreground="red")
@@ -932,11 +976,27 @@ def open_ai_assistant_window():
             on_processing_complete()
 
     def on_processing_complete():
+        load_selected_agent()
         entry.config(state='normal')  # Re-enable the entry widget
         status_label_var.set("READY")  # Update label to show AI is processing
 
-    def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command, selected_agent_var=None):
-        global original_md_content
+    # Add a function to store the selected agent for persistence
+    def store_selected_agent(selected_agent):
+        # Store the selected agent in a config file for persistence
+        with open("config.json", "w") as config_file:
+            json.dump({"selected_agent": selected_agent}, config_file)
+
+    # Add code to load the selected agent from the config file at startup
+    def load_selected_agent():
+        try:
+            with open("data/config.json", "r") as config_file:
+                config_data = json.load(config_file)
+                return config_data.get("selected_agent", selected_agent_var)
+        except FileNotFoundError:
+            pass  # Ignore if the config file doesn't exist
+
+    def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
+        global original_md_content, selected_agent_var
 
         if ai_command.strip():
             script_content = ""
@@ -963,14 +1023,14 @@ def open_ai_assistant_window():
             entry.config(state='disabled')  # Disable entry while processing
             status_label_var.set("AI is thinking...")  # Update label to show AI is processing
 
-            ai_script_path = 'src\\models\\ai_assistant.py'
+            ai_script_path = 'src/models/ai_assistant.py'
 
-            if selected_agent_var:
-                # If an agent is selected, include it as an argument
-                command = create_ai_command(ai_script_path, combined_command, selected_agent_var.get())
-            else:
-                # Otherwise, call the command without the agent argument
-                command = create_ai_command(ai_script_path, combined_command)
+            # Pass the selected agent name to create_ai_command function if provided
+            selected_agent = selected_agent_var
+            if persistent_agent_selection_var.get():
+                # Store the selected agent in a config file for persistence
+                store_selected_agent(selected_agent)
+            command = create_ai_command(ai_script_path, combined_command, selected_agent)
 
             process_ai_command(command)
         else:
@@ -983,7 +1043,7 @@ def open_ai_assistant_window():
             return ['python', ai_script_path, user_prompt]
 
     def process_ai_command(command):
-        global process
+        global process, selected_agent_var
 
         try:
             # Terminate existing subprocess if it exists
@@ -999,6 +1059,8 @@ def open_ai_assistant_window():
             on_processing_complete()
         finally:
             update_html_content()
+            # Update the status label with the name of the selected agent
+            status_label_var.set(f"{selected_agent_var} is thinking")  # Update label to show the agent is processing
 
     def read_ai_command(command_name, user_prompt):
         # Path to commands.json file

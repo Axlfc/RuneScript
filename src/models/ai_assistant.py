@@ -88,7 +88,7 @@ def chat_loop(prompt, client, model_path, system_prompt="You are an intelligent 
 
 
 def load_agent_from_json(agent_name):
-    with open("../../data/agents.json", "r") as file:
+    with open("data/agents.json", "r") as file:
         agents = json.load(file)
 
     for agent in agents:

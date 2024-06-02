@@ -66,7 +66,7 @@ all_fonts = StringVar()
 
 all_size = StringVar()
 
-selected_agent_var = StringVar()
+selected_agent_var = "Assistant"
 
 entry_text = StringVar()
 content_frm = Frame(root)
