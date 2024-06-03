@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 import time
 import openai
@@ -6,6 +7,24 @@ from colorama import init
 from colorama import Fore, Back, Style
 import time
 import json
+from datetime import datetime
+
+
+initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+
+
+def add_message(message, initialtime, session_id):
+    now = datetime.now()
+    time_str = now.strftime("%H-%M-%S")
+    date_str = now.strftime("%Y-%m-%d")
+    session_dir = os.path.join("data", "conversations", f"session_{session_id}")
+    if not os.path.exists(session_dir):
+        os.makedirs(session_dir)
+
+    filepath = os.path.join(session_dir, f"{initialtime}.txt")
+
+    with open(filepath, "a", encoding="utf-8") as f:
+        f.write(f"{time_str}: {message.strip()}\n")
 
 
 def find_gguf_file():
@@ -73,10 +92,12 @@ def chat_loop(prompt, client, model_path, system_prompt="You are an intelligent 
         model=model_path,
         messages=history,
         stream=True,
-        max_tokens=1000,
+        max_tokens=1024,
     )
+    answer = ""
     for chunk in response:
         if chunk.choices[0].delta.content is not None:
+            answer += chunk.choices[0].delta.content
             print(
                 chunk.choices[0].delta.content,
                 end="",
@@ -85,6 +106,9 @@ def chat_loop(prompt, client, model_path, system_prompt="You are an intelligent 
     print()
     print()
     print("> ")
+
+    print("THIS IS THE ANSWER:::\n\n{{{", answer, "}}}\n\n")
+    add_message(answer, initial_time, session_id="fake_session_id")
 
 
 def load_agent_from_json(agent_name):
@@ -104,6 +128,12 @@ def main():
         sys.exit(1)
 
     user_input = sys.argv[1]
+    initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+    add_message(user_input, initial_time, session_id="fake_session_id")
+
+    if user_input == "exit" or user_input == "quit":
+        exit(0)
+
     agent_name = sys.argv[2] if len(sys.argv) > 2 else None
 
     init()
