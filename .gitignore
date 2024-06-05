@@ -166,3 +166,5 @@ cython_debug/
 data/pdf_docs/*
 
 src/models/vectorstore
+
+*vectorstore*

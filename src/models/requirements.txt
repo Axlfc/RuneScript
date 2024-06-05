@@ -9,3 +9,4 @@ pypdf
 tiktoken
 sentence-transformers
 faiss-gpu
+faiss-cpu
