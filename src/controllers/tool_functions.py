@@ -675,7 +675,7 @@ def open_ai_assistant_window():
     Returns:
     None
     """
-    global original_md_content, markdown_render_enabled, rendered_html_content, session_data
+    global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
     def open_ai_server_agent_settings_window():
         def load_agents():
@@ -772,6 +772,7 @@ def open_ai_assistant_window():
     rendered_html_content = ""
     markdown_render_enabled = False
     session_data = []
+    url_data = []
 
     ai_assistant_window = Toplevel()
     ai_assistant_window.title("AI Assistant")
@@ -836,6 +837,72 @@ def open_ai_assistant_window():
     # --- Visual Separator ---
     ttk.Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
 
+    # --- Links Section ---
+    Label(session_list_frame, text="LINKS", font=("Helvetica", 10, "bold")).pack(fill="x")
+
+    links_frame = Frame(session_list_frame)
+    links_frame.pack(fill="both", expand=True)
+
+    links_list = Listbox(links_frame)
+    links_list.pack(fill="both", expand=True)
+
+    def refresh_links_list():
+        print("Refreshing links list...")
+        links_list.delete(0, END)
+        for idx, url in enumerate(url_data):
+            links_list.insert(END, url)
+
+    def add_new_link():
+        print("Adding new link...")
+        new_url = simpledialog.askstring("Add New Link", "Enter URL:")
+        if new_url:
+            url_data.append(new_url)
+            refresh_links_list()
+
+    def delete_selected_link():
+        print("Deleting selected link...")
+        selected_link_index = links_list.curselection()
+        if selected_link_index:
+            url_data.pop(selected_link_index[0])
+            refresh_links_list()
+
+    def edit_selected_link():
+        selected_link_index = links_list.curselection()
+        if selected_link_index:
+            selected_link = links_list.get(selected_link_index)
+            new_url = simpledialog.askstring("Edit Link", "Enter new URL:", initialvalue=selected_link)
+            if new_url:
+                url_data[selected_link_index[0]] = new_url
+                refresh_links_list()
+
+    # Create Right-Click Context Menu for Links List
+    links_context_menu = Menu(ai_assistant_window, tearoff=0)
+
+    #links_context_menu.add_command(label="Delete Selected Link", command=delete_selected_link)
+    #links_context_menu.add_command(label="Add New Link", command=add_new_link)  # Remove all items from the menu if no link is selected
+
+    def show_links_context_menu(event):
+        if links_list.size() == 0:  # Check if there are no links in the list
+            links_context_menu.delete(0, END)  # Clear all existing menu items
+            links_context_menu.add_command(label="Add New Link", command=add_new_link)
+        else:
+            links_context_menu.delete(0, END)  # Clear all existing menu items
+            selected_link_index = links_list.curselection()
+            if selected_link_index:
+                links_context_menu.add_command(label="Edit Link", command=edit_selected_link)
+                links_context_menu.add_command(label="Delete Selected Link", command=delete_selected_link)
+            else:
+                links_context_menu.add_command(label="Add New Link", command=add_new_link)
+        links_context_menu.post(event.x_root, event.y_root)
+
+    links_list.bind("<Button-3>", show_links_context_menu)
+
+    # Populate the links_list initially (you can start with an empty list)
+    refresh_links_list()
+
+    # --- Visual Separator ---
+    ttk.Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
+
     # --- Documents Section ---
     Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(fill="x")
 
@@ -847,6 +914,7 @@ def open_ai_assistant_window():
     document_checkbuttons = []
 
     def refresh_documents_list():
+        print("Refreshing documents list...")
         for widget in documents_frame.winfo_children():
             widget.destroy()
         for idx, doc_path in enumerate(document_paths):
@@ -857,6 +925,7 @@ def open_ai_assistant_window():
             document_checkbuttons.append((doc_path, var))
 
     def add_new_document():
+        print("Adding new document...")
         file_path = filedialog.askopenfilename(
             initialdir=".",
             title="Select a PDF document",
@@ -1193,11 +1262,13 @@ def open_ai_assistant_window():
     history_pointer = [0]
 
     def create_session():
+        print("Creating new session...")
         session_id = len(session_data) + 1
         session_data.append({"id": session_id, "name": f"Session {session_id}", "content": ""})
         update_sessions_list()
 
     def update_sessions_list():
+        print("Updating sessions list...")
         sessions_list.delete(0, END)
         for session in session_data:
             sessions_list.insert(END, session["name"])
@@ -1211,12 +1282,13 @@ def open_ai_assistant_window():
         session_context_menu.post(event.x_root, event.y_root)
 
     def save_session(session_index):
+        print(f"Saving session {session_index}...")
         session = session_data[session_index]
         with open(f"session_{session['id']}.txt", "w") as f:
             f.write(session["content"])
-        messagebox.showinfo("Session Saved", f"Session {session['id']} saved successfully.")
-
+            messagebox.showinfo("Delete Session", f"Session {session['id']} deleted successfully.")
     def rename_session(session_index):
+        print(f"Renaming session {session_index}...")
         session = session_data[session_index]
         new_name = simpledialog.askstring("Rename Session", "Enter new session name:")
         if new_name:
@@ -1224,28 +1296,36 @@ def open_ai_assistant_window():
             update_sessions_list()
 
     def archive_session(session_index):
-        # Placeholder function for archiving a session
+        print(f"Archiving session {session_index}...")
         messagebox.showinfo("Archive Session", f"Session {session_data[session_index]['id']} archived successfully.")
 
     def delete_session(session_index):
+        print(f"Deleting session {session_index}...")
         session = session_data.pop(session_index)
         update_sessions_list()
         messagebox.showinfo("Delete Session", f"Session {session['id']} deleted successfully.")
 
     def handle_session_click(event):
-        session_index = sessions_list.curselection()[0]
-        session = session_data[session_index]
         session_context_menu = Menu(ai_assistant_window, tearoff=0)
-        session_context_menu.add_command(label="Share Chat", command=lambda: save_session(session_index))
-        session_context_menu.add_command(label="Change Name", command=lambda: rename_session(session_index))
-        session_context_menu.add_command(label="Archive", command=lambda: archive_session(session_index))
-        session_context_menu.add_command(label="Delete", command=lambda: delete_session(session_index))
+        try:
+            session_index = sessions_list.curselection()[0]
+            session = session_data[session_index]
+            session_context_menu.add_command(label="Share Chat", command=lambda: save_session(session_index))
+            session_context_menu.add_command(label="Change Name", command=lambda: rename_session(session_index))
+            session_context_menu.add_command(label="Archive", command=lambda: archive_session(session_index))
+            session_context_menu.add_command(label="Delete", command=lambda: delete_session(session_index))
+            session_context_menu.add_separator()
+            session_context_menu.add_command(label="Create New Session", command=create_session)
+        except IndexError:
+            session_index = 0
+
+        session_context_menu.add_command(label="Create New Session", command=create_session)
         session_context_menu.post(event.x_root, event.y_root)
 
     sessions_list.bind("<Button-3>", handle_session_click)
 
-    create_session_button = Button(ai_assistant_window, text="Create New Session", command=create_session)
-    create_session_button.pack(side="left")
+    #create_session_button = Button(ai_assistant_window, text="Create New Session", command=create_session)
+    #create_session_button.pack(side="left")
 
     ai_assistant_window.mainloop()
 

@@ -1,14 +1,20 @@
 [
   {
-    "id": -2,
+    "id": -3,
     "name": "Magician",
     "instructions": "The goal is to amaze the audience and provide maximum entertainment. I want you to act as a magician. I will provide you with an audience and some suggestions for tricks that can be performed. Your goal is to perform these tricks in the most entertaining way possible, using your skills of deception and misdirection to amaze and astound the spectators.",
     "temperature": 0.7
   },
   {
+    "id": -2,
+    "name": "Assistant Character",
+    "instructions": "You are a helpful AI assistant.",
+    "temperature": 0.7
+  },
+  {
     "id": -1,
     "name": "Assistant",
-    "instructions": "You are a helpful AI assistant.",
+    "instructions": "",
     "temperature": 0.7
   },
   {

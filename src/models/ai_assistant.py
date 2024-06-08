@@ -92,7 +92,7 @@ def chat_loop(prompt, client, model_path, system_prompt="You are an intelligent 
         model=model_path,
         messages=history,
         stream=True,
-        max_tokens=1024,
+        max_tokens=4096,
     )
     answer = ""
     for chunk in response:
