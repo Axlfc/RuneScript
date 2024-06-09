@@ -56,8 +56,8 @@
         "syntax_highlighting_performance": "auto",
         "user_name": "John Doe",
         "timestamp_format": "YYYY-MM-DD HH:mm:ss",
-        "last_selected_llm_server_provider": "ollama",
-        "server_url": "http://localhost:11434/api/generate",
+        "last_selected_llm_server_provider": "llama-cpp-python",
+        "server_url": "http://localhost:8004/v1/",
         "api_key": "not-needed",
         "startup_actions": []
     }

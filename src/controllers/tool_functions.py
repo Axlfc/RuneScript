@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import re
 import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
@@ -12,11 +13,17 @@ import markdown
 from tkhtmlview import HTMLLabel
 from tkinterhtml import HtmlFrame
 
+import difflib
+
 from src.models.script_operations import get_operative_system
 from src.views.edit_operations import cut, copy, paste, duplicate
 from src.views.tk_utils import text, script_text, root, style, server_options, selected_agent_var
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip
+
+from src.models.ai_assistant import find_gguf_file
+
+from lib.git import git_icons
 
 
 THEME_SETTINGS_FILE = "data/theme_settings.json"
@@ -276,7 +283,8 @@ def open_search_replace_dialog():
                                                                              )
 
 
-def open_ipython_terminal_window():
+
+def open_ipynb_window():
     print("OPEN IPYTHON TERMINAL")
 
 
@@ -419,6 +427,229 @@ def create_settings_window():
     canvas.bind_all("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
 
 
+def open_git_window(repo_dir=None):
+    def execute_command(command):
+        if command.strip():
+            command_history.append(command)
+            history_pointer[0] = len(command_history)
+
+            directory = repo_dir or os.getcwd()
+            git_command = f'git -C "{directory}" {command}'
+
+            try:
+                output = subprocess.check_output(git_command, stderr=subprocess.STDOUT, shell=True, text=True)
+                insert_ansi_text(output_text, f"{git_command}\n{output}\n")
+            except subprocess.CalledProcessError as e:
+                insert_ansi_text(output_text, f"Error: {e.output}\n", "error")
+            finally:
+                entry.delete(0, END)
+                output_text.see(END)
+            populate_branch_menu()  # Ensure the branch menu is updated after executing a command
+
+    def populate_branch_menu():
+        branch_menu.delete(0, END)
+        directory = repo_dir or os.getcwd()
+
+        try:
+            branches_output = subprocess.check_output(['git', '-C', directory, 'branch'], text=True)
+            branches = branches_output.splitlines()
+            for branch in branches:
+                branch_name = branch.strip()
+                display_name = branch_name
+                if branch_name.startswith('*'):
+                    branch_name = branch_name.lstrip('*').strip()
+                    display_name = f"* {branch_name}"
+                branch_menu.add_command(label=display_name, command=lambda b=branch_name: checkout_branch(b))
+        except subprocess.CalledProcessError as e:
+            insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
+
+    def checkout_branch(branch):
+        execute_command(f'checkout {branch}')
+
+    def insert_ansi_text(widget, text, tag=""):
+        ansi_escape = re.compile(r'\x1B\[(?P<code>\d+(;\d+)*)m')
+        segments = ansi_escape.split(text)
+
+        tag = None
+        for i, segment in enumerate(segments):
+            if i % 2 == 0:
+                widget.insert(END, segment, tag)
+            else:
+                codes = list(map(int, segment.split(';')))
+                tag = get_ansi_tag(codes)
+                if tag:
+                    widget.tag_configure(tag, **get_ansi_style(tag))
+
+    def get_ansi_tag(codes):
+        fg_map = {
+            30: 'black', 31: 'red', 32: 'green', 33: 'yellow',
+            34: 'blue', 35: 'magenta', 36: 'cyan', 37: 'white',
+            90: 'bright_black', 91: 'bright_red', 92: 'bright_green', 93: 'bright_yellow',
+            94: 'bright_blue', 95: 'bright_magenta', 96: 'bright_cyan', 97: 'bright_white',
+        }
+        bg_map = {
+            40: 'bg_black', 41: 'bg_red', 42: 'bg_green', 43: 'bg_yellow',
+            44: 'bg_blue', 45: 'bg_magenta', 46: 'bg_cyan', 47: 'bg_white',
+            100: 'bg_bright_black', 101: 'bg_bright_red', 102: 'bg_bright_green', 103: 'bg_bright_yellow',
+            104: 'bg_bright_blue', 105: 'bg_bright_magenta', 106: 'bg_bright_cyan', 107: 'bg_bright_white',
+        }
+        styles = []
+        for code in codes:
+            if code in fg_map:
+                styles.append(fg_map[code])
+            elif code in bg_map:
+                styles.append(bg_map[code])
+            elif code == 1:
+                styles.append('bold')
+            elif code == 4:
+                styles.append('underline')
+
+        return '_'.join(styles) if styles else None
+
+    def get_ansi_style(tag):
+        styles = {
+            'black': {'foreground': 'black'},
+            'red': {'foreground': 'red'},
+            'green': {'foreground': 'green'},
+            'yellow': {'foreground': 'yellow'},
+            'blue': {'foreground': 'blue'},
+            'magenta': {'foreground': 'magenta'},
+            'cyan': {'foreground': 'cyan'},
+            'white': {'foreground': 'white'},
+            'bright_black': {'foreground': 'gray'},
+            'bright_red': {'foreground': 'lightcoral'},
+            'bright_green': {'foreground': 'lightgreen'},
+            'bright_yellow': {'foreground': 'lightyellow'},
+            'bright_blue': {'foreground': 'lightblue'},
+            'bright_magenta': {'foreground': 'violet'},
+            'bright_cyan': {'foreground': 'lightcyan'},
+            'bright_white': {'foreground': 'white'},
+            'bg_black': {'background': 'black'},
+            'bg_red': {'background': 'red'},
+            'bg_green': {'background': 'green'},
+            'bg_yellow': {'background': 'yellow'},
+            'bg_blue': {'background': 'blue'},
+            'bg_magenta': {'background': 'magenta'},
+            'bg_cyan': {'background': 'cyan'},
+            'bg_white': {'background': 'white'},
+            'bg_bright_black': {'background': 'gray'},
+            'bg_bright_red': {'background': 'lightcoral'},
+            'bg_bright_green': {'background': 'lightgreen'},
+            'bg_bright_yellow': {'background': 'lightyellow'},
+            'bg_bright_blue': {'background': 'lightblue'},
+            'bg_bright_magenta': {'background': 'violet'},
+            'bg_bright_cyan': {'background': 'lightcyan'},
+            'bg_bright_white': {'background': 'white'},
+            'bold': {'font': ('TkDefaultFont', 10, 'bold')},
+            'underline': {'font': ('TkDefaultFont', 10, 'underline')},
+        }
+        style = {}
+        for part in tag.split('_'):
+            if part in styles:
+                style.update(styles[part])
+        return style
+
+    terminal_window = Toplevel()
+    terminal_window.title("Git Console")
+    terminal_window.geometry("600x400")
+
+    menubar = Menu(terminal_window)
+    terminal_window.config(menu=menubar)
+
+    git_menu = Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="Git", menu=git_menu)
+
+    for command, icon in git_icons.items():
+        git_menu.add_command(label=f"{icon} {command.capitalize()}", command=lambda c=command: execute_command(c))
+
+    branch_menu = Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="Branch", menu=branch_menu)
+
+    populate_branch_menu()
+
+    output_text = scrolledtext.ScrolledText(terminal_window, height=20, width=80)
+    output_text.pack(fill='both', expand=True)
+
+    command_history = []
+    history_pointer = [0]
+
+    def navigate_history(event):
+        if command_history:
+            if event.keysym == 'Up':
+                history_pointer[0] = max(0, history_pointer[0] - 1)
+            elif event.keysym == 'Down':
+                history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+            command = command_history[history_pointer[0]] if history_pointer[0] < len(command_history) else ''
+            entry.delete(0, END)
+            entry.insert(0, command)
+
+    def add_selected_text_to_git_staging():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text:
+            execute_command(f"add -f {selected_text}")
+
+    def unstage_selected_text():
+        selected_text = output_text.get("sel.first", "sel.last")
+        if selected_text:
+            execute_command(f"reset -- {selected_text}")
+
+    def show_git_diff():
+        git_command = 'git diff --color'
+        try:
+            output = subprocess.check_output(git_command, shell=True, stderr=subprocess.STDOUT, text=True)
+            output = output.decode('utf-8', errors='replace')
+
+            diff_window = Toplevel(terminal_window)
+            diff_window.title("Git Diff")
+            diff_window.geometry("800x600")
+
+            diff_text = Text(diff_window, height=20, width=80)
+            diff_text.pack(fill='both', expand=True)
+
+            diff_text.tag_configure("addition", foreground="green")
+            diff_text.tag_configure("deletion", foreground="red")
+            diff_text.tag_configure("info", foreground="blue")
+
+            ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+            for line in output.split('\n'):
+                line_clean = ansi_escape.sub('', line)
+                if line.startswith('+'):
+                    diff_text.insert(END, line_clean + '\n', "addition")
+                elif line.startswith('-'):
+                    diff_text.insert(END, line_clean + '\n', "deletion")
+                elif line.startswith('@'):
+                    diff_text.insert(END, line_clean + '\n', "info")
+                else:
+                    diff_text.insert(END, line_clean + '\n')
+
+            diff_text.config(state="disabled")
+
+        except subprocess.CalledProcessError as e:
+            output_text.insert(END, f"Error: {e.output}\n", "error")
+
+    context_menu = Menu(output_text)
+    output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))
+
+    context_menu.add_command(label="Git Add", command=add_selected_text_to_git_staging)
+    context_menu.add_command(label="Git Status", command=lambda: execute_command("status"))
+    context_menu.add_command(label="Git Unstage", command=unstage_selected_text)
+    context_menu.add_command(label="Git Diff", command=show_git_diff)
+
+    button_frame = Frame(terminal_window)
+    button_frame.pack(side='bottom', fill='x')
+
+    common_commands = ["commit", "push", "pull", "fetch"]
+    for command in common_commands:
+        button = Button(button_frame, text=f"{git_icons[command]} {command.capitalize()}", command=lambda c=command: execute_command(c))
+        button.pack(side='left')
+
+    entry = Entry(button_frame, width=80)
+    entry.pack(side='right', fill='x')
+    entry.focus()
+    entry.bind("<Return>", lambda event: execute_command(entry.get()))
+    entry.bind("<Up>", navigate_history)
+    entry.bind("<Down>", navigate_history)
+
 def open_terminal_window():
     """
         Opens a new window functioning as a terminal within the application.
@@ -433,7 +664,7 @@ def open_terminal_window():
         None
     """
     terminal_window = Toplevel()
-    terminal_window.title("Python Terminal")
+    terminal_window.title("Terminal")
     terminal_window.geometry("600x400")
 
     # Create a ScrolledText widget to display terminal output
@@ -676,6 +907,12 @@ def open_ai_assistant_window():
     None
     """
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
+
+    def start_llama_cpp_python_server():
+        file_path = find_gguf_file()
+        print("THE PATH TO THE MODEL IS:\t", file_path)
+        #  subprocess.run(["python", "-m", "llama_cpp.server", "--port", "8004", "--model",
+        #  ".\\src\\models\\model\\llama-2-7b-chat.Q4_K_M.gguf"])
 
     def open_ai_server_agent_settings_window():
         def load_agents():

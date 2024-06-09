@@ -4,8 +4,6 @@ from tkinter import Menu, Button, messagebox, filedialog, END
 
 from PIL import Image, ImageTk
 
-from src.views.edit_operations import copy, cut, paste, redo, undo, duplicate
-
 from src.controllers.scheduled_tasks import open_cron_window, open_at_window, open_scheduled_tasks_window, open_new_at_task_window, \
     open_new_crontab_task_window
 from src.models.script_operations import get_operative_system
@@ -13,12 +11,15 @@ from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_ht
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter, render_markdown_to_latex
 from src.localization import localization_data
+from src.views.edit_operations import undo, redo
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, file_name, last_saved_content
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window, \
-                                            open_ai_assistant_window, open_webview, open_ipython_terminal_window,
-                                            create_url_input_window,
-                                            open_change_theme_window, create_settings_window)
+                                            open_ai_assistant_window, open_webview, open_terminal_window,
+                                            create_url_input_window, open_ipynb_window,
+                                            open_change_theme_window, create_settings_window, open_git_window)
+
+from lib.git import git_icons
 
 house_icon = "🏠"
 open_icon = "📂"
@@ -51,6 +52,71 @@ file_types = [
     ("Rust Files", "*.rs"),
     ("Dart Files", "*.dart")
 ]
+
+
+def cut():
+    """
+        Cuts the selected text from the script editor to the clipboard.
+
+        This function removes the currently selected text from the document and places it on the clipboard,
+        allowing it to be pasted elsewhere.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    #set_modified_status(True)
+    script_text.event_generate("<<Cut>>")
+
+
+def copy():
+    """
+        Copies the selected text from the script editor to the clipboard.
+
+        This function copies the currently selected text to the clipboard without removing it from the document.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    # set_modified_status(True)
+    script_text.event_generate("<<Copy>>")
+
+
+def paste():
+    """
+        Pastes text from the clipboard into the script editor at the cursor's current location.
+
+        This function inserts the contents of the clipboard into the document at the current cursor position.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    # set_modified_status(True)
+    script_text.event_generate("<<Paste>>")
+
+
+def duplicate():
+    """
+        Duplicates the selected text in the script editor.
+
+        This function creates a copy of the selected text and inserts it immediately after the current selection.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+        """
+    # set_modified_status(True)
+    script_text.event_generate("<<Duplicate>>")
 
 
 # Help Menu
@@ -642,8 +708,7 @@ def create_menu():
     file_menu.add_command(label="Save As", command=save_as_new_script, accelerator='Ctrl+Shift+S', underline=1)
     # file_menu.add_command(label="Rename", command=rename, accelerator='Ctrl+Shift+R', underline=0)
     file_menu.add_separator()
-    file_menu.add_command(label="Settings", command=create_settings_window, compound='left', image=image_save, accelerator='Ctrl+S',
-                          underline=0)
+    file_menu.add_command(label="Print...", command=None, accelerator='Ctrl+P', underline=0)
     file_menu.add_separator()
     file_menu.add_command(label="Close", command=close, accelerator='Alt+F4', underline=0)
 
@@ -686,16 +751,62 @@ def create_menu():
                           command=paste,
                           compound='left',
                           image=image_paste,
-                          accelerator='Ctrl+P',
+                          accelerator='Ctrl+V',
                           underline=0
                           )
-    edit_menu.add_command(label="Duplicate",
+    edit_menu.add_command(label="Select All",
                           command=duplicate,
                           compound='left',
                           image=image_duplicate,
                           accelerator='Ctrl+D',
                           underline=0
                           )
+    edit_menu.add_separator()
+    edit_menu.add_command(label="Go to line...", command=duplicate, compound='left', accelerator='Ctrl+G')
+    edit_menu.add_separator()
+    #  edit_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
+
+    find_submenu = Menu(menu, tearoff=0)
+    edit_menu.add_cascade(label="Find", menu=find_submenu)
+    find_submenu.add_command(label="Find", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
+    find_submenu.add_command(label="Find and Replace", command=open_search_replace_dialog, compound='left', image=image_find, accelerator='Ctrl+R')
+    edit_menu.add_separator()
+    open_in_submenu = Menu(menu, tearoff=0)
+    edit_menu.add_cascade(label="Open in", menu=open_in_submenu)
+    open_in_submenu.add_command(label="Explorer", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
+    open_in_submenu.add_command(label="Terminal", command=open_search_replace_dialog, compound='left',
+                             image=image_find, accelerator='Ctrl+R')
+    edit_menu.add_separator()
+    git_submenu = Menu(menu, tearoff=0)
+    edit_menu.add_cascade(label="Git", menu=git_submenu)
+    git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
+    git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    edit_menu.add_separator()
+
+    edit_menu.add_command(label="Clear script", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
+
+
     # edit_menu.add_command(label="Delete", command=delete, underline=0)
     #edit_menu.add_separator()
     #edit_menu.add_command(label="Select All", command=select_all, accelerator='Ctrl+A', underline=0)
@@ -705,18 +816,20 @@ def create_menu():
     tool_menu = Menu(menu)
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
 
-    tool_menu.add_command(label="Change Color", command=change_color)
+    #tool_menu.add_command(label="Change Color", command=change_color)
     tool_menu.add_command(label="Change Theme", command=open_change_theme_window)
-    tool_menu.add_command(label="Search", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
-    tool_menu.add_command(label="Search and Replace", command=open_search_replace_dialog, compound='left',
-                          image=image_find, accelerator='Ctrl+R')
     tool_menu.add_separator()
-    tool_menu.add_command(label="Terminal", command=open_terminal_window)
-    # tool_menu.add_command(label="IPython Terminal", command=open_ipython_terminal_window)
-    tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window)
-    tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))
-    tool_menu.add_command(label="Web Browser", command=create_url_input_window)
-    tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
+    tool_menu.add_command(label="Shell", command=open_terminal_window, accelerator='Ctrl+T')
+    tool_menu.add_command(label="Git Console", command=open_git_window, accelerator='Ctrl+Alt+G')
+    #tool_menu.add_command(label="Notebook", command=open_ipynb_window, accelerator='Alt+N')
+    tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window, accelerator='Alt+G')
+    #tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))
+    #tool_menu.add_command(label="Web Browser", command=create_url_input_window)
+    #tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
+    tool_menu.add_separator()
+    tool_menu.add_command(label="Options...", command=create_settings_window, compound='left', image=image_save,
+                          accelerator='Alt+S',
+                          underline=0)
 
     # Jobs Menu
     jobs_menu = Menu(menu)

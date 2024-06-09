@@ -1,8 +1,11 @@
 from tkinter import Button, Checkbutton
 
+from src.controllers.tool_functions import find_text, open_search_replace_dialog
 from src.models.file_operations import select_directory, prompt_rename_file, open_current_directory
-from src.controllers.menu_functions import create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, open_icon, house_icon, \
-    open_script, save_script, save_as_new_script, update_modification_status, on_text_change
+from src.controllers.menu_functions import create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
+    open_icon, house_icon, \
+    open_script, save_script, save_as_new_script, update_modification_status, on_text_change, cut, copy, paste, \
+    duplicate
 from src.models.script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
     run_script_crontab, get_operative_system, run_script_windows
 from src.views.ui_elements import Tooltip, LineNumberCanvas
@@ -62,71 +65,6 @@ def redo():
     """
     print("Redo function called.")
     script_text.edit_redo()
-
-
-def cut():
-    """
-        Cuts the selected text from the script editor to the clipboard.
-
-        This function removes the currently selected text from the document and places it on the clipboard,
-        allowing it to be pasted elsewhere.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    #set_modified_status(True)
-    script_text.event_generate("<<Cut>>")
-
-
-def copy():
-    """
-        Copies the selected text from the script editor to the clipboard.
-
-        This function copies the currently selected text to the clipboard without removing it from the document.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    # set_modified_status(True)
-    script_text.event_generate("<<Copy>>")
-
-
-def paste():
-    """
-        Pastes text from the clipboard into the script editor at the cursor's current location.
-
-        This function inserts the contents of the clipboard into the document at the current cursor position.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    # set_modified_status(True)
-    script_text.event_generate("<<Paste>>")
-
-
-def duplicate():
-    """
-        Duplicates the selected text in the script editor.
-
-        This function creates a copy of the selected text and inserts it immediately after the current selection.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-        """
-    # set_modified_status(True)
-    script_text.event_generate("<<Duplicate>>")
 
 
 def create_footer_line():
@@ -236,12 +174,63 @@ def create_content_file_window():
         # TODO: Locales
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label=localization_data['cut'], command=cut)
-        context_menu.add_command(label=localization_data['copy'], command=copy)
-        context_menu.add_command(label=localization_data['paste'], command=paste)
-        context_menu.add_command(label=localization_data['duplicate'], command=duplicate)
-        context_menu.add_command(label="Select All", command=duplicate)
+        context_menu.add_command(label=localization_data['undo'], command=undo, accelerator='Ctrl+Z')
+        context_menu.add_command(label=localization_data['redo'], command=redo, accelerator='Ctrl+Y')
+
         context_menu.add_separator()
+        context_menu.add_command(label=localization_data['paste'], command=paste, accelerator='Ctrl+V')
+        context_menu.add_command(label=localization_data['copy'], command=copy, accelerator='Ctrl+C')
+        context_menu.add_command(label=localization_data['cut'], command=cut, accelerator='Ctrl+X')
+        context_menu.add_command(label="Select All", command=duplicate, accelerator='Ctrl+A')
+        context_menu.add_separator()
+        context_menu.add_command(label="Go to line...", command=duplicate, accelerator='Ctrl+G')
+        context_menu.add_separator()
+        #  context_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
+
+        find_submenu = Menu(menu, tearoff=0)
+        context_menu.add_cascade(label="Find", menu=find_submenu)
+
+        find_submenu.add_command(label="Find", command=find_text, compound='left', accelerator='Ctrl+F')
+        find_submenu.add_command(label="Find and Replace", command=open_search_replace_dialog, compound='left', accelerator='Ctrl+R')
+
+        context_menu.add_separator()
+        context_menu.add_command(label="Run", command=duplicate, accelerator='F5')
+        context_menu.add_command(label="Debug", command=duplicate, accelerator='F9')
+        context_menu.add_command(label="Run Preferences", command=duplicate, accelerator='F10')
+        context_menu.add_separator()
+        open_in_submenu = Menu(menu, tearoff=0)
+        context_menu.add_cascade(label="Open in", menu=open_in_submenu)
+        open_in_submenu.add_command(label="Explorer", command=duplicate, compound='left', accelerator='Ctrl+F')
+        open_in_submenu.add_command(label="Terminal", command=duplicate, compound='left', accelerator='Ctrl+R')
+        context_menu.add_separator()
+        git_submenu = Menu(menu, tearoff=0)
+        context_menu.add_cascade(label="Git", menu=git_submenu, accelerator='Ctl+Alt+G')
+        git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
+        git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_separator()
+        git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_separator()
+        git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_separator()
+        git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_separator()
+        git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_separator()
+        git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
+                                accelerator='Ctrl+Alt+A')
+        git_submenu.add_separator()
+        git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        context_menu.add_separator()
+        context_menu.add_command(label="Clear script", command=duplicate, compound='left', accelerator='Ctrl+L')
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
