@@ -444,8 +444,6 @@ def open_git_window(repo_dir=None):
             finally:
                 entry.delete(0, END)
                 output_text.see(END)
-            populate_branch_menu()  # Ensure the branch menu is updated after executing a command
-
     def populate_branch_menu():
         branch_menu.delete(0, END)
         directory = repo_dir or os.getcwd()
@@ -454,17 +452,14 @@ def open_git_window(repo_dir=None):
             branches_output = subprocess.check_output(['git', '-C', directory, 'branch'], text=True)
             branches = branches_output.splitlines()
             for branch in branches:
-                branch_name = branch.strip()
-                display_name = branch_name
-                if branch_name.startswith('*'):
-                    branch_name = branch_name.lstrip('*').strip()
-                    display_name = f"* {branch_name}"
-                branch_menu.add_command(label=display_name, command=lambda b=branch_name: checkout_branch(b))
+                branch_name = branch.strip().lstrip('*').strip()
+                branch_menu.add_command(label=branch_name, command=lambda b=branch_name: checkout_branch(b))
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
+        populate_branch_menu()
 
     def insert_ansi_text(widget, text, tag=""):
         ansi_escape = re.compile(r'\x1B\[(?P<code>\d+(;\d+)*)m')
@@ -553,41 +548,55 @@ def open_git_window(repo_dir=None):
     terminal_window.title("Git Console")
     terminal_window.geometry("600x400")
 
+    # Create a top-level menu
     menubar = Menu(terminal_window)
     terminal_window.config(menu=menubar)
 
+    # Create a Git menu
     git_menu = Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Git", menu=git_menu)
 
+    # Add Git commands to the menu
     for command, icon in git_icons.items():
         git_menu.add_command(label=f"{icon} {command.capitalize()}", command=lambda c=command: execute_command(c))
 
+    # Create a Branch menu
     branch_menu = Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Branch", menu=branch_menu)
 
-    populate_branch_menu()
+    populate_branch_menu()  # Populate the Branch menu with branches
 
+    # Create a ScrolledText widget to display terminal output
     output_text = scrolledtext.ScrolledText(terminal_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
+    # Initialize a list to store command history
     command_history = []
+    # Initialize a pointer to the current position in the command history
     history_pointer = [0]
 
+    # Function to navigate the command history
     def navigate_history(event):
         if command_history:
+            # UP arrow key pressed
             if event.keysym == 'Up':
                 history_pointer[0] = max(0, history_pointer[0] - 1)
+            # DOWN arrow key pressed
             elif event.keysym == 'Down':
                 history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+            # Get the command from history
             command = command_history[history_pointer[0]] if history_pointer[0] < len(command_history) else ''
+            # Set the command to the entry widget
             entry.delete(0, END)
             entry.insert(0, command)
 
+    # Function to add selected text to Git staging
     def add_selected_text_to_git_staging():
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text:
             execute_command(f"add -f {selected_text}")
 
+    # Function to unstage selected text
     def unstage_selected_text():
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text:
@@ -596,23 +605,27 @@ def open_git_window(repo_dir=None):
     def show_git_diff():
         git_command = 'git diff --color'
         try:
-            output = subprocess.check_output(git_command, shell=True, stderr=subprocess.STDOUT, text=True)
+            output = subprocess.check_output(git_command, shell=True, stderr=subprocess.STDOUT)
             output = output.decode('utf-8', errors='replace')
 
+            # Create a new window for the diff output
             diff_window = Toplevel(terminal_window)
             diff_window.title("Git Diff")
             diff_window.geometry("800x600")
 
+            # Create a Text widget to display the diff output
             diff_text = Text(diff_window, height=20, width=80)
             diff_text.pack(fill='both', expand=True)
 
+            # Configure tags for syntax highlighting
             diff_text.tag_configure("addition", foreground="green")
             diff_text.tag_configure("deletion", foreground="red")
-            diff_text.tag_configure("info", foreground="blue")
+            diff_text.tag_configure("info", foreground="blue")  # For context lines and file names
 
+            # Parse the diff output and apply syntax highlighting
             ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
             for line in output.split('\n'):
-                line_clean = ansi_escape.sub('', line)
+                line_clean = ansi_escape.sub('', line)  # Remove ANSI escape sequences
                 if line.startswith('+'):
                     diff_text.insert(END, line_clean + '\n', "addition")
                 elif line.startswith('-'):
@@ -622,11 +635,12 @@ def open_git_window(repo_dir=None):
                 else:
                     diff_text.insert(END, line_clean + '\n')
 
-            diff_text.config(state="disabled")
+            diff_text.config(state="disabled")  # Make the text widget read-only
 
         except subprocess.CalledProcessError as e:
             output_text.insert(END, f"Error: {e.output}\n", "error")
 
+    # Create a context menu for the text widget
     context_menu = Menu(output_text)
     output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))
 
@@ -635,20 +649,25 @@ def open_git_window(repo_dir=None):
     context_menu.add_command(label="Git Unstage", command=unstage_selected_text)
     context_menu.add_command(label="Git Diff", command=show_git_diff)
 
+    # Create a frame for buttons
     button_frame = Frame(terminal_window)
     button_frame.pack(side='bottom', fill='x')
 
+    # Create buttons for common git commands
     common_commands = ["commit", "push", "pull", "fetch"]
     for command in common_commands:
         button = Button(button_frame, text=f"{git_icons[command]} {command.capitalize()}", command=lambda c=command: execute_command(c))
         button.pack(side='left')
 
+    # Create an Entry widget for typing commands
     entry = Entry(button_frame, width=80)
     entry.pack(side='right', fill='x')
     entry.focus()
     entry.bind("<Return>", lambda event: execute_command(entry.get()))
+    # Bind the UP and DOWN arrow keys to navigate the command history
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
+
 
 def open_terminal_window():
     """
