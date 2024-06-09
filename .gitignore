@@ -168,3 +168,8 @@ data/pdf_docs/*
 src/models/vectorstore
 
 *vectorstore*
+
+data/conversations/
+
+python_dependencies/
+
