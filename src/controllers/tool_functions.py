@@ -29,6 +29,10 @@ from lib.git import git_icons
 THEME_SETTINGS_FILE = "data/theme_settings.json"
 
 
+# Global variable to hold the Git Console window instance
+git_console_instance = None
+
+
 def load_themes_from_json(file_path):
     try:
         with open(file_path, 'r') as file:
@@ -428,6 +432,13 @@ def create_settings_window():
 
 
 def open_git_window(repo_dir=None):
+    global git_console_instance
+
+    # If the Git Console window is already open, bring it to the front and return
+    if git_console_instance and git_console_instance.winfo_exists():
+        git_console_instance.lift()
+        return
+
     def execute_command(command):
         if command.strip():
             command_history.append(command)
@@ -441,9 +452,9 @@ def open_git_window(repo_dir=None):
                 insert_ansi_text(output_text, f"{git_command}\n{output}\n")
             except subprocess.CalledProcessError as e:
                 insert_ansi_text(output_text, f"Error: {e.output}\n", "error")
-            finally:
-                entry.delete(0, END)
-                output_text.see(END)
+            entry.delete(0, END)
+            output_text.see(END)
+
     def populate_branch_menu():
         branch_menu.delete(0, END)
         directory = repo_dir or os.getcwd()
@@ -639,7 +650,6 @@ def open_git_window(repo_dir=None):
 
         except subprocess.CalledProcessError as e:
             output_text.insert(END, f"Error: {e.output}\n", "error")
-
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
     output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))

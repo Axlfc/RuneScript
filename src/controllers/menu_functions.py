@@ -19,7 +19,12 @@ from src.controllers.tool_functions import (find_text, change_color, open_search
                                             create_url_input_window, open_ipynb_window,
                                             open_change_theme_window, create_settings_window, open_git_window)
 
+from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
+import lib.git as git
+
+# Add this line
+git_console_instance = None
 
 house_icon = "🏠"
 open_icon = "📂"
@@ -52,6 +57,12 @@ file_types = [
     ("Rust Files", "*.rs"),
     ("Dart Files", "*.dart")
 ]
+
+
+def init_git_console():
+    global git_console_instance
+    if git_console_instance is None:
+        git_console_instance = "Something"
 
 
 def cut():
@@ -777,32 +788,55 @@ def create_menu():
     open_in_submenu.add_command(label="Terminal", command=open_search_replace_dialog, compound='left',
                              image=image_find, accelerator='Ctrl+R')
     edit_menu.add_separator()
+
+    # Update the git commands to send the command to the Git Console
+    def execute_git_command_in_console(command, repo_dir=git.default_repo_dir):
+        if git_console_instance and git_console_instance == "Something":
+
+            git_console_instance.execute_command(command, repo_dir=repo_dir)
+
+    init_git_console()  # Initialize the Git Console
     git_submenu = Menu(menu, tearoff=0)
     edit_menu.add_cascade(label="Git", menu=git_submenu)
-    git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
-    git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Status.", command=lambda: execute_git_command_in_console("status"), compound='left',
+                            accelerator='Ctrl+Alt+S')
     git_submenu.add_separator()
-    git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Commit File...", command=lambda: git.git_commit("Commit message"), compound='left',
+                            accelerator='Ctrl+Alt+C')
+    git_submenu.add_command(label="Add", command=git.git_add, compound='left', accelerator='Ctrl+Alt+A')
     git_submenu.add_separator()
-    git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Blame", command=lambda: git.git_blame("filename"), compound='left',
+                            accelerator='Ctrl+Alt+B')
+    git_submenu.add_command(label="Diff", command=git.git_diff, compound='left', accelerator='Ctrl+Alt+D')
     git_submenu.add_separator()
-    git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Push...", command=git.git_push, compound='left', accelerator='Ctrl+Alt+P')
+    git_submenu.add_command(label="Pull...", command=git.git_pull, compound='left', accelerator='Ctrl+Alt+L')
+    git_submenu.add_command(label="Fetch", command=git.git_fetch, compound='left', accelerator='Ctrl+Alt+F')
     git_submenu.add_separator()
-    git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Merge...", command=lambda: git.git_merge("branch_name"), compound='left',
+                            accelerator='Ctrl+Alt+M')
+    git_submenu.add_command(label="Rebase...", command=lambda: git.git_rebase("branch_name"), compound='left',
+                            accelerator='Ctrl+Alt+R')
     git_submenu.add_separator()
-    git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Branches", command=git.git_branch, compound='left', accelerator='Ctrl+Alt+B')
+    git_submenu.add_command(label="New Branch...", command=lambda: git.git_checkout("new_branch"), compound='left',
+                            accelerator='Ctrl+Alt+N')
+    git_submenu.add_command(label="Delete Branch...",
+                            command=lambda: git.run_git_command("branch", "-d", "branch_name"), compound='left',
+                            accelerator='Ctrl+Alt+X')
+    git_submenu.add_command(label="Reset HEAD...", command=lambda: git.run_git_command("reset", "HEAD~1"),
+                            compound='left', accelerator='Ctrl+Alt+H')
     git_submenu.add_separator()
-    git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+    git_submenu.add_command(label="Stash Changes...", command=git.git_stash, compound='left', accelerator='Ctrl+Alt+S')
+    git_submenu.add_command(label="Unstash Changes...", command=git.git_unstash, compound='left',
+                            accelerator='Ctrl+Alt+U')
+    git_submenu.add_separator()
+    git_submenu.add_command(label="Manage Remotes...", command=git.git_remote, compound='left',
+                            accelerator='Ctrl+Alt+M')
+    git_submenu.add_command(label="Clone...", command=lambda: git.git_clone("repo_url"), compound='left',
+                            accelerator='Ctrl+Alt+C')
     edit_menu.add_separator()
+    git_submenu.add_command(label="Git Console", command=open_git_window)
 
     edit_menu.add_command(label="Clear script", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
 
