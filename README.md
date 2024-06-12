@@ -129,7 +129,7 @@ Before running ScriptsEditor, you need to set up the AI assistant server. Follow
 
 2. Start the AI assistant server using the following command:
    ```Powershell
-   .\venv\Scripts\python.exe -m llama_cpp.server --port 8004 --model .\src\models\model\llama-2-7b-chat.Q4_K_M.gguf
+   .\.venv\Scripts\python.exe -m llama_cpp.server --port 8004 --model .\src\models\model\llama-2-7b-chat.Q4_K_M.gguf
    ```
 
 After setting up and starting the AI assistant server, you can run ScriptsEditor by executing the `main.py` script.
