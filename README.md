@@ -109,7 +109,6 @@ ScriptsEditor is a powerful and versatile script writing and editing platform de
      ```
 5. Install the required packages:
    - On Windows:
-<<<<<<< HEAD
        ```bash
          .\venv\Scripts\pip install -r requirements.txt
          .\venv\Scripts\pip install -r src/models/requirements.txt
@@ -121,16 +120,6 @@ ScriptsEditor is a powerful and versatile script writing and editing platform de
        venv/bin/pip install -r requirements.txt
        venv/bin/pip install -r src/models/requirements.txt
        venv/bin/pip install torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
-=======
-     ```Powershell
-     .\.venv\Scripts\pip install -r requirements.txt
-     .\.venv\Scripts\pip install -r src\models\requirements.txt
-     ```
-   - On macOS and Linux:
-     ```bash
-     .venv/bin/pip install -r requirements.txt
-     .venv/bin/pip install -r src/models/requirements.txt
->>>>>>> dd39258fddb47a872b98ea4b6d102bc375f0ccde
      ```
      
 6. Install models:
@@ -202,11 +191,8 @@ We welcome contributions! If you'd like to contribute to ScriptsEditor, please c
 ## License
 
 ScriptsEditor is open-source and licensed under the [GPL-2.0](LICENSE).
-<<<<<<< HEAD
 
 ## TO-DO:
 - [] Implement whisper.cpp to be able to talk to ScriptsEditor
 - [] Implement TTS (Accessibility)
 
-=======
->>>>>>> dd39258fddb47a872b98ea4b6d102bc375f0ccde
