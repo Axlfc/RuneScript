@@ -1,6 +1,6 @@
 from ttkbootstrap import Style
 from src.localization import localization_data
-from tkinter import Label, StringVar, IntVar, Frame
+from tkinter import Label, StringVar, IntVar, Frame, BooleanVar
 from tkinter import scrolledtext, Text, Entry, Menu
 from tkinter import Scrollbar, HORIZONTAL
 import os
@@ -65,6 +65,9 @@ text = Text(wrap="word", font=(current_font_family, 12), background="white", bor
 all_fonts = StringVar()
 
 all_size = StringVar()
+
+local_python_var = BooleanVar()
+local_python_var.set(True)
 
 selected_agent_var = "Assistant"
 

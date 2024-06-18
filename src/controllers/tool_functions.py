@@ -1,15 +1,18 @@
 import json
 import multiprocessing
 import os
+import queue
 import re
 import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font, filedialog, Listbox, ttk, \
-    simpledialog, Text
+    simpledialog, Text, DISABLED, NORMAL
 import webview  # pywebview
 
 import markdown
+from PIL import ImageTk
+from PIL.Image import Image
 from tkhtmlview import HTMLLabel
 from tkinterhtml import HtmlFrame
 
@@ -910,6 +913,256 @@ def write_config_parameter(parameter_name, parameter_value):
 
     Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
 '''
+
+
+def open_audio_generation_window():
+    def generate_audio():
+        model_path = model_path_entry.get()
+        prompt = prompt_entry.get()
+        start_time = start_time_entry.get()
+        duration = duration_entry.get()
+        output_path = output_path_entry.get()
+
+        if not model_path or not prompt or not start_time or not duration or not output_path:
+            messagebox.showwarning("Input Error", "Please fill all fields.")
+            return
+
+        status_label.config(text="Starting audio generation...")
+        generate_button.config(state=DISABLED)
+
+        # Create a queue to capture the output
+        output_queue = queue.Queue()
+
+        # Run the audio generation in a separate thread
+        threading.Thread(target=run_audio_generation, args=(model_path, prompt, start_time, duration, output_path, output_queue)).start()
+
+        # Periodically check the queue for updates
+        generation_window.after(100, lambda: update_progress(output_queue))
+
+    def run_audio_generation(model_path, prompt, start_time, duration, output_path, output_queue):
+        try:
+            # Execute the command to generate the audio and capture the output
+            process = subprocess.Popen([
+                ".\\venv\\Scripts\\python.exe",
+                ".\\lib\\stableAudioCpp.py",
+                "--model_path", model_path,
+                "--prompt", prompt,
+                "--start", start_time,
+                "--total", duration,
+                "--out-dir", output_path
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            for line in process.stdout:
+                output_queue.put(line.strip())
+
+            process.wait()
+
+            if process.returncode == 0:
+                output_queue.put("Audio generation completed successfully.")
+                output_queue.put(f"LOAD_AUDIO:{output_path}")
+                output_queue.put(f"AUDIO GENERATED AT {output_path}")
+            else:
+                output_queue.put(f"Audio generation failed: {process.stderr.read()}")
+
+        except subprocess.CalledProcessError as e:
+            output_queue.put(f"Audio generation failed: {e}")
+            return
+
+        output_queue.put("DONE")
+
+    def update_progress(output_queue):
+        try:
+            while not output_queue.empty():
+                line = output_queue.get_nowait()
+                if line.startswith("LOAD_AUDIO:"):
+                    load_audio(line.split(":", 1)[1])
+                elif line.startswith("AUDIO GENERATED AT"):
+                    status_label.config(text=line)
+                else:
+                    status_label.config(text=f"Progress: {line}")
+        except queue.Empty:
+            pass
+        finally:
+            # Continue checking the queue
+            if not "AUDIO GENERATED AT" in status_label.cget("text") and not "failed" in status_label.cget("text"):
+                generation_window.after(100, lambda: update_progress(output_queue))
+            else:
+                generate_button.config(state=NORMAL)
+
+    def load_audio(audio_path):
+        try:
+            # Implement the logic to load and preview audio
+            status_label.config(text=f"Audio generated at {audio_path}")
+        except Exception as e:
+            messagebox.showerror("Audio Error", f"Could not load audio: {e}")
+
+    def select_model_path():
+        path = filedialog.askopenfilename(filetypes=[("Checkpoint Files", "*.ckpt")])
+        model_path_entry.delete(0, END)
+        model_path_entry.insert(0, path)
+
+    def select_output_path():
+        path = filedialog.asksaveasfilename(defaultextension=".wav", filetypes=[("WAV Files", "*.wav")])
+        output_path_entry.delete(0, END)
+        output_path_entry.insert(0, path)
+
+    generation_window = Toplevel()
+    generation_window.title("Audio Generation")
+    generation_window.geometry("480x580")
+
+    Label(generation_window, text="Model Path:").grid(row=0, column=0, padx=10, pady=5, sticky='e')
+    model_path_entry = Entry(generation_window, width=30)
+    model_path_entry.grid(row=0, column=1, padx=10, pady=5)
+    Button(generation_window, text="Browse", command=select_model_path).grid(row=0, column=2, padx=10, pady=5)
+
+    Label(generation_window, text="Prompt:").grid(row=1, column=0, padx=10, pady=5, sticky='e')
+    prompt_entry = Entry(generation_window, width=30)
+    prompt_entry.grid(row=1, column=1, padx=10, pady=5)
+
+    Label(generation_window, text="Start Time:").grid(row=2, column=0, padx=10, pady=5, sticky='e')
+    start_time_entry = Entry(generation_window, width=30)
+    start_time_entry.grid(row=2, column=1, padx=10, pady=5)
+
+    Label(generation_window, text="Duration:").grid(row=3, column=0, padx=10, pady=5, sticky='e')
+    duration_entry = Entry(generation_window, width=30)
+    duration_entry.grid(row=3, column=1, padx=10, pady=5)
+
+    Label(generation_window, text="Output Path:").grid(row=4, column=0, padx=10, pady=5, sticky='e')
+    output_path_entry = Entry(generation_window, width=30)
+    output_path_entry.grid(row=4, column=1, padx=10, pady=5)
+    Button(generation_window, text="Save As", command=select_output_path).grid(row=4, column=2, padx=10, pady=5)
+
+    generate_button = Button(generation_window, text="Generate Audio", command=generate_audio)
+    generate_button.grid(row=5, column=0, columnspan=3, pady=10)
+
+    status_label = Label(generation_window, text="Status: Waiting to start...", width=60, anchor='w')
+    status_label.grid(row=6, column=0, columnspan=3, padx=10, pady=10)
+
+    Label(generation_window, text="Audio Preview:").grid(row=7, column=0, columnspan=3, pady=10)
+    audio_label = Label(generation_window, text="No audio generated yet", width=40, height=20, relief="sunken")
+    audio_label.grid(row=8, column=0, columnspan=3, padx=10, pady=10)
+
+
+def open_music_generation_window():
+    pass
+
+
+def open_image_generation_window():
+    def generate_image():
+        model_path = model_path_entry.get()
+        prompt = prompt_entry.get()
+        output_path = output_path_entry.get()
+
+        if not model_path or not prompt or not output_path:
+            messagebox.showwarning("Input Error", "Please fill all fields.")
+            return
+
+        status_label.config(text="Starting image generation...")
+        generate_button.config(state=DISABLED)
+
+        # Create a queue to capture the output
+        output_queue = queue.Queue()
+
+        # Run the image generation in a separate thread
+        threading.Thread(target=run_image_generation, args=(model_path, prompt, output_path, output_queue)).start()
+
+        # Periodically check the queue for updates
+        generation_window.after(100, lambda: update_progress(output_queue))
+
+    def run_image_generation(model_path, prompt, output_path, output_queue):
+        try:
+            # Execute the command to generate the image and capture the output
+            process = subprocess.Popen([
+                ".\\venv\\Scripts\\python.exe",
+                ".\\lib\\stableDiffusionCpp.py",
+                "--model_path", model_path,
+                "--prompt", prompt,
+                "--output_path", output_path
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            for line in process.stdout:
+                output_queue.put(line.strip())
+
+            process.wait()
+
+            if process.returncode == 0:
+                output_queue.put("Image generation completed successfully.")
+                output_queue.put(f"LOAD_IMAGE:{output_path}")
+                output_queue.put(f"IMAGE GENERATED AT {output_path}")
+            else:
+                output_queue.put(f"Image generation failed: {process.stderr.read()}")
+
+        except subprocess.CalledProcessError as e:
+            output_queue.put(f"Image generation failed: {e}")
+
+        output_queue.put("DONE")
+
+    def update_progress(output_queue):
+        try:
+            while not output_queue.empty():
+                line = output_queue.get_nowait()
+                if line.startswith("LOAD_IMAGE:"):
+                    load_image(line.split(":", 1)[1])
+                elif line.startswith("IMAGE GENERATED AT"):
+                    status_label.config(text=line)
+                else:
+                    status_label.config(text=f"Progress: {line}")
+        except queue.Empty:
+            pass
+        finally:
+            # Continue checking the queue
+            if not "IMAGE GENERATED AT" in status_label.cget("text") and not "failed" in status_label.cget("text"):
+                generation_window.after(100, lambda: update_progress(output_queue))
+            else:
+                generate_button.config(state=NORMAL)
+
+    def load_image(image_path):
+        try:
+            img = Image.open(image_path)
+            img = img.resize((250, 250), Image.ANTIALIAS)
+            img_tk = ImageTk.PhotoImage(img)
+            image_label.config(image=img_tk)
+            image_label.image = img_tk
+        except Exception as e:
+            messagebox.showerror("Image Error", f"Could not load image: {e}")
+
+    def select_model_path():
+        path = filedialog.askopenfilename(filetypes=[("Checkpoint Files", "*.ckpt")])
+        model_path_entry.delete(0, END)
+        model_path_entry.insert(0, path)
+
+    def select_output_path():
+        path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Files", "*.png")])
+        output_path_entry.delete(0, END)
+        output_path_entry.insert(0, path)
+
+    generation_window = Toplevel()
+    generation_window.title("Image Generation")
+    generation_window.geometry("480x580")
+
+    Label(generation_window, text="Model Path:").grid(row=0, column=0, padx=10, pady=5, sticky='e')
+    model_path_entry = Entry(generation_window, width=30)
+    model_path_entry.grid(row=0, column=1, padx=10, pady=5)
+    Button(generation_window, text="Browse", command=select_model_path).grid(row=0, column=2, padx=10, pady=5)
+
+    Label(generation_window, text="Prompt:").grid(row=1, column=0, padx=10, pady=5, sticky='e')
+    prompt_entry = Entry(generation_window, width=30)
+    prompt_entry.grid(row=1, column=1, padx=10, pady=5)
+
+    Label(generation_window, text="Output Path:").grid(row=2, column=0, padx=10, pady=5, sticky='e')
+    output_path_entry = Entry(generation_window, width=30)
+    output_path_entry.grid(row=2, column=1, padx=10, pady=5)
+    Button(generation_window, text="Save As", command=select_output_path).grid(row=2, column=2, padx=10, pady=5)
+
+    generate_button = Button(generation_window, text="Generate Image", command=generate_image)
+    generate_button.grid(row=3, column=0, columnspan=3, pady=10)
+
+    status_label = Label(generation_window, text="Status: Waiting to start...", width=60, anchor='w')
+    status_label.grid(row=4, column=0, columnspan=3, padx=10, pady=10)
+
+    Label(generation_window, text="Image Preview:").grid(row=5, column=0, columnspan=3, pady=10)
+    image_label = Label(generation_window, text="No image generated yet", width=40, height=20, relief="sunken")
+    image_label.grid(row=6, column=0, columnspan=3, padx=10, pady=10)
 
 
 def add_current_main_opened_script(include_main_script):

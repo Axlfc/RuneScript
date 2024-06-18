@@ -27,7 +27,7 @@ from uuid import uuid4
 from langchain_community.document_loaders import PyPDFLoader
 
 # Constants
-MODEL_PATH = "model/llama-2-7b-chat.Q4_K_M.gguf"
+MODEL_PATH = "model/text/llama-2-7b-chat.Q4_K_M.gguf"
 MAX_TOKENS = 8192
 
 # Initialize the callback managers

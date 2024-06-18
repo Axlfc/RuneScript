@@ -10,3 +10,8 @@ tiktoken
 sentence-transformers
 faiss-gpu
 faiss-cpu
+stable-diffusion-cpp-python
+stable-audio-tools
+einops
+torchaudio
+

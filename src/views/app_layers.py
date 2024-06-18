@@ -84,6 +84,10 @@ def create_footer_line():
     pass
 
 
+def create_icon_buttons_line():
+    pass
+
+
 def create_directory_line():
     """
         Creates and displays the directory selection interface in the application.

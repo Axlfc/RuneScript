@@ -41,7 +41,7 @@ def find_gguf_file():
     FileNotFoundError: If no .gguf files are found.
     ValueError: If more than one .gguf file is found.
     """
-    MODEL_DIR = "src/models/model"
+    MODEL_DIR = "src/models/model/text"
 
     # List all files in the specified directory
     files = os.listdir(MODEL_DIR)

@@ -13,11 +13,14 @@ from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_ht
 from src.localization import localization_data
 from src.views.edit_operations import undo, redo
 
-from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, file_name, last_saved_content
-from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window, \
+from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, \
+    file_name, last_saved_content, local_python_var
+from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window,
                                             open_ai_assistant_window, open_webview, open_terminal_window,
                                             create_url_input_window, open_ipynb_window,
-                                            open_change_theme_window, create_settings_window, open_git_window)
+                                            open_change_theme_window, create_settings_window, open_git_window,
+                                            open_image_generation_window, open_music_generation_window,
+                                            open_audio_generation_window)
 
 from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
@@ -387,10 +390,18 @@ def create_latex_menu(parent_menu):
 
 def create_python_menu(parent_menu):
     entries = {
-        "Execute Python Script": run_python_script,
+        "Create Virtual Environment": change_interpreter,  # create_venv_at_path, / Change Virtual Environment
+        "Manage pip packages": change_interpreter,  # show_local_pip_packages
         "Change Interpreter": change_interpreter
         # Add more options as needed
     }
+
+    parent_menu.add_checkbutton(
+        label="ScriptsEditor Local Python 3",
+        variable=local_python_var,
+        command=run_python_script
+    )
+
     create_submenu(parent_menu, "Interpreter", entries)
 
 
@@ -846,6 +857,14 @@ def create_menu():
     #edit_menu.add_command(label="Select All", command=select_all, accelerator='Ctrl+A', underline=0)
     #edit_menu.add_command(label="Clear All", command=delete_all, underline=6)
 
+    # Search Menu
+    search_menu = Menu(menu)
+    menu.add_cascade(label="Search", menu=search_menu, underline=0)
+
+    # View Menu
+    view_menu = Menu(menu)
+    menu.add_cascade(label="View", menu=view_menu, underline=0)
+
     # Tool Menu
     tool_menu = Menu(menu)
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
@@ -857,6 +876,9 @@ def create_menu():
     tool_menu.add_command(label="Git Console", command=open_git_window, accelerator='Ctrl+Alt+G')
     #tool_menu.add_command(label="Notebook", command=open_ipynb_window, accelerator='Alt+N')
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window, accelerator='Alt+G')
+    tool_menu.add_command(label="Generate Image", command=open_image_generation_window, accelerator='Alt+I')
+    #  tool_menu.add_command(label="Generate Audio", command=open_audio_generation_window, accelerator='Alt+A')
+    #  tool_menu.add_command(label="Generate Music", command=open_music_generation_window, accelerator='Alt+M')
     #tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))
     #tool_menu.add_command(label="Web Browser", command=create_url_input_window)
     #tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
