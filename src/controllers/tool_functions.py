@@ -477,20 +477,28 @@ def open_git_window(repo_dir=None):
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
     def update_commit_list(commit_list):
-        command = 'git log --color --graph --pretty=format:"%h - <%an> %d %s (%cr) " --abbrev-commit --branches'
+        current_commit = get_current_checkout_commit()
+        command = 'git log --color --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
         for line in output.split('\n'):
-            if line.startswith('*') or line.startswith('|'):  # Filter actual commits
-                commit_list.insert(END, line)
+            if line.startswith('*') or line.startswith('|'):
+                prefix = '*' if line.startswith(current_commit) else ''
+                commit_list.insert(END, f"{prefix}{line}")
+
+        # Apply the visual styles after updating the list
+        apply_visual_styles(commit_list)
 
     def apply_visual_styles(commit_list):
+        current_commit = get_current_checkout_commit()
         for i in range(commit_list.size()):
             item = commit_list.get(i)
-            if item.startswith('*'):
-                commit_list.itemconfig(i, {'fg': 'green', 'font': ('Helvetica', '10', 'bold')})
+            if current_commit in item:
+                commit_list.itemconfig(i, {'bg': 'yellow'})  # Highlight with a different background
+            elif item.startswith('*'):
+                commit_list.itemconfig(i, {'fg': 'green'})
             else:
-                commit_list.itemconfig(i, {'fg': 'gray', 'font': ('Helvetica', '10', 'italic')})
+                commit_list.itemconfig(i, {'fg': 'gray'})
 
     def commit_list_context_menu(event):
         context_menu = Menu(commit_list, tearoff=0)
@@ -516,6 +524,11 @@ def open_git_window(repo_dir=None):
 
     def view_commit_details(commit_hash):
         print("This is just a dummy function")
+
+    def get_current_checkout_commit():
+        current_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+        return current_commit
+
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
         populate_branch_menu()
