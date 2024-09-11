@@ -500,9 +500,19 @@ def open_git_window(repo_dir=None):
                                  command=lambda: view_commit_details(commit_list.get(commit_list.curselection())))
         context_menu.post(event.x_root, event.y_root)
 
-    def checkout_commit(commit_hash):
-        execute_command(f'checkout {commit_hash}')
-        populate_branch_menu()
+    def checkout_commit(commit_info):
+        # Extract commit hash from the selected commit
+        # Assuming the commit info is formatted like: '<commit_hash> - <author> <details>'
+        commit_hash = commit_info.split(' ')[1]
+
+        # Run the git checkout command for the commit hash
+        try:
+            execute_command(f'checkout {commit_hash}')
+            insert_ansi_text(output_text, f"Checked out commit {commit_hash}\n")
+            # Optionally update the UI if needed, like refreshing the branch/commit menu
+            update_commit_list(commit_list)
+        except subprocess.CalledProcessError as e:
+            insert_ansi_text(output_text, f"Error checking out commit: {e.output}\n", "error")
 
     def view_commit_details(commit_hash):
         print("This is just a dummy function")
