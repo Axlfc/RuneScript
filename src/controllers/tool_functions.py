@@ -436,6 +436,7 @@ def create_settings_window():
 
 def open_git_window(repo_dir=None):
     global git_console_instance
+    command_history = []
 
     # If the Git Console window is already open, bring it to the front and return
     if git_console_instance and git_console_instance.winfo_exists():
@@ -460,14 +461,17 @@ def open_git_window(repo_dir=None):
 
     def populate_branch_menu():
         branch_menu.delete(0, END)
-        directory = repo_dir or os.getcwd()
 
         try:
-            branches_output = subprocess.check_output(['git', '-C', directory, 'branch'], text=True)
-            branches = branches_output.splitlines()
+            branches_output = subprocess.check_output(['git', 'branch', '--all'], text=True)
+            branches = list(filter(None, [branch.strip() for branch in branches_output.split('\n')]))
+            print("BRANCHES:\n", branches)
+            active_branch = next((branch[2:] for branch in branches if branch.startswith('*')), None)
             for branch in branches:
-                branch_name = branch.strip().lstrip('*').strip()
-                branch_menu.add_command(label=branch_name, command=lambda b=branch_name: checkout_branch(b))
+                branch_name = branch[2:] if branch.startswith('*') else branch
+                branch_menu.add_checkbutton(label=branch_name, onvalue=1, offvalue=0,
+                                            variable=IntVar(value=1 if branch_name == active_branch else 0),
+                                            command=lambda b=branch_name: checkout_branch(b))
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
@@ -1042,7 +1046,7 @@ def open_audio_generation_window():
     audio_label = Label(generation_window, text="No audio generated yet", width=40, height=20, relief="sunken")
     audio_label.grid(row=8, column=0, columnspan=3, padx=10, pady=10)
 
-
+ 
 def open_music_generation_window():
     pass
 
