@@ -476,6 +476,17 @@ def open_git_window(repo_dir=None):
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
+    def update_commit_list(commit_list):
+
+        command = 'git log --color --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --branches'
+
+        output = subprocess.check_output(command, shell=True, text=True)
+
+        commit_list.delete(0, END)
+
+        for line in output.split('\n'):
+            commit_list.insert(END, line)
+
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
         populate_branch_menu()
@@ -667,6 +678,17 @@ def open_git_window(repo_dir=None):
     context_menu.add_command(label="Git Unstage", command=unstage_selected_text)
     context_menu.add_command(label="Git Diff", command=show_git_diff)
 
+    # Setup the horizontal split
+    #top_frame = Frame(terminal_window)
+    #top_frame.pack(side='top', fill='x', expand=True)
+
+    # Commit history list
+    #commit_list = Listbox(top_frame)
+    #commit_list.pack(fill='both', expand=False)
+
+    # Populate the commit list
+    #update_commit_list(commit_list)
+
     # Create a frame for buttons
     button_frame = Frame(terminal_window)
     button_frame.pack(side='bottom', fill='x')
@@ -679,7 +701,8 @@ def open_git_window(repo_dir=None):
 
     # Create an Entry widget for typing commands
     entry = Entry(button_frame, width=80)
-    entry.pack(side='right', fill='x')
+    entry.pack(side='left', fill='x', expand=True)
+
     entry.focus()
     entry.bind("<Return>", lambda event: execute_command(entry.get()))
     # Bind the UP and DOWN arrow keys to navigate the command history
