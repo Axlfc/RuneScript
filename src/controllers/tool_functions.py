@@ -477,15 +477,35 @@ def open_git_window(repo_dir=None):
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
     def update_commit_list(commit_list):
-
-        command = 'git log --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
+        command = 'git log --color --graph --pretty=format:"%h - <%an> %d %s (%cr) " --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
-
         commit_list.delete(0, END)
-
         for line in output.split('\n'):
-            commit_list.insert(END, line)
+            if line.startswith('*') or line.startswith('|'):  # Filter actual commits
+                commit_list.insert(END, line)
 
+    def apply_visual_styles(commit_list):
+        for i in range(commit_list.size()):
+            item = commit_list.get(i)
+            if item.startswith('*'):
+                commit_list.itemconfig(i, {'fg': 'green', 'font': ('Helvetica', '10', 'bold')})
+            else:
+                commit_list.itemconfig(i, {'fg': 'gray', 'font': ('Helvetica', '10', 'italic')})
+
+    def commit_list_context_menu(event):
+        context_menu = Menu(commit_list, tearoff=0)
+        context_menu.add_command(label="Checkout",
+                                 command=lambda: checkout_commit(commit_list.get(commit_list.curselection())))
+        context_menu.add_command(label="View Details",
+                                 command=lambda: view_commit_details(commit_list.get(commit_list.curselection())))
+        context_menu.post(event.x_root, event.y_root)
+
+    def checkout_commit(commit_hash):
+        execute_command(f'checkout {commit_hash}')
+        populate_branch_menu()
+
+    def view_commit_details(commit_hash):
+        print("This is just a dummy function")
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
         populate_branch_menu()
@@ -691,6 +711,8 @@ def open_git_window(repo_dir=None):
 
     # Attach scrollbar to the listbox
     commit_scrollbar.config(command=commit_list.yview)
+
+    commit_list.bind("<Button-3>", commit_list_context_menu)  # Bind right-click event
 
     # Populate the commit list
     update_commit_list(commit_list)
