@@ -478,8 +478,7 @@ def open_git_window(repo_dir=None):
 
     def update_commit_list(commit_list):
 
-        command = 'git log --color --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --branches'
-
+        command = 'git log --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
 
         commit_list.delete(0, END)
@@ -576,7 +575,7 @@ def open_git_window(repo_dir=None):
 
     terminal_window = Toplevel()
     terminal_window.title("Git Console")
-    terminal_window.geometry("600x400")
+    terminal_window.geometry("600x512")
 
     # Create a top-level menu
     menubar = Menu(terminal_window)
@@ -679,19 +678,26 @@ def open_git_window(repo_dir=None):
     context_menu.add_command(label="Git Diff", command=show_git_diff)
 
     # Setup the horizontal split
-    #top_frame = Frame(terminal_window)
-    #top_frame.pack(side='top', fill='x', expand=True)
+    top_frame = Frame(terminal_window)
+    top_frame.pack(fill='both', expand=True)
 
-    # Commit history list
-    #commit_list = Listbox(top_frame)
-    #commit_list.pack(fill='both', expand=False)
+    # Create a scrollbar for the commit list
+    commit_scrollbar = Scrollbar(top_frame)
+    commit_scrollbar.pack(side='right', fill='y')
+
+    # Commit history list with attached scrollbar
+    commit_list = Listbox(top_frame, yscrollcommand=commit_scrollbar.set)
+    commit_list.pack(side='left', fill='both', expand=True)
+
+    # Attach scrollbar to the listbox
+    commit_scrollbar.config(command=commit_list.yview)
 
     # Populate the commit list
-    #update_commit_list(commit_list)
+    update_commit_list(commit_list)
 
     # Create a frame for buttons
     button_frame = Frame(terminal_window)
-    button_frame.pack(side='bottom', fill='x')
+    button_frame.pack(fill='both', expand=False)
 
     # Create buttons for common git commands
     common_commands = ["commit", "push", "pull", "fetch"]
