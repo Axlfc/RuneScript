@@ -465,12 +465,13 @@ def open_git_window(repo_dir=None):
         try:
             branches_output = subprocess.check_output(['git', 'branch', '--all'], text=True)
             branches = list(filter(None, [branch.strip() for branch in branches_output.split('\n')]))
-            print("BRANCHES:\n", branches)
             active_branch = next((branch[2:] for branch in branches if branch.startswith('*')), None)
             for branch in branches:
-                branch_name = branch[2:] if branch.startswith('*') else branch
-                branch_menu.add_checkbutton(label=branch_name, onvalue=1, offvalue=0,
-                                            variable=IntVar(value=1 if branch_name == active_branch else 0),
+                is_active = branch.startswith('*')
+                branch_name = branch[2:] if is_active else branch
+                display_name = f"✓ {branch_name}" if is_active else branch_name
+                branch_menu.add_checkbutton(label=display_name, onvalue=1, offvalue=0,
+                                            variable=IntVar(value=1 if is_active else 0),
                                             command=lambda b=branch_name: checkout_branch(b))
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
