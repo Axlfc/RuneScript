@@ -478,7 +478,7 @@ def open_git_window(repo_dir=None):
 
     def update_commit_list(commit_list):
         current_commit = get_current_checkout_commit()
-        command = 'git log --color --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
+        command = 'git log --no-merges --color --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
         for line in output.split('\n'):
