@@ -461,7 +461,6 @@ def open_git_window(repo_dir=None):
 
     def populate_branch_menu():
         branch_menu.delete(0, END)
-
         try:
             branches_output = subprocess.check_output(['git', 'branch', '--all'], text=True)
             branches = list(filter(None, [branch.strip() for branch in branches_output.split('\n')]))
@@ -470,9 +469,7 @@ def open_git_window(repo_dir=None):
                 is_active = branch.startswith('*')
                 branch_name = branch[2:] if is_active else branch
                 display_name = f"✓ {branch_name}" if is_active else branch_name
-                branch_menu.add_checkbutton(label=display_name, onvalue=1, offvalue=0,
-                                            variable=IntVar(value=1 if is_active else 0),
-                                            command=lambda b=branch_name: checkout_branch(b))
+                branch_menu.add_command(label=display_name, command=lambda b=branch_name: checkout_branch(b))
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
@@ -546,7 +543,9 @@ def open_git_window(repo_dir=None):
 
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
+        update_commit_list(commit_list)
         populate_branch_menu()
+        # apply_visual_styles(commit_list)
 
     def insert_ansi_text(widget, text, tag=""):
         ansi_escape = re.compile(r'\x1B\[(?P<code>\d+(;\d+)*)m')
