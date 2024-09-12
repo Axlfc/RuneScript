@@ -477,11 +477,12 @@ def open_git_window(repo_dir=None):
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
     def update_commit_list(commit_list):
-        current_commit = get_current_checkout_commit()
-        short_hash_number_commit = current_commit[:7]
         command = 'git log --no-merges --color --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
+
+        current_commit = get_current_checkout_commit()
+        short_hash_number_commit = current_commit[:7]
         print("CURRENT COMMIT:\t", short_hash_number_commit)
 
         # Iterate through each line of the git log output
@@ -522,16 +523,19 @@ def open_git_window(repo_dir=None):
     def checkout_commit(commit_info):
         # Extract commit hash from the selected commit
         # Assuming the commit info is formatted like: '<commit_hash> - <author> <details>'
-        commit_hash = commit_info.split(' ')[1]
+        commit_hash = commit_info.split(' ')[0]
 
         # Run the git checkout command for the commit hash
         try:
             execute_command(f'checkout {commit_hash}')
-            insert_ansi_text(output_text, f"Checked out commit {commit_hash}\n")
+            #  insert_ansi_text(output_text, f"Checked out commit {commit_hash}\n")
             # Optionally update the UI if needed, like refreshing the branch/commit menu
             update_commit_list(commit_list)
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error checking out commit: {e.output}\n", "error")
+
+        # Apply the visual styles after updating the list
+        apply_visual_styles(commit_list)
 
     def view_commit_details(commit_hash):
         print("This is just a dummy function")
