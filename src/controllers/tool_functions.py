@@ -481,13 +481,15 @@ def open_git_window(repo_dir=None):
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
 
+        apply_visual_styles(commit_list)
+
         current_commit = get_current_checkout_commit()
         short_hash_number_commit = current_commit[:7]
         print("CURRENT COMMIT:\t", short_hash_number_commit)
 
         # Iterate through each line of the git log output
         for line in output.split('\n'):
-            print("THE LINE IS:\t", line)
+            #print("THE LINE IS:\t", line)
             line = line[2:]
             # Check if the line contains the short hash of the current commit
             if short_hash_number_commit in line:
@@ -528,8 +530,6 @@ def open_git_window(repo_dir=None):
         # Run the git checkout command for the commit hash
         try:
             execute_command(f'checkout {commit_hash}')
-            #  insert_ansi_text(output_text, f"Checked out commit {commit_hash}\n")
-            # Optionally update the UI if needed, like refreshing the branch/commit menu
             update_commit_list(commit_list)
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error checking out commit: {e.output}\n", "error")
