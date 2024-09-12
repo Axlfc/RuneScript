@@ -474,7 +474,7 @@ def open_git_window(repo_dir=None):
             insert_ansi_text(output_text, f"Error fetching branches: {e.output}\n", "error")
 
     def update_commit_list(commit_list):
-        command = 'git log --no-merges --color --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
+        command = 'git log --no-merges --color --graph --pretty=format:"%h %d %s - <%an (%cr)>" --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
 
@@ -539,19 +539,19 @@ def open_git_window(repo_dir=None):
             commit_hash_number = commit_hash[:7]
             # Execute the git show command and capture colored output
             output = subprocess.check_output(['git', 'show', '--color=always', commit_hash_number], text=True)
+            # print("This is the output:\n", output)
 
-            print("This is the output:\n", output)
-
-            # Create a new window to display the details
             details_window = Toplevel()
-            details_window.title(f"Commit: {commit_hash}")
+            details_window.title(f"{commit_hash}")
             text_widget = scrolledtext.ScrolledText(details_window)
 
-            # Insert the git show output with proper ANSI color handling
-            # TODO: Insert commit text output correctly to the widget.
-            #insert_ansi_text(text_widget, output)
-            text_widget.insert('end', output)
-            text_widget.config(state=NORMAL)
+            # Define text tags for colors
+            text_widget.tag_configure("added", foreground="green")
+            text_widget.tag_configure("removed", foreground="red")
+
+            # define_ansi_tags(text_widget)
+            apply_ansi_styles(text_widget, output)
+            text_widget.config(state=DISABLED)
             text_widget.pack(fill='both', expand=True)
 
         except subprocess.CalledProcessError as e:
@@ -569,6 +569,36 @@ def open_git_window(repo_dir=None):
         update_commit_list(commit_list)
         populate_branch_menu()
         # apply_visual_styles(commit_list)
+
+    def define_ansi_tags(text_widget, tag):
+        text_widget.tag_configure('ansi_color', foreground=tag)  # Example for one ANSI color
+
+    def apply_ansi_styles(text_widget, text):
+        # Define the regex for matching ANSI escape codes
+        ansi_escape = re.compile(r'\x1B\[([0-9;]*[mK])')
+        pos = 0
+        # Split the text into lines for individual processing
+        lines = text.splitlines()
+        for line in lines:
+            # Remove ANSI escape codes
+            cleaned_line = ansi_escape.sub('', line)
+
+            print("THE LINE:\t", cleaned_line)
+
+            if cleaned_line.startswith('+ '):
+                tag = 'green'
+            elif cleaned_line.startswith('- '):
+                tag = 'red'
+            else:
+                tag = None
+
+            # Insert the cleaned line into the text widget with the correct tag
+            if tag:
+                print("COLOR:\t", tag)
+                #define_ansi_tags(text_widget, tag)
+                text_widget.insert('end', cleaned_line + '\n', tag)
+            else:
+                text_widget.insert('end', cleaned_line + '\n')
 
     def insert_ansi_text(widget, text, tag=""):
         ansi_escape = re.compile(r'\x1B\[(?P<code>\d+(;\d+)*)m')
