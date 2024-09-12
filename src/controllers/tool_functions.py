@@ -535,7 +535,30 @@ def open_git_window(repo_dir=None):
         apply_visual_styles(commit_list)
 
     def view_commit_details(commit_hash):
-        print("This is just a dummy function")
+        try:
+            commit_hash_number = commit_hash[:7]
+            # Execute the git show command and capture colored output
+            output = subprocess.check_output(['git', 'show', '--color=always', commit_hash_number], text=True)
+
+            print("This is the output:\n", output)
+
+            # Create a new window to display the details
+            details_window = Toplevel()
+            details_window.title(f"Commit: {commit_hash}")
+            text_widget = scrolledtext.ScrolledText(details_window)
+
+            # Insert the git show output with proper ANSI color handling
+            # TODO: Insert commit text output correctly to the widget.
+            insert_ansi_text(text_widget, output)
+
+            text_widget.config(state=DISABLED)
+            text_widget.pack(fill='both', expand=True)
+
+        except subprocess.CalledProcessError as e:
+            # Handle errors by showing an error message in a new window
+            error_window = Toplevel()
+            error_window.title("Error")
+            Label(error_window, text=f"Failed to fetch commit details: {e.output}").pack(pady=20, padx=20)
 
     def get_current_checkout_commit():
         current_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
