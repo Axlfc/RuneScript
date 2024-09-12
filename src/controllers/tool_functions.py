@@ -478,13 +478,24 @@ def open_git_window(repo_dir=None):
 
     def update_commit_list(commit_list):
         current_commit = get_current_checkout_commit()
+        short_hash_number_commit = current_commit[:7]
         command = 'git log --no-merges --color --graph --pretty=format:"%h -<%an> %d %s (%cr) " --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
+        print("CURRENT COMMIT:\t", short_hash_number_commit)
+
+        # Iterate through each line of the git log output
         for line in output.split('\n'):
-            if line.startswith('*') or line.startswith('|'):
-                prefix = '*' if line.startswith(current_commit) else ''
-                commit_list.insert(END, f"{prefix}{line}")
+            print("THE LINE IS:\t", line)
+            line = line[2:]
+            # Check if the line contains the short hash of the current commit
+            if short_hash_number_commit in line:
+                print("DING DONG!!")
+                # Prepend an asterisk if it's the current commit
+                commit_list.insert(END, f"* {line}")
+            else:
+                # Otherwise, insert the line without modification
+                commit_list.insert(END, line)
 
         # Apply the visual styles after updating the list
         apply_visual_styles(commit_list)
