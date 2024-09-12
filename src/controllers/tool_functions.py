@@ -549,9 +549,9 @@ def open_git_window(repo_dir=None):
 
             # Insert the git show output with proper ANSI color handling
             # TODO: Insert commit text output correctly to the widget.
-            insert_ansi_text(text_widget, output)
-
-            text_widget.config(state=DISABLED)
+            #insert_ansi_text(text_widget, output)
+            text_widget.insert('end', output)
+            text_widget.config(state=NORMAL)
             text_widget.pack(fill='both', expand=True)
 
         except subprocess.CalledProcessError as e:
