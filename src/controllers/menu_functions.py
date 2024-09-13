@@ -407,17 +407,17 @@ def create_python_menu(parent_menu):
 
 def update_menu_based_on_extension(ext):
     """
-        Updates the application menu based on the file extension of the currently open file.
+    Updates the application menu based on the file extension of the currently open file.
 
-        This function creates and inserts a dynamic menu specific to the file type of the currently open file.
+    Parameters:
+    ext (str): The file extension of the currently open file.
 
-        Parameters:
-        ext (str): The file extension of the currently open file.
-
-        Returns:
-        None
+    Returns:
+    None
     """
     print(f"Debug: Starting to update menu for extension: {ext}")
+
+    # Menu creators for different file extensions
     menu_creators = {
         ".py": create_python_menu,
         ".csv": create_csv_menu,
@@ -431,10 +431,9 @@ def update_menu_based_on_extension(ext):
         ".tex": create_latex_menu,
         ".sh": create_bash_menu,
         ".ps1": create_powershell_menu
-        # Add other file types and their corresponding menu creators here...
     }
 
-    # Define file type labels
+    # File type labels
     file_type_labels = {
         ".py": "Python",
         ".csv": "CSV",
@@ -448,33 +447,28 @@ def update_menu_based_on_extension(ext):
         ".tex": "LaTeX",
         ".sh": "Bash",
         ".ps1": "PowerShell"
-        # ... (add labels for other file types)
     }
 
-    # Find the index of the Help menu
-    help_menu_index = None
-    for index in range(menu.index('end'), -1, -1):
-        try:
-            if 'Jobs' in menu.entrycget(index, 'label'):
-                jobs_menu_index = index
-                break
-        except Exception as e:
-            print(f"Debug: Skipping index {index} due to error: {e}")
+    # Find the index of the 'Jobs' menu
+    jobs_menu_index = None
+    for index in range(menu.index('end') + 1):
+        if 'Jobs' in menu.entrycget(index, 'label'):
+            jobs_menu_index = index
+            break
 
     if jobs_menu_index is None:
-        print("Debug: Jobs menu not found. Cannot insert dynamic menu correctly.")
-        return  # Optionally, raise an exception or handle it as needed
+        return
 
-    print(f"Debug: Found Jobs menu at index: {jobs_menu_index}")
-
-    # Check if the dynamic menu already exists, if so, delete it
+    # Check if a dynamic menu already exists and delete it if found
     dynamic_menu_index = None
-    for index, item in enumerate(menu.winfo_children()):
-        if isinstance(item, Menu) and item.winfo_name() == 'dynamic':
-            dynamic_menu_index = index
-            menu.delete(dynamic_menu_index)
-            print(f"Debug: Deleted existing dynamic menu at index: {dynamic_menu_index}")
-            break
+    for index in range(menu.index('end') + 1):
+        try:
+            if menu.entrycget(index, 'label') in file_type_labels.values() or menu.entrycget(index, 'label') == "Other":
+                dynamic_menu_index = index
+                menu.delete(dynamic_menu_index)
+                break
+        except Exception as e:
+            continue
 
     # Create and insert the new dynamic menu
     dynamic_menu = Menu(menu, tearoff=0, name='dynamic')
@@ -487,7 +481,6 @@ def update_menu_based_on_extension(ext):
 
     # Insert the dynamic menu after the Jobs menu
     menu.insert_cascade(jobs_menu_index + 1, label=label, menu=dynamic_menu)
-    print(f"Debug: Inserted new dynamic menu '{label}' after Jobs menu at index: {jobs_menu_index + 1}")
 
 
 def update_title_with_filename(file_name):

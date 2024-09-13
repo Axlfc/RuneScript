@@ -574,33 +574,21 @@ def open_git_window(repo_dir=None):
         text_widget.tag_configure('ansi_color', foreground=tag)  # Example for one ANSI color
 
     def apply_ansi_styles(text_widget, text):
-
         ansi_escape = re.compile(r'\x1B\[([0-9;]*[mK])')
-
         pos = 0
 
         # Split the text into lines for individual processing
-
         lines = text.splitlines()
-
         for line in lines:
-
             # Remove ANSI escape codes
-
             cleaned_line = ansi_escape.sub('', line)
-
             # Print the cleaned line into the text widget with the correct tag
-
             if cleaned_line.startswith('+ '):
-
                 text_widget.insert('end', cleaned_line + '\n', 'added')
 
             elif cleaned_line.startswith('- '):
-
                 text_widget.insert('end', cleaned_line + '\n', 'removed')
-
             else:
-
                 text_widget.insert('end', cleaned_line + '\n')
 
     def insert_ansi_text(widget, text, tag=""):
