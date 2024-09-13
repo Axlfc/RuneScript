@@ -415,7 +415,6 @@ def update_menu_based_on_extension(ext):
     Returns:
     None
     """
-    print(f"Debug: Starting to update menu for extension: {ext}")
 
     # Menu creators for different file extensions
     menu_creators = {
@@ -717,11 +716,22 @@ def create_menu():
                           underline=0)  # command passed is here the method defined above.
     file_menu.add_command(label="Open", command=open_script, compound='left', image=image_open, accelerator='Ctrl+O',
                           underline=0)
-    file_menu.add_separator()
+    # TODO:
+    file_menu.add_command(label="Recent files", command=open_script, compound='left', image=None, accelerator='Ctrl+O',
+                          underline=0)
+    # TODO:
+    file_menu.add_command(label="Close", command=open_script, compound='left', image=None, accelerator='Ctrl+W',
+                          underline=0)
+    # TODO:
+    file_menu.add_command(label="Close All", command=open_script, compound='left', image=None, accelerator='Ctrl+Shift+W',
+                          underline=0)
     file_menu.add_command(label="Save", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
                           underline=0)
-    file_menu.add_command(label="Save As", command=save_as_new_script, accelerator='Ctrl+Shift+S', underline=1)
-    # file_menu.add_command(label="Rename", command=rename, accelerator='Ctrl+Shift+R', underline=0)
+    file_menu.add_command(label="Save All Files", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
+                          underline=0)
+    file_menu.add_command(label="Save As...", command=save_as_new_script, accelerator='Ctrl+Shift+S', underline=1)
+    file_menu.add_command(label="Save Copy...", command=save_as_new_script, accelerator=None, underline=1)
+    file_menu.add_command(label="Move / Rename", command=None, accelerator=None, underline=0)
     file_menu.add_separator()
     file_menu.add_command(label="Print...", command=None, accelerator='Ctrl+P', underline=0)
     file_menu.add_separator()
@@ -776,73 +786,28 @@ def create_menu():
                           accelerator='Ctrl+D',
                           underline=0
                           )
+    # TODO: python specific menu sections (triggered by python dynamic menu)
+    # edit_menu.add_separator()
+    # edit_menu.add_command(label="Indent selected lines", command=duplicate, compound='left', accelerator='Tab')
+    # edit_menu.add_command(label="Dedent selected lines", command=duplicate, compound='left', accelerator='Shift+Tab')
+    # edit_menu.add_command(label="Replace tabs with spaces", command=duplicate, compound='left', accelerator='Tab')
+
+    # TODO: comment functions
+    # edit_menu.add_separator()
+    # edit_menu.add_command(label="Toggle comment", command=duplicate, compound='left', accelerator='Ctrl+3')
+    # edit_menu.add_command(label="Comment out", command=duplicate, compound='left', accelerator='Alt+3')
+    # edit_menu.add_command(label="Uncomment", command=duplicate, compound='left', accelerator='Alt+4')
     edit_menu.add_separator()
     edit_menu.add_command(label="Go to line...", command=duplicate, compound='left', accelerator='Ctrl+G')
     edit_menu.add_separator()
-    #  edit_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
+    edit_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
 
     find_submenu = Menu(menu, tearoff=0)
     edit_menu.add_cascade(label="Find", menu=find_submenu)
     find_submenu.add_command(label="Find", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
     find_submenu.add_command(label="Find and Replace", command=open_search_replace_dialog, compound='left', image=image_find, accelerator='Ctrl+R')
     edit_menu.add_separator()
-    open_in_submenu = Menu(menu, tearoff=0)
-    edit_menu.add_cascade(label="Open in", menu=open_in_submenu)
-    open_in_submenu.add_command(label="Explorer", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
-    open_in_submenu.add_command(label="Terminal", command=open_search_replace_dialog, compound='left',
-                             image=image_find, accelerator='Ctrl+R')
-    edit_menu.add_separator()
-
-    # Update the git commands to send the command to the Git Console
-    def execute_git_command_in_console(command, repo_dir=git.default_repo_dir):
-        if git_console_instance and git_console_instance == "Something":
-
-            git_console_instance.execute_command(command, repo_dir=repo_dir)
-
-    init_git_console()  # Initialize the Git Console
-    git_submenu = Menu(menu, tearoff=0)
-    edit_menu.add_cascade(label="Git", menu=git_submenu)
-    git_submenu.add_command(label="Status.", command=lambda: execute_git_command_in_console("status"), compound='left',
-                            accelerator='Ctrl+Alt+S')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Commit File...", command=lambda: git.git_commit("Commit message"), compound='left',
-                            accelerator='Ctrl+Alt+C')
-    git_submenu.add_command(label="Add", command=git.git_add, compound='left', accelerator='Ctrl+Alt+A')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Blame", command=lambda: git.git_blame("filename"), compound='left',
-                            accelerator='Ctrl+Alt+B')
-    git_submenu.add_command(label="Diff", command=git.git_diff, compound='left', accelerator='Ctrl+Alt+D')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Push...", command=git.git_push, compound='left', accelerator='Ctrl+Alt+P')
-    git_submenu.add_command(label="Pull...", command=git.git_pull, compound='left', accelerator='Ctrl+Alt+L')
-    git_submenu.add_command(label="Fetch", command=git.git_fetch, compound='left', accelerator='Ctrl+Alt+F')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Merge...", command=lambda: git.git_merge("branch_name"), compound='left',
-                            accelerator='Ctrl+Alt+M')
-    git_submenu.add_command(label="Rebase...", command=lambda: git.git_rebase("branch_name"), compound='left',
-                            accelerator='Ctrl+Alt+R')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Branches", command=git.git_branch, compound='left', accelerator='Ctrl+Alt+B')
-    git_submenu.add_command(label="New Branch...", command=lambda: git.git_checkout("new_branch"), compound='left',
-                            accelerator='Ctrl+Alt+N')
-    git_submenu.add_command(label="Delete Branch...",
-                            command=lambda: git.run_git_command("branch", "-d", "branch_name"), compound='left',
-                            accelerator='Ctrl+Alt+X')
-    git_submenu.add_command(label="Reset HEAD...", command=lambda: git.run_git_command("reset", "HEAD~1"),
-                            compound='left', accelerator='Ctrl+Alt+H')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Stash Changes...", command=git.git_stash, compound='left', accelerator='Ctrl+Alt+S')
-    git_submenu.add_command(label="Unstash Changes...", command=git.git_unstash, compound='left',
-                            accelerator='Ctrl+Alt+U')
-    git_submenu.add_separator()
-    git_submenu.add_command(label="Manage Remotes...", command=git.git_remote, compound='left',
-                            accelerator='Ctrl+Alt+M')
-    git_submenu.add_command(label="Clone...", command=lambda: git.git_clone("repo_url"), compound='left',
-                            accelerator='Ctrl+Alt+C')
-    edit_menu.add_separator()
-    git_submenu.add_command(label="Git Console", command=open_git_window)
-
-    edit_menu.add_command(label="Clear script", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
+    edit_menu.add_command(label="Clear shell", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
 
 
     # edit_menu.add_command(label="Delete", command=delete, underline=0)
@@ -850,13 +815,13 @@ def create_menu():
     #edit_menu.add_command(label="Select All", command=select_all, accelerator='Ctrl+A', underline=0)
     #edit_menu.add_command(label="Clear All", command=delete_all, underline=6)
 
-    # Search Menu
-    search_menu = Menu(menu)
-    menu.add_cascade(label="Search", menu=search_menu, underline=0)
-
     # View Menu
     view_menu = Menu(menu)
     menu.add_cascade(label="View", menu=view_menu, underline=0)
+
+    # Run Menu
+    # run_menu = Menu(menu)
+    # menu.add_cascade(label="Run", menu=run_menu, underline=0)
 
     # Tool Menu
     tool_menu = Menu(menu)
@@ -865,7 +830,7 @@ def create_menu():
     #tool_menu.add_command(label="Change Color", command=change_color)
     tool_menu.add_command(label="Change Theme", command=open_change_theme_window)
     tool_menu.add_separator()
-    tool_menu.add_command(label="Shell", command=open_terminal_window, accelerator='Ctrl+T')
+    tool_menu.add_command(label="System Shell", command=open_terminal_window, accelerator='Ctrl+T')
     tool_menu.add_command(label="Git Console", command=open_git_window, accelerator='Ctrl+Alt+G')
     #tool_menu.add_command(label="Notebook", command=open_ipynb_window, accelerator='Alt+N')
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window, accelerator='Alt+G')
@@ -875,8 +840,12 @@ def create_menu():
     #tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))
     #tool_menu.add_command(label="Web Browser", command=create_url_input_window)
     #tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
+    tool_menu.add_command(label="Open ScriptsStudio program folder...", command=about, accelerator=None)
+    tool_menu.add_command(label="Open ScriptsStudio data folder...", command=about, accelerator=None)
     tool_menu.add_separator()
-    tool_menu.add_command(label="Options...", command=create_settings_window, compound='left', image=image_save,
+    tool_menu.add_command(label="Options...",
+                          command=create_settings_window,
+                          compound='left',
                           accelerator='Alt+S',
                           underline=0)
 
@@ -890,7 +859,12 @@ def create_menu():
 
     help_menu = Menu(menu)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)
+    help_menu.add_command(label="Help contents", command=about, accelerator=None, underline=0)
+    help_menu.add_separator()
+    help_menu.add_command(label="Report problems", command=about, accelerator=None, underline=0)
+    help_menu.add_separator()
     help_menu.add_command(label="About", command=about, accelerator='Ctrl+H', underline=0)
+
 
 
 def get_scheduled_tasks(submenu):
