@@ -530,6 +530,7 @@ def open_git_window(repo_dir=None):
         # Run the git checkout command for the commit hash
         try:
             execute_command(f'checkout {commit_hash}')
+            update_status(commit_hash)
             update_commit_list(commit_list)
         except subprocess.CalledProcessError as e:
             insert_ansi_text(output_text, f"Error checking out commit: {e.output}\n", "error")
@@ -779,9 +780,12 @@ def open_git_window(repo_dir=None):
     status_bar.pack(side='top', fill='x')
 
     # Function to update status bar
-    def update_status():
-        current_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
-        status_bar.config(text=f"Current branch: {current_branch}")
+    def update_status(commit_hash="HEAD"):
+        current_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', commit_hash], text=True).strip()
+        if commit_hash == "" or "HEAD":
+            status_bar.config(text=f"Current branch: {current_branch}")
+        else:
+            status_bar.config(text=f"Current commit: {commit_hash}")
 
     # Call update_status to initialize
     update_status()
