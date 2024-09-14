@@ -804,10 +804,13 @@ def open_git_window(repo_dir=None):
         if selected_text:
             execute_command(f"reset -- {selected_text}")
 
+    def get_git_status():
+        return subprocess.check_output(['git', 'status', '--porcelain', '-u'], text=True)
+
     def show_git_diff():
-        git_command = 'git diff --color'
+        git_diff_command = 'git diff --color'
         try:
-            output = subprocess.check_output(git_command, shell=True, stderr=subprocess.STDOUT)
+            output = subprocess.check_output(git_diff_command, shell=True, stderr=subprocess.STDOUT)
             output = output.decode('utf-8', errors='replace')
 
             # Create a new window for the diff output
@@ -840,9 +843,6 @@ def open_git_window(repo_dir=None):
         except subprocess.CalledProcessError as e:
             output_text.insert(END, f"Error: {e.output}\n", "error")
 
-    def get_git_status():
-        return subprocess.check_output(['git', 'status', '--porcelain', '-u'], text=True)
-
     def update_output_text(output_text_widget):
         git_status = get_git_status()
         define_ansi_tags(output_text_widget)
@@ -855,27 +855,53 @@ def open_git_window(repo_dir=None):
 
             if status in [' M', 'M ']:
                 output_text_widget.insert('end', status, 'modified')
+                output_text_widget.insert('end', ' <' + filename + '>\n')
             elif status == 'MM':
                 output_text_widget.insert('end', status, 'modified_multiple')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status == '??':
                 output_text_widget.insert('end', status, 'untracked')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status == 'A ':
                 output_text_widget.insert('end', status, 'added')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status in [' D', 'D ']:
                 output_text_widget.insert('end', status, 'deleted')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status == 'R ':
                 output_text_widget.insert('end', status, 'renamed')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status == 'C ':
                 output_text_widget.insert('end', status, 'copied')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status == 'U ':
                 output_text_widget.insert('end', status, 'unmerged')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             elif status == '!!':
                 output_text_widget.insert('end', status, 'ignored')
+                output_text_widget.insert('end', ' ' + filename + '\n')
             else:
                 output_text_widget.insert('end', status)  # No special formatting for unknown status
+                output_text_widget.insert('end', ' ' + filename + '\n')
 
-            output_text_widget.insert('end', ' ' + filename + '\n')
+            try:
+                if status in [' M', 'M ']:
+                    git_diff_command = f'git diff --color {filename}'
+                    diff_output = subprocess.check_output(git_diff_command, shell=True, stderr=subprocess.STDOUT)
+                    diff_output = diff_output.decode('utf-8', errors='replace')
 
+                    # Parse the diff output and apply syntax highlighting
+                    ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+                    for diff_line in diff_output.split('\n')[1:]:
+                        line_clean = ansi_escape.sub('', diff_line)  # Remove ANSI escape sequences
+                        apply_ansi_styles(output_text, line_clean)
+
+                    output_text_widget.insert('end', ' </' + filename + '>\n\n')
+
+            except subprocess.CalledProcessError as e:
+                output_text.insert(END, f"Error: {e.output}\n", "error")
+
+            # output_text_widget.insert('end', ' ' + filename + '\n')
 
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
