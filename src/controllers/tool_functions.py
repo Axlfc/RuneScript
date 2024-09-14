@@ -453,7 +453,7 @@ def open_git_window(repo_dir=None):
 
             try:
                 if command == "status --porcelain -u":
-                    update_output_text()
+                    update_output_text(output_text)
                 else:
                     output = subprocess.check_output(git_command, stderr=subprocess.STDOUT, shell=True, text=True)
                     insert_ansi_text(output_text, f"{git_command}\n{output}\n")
@@ -569,10 +569,30 @@ def open_git_window(repo_dir=None):
         populate_branch_menu()
         # apply_visual_styles(commit_list)
 
-    def get_unstaged_changes():
-        status_output = subprocess.check_output(['git', 'status', '--porcelain'], text=True)
-        parent_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip()
-        return status_output, parent_commit
+    def insert_with_ansi(widget, text):
+        # Regular expression to detect ANSI escape codes
+        ansi_escape = re.compile(r'\x1B\[(\d+)(;(\d+))*m')
+        pos = 0
+
+        # Split the text into ANSI segments and plain text
+        parts = ansi_escape.split(text)
+        while parts:
+            text_part = parts.pop(0)
+            if text_part:
+                widget.insert('end', text_part, tag)
+
+            if parts:
+                ansi_code = parts.pop(0)
+
+                # Define this function to convert ANSI codes to tag names like 'red', 'green', etc.
+                tag = ansi_code_to_tag(ansi_code)
+
+    def ansi_code_to_tag(code):
+        # Map ANSI color codes to your previously defined tags
+        return {
+            '31': 'red', '32': 'green', '33': 'yellow',
+            '34': 'blue', '35': 'magenta', '36': 'cyan'
+        }.get(code, "")
 
     def define_ansi_tags(text_widget):
         # Ensure all tags used in 'insert_ansi_text' are defined here
@@ -831,12 +851,12 @@ def open_git_window(repo_dir=None):
                 colored_output.append(colored_line)
         return '\n'.join(colored_output)
 
-    def update_output_text():
+    def update_output_text(output_text_widget):
         git_status = get_git_status()
         colored_status = colorize_git_status(git_status)
-        #print("COLORED STATUS:\t", colored_status)
-        # insert_ansi_text(output_text, colored_status)
-        output_text.insert(END, f"{colored_status}\n")
+        print("COLORED STATUS:\t", colored_status)
+        define_ansi_tags(output_text_widget)
+        insert_with_ansi(output_text_widget, colored_status)
 
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
