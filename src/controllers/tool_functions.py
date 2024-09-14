@@ -880,6 +880,8 @@ def open_git_window(repo_dir=None):
             elif status == '!!':
                 output_text_widget.insert('end', status, 'ignored')
                 output_text_widget.insert('end', ' ' + filename + '\n')
+            elif status is None:
+                output_text_widget.insert('end', "Your branch is up to date.")
             else:
                 output_text_widget.insert('end', status)  # No special formatting for unknown status
                 output_text_widget.insert('end', ' ' + filename + '\n')
