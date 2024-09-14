@@ -461,6 +461,7 @@ def open_git_window(repo_dir=None):
                 insert_ansi_text(output_text, f"Error: {e.output}\n", "error")
             entry.delete(0, END)
             output_text.see(END)
+        update_status()
 
     def populate_branch_menu():
         branch_menu.delete(0, END)
@@ -485,7 +486,6 @@ def open_git_window(repo_dir=None):
 
         current_commit = get_current_checkout_commit()
         short_hash_number_commit = current_commit[:7]
-        print("CURRENT COMMIT:\t", short_hash_number_commit)
 
         # Iterate through each line of the git log output
         for line in output.split('\n'):
@@ -493,7 +493,6 @@ def open_git_window(repo_dir=None):
             line = line[2:]
             # Check if the line contains the short hash of the current commit
             if short_hash_number_commit in line:
-                print("DING DONG!!")
                 # Prepend an asterisk if it's the current commit
                 commit_list.insert(END, f"* {line}")
             else:
@@ -873,7 +872,7 @@ def open_git_window(repo_dir=None):
         define_ansi_tags(output_text_widget)
 
         if git_status == "":
-            output_text_widget.insert('end', 'Your branch is up to date.')
+            output_text_widget.insert('end', 'Your branch is up to date.\n\n')
         else:
 
             # Parse the diff output and apply syntax highlighting
