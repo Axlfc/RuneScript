@@ -452,8 +452,11 @@ def open_git_window(repo_dir=None):
             git_command = f'git -C "{directory}" {command}'
 
             try:
-                output = subprocess.check_output(git_command, stderr=subprocess.STDOUT, shell=True, text=True)
-                insert_ansi_text(output_text, f"{git_command}\n{output}\n")
+                if command == "status --porcelain -u":
+                    update_output_text(output_text)
+                else:
+                    output = subprocess.check_output(git_command, stderr=subprocess.STDOUT, shell=True, text=True)
+                    insert_ansi_text(output_text, f"{git_command}\n{output}\n")
             except subprocess.CalledProcessError as e:
                 insert_ansi_text(output_text, f"Error: {e.output}\n", "error")
             entry.delete(0, END)
@@ -800,6 +803,35 @@ def open_git_window(repo_dir=None):
         except subprocess.CalledProcessError as e:
             output_text.insert(END, f"Error: {e.output}\n", "error")
 
+    def get_git_status():
+        return subprocess.check_output(['git', 'status', '--porcelain', '-u'], text=True)
+
+    ANSI_COLOR_CODES = {
+        'M ': '\033[32m',  # Green
+        ' M': '\033[33m',  # Yellow
+        'A ': '\033[34m',  # Blue
+        '??': '\033[31m',  # Red
+        'D ': '\033[35m',  # Magenta
+        'R ': '\033[36m',  # Cyan
+        'reset': '\033[0m'  # Reset to default
+    }
+
+    def colorize_git_status(status_output):
+        lines = status_output.split('\n')
+        colored_output = []
+        for line in lines:
+            if line:
+                status_code = line[:2]
+                colored_line = f"{ANSI_COLOR_CODES.get(status_code, '')}{line}{ANSI_COLOR_CODES['reset']}"
+                colored_output.append(colored_line)
+        return '\n'.join(colored_output)
+
+    def update_output_text(widget):
+        git_status = get_git_status()
+        colored_status = colorize_git_status(git_status)
+        #print("COLORED STATUS:\t", colored_status)
+        output_text.insert('end', colored_status + '\n')
+
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
     output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))
@@ -850,6 +882,7 @@ def open_git_window(repo_dir=None):
     entry.bind("<Down>", navigate_history)
 
     execute_command("status --porcelain -u")
+    #  execute_command("diff")
 
 
 def open_terminal_window():
