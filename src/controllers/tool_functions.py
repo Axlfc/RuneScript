@@ -847,6 +847,9 @@ def open_git_window(repo_dir=None):
         git_status = get_git_status()
         define_ansi_tags(output_text_widget)
 
+        if git_status is None:
+            print("IS NONE!!")
+
         # Parse the diff output and apply syntax highlighting
         for line in git_status.split('\n'):
 
@@ -880,8 +883,6 @@ def open_git_window(repo_dir=None):
             elif status == '!!':
                 output_text_widget.insert('end', status, 'ignored')
                 output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status is None:
-                output_text_widget.insert('end', ' ' + "Your branch is up to date." + '\n', 'added')
             else:
                 output_text_widget.insert('end', status)  # No special formatting for unknown status
                 output_text_widget.insert('end', ' ' + filename + '\n')
