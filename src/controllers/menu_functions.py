@@ -11,7 +11,7 @@ from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_ht
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter, render_markdown_to_latex
 from src.localization import localization_data
-from src.views.edit_operations import undo, redo
+from src.views.edit_operations import undo, redo, duplicate
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, \
     file_name, last_saved_content, local_python_var
@@ -117,7 +117,7 @@ def paste():
     script_text.event_generate("<<Paste>>")
 
 
-def duplicate():
+'''def duplicate():
     """
         Duplicates the selected text in the script editor.
 
@@ -130,7 +130,7 @@ def duplicate():
         None
         """
     # set_modified_status(True)
-    script_text.event_generate("<<Duplicate>>")
+    script_text.event_generate("<<Duplicate>>")'''
 
 
 # Help Menu
@@ -777,6 +777,13 @@ def create_menu():
                           compound='left',
                           image=image_paste,
                           accelerator='Ctrl+V',
+                          underline=0
+                          )
+    edit_menu.add_command(label="Duplicate",
+                          command=duplicate,
+                          compound='left',
+                          image=image_paste,
+                          accelerator='Ctrl+D',
                           underline=0
                           )
     edit_menu.add_command(label="Select All",

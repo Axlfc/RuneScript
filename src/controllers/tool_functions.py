@@ -546,8 +546,12 @@ def open_git_window(repo_dir=None):
             text_widget = scrolledtext.ScrolledText(details_window)
 
             # Define text tags for colors
-            text_widget.tag_configure("added", foreground="green")
-            text_widget.tag_configure("removed", foreground="red")
+            text_widget.tag_configure('added', background='light green', foreground='black')
+            text_widget.tag_configure('removed', background='light coral', foreground='black')
+            text_widget.tag_configure("changed", foreground="cyan")
+            text_widget.tag_configure('commit', foreground='yellow')
+            text_widget.tag_configure('author', foreground='green')
+            text_widget.tag_configure('date', foreground='magenta')
 
             # define_ansi_tags(text_widget)
             apply_ansi_styles(text_widget, output)
@@ -583,11 +587,32 @@ def open_git_window(repo_dir=None):
             # Remove ANSI escape codes
             cleaned_line = ansi_escape.sub('', line)
             # Print the cleaned line into the text widget with the correct tag
-            if cleaned_line.startswith('+ '):
+            if cleaned_line.startswith('commit '):
+                text_widget.insert('end', 'commit ', 'commit')
+                text_widget.insert('end', cleaned_line[7:] + '\n')
+            elif cleaned_line.startswith('Author: '):
+                text_widget.insert('end', 'Author: ', 'author')
+                text_widget.insert('end', cleaned_line[8:] + '\n')
+            elif cleaned_line.startswith('Date: '):
+                text_widget.insert('end', 'Date: ', 'date')
+                text_widget.insert('end', cleaned_line[6:] + '\n')
+            elif cleaned_line.startswith('+ ') or cleaned_line.startswith('+') and not cleaned_line.startswith('+++'):
                 text_widget.insert('end', cleaned_line + '\n', 'added')
-
-            elif cleaned_line.startswith('- '):
+            elif cleaned_line.startswith('- ') or cleaned_line.startswith('-') and not cleaned_line.startswith('---'):
                 text_widget.insert('end', cleaned_line + '\n', 'removed')
+            elif cleaned_line.startswith('@@ '):
+                # Split the line at '@@' characters
+                parts = cleaned_line.split('@@')
+                if len(parts) >= 3:
+                    # Insert the part before the first '@@'
+                    text_widget.insert('end', parts[0])
+                    # Insert the middle part (between '@@') with 'changed' tag
+                    text_widget.insert('end', '@@' + parts[1] + '@@', 'changed')
+                    # Insert the part after the second '@@' and the newline
+                    text_widget.insert('end', ''.join(parts[2:]) + '\n')
+                else:
+                    # If there aren't two '@@', insert the whole line
+                    text_widget.insert('end', cleaned_line + '\n')
             else:
                 text_widget.insert('end', cleaned_line + '\n')
 

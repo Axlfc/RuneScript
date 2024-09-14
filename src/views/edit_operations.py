@@ -80,15 +80,13 @@ def delete_all():
 
 
 def duplicate(event=None):
-    """
-        Duplicates the selected text in the editor.
-    """
     try:
         selected_text = text.get(SEL_FIRST, SEL_LAST)
         text.insert(INSERT, selected_text)
+    except Exception:  # Specific exception for better clarity
+        print("No text is selected or other widget-specific error.")
     except Exception as e:
-        # No text is selected
-        pass
+        print(f"An unexpected error occurred: {e}")
 
 
 def undo():
