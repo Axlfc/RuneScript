@@ -7,7 +7,7 @@ import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, VERTICAL, font, filedialog, Listbox, ttk, \
-    simpledialog, Text, DISABLED, NORMAL
+    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W
 import webview  # pywebview
 
 import markdown
@@ -772,6 +772,18 @@ def open_git_window(repo_dir=None):
     output_text = scrolledtext.ScrolledText(terminal_window, height=20, width=80)
     output_text.pack(fill='both', expand=True)
 
+    # Status bar to display current branch
+    status_bar = Label(terminal_window, text="Checking branch...", bd=1, relief=SUNKEN, anchor=W)
+    status_bar.pack(side='top', fill='x')
+
+    # Function to update status bar
+    def update_status():
+        current_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
+        status_bar.config(text=f"Current branch: {current_branch}")
+
+    # Call update_status to initialize
+    update_status()
+
     # Initialize a list to store command history
     command_history = []
     # Initialize a pointer to the current position in the command history
@@ -904,7 +916,7 @@ def open_git_window(repo_dir=None):
 
                 except subprocess.CalledProcessError as e:
                     output_text.insert(END, f"Error: {e.output}\n", "error")
-    
+
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
     output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))
