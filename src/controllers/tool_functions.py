@@ -610,6 +610,20 @@ def open_git_window(repo_dir=None):
         text_widget.tag_configure('magenta', foreground='magenta')
         text_widget.tag_configure('cyan', foreground='cyan')
 
+        text_widget.tag_configure('modified', foreground='orange')
+        text_widget.tag_configure('modified_multiple', foreground='dark orange')
+        text_widget.tag_configure('untracked', foreground='red')
+        text_widget.tag_configure('added', foreground='green')
+        text_widget.tag_configure('deleted', foreground='red')
+        text_widget.tag_configure('renamed', foreground='blue')
+        text_widget.tag_configure('copied', foreground='purple')
+        text_widget.tag_configure('unmerged', foreground='yellow')
+        text_widget.tag_configure('ignored', foreground='gray')
+
+        text_widget.tag_configure("addition", foreground="green")
+        text_widget.tag_configure("deletion", foreground="red")
+        text_widget.tag_configure("info", foreground="blue")  # For context lines and file names
+
     def apply_ansi_styles(text_widget, text):
         ansi_escape = re.compile(r'\x1B\[([0-9;]*[mK])')
         pos = 0
@@ -806,9 +820,7 @@ def open_git_window(repo_dir=None):
             diff_text.pack(fill='both', expand=True)
 
             # Configure tags for syntax highlighting
-            diff_text.tag_configure("addition", foreground="green")
-            diff_text.tag_configure("deletion", foreground="red")
-            diff_text.tag_configure("info", foreground="blue")  # For context lines and file names
+            define_ansi_tags(diff_text)
 
             # Parse the diff output and apply syntax highlighting
             ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
@@ -831,32 +843,39 @@ def open_git_window(repo_dir=None):
     def get_git_status():
         return subprocess.check_output(['git', 'status', '--porcelain', '-u'], text=True)
 
-    ANSI_COLOR_CODES = {
-        'M ': '\033[32m',  # Green
-        ' M': '\033[33m',  # Yellow
-        'A ': '\033[34m',  # Blue
-        '??': '\033[31m',  # Red
-        'D ': '\033[35m',  # Magenta
-        'R ': '\033[36m',  # Cyan
-        'reset': '\033[0m'  # Reset to default
-    }
-
-    def colorize_git_status(status_output):
-        lines = status_output.split('\n')
-        colored_output = []
-        for line in lines:
-            if line:
-                status_code = line[:2]
-                colored_line = f"{ANSI_COLOR_CODES.get(status_code, '')}{line}{ANSI_COLOR_CODES['reset']}"
-                colored_output.append(colored_line)
-        return '\n'.join(colored_output)
-
     def update_output_text(output_text_widget):
         git_status = get_git_status()
-        colored_status = colorize_git_status(git_status)
-        print("COLORED STATUS:\t", colored_status)
         define_ansi_tags(output_text_widget)
-        insert_with_ansi(output_text_widget, colored_status)
+
+        # Parse the diff output and apply syntax highlighting
+        for line in git_status.split('\n'):
+
+            status = line[:2]
+            filename = line[3:]
+
+            if status in [' M', 'M ']:
+                output_text_widget.insert('end', status, 'modified')
+            elif status == 'MM':
+                output_text_widget.insert('end', status, 'modified_multiple')
+            elif status == '??':
+                output_text_widget.insert('end', status, 'untracked')
+            elif status == 'A ':
+                output_text_widget.insert('end', status, 'added')
+            elif status in [' D', 'D ']:
+                output_text_widget.insert('end', status, 'deleted')
+            elif status == 'R ':
+                output_text_widget.insert('end', status, 'renamed')
+            elif status == 'C ':
+                output_text_widget.insert('end', status, 'copied')
+            elif status == 'U ':
+                output_text_widget.insert('end', status, 'unmerged')
+            elif status == '!!':
+                output_text_widget.insert('end', status, 'ignored')
+            else:
+                output_text_widget.insert('end', status)  # No special formatting for unknown status
+
+            output_text_widget.insert('end', ' ' + filename + '\n')
+
 
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
