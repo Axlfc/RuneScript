@@ -847,8 +847,8 @@ def open_git_window(repo_dir=None):
         git_status = get_git_status()
         define_ansi_tags(output_text_widget)
 
-        if git_status is None:
-            print("IS NONE!!")
+        if git_status == "":
+            print("IS EMPTY!!")
 
         # Parse the diff output and apply syntax highlighting
         for line in git_status.split('\n'):
