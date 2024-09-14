@@ -463,15 +463,6 @@ def open_git_window(repo_dir=None):
             output_text.see(END)
         # update_status()
 
-    def update_branch_menu(current_branch):
-        # Assume branch_menu is a dictionary of branch names to checkbox widgets
-        # Deselect all checkboxes first
-        for checkbox in branch_menu.values():
-            checkbox.deselect()
-
-        # Select the checkbox for the current branch
-        branch_menu[current_branch].select()
-
     def populate_branch_menu():
         branch_menu.delete(0, END)
         try:
@@ -575,10 +566,9 @@ def open_git_window(repo_dir=None):
 
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
-
         populate_branch_menu()
         update_commit_list(commit_list)
-        update_branch_menu(branch)
+        update_status()
         # apply_visual_styles(commit_list)
 
     def define_ansi_tags(text_widget):
