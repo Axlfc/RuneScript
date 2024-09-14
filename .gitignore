@@ -172,3 +172,5 @@ src/models/vectorstore
 data/conversations/
 
 python_dependencies/
+
+data/kanban_tasks.json

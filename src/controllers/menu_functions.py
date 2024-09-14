@@ -20,7 +20,7 @@ from src.controllers.tool_functions import (find_text, change_color, open_search
                                             create_url_input_window, open_ipynb_window,
                                             open_change_theme_window, create_settings_window, open_git_window,
                                             open_image_generation_window, open_music_generation_window,
-                                            open_audio_generation_window)
+                                            open_audio_generation_window, open_kanban_window)
 
 from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
@@ -839,6 +839,7 @@ def create_menu():
     tool_menu.add_separator()
     tool_menu.add_command(label="System Shell", command=open_terminal_window, accelerator='Ctrl+T')
     tool_menu.add_command(label="Git Console", command=open_git_window, accelerator='Ctrl+Alt+G')
+    tool_menu.add_command(label="Kanban", command=open_kanban_window, accelerator='Alt+K')
     #tool_menu.add_command(label="Notebook", command=open_ipynb_window, accelerator='Alt+N')
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window, accelerator='Alt+G')
     tool_menu.add_command(label="Generate Image", command=open_image_generation_window, accelerator='Alt+I')
