@@ -848,64 +848,63 @@ def open_git_window(repo_dir=None):
         define_ansi_tags(output_text_widget)
 
         if git_status == "":
-            print("IS EMPTY!!")
+            output_text_widget.insert('end', 'Your branch is up to date.')
+        else:
 
-        # Parse the diff output and apply syntax highlighting
-        for line in git_status.split('\n'):
+            # Parse the diff output and apply syntax highlighting
+            for line in git_status.split('\n'):
 
-            status = line[:2]
-            filename = line[3:]
+                status = line[:2]
+                filename = line[3:]
 
-            if status in [' M', 'M ']:
-                output_text_widget.insert('end', status, 'modified')
-                output_text_widget.insert('end', ' <' + filename + '>\n')
-            elif status == 'MM':
-                output_text_widget.insert('end', status, 'modified_multiple')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status == '??':
-                output_text_widget.insert('end', status, 'untracked')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status == 'A ':
-                output_text_widget.insert('end', status, 'added')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status in [' D', 'D ']:
-                output_text_widget.insert('end', status, 'deleted')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status == 'R ':
-                output_text_widget.insert('end', status, 'renamed')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status == 'C ':
-                output_text_widget.insert('end', status, 'copied')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status == 'U ':
-                output_text_widget.insert('end', status, 'unmerged')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            elif status == '!!':
-                output_text_widget.insert('end', status, 'ignored')
-                output_text_widget.insert('end', ' ' + filename + '\n')
-            else:
-                output_text_widget.insert('end', status)  # No special formatting for unknown status
-                output_text_widget.insert('end', ' ' + filename + '\n')
-
-            try:
                 if status in [' M', 'M ']:
-                    git_diff_command = f'git diff --color {filename}'
-                    diff_output = subprocess.check_output(git_diff_command, shell=True, stderr=subprocess.STDOUT)
-                    diff_output = diff_output.decode('utf-8', errors='replace')
+                    output_text_widget.insert('end', status, 'modified')
+                    output_text_widget.insert('end', ' <' + filename + '>\n')
+                elif status == 'MM':
+                    output_text_widget.insert('end', status, 'modified_multiple')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status == '??':
+                    output_text_widget.insert('end', status, 'untracked')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status == 'A ':
+                    output_text_widget.insert('end', status, 'added')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status in [' D', 'D ']:
+                    output_text_widget.insert('end', status, 'deleted')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status == 'R ':
+                    output_text_widget.insert('end', status, 'renamed')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status == 'C ':
+                    output_text_widget.insert('end', status, 'copied')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status == 'U ':
+                    output_text_widget.insert('end', status, 'unmerged')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                elif status == '!!':
+                    output_text_widget.insert('end', status, 'ignored')
+                    output_text_widget.insert('end', ' ' + filename + '\n')
+                else:
+                    output_text_widget.insert('end', status)  # No special formatting for unknown status
+                    output_text_widget.insert('end', ' ' + filename + '\n')
 
-                    # Parse the diff output and apply syntax highlighting
-                    ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-                    for diff_line in diff_output.split('\n')[1:]:
-                        line_clean = ansi_escape.sub('', diff_line)  # Remove ANSI escape sequences
-                        apply_ansi_styles(output_text, line_clean)
+                try:
+                    if status in [' M', 'M ']:
+                        git_diff_command = f'git diff --color {filename}'
+                        diff_output = subprocess.check_output(git_diff_command, shell=True, stderr=subprocess.STDOUT)
+                        diff_output = diff_output.decode('utf-8', errors='replace')
 
-                    output_text_widget.insert('end', ' </' + filename + '>\n\n')
+                        # Parse the diff output and apply syntax highlighting
+                        ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+                        for diff_line in diff_output.split('\n')[1:]:
+                            line_clean = ansi_escape.sub('', diff_line)  # Remove ANSI escape sequences
+                            apply_ansi_styles(output_text, line_clean)
 
-            except subprocess.CalledProcessError as e:
-                output_text.insert(END, f"Error: {e.output}\n", "error")
+                        output_text_widget.insert('end', ' </' + filename + '>\n\n')
 
-            # output_text_widget.insert('end', ' ' + filename + '\n')
-
+                except subprocess.CalledProcessError as e:
+                    output_text.insert(END, f"Error: {e.output}\n", "error")
+    
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
     output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))
