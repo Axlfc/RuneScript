@@ -781,9 +781,18 @@ def open_git_window(repo_dir=None):
 
     # Function to update status bar
     def update_status(commit_hash="HEAD"):
-        current_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', commit_hash], text=True).strip()
-        status_bar.config(text=f"Current branch: {current_branch}")
-
+        try:
+            # First, check if the hash is a branch
+            branch_name = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', commit_hash], text=True).strip()
+            if branch_name != "HEAD":
+                status_bar.config(text=f"Current branch: {branch_name}")
+            else:
+                # If not a branch, then it is a commit
+                commit_short_hash = subprocess.check_output(['git', 'rev-parse', '--short', commit_hash],
+                                                            text=True).strip()
+                status_bar.config(text=f"Current commit: {commit_short_hash}")
+        except subprocess.CalledProcessError:
+            status_bar.config(text="Error: Invalid identifier")
 
     # Call update_status to initialize
     update_status()
