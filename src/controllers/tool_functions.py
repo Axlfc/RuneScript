@@ -574,6 +574,11 @@ def open_git_window(repo_dir=None):
         populate_branch_menu()
         # apply_visual_styles(commit_list)
 
+    def get_unstaged_changes():
+        status_output = subprocess.check_output(['git', 'status', '--porcelain'], text=True)
+        parent_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip()
+        return status_output, parent_commit
+
     def define_ansi_tags(text_widget, tag):
         text_widget.tag_configure('ansi_color', foreground=tag)  # Example for one ANSI color
 
@@ -794,6 +799,7 @@ def open_git_window(repo_dir=None):
 
         except subprocess.CalledProcessError as e:
             output_text.insert(END, f"Error: {e.output}\n", "error")
+
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
     output_text.bind("<Button-3>", lambda event: context_menu.tk_popup(event.x_root, event.y_root))
@@ -803,7 +809,7 @@ def open_git_window(repo_dir=None):
     context_menu.add_command(label="Git Unstage", command=unstage_selected_text)
     context_menu.add_command(label="Git Diff", command=show_git_diff)
 
-    # Setup the horizontal split
+    # Set up the horizontal split
     top_frame = Frame(terminal_window)
     top_frame.pack(fill='both', expand=True)
 
@@ -842,6 +848,8 @@ def open_git_window(repo_dir=None):
     # Bind the UP and DOWN arrow keys to navigate the command history
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
+
+    execute_command("status --porcelain -u")
 
 
 def open_terminal_window():
