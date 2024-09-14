@@ -561,6 +561,7 @@ def open_git_window(repo_dir=None):
 
     def get_current_checkout_commit():
         current_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+        update_status()
         return current_commit
 
     def checkout_branch(branch):
