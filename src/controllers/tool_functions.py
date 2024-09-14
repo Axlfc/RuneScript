@@ -567,6 +567,7 @@ def open_git_window(repo_dir=None):
         execute_command(f'checkout {branch}')
         update_commit_list(commit_list)
         populate_branch_menu()
+        update_status()
         # apply_visual_styles(commit_list)
 
     def insert_with_ansi(widget, text):
