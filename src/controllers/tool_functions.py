@@ -576,8 +576,9 @@ def open_git_window(repo_dir=None):
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
 
-        update_ui_for_active_branch(branch)
-        # update_branch_menu(branch)
+        populate_branch_menu()
+        update_commit_list(commit_list)
+        update_branch_menu(branch)
         # apply_visual_styles(commit_list)
 
     def define_ansi_tags(text_widget):
@@ -866,8 +867,6 @@ def open_git_window(repo_dir=None):
             else:
                 commit.display_name = commit.display_name.lstrip('*')
                 commit.color = 'default'
-        populate_branch_menu()
-        update_commit_list(commit_list)
 
     def update_output_text(output_text_widget):
         git_status = get_git_status()
