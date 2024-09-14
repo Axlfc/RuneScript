@@ -461,7 +461,7 @@ def open_git_window(repo_dir=None):
                 insert_ansi_text(output_text, f"Error: {e.output}\n", "error")
             entry.delete(0, END)
             output_text.see(END)
-        update_status()
+        # update_status()
 
     def update_branch_menu(current_branch):
         # Assume branch_menu is a dictionary of branch names to checkbox widgets
@@ -575,36 +575,10 @@ def open_git_window(repo_dir=None):
 
     def checkout_branch(branch):
         execute_command(f'checkout {branch}')
-        update_commit_list(commit_list)
-        populate_branch_menu()
-        update_status()
-        update_branch_menu(branch)
+
+        update_ui_for_active_branch(branch)
+        # update_branch_menu(branch)
         # apply_visual_styles(commit_list)
-
-    def insert_with_ansi(widget, text):
-        # Regular expression to detect ANSI escape codes
-        ansi_escape = re.compile(r'\x1B\[(\d+)(;(\d+))*m')
-        pos = 0
-
-        # Split the text into ANSI segments and plain text
-        parts = ansi_escape.split(text)
-        while parts:
-            text_part = parts.pop(0)
-            if text_part:
-                widget.insert('end', text_part, tag)
-
-            if parts:
-                ansi_code = parts.pop(0)
-
-                # Define this function to convert ANSI codes to tag names like 'red', 'green', etc.
-                tag = ansi_code_to_tag(ansi_code)
-
-    def ansi_code_to_tag(code):
-        # Map ANSI color codes to your previously defined tags
-        return {
-            '31': 'red', '32': 'green', '33': 'yellow',
-            '34': 'blue', '35': 'magenta', '36': 'cyan'
-        }.get(code, "")
 
     def define_ansi_tags(text_widget):
         # Ensure all tags used in 'insert_ansi_text' are defined here
@@ -876,6 +850,24 @@ def open_git_window(repo_dir=None):
 
         except subprocess.CalledProcessError as e:
             output_text.insert(END, f"Error: {e.output}\n", "error")
+
+    def update_ui_for_active_branch(branch_name):
+        # Update checkbox for active branch
+        for checkbox in branch_menu.values():
+            checkbox.deselect()
+
+        branch_menu[branch_name].select()
+
+        # Update commit list
+        for commit in commit_list:
+            if commit.branch_name == branch_name:
+                commit.display_name = '*' + commit.display_name
+                commit.color = 'green'
+            else:
+                commit.display_name = commit.display_name.lstrip('*')
+                commit.color = 'default'
+        populate_branch_menu()
+        update_commit_list(commit_list)
 
     def update_output_text(output_text_widget):
         git_status = get_git_status()
