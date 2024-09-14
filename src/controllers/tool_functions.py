@@ -463,6 +463,15 @@ def open_git_window(repo_dir=None):
             output_text.see(END)
         update_status()
 
+    def update_branch_menu(current_branch):
+        # Assume branch_menu is a dictionary of branch names to checkbox widgets
+        # Deselect all checkboxes first
+        for checkbox in branch_menu.values():
+            checkbox.deselect()
+
+        # Select the checkbox for the current branch
+        branch_menu[current_branch].select()
+
     def populate_branch_menu():
         branch_menu.delete(0, END)
         try:
@@ -569,6 +578,7 @@ def open_git_window(repo_dir=None):
         update_commit_list(commit_list)
         populate_branch_menu()
         update_status()
+        update_branch_menu(branch)
         # apply_visual_styles(commit_list)
 
     def insert_with_ansi(widget, text):
@@ -979,7 +989,6 @@ def open_git_window(repo_dir=None):
     entry.bind("<Down>", navigate_history)
 
     execute_command("status --porcelain -u")
-    #  execute_command("diff")
 
 
 def open_terminal_window():
