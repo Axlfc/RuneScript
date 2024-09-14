@@ -453,7 +453,7 @@ def open_git_window(repo_dir=None):
 
             try:
                 if command == "status --porcelain -u":
-                    update_output_text(output_text)
+                    update_output_text()
                 else:
                     output = subprocess.check_output(git_command, stderr=subprocess.STDOUT, shell=True, text=True)
                     insert_ansi_text(output_text, f"{git_command}\n{output}\n")
@@ -548,15 +548,7 @@ def open_git_window(repo_dir=None):
             details_window.title(f"{commit_hash}")
             text_widget = scrolledtext.ScrolledText(details_window)
 
-            # Define text tags for colors
-            text_widget.tag_configure('added', background='light green', foreground='black')
-            text_widget.tag_configure('removed', background='light coral', foreground='black')
-            text_widget.tag_configure("changed", foreground="cyan")
-            text_widget.tag_configure('commit', foreground='yellow')
-            text_widget.tag_configure('author', foreground='green')
-            text_widget.tag_configure('date', foreground='magenta')
-
-            # define_ansi_tags(text_widget)
+            define_ansi_tags(text_widget)
             apply_ansi_styles(text_widget, output)
             text_widget.config(state=DISABLED)
             text_widget.pack(fill='both', expand=True)
@@ -582,8 +574,21 @@ def open_git_window(repo_dir=None):
         parent_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip()
         return status_output, parent_commit
 
-    def define_ansi_tags(text_widget, tag):
-        text_widget.tag_configure('ansi_color', foreground=tag)  # Example for one ANSI color
+    def define_ansi_tags(text_widget):
+        # Ensure all tags used in 'insert_ansi_text' are defined here
+        text_widget.tag_configure('added', background='light green', foreground='black')
+        text_widget.tag_configure('removed', background='light coral', foreground='black')
+        text_widget.tag_configure("changed", foreground="cyan")
+        text_widget.tag_configure('commit', foreground='yellow')
+        text_widget.tag_configure('author', foreground='green')
+        text_widget.tag_configure('date', foreground='magenta')
+        text_widget.tag_configure('error', foreground='red')
+
+        text_widget.tag_configure('green', foreground='green')
+        text_widget.tag_configure('yellow', foreground='yellow')
+        text_widget.tag_configure('blue', foreground='blue')
+        text_widget.tag_configure('magenta', foreground='magenta')
+        text_widget.tag_configure('cyan', foreground='cyan')
 
     def apply_ansi_styles(text_widget, text):
         ansi_escape = re.compile(r'\x1B\[([0-9;]*[mK])')
@@ -826,11 +831,12 @@ def open_git_window(repo_dir=None):
                 colored_output.append(colored_line)
         return '\n'.join(colored_output)
 
-    def update_output_text(widget):
+    def update_output_text():
         git_status = get_git_status()
         colored_status = colorize_git_status(git_status)
         #print("COLORED STATUS:\t", colored_status)
-        output_text.insert('end', colored_status + '\n')
+        # insert_ansi_text(output_text, colored_status)
+        output_text.insert(END, f"{colored_status}\n")
 
     # Create a context menu for the text widget
     context_menu = Menu(output_text)
