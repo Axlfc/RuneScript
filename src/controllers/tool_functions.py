@@ -7,7 +7,7 @@ import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, ttk, \
-    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W
+    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X
 import webview  # pywebview
 
 import markdown
@@ -946,11 +946,11 @@ def open_git_window(repo_dir=None):
     execute_command("status --porcelain -u")
 
 
-
-
-
 def open_kanban_window():
-    # Data structure and initial data
+    # Global variables
+    global kanban_data, drag_data, columns_frame
+
+    # Initialize data
     kanban_data = {
         'columns': ['To Do', 'In Progress', 'Testing', 'Done', 'Continuous Improvement'],
         'tasks': [
@@ -959,13 +959,7 @@ def open_kanban_window():
         ],
         'wip_limits': {'To Do': 10, 'In Progress': 5, 'Testing': 5, 'Done': float('inf'), 'Continuous Improvement': 5}
     }
-
-    # External variable to store drag data
-    drag_data = {'index': None, 'widget': None, 'column': None}
-
-    def save_kanban_data():
-        with open('data/kanban_tasks.json', 'w') as f:
-            json.dump(kanban_data, f, indent=4)
+    drag_data = {'widget': None, 'index': None, 'x': 0, 'y': 0}
 
     def load_kanban_data():
         global kanban_data
@@ -975,64 +969,92 @@ def open_kanban_window():
         except FileNotFoundError:
             save_kanban_data()
 
+    def save_kanban_data():
+        with open('data/kanban_tasks.json', 'w') as f:
+            json.dump(kanban_data, f, indent=4)
+
     def on_drag_start(event):
         widget = event.widget
-        index = widget.curselection()
-        if index:
-            drag_data['index'] = index[0]
-            drag_data['widget'] = widget
-            drag_data['column'] = widget.master.children['!listbox']
+        index = widget.nearest(event.y)
+        drag_data['widget'] = widget
+        drag_data['index'] = index
+        drag_data['x'] = event.x
+        drag_data['y'] = event.y
 
     def on_drag_motion(event):
         if drag_data['widget']:
-            x = drag_data['widget'].winfo_pointerx() - drag_data['widget'].winfo_rootx()
-            y = drag_data['widget'].winfo_pointery() - drag_data['widget'].winfo_rooty()
-            drag_data['widget'].place(x=x, y=y)
-
-    def on_drop(event, column_name, kanban_window):
-        if drag_data['widget']:
-            index = drag_data['index']
+            x, y = event.x - drag_data['x'], event.y - drag_data['y']
             widget = drag_data['widget']
+            widget.move(drag_data['index'], x, y)
+
+    def on_drop(event, new_column):
+        if drag_data['widget']:
+            widget = drag_data['widget']
+            index = widget.nearest(event.y)
             task_title = widget.get(index)
             task = next((t for t in kanban_data['tasks'] if t['title'] == task_title), None)
+
             if task:
-                if len([t for t in kanban_data['tasks'] if t['column'] == column_name]) < kanban_data['wip_limits'][
-                    column_name]:
-                    task['column'] = column_name
+                if len([t for t in kanban_data['tasks'] if t['column'] == new_column]) < kanban_data['wip_limits'][new_column]:
+                    task['column'] = new_column
                     widget.delete(index)
-                    refresh_kanban_board(kanban_window)
+                    refresh_kanban_board()
                     save_kanban_data()
                 else:
                     messagebox.showerror("WIP Limit Reached", "This column has reached its WIP limit.")
-            drag_data['widget'].place_forget()  # Remove the widget from the current position
 
-    def refresh_kanban_board(kanban_window):
-        for widget in kanban_window.winfo_children():
+            drag_data['widget'] = None
+
+    def add_task(event, column):
+        task_title = event.widget.get()
+        if task_title:
+            new_task = {'title': task_title, 'description': '', 'priority': 'Medium', 'column': column}
+            kanban_data['tasks'].append(new_task)
+            refresh_kanban_board()
+            save_kanban_data()
+            event.widget.delete(0, END)
+
+    def create_column(column_name):
+        column_frame = ttk.Frame(columns_frame, borderwidth=2, relief='raised')
+        column_frame.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
+
+        label = ttk.Label(column_frame, text=f"{column_name} (Limit: {kanban_data['wip_limits'][column_name]})")
+        label.pack(pady=5)
+
+        task_list = Listbox(column_frame, selectmode=SINGLE)
+        task_list.pack(fill=BOTH, expand=True, padx=5, pady=5)
+
+        for task in [t for t in kanban_data['tasks'] if t['column'] == column_name]:
+            task_list.insert(END, task['title'])
+
+        task_list.bind("<ButtonPress-1>", on_drag_start)
+        task_list.bind("<B1-Motion>", on_drag_motion)
+        task_list.bind("<ButtonRelease-1>", lambda event, col=column_name: on_drop(event, col))
+
+        entry = ttk.Entry(column_frame)
+        entry.pack(fill=X, padx=5, pady=5)
+        entry.bind("<Return>", lambda event, col=column_name: add_task(event, col))
+
+    def refresh_kanban_board():
+        for widget in columns_frame.winfo_children():
             widget.destroy()
-
-        columns_frame = Frame(kanban_window)
-        columns_frame.pack(fill='both', expand=True)
-
         for column in kanban_data['columns']:
-            frame = Frame(columns_frame, borderwidth=2, relief='raised')
-            frame.pack(side='left', fill='both', expand=True)
-            Label(frame, text=f"{column} (Limit: {kanban_data['wip_limits'][column]})").pack()
-            listbox = Listbox(frame)
-            listbox.pack(fill='both', expand=True)
-            listbox.bind("<Button-1>", on_drag_start)
-            listbox.bind("<B1-Motion>", on_drag_motion)
-            listbox.bind("<ButtonRelease-1>", lambda event, col=column: on_drop(event, col, kanban_window))
+            create_column(column)
 
-            for task in [t for t in kanban_data['tasks'] if t['column'] == column]:
-                listbox.insert('end', task['title'])
-
-    load_kanban_data()
+    # Create main window
     kanban_window = Toplevel()
-    kanban_window.title("Kanban")
+    kanban_window.title("Kanban Board")
     kanban_window.geometry("1280x720")
-    refresh_kanban_board(kanban_window)
 
-    # kanban_window.protocol("WM_DELETE_WINDOW", lambda: save_kanban_data())
+    # Create main frame
+    columns_frame = ttk.Frame(kanban_window)
+    columns_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+    # Load data and create initial board
+    load_kanban_data()
+    refresh_kanban_board()
+
+    kanban_window.protocol("WM_DELETE_WINDOW", lambda: (save_kanban_data(), kanban_window.destroy()))
 
 
 def open_terminal_window():
