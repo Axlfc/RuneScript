@@ -949,7 +949,7 @@ def open_git_window(repo_dir=None):
 
 def open_kanban_window():
     # Global variables
-    global kanban_data, drag_data, columns_frame
+    global kanban_data, columns_frame
 
     # Initialize data
     kanban_data = {
@@ -960,7 +960,6 @@ def open_kanban_window():
         ],
         'wip_limits': {'To Do': 10, 'In Progress': 5, 'Testing': 5, 'Done': float('inf'), 'Continuous Improvement': 5}
     }
-    drag_data = {'widget': None, 'index': None, 'x': 0, 'y': 0}
 
     def load_kanban_data():
         global kanban_data
@@ -976,40 +975,47 @@ def open_kanban_window():
 
     def on_drag_start(event):
         widget = event.widget
-        index = widget.curselection()
-        if index:
-            drag_data['index'] = index[0]
-            drag_data['widget'] = widget
-            drag_data['column'] = widget.master.children['!listbox']
+        widget.drag_start_x = event.x
+        widget.drag_start_y = event.y
+        widget.drag_data = widget.get(widget.nearest(event.y))
 
     def on_drag_motion(event):
-        if drag_data['widget']:
-            x = drag_data['widget'].winfo_pointerx() - drag_data['widget'].winfo_rootx()
-            y = drag_data['widget'].winfo_pointery() - drag_data['widget'].winfo_rooty()
-            drag_data['widget'].place(x=x, y=y)
+        widget = event.widget
+        if hasattr(widget, 'drag_data'):
+            x, y = widget.winfo_pointerxy()
+            target = widget.winfo_containing(x, y)
+            if isinstance(target, Listbox):
+                target.drag_highlight = widget.drag_data
+                target.update_idletasks()
 
-    def on_drop(event, column_name):
-        if drag_data['widget']:
-            index = drag_data['index']
-            widget = drag_data['widget']
-            task_title = widget.get(index)
+    def on_drop(event):
+        widget = event.widget
+        if hasattr(widget, 'drag_data'):
+            x, y = widget.winfo_pointerxy()
+            target = widget.winfo_containing(x, y)
+            if isinstance(target, Listbox) and target != widget:
+                item = widget.drag_data
+                origin_column = widget.column
+                target_column = target.column
 
-            # Find the task in the kanban data
-            task = next((t for t in kanban_data['tasks'] if t['title'] == task_title), None)
+                # Update kanban_data
+                for task in kanban_data['tasks']:
+                    if task['title'] == item:
+                        task['column'] = target_column
+                        break
 
-            if task:
-                # Check WIP limit for the target column
-                if len([t for t in kanban_data['tasks'] if t['column'] == column_name]) < kanban_data['wip_limits'][column_name]:
-                    task['column'] = column_name
+                save_kanban_data()
+                refresh_kanban_board()
 
-                    # Update the Listboxes
-                    widget.delete(index)
-                    refresh_kanban_board()
-                    save_kanban_data()
-                else:
-                    messagebox.showerror("WIP Limit Reached", "This column has reached its WIP limit.")
+            if hasattr(target, 'drag_highlight'):
+                delattr(target, 'drag_highlight')
+            delattr(widget, 'drag_data')
 
-            drag_data['widget'] = None  # Reset drag data
+    def setup_drag_and_drop(listbox, column):
+        listbox.column = column
+        listbox.bind("<ButtonPress-1>", on_drag_start)
+        listbox.bind("<B1-Motion>", on_drag_motion)
+        listbox.bind("<ButtonRelease-1>", on_drop)
 
     def add_task(event, column):
         task_title = event.widget.get()
@@ -1018,7 +1024,6 @@ def open_kanban_window():
             kanban_data['tasks'].append(new_task)
             save_kanban_data()
             refresh_kanban_board()
-            # Instead of deleting the entry content here, we'll clear it after refreshing the board
 
     def create_column(column_name):
         column_frame = Frame(columns_frame, borderwidth=2, relief='raised')
@@ -1033,9 +1038,7 @@ def open_kanban_window():
         for task in [t for t in kanban_data['tasks'] if t['column'] == column_name]:
             task_list.insert(END, task['title'])
 
-        task_list.bind("<ButtonPress-1>", on_drag_start)
-        task_list.bind("<B1-Motion>", on_drag_motion)
-        task_list.bind("<ButtonRelease-1>", lambda event, col=column_name: on_drop(event, col))
+        setup_drag_and_drop(task_list, column_name)
 
         entry = Entry(column_frame)
         entry.pack(fill=X, padx=5, pady=5)
@@ -1067,7 +1070,6 @@ def open_kanban_window():
     refresh_kanban_board()
 
     kanban_window.protocol("WM_DELETE_WINDOW", lambda: (save_kanban_data(), kanban_window.destroy()))
-
 
 def open_terminal_window():
     """
