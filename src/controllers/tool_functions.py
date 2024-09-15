@@ -7,7 +7,7 @@ import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, ttk, \
-    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X
+    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED
 import webview  # pywebview
 
 from tkinter.ttk import Separator
@@ -949,7 +949,7 @@ def open_git_window(repo_dir=None):
 
 def open_kanban_window():
     # Global variables
-    global kanban_data, columns_frame
+    global kanban_data, columns_frame, drag_label
 
     # Initialize data
     kanban_data = {
@@ -960,6 +960,8 @@ def open_kanban_window():
         ],
         'wip_limits': {'To Do': 10, 'In Progress': 5, 'Testing': 5, 'Done': float('inf'), 'Continuous Improvement': 5}
     }
+
+    drag_label = None
 
     def load_kanban_data():
         global kanban_data
@@ -974,21 +976,38 @@ def open_kanban_window():
             json.dump(kanban_data, f, indent=4)
 
     def on_drag_start(event):
+        global drag_label
         widget = event.widget
-        widget.drag_start_x = event.x
-        widget.drag_start_y = event.y
-        widget.drag_data = widget.get(widget.nearest(event.y))
+        index = widget.nearest(event.y)
+        _, y, _, height = widget.bbox(index)
+
+        if y <= event.y < y + height:
+            widget.drag_data = widget.get(index)
+            widget.selection_clear(0, END)
+            widget.selection_set(index)
+            widget.itemconfig(index, {'bg': 'lightblue'})  # Highlight selected item
+
+            # Create floating label
+            drag_label = Label(kanban_window, text=widget.drag_data, relief=RAISED)
+            drag_label.place(x=event.x_root, y=event.y_root, anchor="center")
 
     def on_drag_motion(event):
+        global drag_label
         widget = event.widget
-        if hasattr(widget, 'drag_data'):
-            x, y = widget.winfo_pointerxy()
+        if hasattr(widget, 'drag_data') and drag_label:
+            x, y = kanban_window.winfo_pointerxy()
+            drag_label.place(x=x, y=y, anchor="center")
+
+            # Highlight target column
             target = widget.winfo_containing(x, y)
             if isinstance(target, Listbox):
-                target.drag_highlight = widget.drag_data
-                target.update_idletasks()
+                for child in columns_frame.winfo_children():
+                    if isinstance(child, Frame):
+                        child.config(bg='SystemButtonFace')  # Reset background
+                target.master.config(bg='lightgreen')  # Highlight target column
 
     def on_drop(event):
+        global drag_label
         widget = event.widget
         if hasattr(widget, 'drag_data'):
             x, y = widget.winfo_pointerxy()
@@ -1007,8 +1026,13 @@ def open_kanban_window():
                 save_kanban_data()
                 refresh_kanban_board()
 
-            if hasattr(target, 'drag_highlight'):
-                delattr(target, 'drag_highlight')
+            # Reset highlights and remove floating label
+            for child in columns_frame.winfo_children():
+                if isinstance(child, Frame):
+                    child.config(bg='SystemButtonFace')
+            if drag_label:
+                drag_label.destroy()
+                drag_label = None
             delattr(widget, 'drag_data')
 
     def setup_drag_and_drop(listbox, column):
