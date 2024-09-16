@@ -696,8 +696,11 @@ find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
 def toggle_directory_line(is_checked):
-    print("directory line toggled to value:\t", is_checked)
-    # Refresh to show the change.
+    # Refresh app to show the change and make appear/disappear the menu section in the main app.
+    if is_checked:
+        print("CHECK")
+    else:
+        print("UNCHECK")
     pass
 
 
