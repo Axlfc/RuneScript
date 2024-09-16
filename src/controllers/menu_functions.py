@@ -695,9 +695,9 @@ find_button.config(image=image_find)
 find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
-def toggle_directory_line(is_checked):
+def toggle_directory_line_visibility():
     # Refresh app to show the change and make appear/disappear the menu section in the main app.
-    if is_checked:
+    if show_directory_view_var.get():
         print("CHECK")
     else:
         print("UNCHECK")
@@ -840,7 +840,7 @@ def create_menu():
         onvalue=1,
         offvalue=0,
         variable=show_directory_view_var,
-        command=lambda: toggle_directory_line(show_directory_view_var.get())
+        command=lambda: toggle_directory_line_visibility()
     )
 
     # Run Menu
