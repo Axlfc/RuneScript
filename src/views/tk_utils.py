@@ -78,6 +78,8 @@ entry_arguments_entry = Entry(content_frm, textvariable=entry_text, width=40)
 generate_stdin = IntVar()
 generate_stdin_err = IntVar()
 
+show_directory_view_var = IntVar()
+
 interactive_frm = Frame(root)
 
 scrollbar_frm = Frame(root)

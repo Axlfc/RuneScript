@@ -14,7 +14,7 @@ from src.localization import localization_data
 from src.views.edit_operations import undo, redo, duplicate
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, \
-    file_name, last_saved_content, local_python_var
+    file_name, last_saved_content, local_python_var, show_directory_view_var
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window,
                                             open_ai_assistant_window, open_webview, open_terminal_window,
                                             create_url_input_window, open_ipynb_window,
@@ -695,6 +695,12 @@ find_button.config(image=image_find)
 find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
+def toggle_directory_line(is_checked):
+    print("directory line toggled to value:\t", is_checked)
+    # Refresh to show the change.
+    pass
+
+
 def create_menu():
     """
         Creates and adds the main menu to the application window.
@@ -826,6 +832,14 @@ def create_menu():
     view_menu = Menu(menu)
     menu.add_cascade(label="View", menu=view_menu, underline=0)
 
+    view_menu.add_checkbutton(
+        label="Directory",
+        onvalue=1,
+        offvalue=0,
+        variable=show_directory_view_var,
+        command=lambda: toggle_directory_line(show_directory_view_var.get())
+    )
+
     # Run Menu
     # run_menu = Menu(menu)
     # menu.add_cascade(label="Run", menu=run_menu, underline=0)
@@ -872,7 +886,6 @@ def create_menu():
     help_menu.add_command(label="Report problems", command=about, accelerator=None, underline=0)
     help_menu.add_separator()
     help_menu.add_command(label="About", command=about, accelerator='Ctrl+H', underline=0)
-
 
 
 def get_scheduled_tasks(submenu):

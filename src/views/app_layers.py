@@ -27,7 +27,8 @@ def create_footer():
 
 
 def create_body():
-    create_directory_line()  # Row 0
+    if show_directory_view_var.get() == 0:
+        create_directory_line()  # Row 0
     create_open_script_line()  # Row 1
     create_content_file_window()  # Row 2
     create_horizontal_scrollbar_lines()  # Row 3

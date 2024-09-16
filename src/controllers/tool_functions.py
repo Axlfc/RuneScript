@@ -286,7 +286,6 @@ def open_search_replace_dialog():
                                                                              )
 
 
-
 def open_ipynb_window():
     print("OPEN IPYTHON TERMINAL")
 
@@ -1094,6 +1093,7 @@ def open_kanban_window():
     refresh_kanban_board()
 
     kanban_window.protocol("WM_DELETE_WINDOW", lambda: (save_kanban_data(), kanban_window.destroy()))
+
 
 def open_terminal_window():
     """
