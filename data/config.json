@@ -1,5 +1,6 @@
 {
     "options": {
+        "is_directory_visible": true,
         "last_saved_script": "",
         "last_opened_script": "",
         "last_edited_script": "",

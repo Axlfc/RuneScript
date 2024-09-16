@@ -1,7 +1,7 @@
-from tkinter import Button, Checkbutton
+from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL
 
 from src.controllers.tool_functions import find_text, open_search_replace_dialog
-from src.models.file_operations import select_directory, prompt_rename_file, open_current_directory
+from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
     open_icon, house_icon, \
     open_script, save_script, save_as_new_script, update_modification_status, on_text_change, cut, copy, paste, \
@@ -27,8 +27,6 @@ def create_footer():
 
 
 def create_body():
-    if show_directory_view_var.get() == 1:
-        create_directory_line()  # Row 0
     create_open_script_line()  # Row 1
     create_content_file_window()  # Row 2
     create_horizontal_scrollbar_lines()  # Row 3
@@ -87,34 +85,6 @@ def create_footer_line():
 
 def create_icon_buttons_line():
     pass
-
-
-def create_directory_line():
-    """
-        Creates and displays the directory selection interface in the application.
-
-        This interface element allows users to select and display the current working directory, facilitating
-        the process of opening and saving files in the chosen directory.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    global current_directory
-    frm.grid(row=0, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
-    # Configure grid weights for the columns
-    frm.columnconfigure(0, weight=0)  # First column doesn't expand
-    frm.columnconfigure(1, weight=1)  # Second column expands
-
-    directory_button = Button(frm, text=house_icon, command=select_directory)
-    directory_button.grid(column=0, row=0, sticky="w")
-    Tooltip(directory_button, localization_data['choose_working_directory'])
-
-    directory_label.grid(column=1, row=0, padx=5, sticky="ew")  # Set sticky to "ew" to fill horizontally
-    directory_label.bind("<Double-1>", lambda event: open_current_directory())
-    Tooltip(directory_label, localization_data['current_directory'])
 
 
 def create_open_script_line():

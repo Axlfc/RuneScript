@@ -1,6 +1,8 @@
 import json
 import os
-from tkinter import Menu, Button, messagebox, filedialog, END
+import sys
+import subprocess
+from tkinter import Menu, Button, messagebox, filedialog, END, Label
 
 from PIL import Image, ImageTk
 
@@ -13,18 +15,20 @@ from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_ht
 from src.localization import localization_data
 from src.views.edit_operations import undo, redo, duplicate
 
-from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, directory_label, is_modified, \
-    file_name, last_saved_content, local_python_var, show_directory_view_var
+from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, is_modified, \
+    file_name, last_saved_content, local_python_var, show_directory_view_var, frm, directory_label
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window,
                                             open_ai_assistant_window, open_webview, open_terminal_window,
                                             create_url_input_window, open_ipynb_window,
                                             open_change_theme_window, create_settings_window, open_git_window,
                                             open_image_generation_window, open_music_generation_window,
-                                            open_audio_generation_window, open_kanban_window)
+                                            open_audio_generation_window, open_kanban_window, read_config_parameter,
+                                            write_config_parameter)
 
 from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
 import lib.git as git
+from src.views.ui_elements import Tooltip
 
 # Add this line
 git_console_instance = None
@@ -240,34 +244,6 @@ def on_text_change(event=None):
             update_title()
 
 
-def open_script():
-    """
-        Opens an existing file into the script editor.
-
-        This function displays a file dialog for the user to choose a file. Once a file is selected, it is opened
-        and its contents are displayed in the script editor.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    if is_modified:
-        response = messagebox.askyesnocancel(localization_data['save_changes'],
-                                             localization_data['save_confirmation'])
-        if response:  # User wants to save changes
-            if not save():
-                return  # If save was not successful, cancel the file open operation
-        elif response is None:  # User cancelled the prompt
-            return  # Cancel the file open operation
-
-    # If there are no unsaved changes, or the user has dealt with them, show the open file dialog
-    file_path = filedialog.askopenfilename(filetypes=file_types)
-    if file_path:
-        open_file(file_path)
-
-
 def open_file(file_path):
     """
         Opens the specified file and updates the editor with its contents.
@@ -314,6 +290,33 @@ def open_file(file_path):
     is_modified = False
     update_title()
 
+
+def open_script():
+    """
+        Opens an existing file into the script editor.
+
+        This function displays a file dialog for the user to choose a file. Once a file is selected, it is opened
+        and its contents are displayed in the script editor.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    if is_modified:
+        response = messagebox.askyesnocancel(localization_data['save_changes'],
+                                             localization_data['save_confirmation'])
+        if response:  # User wants to save changes
+            if not save():
+                return  # If save was not successful, cancel the file open operation
+        elif response is None:  # User cancelled the prompt
+            return  # Cancel the file open operation
+
+    # If there are no unsaved changes, or the user has dealt with them, show the open file dialog
+    file_path = filedialog.askopenfilename(filetypes=file_types)
+    if file_path:
+        open_file(file_path)
 
 def create_csv_menu(parent_menu):
     """
@@ -695,13 +698,97 @@ find_button.config(image=image_find)
 find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
-def toggle_directory_line_visibility():
-    # Refresh app to show the change and make appear/disappear the menu section in the main app.
-    if show_directory_view_var.get():
-        print("CHECK")
+def toggle_directory_visibility(frame):
+    global current_directory
+    global directory_label
+
+    def select_directory():
+        """
+            Opens a dialog for the user to select a directory, and changes the current working directory to the selected one.
+
+            After the directory is selected, the function updates the directory label in the UI and opens the first text file
+            (if any) in the selected directory.
+
+            Parameters:
+            None
+
+            Returns:
+            None
+        """
+        directory = filedialog.askdirectory()
+        if directory:
+            os.chdir(directory)
+            global current_directory  # Declare current_directory as global if it's not in the same file
+            current_directory = directory  # Update the current_directory variable
+            directory_label.config(text=f"{directory}")
+            # Ask user if they want to open the first text file
+            if messagebox.askyesno(localization_data['open_script'],
+                                   localization_data['open_first_file_from_directory']):
+                open_first_text_file(directory)
+
+    def open_first_text_file(directory):
+        """
+            Opens the first text file in the given directory.
+
+            This function scans the specified directory for text files and, if found, opens the first one. It is typically
+            used after changing the working directory to automatically open a text file from that directory.
+
+            Parameters:
+            directory (str): The directory path in which to search for text files.
+
+            Returns:
+            None
+        """
+        text_files = get_text_files(directory)
+        if text_files:
+            file_path = os.path.join(directory, text_files[0])
+            open_file(file_path)
+
+    def open_current_directory():
+        directory = directory_label.cget("text")
+        if sys.platform == "win32":
+            os.startfile(directory)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", directory])
+        else:  # Assuming Linux or similar
+            subprocess.run(["xdg-open", directory])
+
+    def get_text_files(directory):
+        """
+            Retrieves a list of text files in the specified directory.
+
+            This function scans the provided directory and creates a list of all files ending with a '.txt' extension.
+
+            Parameters:
+            directory (str): The directory path in which to search for text files.
+
+            Returns:
+            list: A list of text file names found in the directory.
+        """
+        text_files = []
+        for file in os.listdir(directory):
+            if file.endswith(".txt"):
+                text_files.append(file)
+        return text_files
+
+    if show_directory_view_var.get() == 1:
+        write_config_parameter("is_directory_visible", "true")
+
+        frame.grid(row=0, column=0, pady=0, sticky="ew")
+
+        directory_button = Button(frame, text=house_icon, command=select_directory)
+        directory_button.grid(column=0, row=0, sticky="w")
+
+        Tooltip(directory_button, localization_data['choose_working_directory'])
+
+        directory_label.grid(column=1, row=0, padx=5, sticky="ew")
+        directory_label.bind("<Double-1>", lambda event: open_current_directory())
+        Tooltip(directory_label, localization_data['current_directory'])
     else:
-        print("UNCHECK")
-    pass
+        write_config_parameter("is_directory_visible", "false")
+        frame.grid_forget()
+
+    print("IS DIRECTORY VISIBLE?\t", read_config_parameter("options").get("is_directory_visible"))
 
 
 def create_menu():
@@ -717,6 +804,11 @@ def create_menu():
         Returns:
         None
     """
+    global show_directory_view_var
+    is_directory_visible = read_config_parameter("options").get("is_directory_visible", "true") == "true"
+    print("IS THE DIRECTORY VISIBLE?\t", is_directory_visible)
+    show_directory_view_var.set(1 if is_directory_visible else 0)
+
     # File menu.
     file_menu = Menu(menu)
     menu.add_cascade(label=localization_data['file'], menu=file_menu, underline=0)
@@ -840,7 +932,7 @@ def create_menu():
         onvalue=1,
         offvalue=0,
         variable=show_directory_view_var,
-        command=lambda: toggle_directory_line_visibility()
+        command=lambda: toggle_directory_visibility(frm)
     )
 
     # Run Menu

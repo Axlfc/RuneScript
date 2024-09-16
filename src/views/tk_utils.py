@@ -2,7 +2,6 @@ from ttkbootstrap import Style
 from src.localization import localization_data
 from tkinter import Label, StringVar, IntVar, Frame, BooleanVar
 from tkinter import scrolledtext, Text, Entry, Menu
-from tkinter import Scrollbar, HORIZONTAL
 import os
 
 
