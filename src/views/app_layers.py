@@ -2,12 +2,12 @@ from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL
 
 from src.controllers.tool_functions import find_text, open_search_replace_dialog
 from src.models.file_operations import prompt_rename_file
-from src.controllers.menu_functions import create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
-    open_icon, house_icon, \
-    open_script, save_script, save_as_new_script, update_modification_status, on_text_change, cut, copy, paste, \
-    duplicate
-from src.models.script_operations import see_stderr, see_stdout, run_script, run_script_with_timeout, run_script_once, \
-    run_script_crontab, get_operative_system, run_script_windows
+from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
+    open_icon, open_script, save_script, save_as_new_script, update_modification_status, on_text_change, cut, copy,
+                                            paste,
+                                            duplicate)
+from src.models.script_operations import (run_script_with_timeout, run_script_once, run_script_crontab,
+                                          get_operative_system)
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 
@@ -19,18 +19,14 @@ def create_app():
 
 
 def create_footer():
-    create_arguments_lines()
-    create_immediately_run_line()
-    create_execute_in_line()
+    # TODO: New footer line with line count and other information like UTF-8 and other information.
     create_execute_one_time_with_format()  # GNU/Linux only
     create_program_daily_with_format()  # GNU/Linux only
 
 
 def create_body():
-    create_open_script_line()  # Row 1
-    create_content_file_window()  # Row 2
-    create_horizontal_scrollbar_lines()  # Row 3
-    create_interactive_textfield_lines()  # Row 4
+    create_content_file_window()
+    create_horizontal_scrollbar_lines()
 
 
 def undo():
@@ -269,122 +265,15 @@ def create_interactive_textfield_lines():
     Returns:
     None
     """
+    # Make sure interactive_frm expands horizontally
     interactive_frm.grid(row=4, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+
+    # Create the Text widget with sticky option to expand horizontally
     input_field = Text(interactive_frm, height=1)
     input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
 
-
-def create_arguments_lines():
-    """
-        Creates the interface for entering script execution arguments.
-
-        This part of the UI allows users to input arguments that will be passed to scripts when they are run, enhancing the
-        flexibility and usability of script execution.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    content_frm.grid(row=5, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
-
-    entry_arguments_label = Label(content_frm, text=localization_data['entry_arguments'])
-    entry_arguments_label.grid(row=0, column=0, padx=5, pady=0, sticky="w")
-
-    entry_placeholder = ""  # Enter arguments...
-    entry_arguments_entry.insert(0, entry_placeholder)
-    entry_arguments_entry.grid(row=0, column=1, sticky="e")
-    Tooltip(entry_arguments_entry, localization_data['enter_arguments'])
-
-    generate_stdin_check = Checkbutton(content_frm, text=localization_data['stdout'], variable=generate_stdin)
-    generate_stdin_check.grid(row=0, column=2, sticky="e")  # sticky to "e" for right alignment
-    Tooltip(generate_stdin_check, localization_data['generate_stdout'])
-
-    see_stderr_check = Checkbutton(content_frm, text=localization_data['stderr'], variable=generate_stdin_err)
-    see_stderr_check.grid(row=0, column=3, padx=10, sticky="e")  # Set sticky to "e" for right alignment
-    Tooltip(see_stderr_check, localization_data['generate_stderr'])
-
-    stdout_button = Button(content_frm, text=localization_data['see_stdout'], command=see_stdout)
-    stdout_button.grid(column=2, row=1, padx=10, sticky="e")  # Align to the right
-    Tooltip(stdout_button, localization_data['see_stdout_tooltip'])
-
-    stderr_button = Button(content_frm, text=localization_data['see_stderr'], command=see_stderr)
-    stderr_button.grid(column=3, row=1, padx=10, sticky="e")  # Align to the right
-    Tooltip(stderr_button, localization_data['see_stderr_tooltip'])
-
-
-def create_immediately_run_line():
-    """
-        Sets up the interface for immediate script execution.
-
-        This function adds a button or interface element that allows users to run the currently open script instantly.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    if get_operative_system() != "Windows":
-        run_frm.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
-
-        Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
-        run_button = Button(run_frm, text=run_icon, command=run_script)
-        run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
-        Tooltip(run_button, localization_data['run_script'])
-    else:
-        run_frm.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
-
-        Label(run_frm, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
-        run_button = Button(run_frm, text=run_icon, command=run_script_windows)
-        run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
-        Tooltip(run_button, localization_data['run_script'])
-
-
-def create_execute_in_line():
-    """
-        Creates the UI components for executing a script with a timeout.
-
-        This part of the interface allows the user to specify a timeout duration for script execution, providing
-        additional control over how scripts are run.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    if get_operative_system() != "Windows":
-        line_frm.grid(row=9, column=0, pady=0, sticky="nsew")
-
-        Label(line_frm, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
-
-        seconds_entry = Entry(line_frm, width=15)
-        seconds_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(seconds_entry, localization_data['number_of_seconds'])
-
-        run_button = Button(line_frm,
-                            text=run_icon,
-                            command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
-                            )
-        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, localization_data['set_duration_for_script_execution'])
-    else:
-        line_frm.grid(row=9, column=0, pady=0, sticky="nsew")
-
-        Label(line_frm, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
-
-        seconds_entry = Entry(line_frm, width=15)
-        seconds_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(seconds_entry, localization_data['number_of_seconds'])
-
-        run_button = Button(line_frm,
-                            text=run_icon,
-                            command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
-                            )
-        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, localization_data['set_duration_for_script_execution'])
+    # Ensure that interactive_frm expands horizontally and the column weights are set
+    interactive_frm.grid_columnconfigure(0, weight=1)
 
 
 def create_execute_one_time_with_format():

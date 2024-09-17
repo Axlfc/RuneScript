@@ -78,6 +78,11 @@ generate_stdin = IntVar()
 generate_stdin_err = IntVar()
 
 show_directory_view_var = IntVar()
+show_file_view_var = IntVar()
+show_arguments_view_var = IntVar()
+show_run_view_var = IntVar()
+show_timeout_view_var = IntVar()
+show_interactive_view_var = IntVar()
 
 interactive_frm = Frame(root)
 

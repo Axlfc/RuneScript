@@ -1,6 +1,11 @@
 {
     "options": {
-        "is_directory_visible": true,
+        "is_directory_view_visible": true,
+        "is_file_view_visible": true,
+        "is_arguments_view_visible": true,
+        "is_run_view_visible": true,
+        "is_timeout_view_visible": true,
+        "is_interactive_view_visible": true,
         "last_saved_script": "",
         "last_opened_script": "",
         "last_edited_script": "",

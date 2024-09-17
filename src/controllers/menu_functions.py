@@ -2,13 +2,15 @@ import json
 import os
 import sys
 import subprocess
-from tkinter import Menu, Button, messagebox, filedialog, END, Label
+from tkinter import Menu, Button, messagebox, filedialog, END, Label, Checkbutton, Entry, Text
 
 from PIL import Image, ImageTk
 
 from src.controllers.scheduled_tasks import open_cron_window, open_at_window, open_scheduled_tasks_window, open_new_at_task_window, \
     open_new_crontab_task_window
-from src.models.script_operations import get_operative_system
+from src.models.file_operations import prompt_rename_file
+from src.models.script_operations import get_operative_system, see_stdout, see_stderr, run_script, run_script_windows, \
+    run_script_with_timeout
 from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_html, generate_html_from_markdown, \
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter, render_markdown_to_latex
@@ -16,7 +18,9 @@ from src.localization import localization_data
 from src.views.edit_operations import undo, redo, duplicate
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, is_modified, \
-    file_name, last_saved_content, local_python_var, show_directory_view_var, frm, directory_label
+    file_name, last_saved_content, local_python_var, show_directory_view_var, show_file_view_var, frm, directory_label, \
+    script_frm, content_frm, entry_arguments_entry, generate_stdin, generate_stdin_err, show_arguments_view_var, \
+    show_run_view_var, run_frm, line_frm, show_timeout_view_var, show_interactive_view_var, interactive_frm
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window,
                                             open_ai_assistant_window, open_webview, open_terminal_window,
                                             create_url_input_window, open_ipynb_window,
@@ -698,7 +702,7 @@ find_button.config(image=image_find)
 find_button.pack(in_=toolbar, side="left", padx=4, pady=4)
 
 
-def toggle_directory_visibility(frame):
+def toggle_directory_view_visibility(frame):
     global current_directory
     global directory_label
 
@@ -772,7 +776,7 @@ def toggle_directory_visibility(frame):
         return text_files
 
     if show_directory_view_var.get() == 1:
-        write_config_parameter("is_directory_visible", "true")
+        write_config_parameter("is_directory_view_visible", "true")
 
         frame.grid(row=0, column=0, pady=0, sticky="ew")
 
@@ -785,10 +789,167 @@ def toggle_directory_visibility(frame):
         directory_label.bind("<Double-1>", lambda event: open_current_directory())
         Tooltip(directory_label, localization_data['current_directory'])
     else:
-        write_config_parameter("is_directory_visible", "false")
+        write_config_parameter("is_directory_view_visible", "false")
         frame.grid_forget()
 
-    print("IS DIRECTORY VISIBLE?\t", read_config_parameter("options").get("is_directory_visible"))
+    # print("IS DIRECTORY VISIBLE?\t", read_config_parameter("options").get("is_directory_view_visible"))
+
+
+def toggle_file_view_visibility(frame):
+    if show_file_view_var.get() == 1:
+        write_config_parameter("is_file_view_visible", "true")
+
+        frame.grid(row=1, column=0, pady=0, sticky="ew")
+        frame.grid_columnconfigure(2, weight=1)  # Make column 2 (file name entry) expandable
+
+        open_button = Button(frame, text=open_icon, command=open_script)
+        open_button.grid(column=0, row=0)
+        Tooltip(open_button, localization_data['open_script'])
+
+        script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)  # Expand to the right
+        script_name_label.bind("<Double-1>", lambda event: prompt_rename_file())
+        Tooltip(script_name_label, localization_data['file_name'])
+
+        save_button = Button(frame, text=save_icon, command=save_script)
+        save_button.grid(column=3, row=0, sticky="e")  # Align to the right
+        Tooltip(save_button, localization_data['save_script'])
+
+        save_new_button = Button(frame, text=save_new_icon, command=save_as_new_script)
+        save_new_button.grid(column=4, row=0, sticky="e")  # Align to the right
+        Tooltip(save_new_button, localization_data['save_as_new_script'])
+
+        undo_button = Button(frame, text=undo_icon, command=undo)
+        undo_button.grid(column=5, row=0, sticky="e")  # Align to the right
+        Tooltip(undo_button, localization_data['undo'])
+
+        redo_button = Button(frame, text=redo_icon, command=redo)
+        redo_button.grid(column=6, row=0, sticky="e")  # Align to the right
+        Tooltip(redo_button, localization_data['redo'])
+    else:
+        write_config_parameter("is_file_view_visible", "false")
+        frame.grid_forget()
+
+
+def toggle_arguments_view_visibility(frame):
+    if show_arguments_view_var.get() == 1:
+        write_config_parameter("is_arguments_view_visible", "true")
+        frame.grid(row=5, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+
+        entry_arguments_label = Label(frame, text=localization_data['entry_arguments'])
+        entry_arguments_label.grid(row=0, column=0, padx=5, pady=0, sticky="w")
+
+        entry_placeholder = ""  # Enter arguments...
+        entry_arguments_entry.insert(0, entry_placeholder)
+        entry_arguments_entry.grid(row=0, column=1, sticky="e")
+        Tooltip(entry_arguments_entry, localization_data['enter_arguments'])
+
+        generate_stdin_check = Checkbutton(frame, text=localization_data['stdout'], variable=generate_stdin)
+        generate_stdin_check.grid(row=0, column=2, sticky="e")  # sticky to "e" for right alignment
+        Tooltip(generate_stdin_check, localization_data['generate_stdout'])
+
+        see_stderr_check = Checkbutton(frame, text=localization_data['stderr'], variable=generate_stdin_err)
+        see_stderr_check.grid(row=0, column=3, padx=10, sticky="e")  # Set sticky to "e" for right alignment
+        Tooltip(see_stderr_check, localization_data['generate_stderr'])
+
+        stdout_button = Button(frame, text=localization_data['see_stdout'], command=see_stdout)
+        stdout_button.grid(column=2, row=1, padx=10, sticky="e")  # Align to the right
+        Tooltip(stdout_button, localization_data['see_stdout_tooltip'])
+
+        stderr_button = Button(frame, text=localization_data['see_stderr'], command=see_stderr)
+        stderr_button.grid(column=3, row=1, padx=10, sticky="e")  # Align to the right
+        Tooltip(stderr_button, localization_data['see_stderr_tooltip'])
+    else:
+        write_config_parameter("is_arguments_view_visible", "false")
+        frame.grid_forget()
+
+
+def toggle_run_view_visibility(frame):
+    if show_run_view_var.get() == 1:
+        write_config_parameter("is_run_view_visible", "true")
+        if get_operative_system() != "Windows":
+            frame.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+            Label(frame, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
+            run_button = Button(frame, text=run_icon, command=run_script)
+            run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
+            Tooltip(run_button, localization_data['run_script'])
+        else:
+            frame.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
+            Label(frame, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
+            run_button = Button(frame, text=run_icon, command=run_script_windows)
+            run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
+            Tooltip(run_button, localization_data['run_script'])
+    else:
+        write_config_parameter("is_run_view_visible", "false")
+        frame.grid_forget()
+
+
+def toggle_timeout_view_visibility(frame):
+    if show_timeout_view_var.get() == 1:
+        write_config_parameter("is_timeout_view_visible", "true")
+        if get_operative_system() != "Windows":
+            frame.grid(row=9, column=0, pady=0, sticky="nsew")
+
+            Label(frame, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
+
+            seconds_entry = Entry(frame, width=15)
+            seconds_entry.grid(column=1, row=0, padx=(10, 0))
+            Tooltip(seconds_entry, localization_data['number_of_seconds'])
+
+            run_button = Button(frame,
+                                text=run_icon,
+                                command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
+                                )
+            run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+            Tooltip(run_button, localization_data['set_duration_for_script_execution'])
+        else:
+            frame.grid(row=9, column=0, pady=0, sticky="nsew")
+
+            Label(frame, text=localization_data['script_timeout']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
+
+            seconds_entry = Entry(frame, width=15)
+            seconds_entry.grid(column=1, row=0, padx=(10, 0))
+            Tooltip(seconds_entry, localization_data['number_of_seconds'])
+
+            run_button = Button(frame,
+                                text=run_icon,
+                                command=lambda: run_script_with_timeout(timeout_seconds=float(seconds_entry.get()))
+                                )
+            run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+            Tooltip(run_button, localization_data['set_duration_for_script_execution'])
+    else:
+        write_config_parameter("is_timeout_view_visible", "false")
+        frame.grid_forget()
+
+
+def toggle_interactive_view_visibility(frame):
+    if show_interactive_view_var.get() == 1:
+        write_config_parameter("is_interactive_view_visible", "true")
+        # Make sure interactive_frm expands horizontally
+        frame.grid(row=4, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
+
+        # Create the Text widget with sticky option to expand horizontally
+        input_field = Text(frame, height=1)
+        input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
+
+        # Ensure that interactive_frm expands horizontally and the column weights are set
+        frame.grid_columnconfigure(0, weight=1)
+    else:
+        write_config_parameter("is_interactive_view_visible", "false")
+        frame.grid_forget()
+
+
+def add_view_section_to_menu(options_parameter_name, view_variable, menu_section, view_section_name, frame, function):
+    is_view_visible = read_config_parameter("options").get(options_parameter_name, "true") == "true"
+    view_variable.set(1 if is_view_visible else 0)
+
+    menu_section.add_checkbutton(
+        label=view_section_name,
+        onvalue=1,
+        offvalue=0,
+        variable=view_variable,
+        command=lambda: function(frame)
+    )
+    function(frame)
 
 
 def create_menu():
@@ -805,9 +966,11 @@ def create_menu():
         None
     """
     global show_directory_view_var
-    is_directory_visible = read_config_parameter("options").get("is_directory_visible", "true") == "true"
-    print("IS THE DIRECTORY VISIBLE?\t", is_directory_visible)
-    show_directory_view_var.set(1 if is_directory_visible else 0)
+    global show_file_view_var
+    global show_arguments_view_var
+    global show_run_view_var
+    global show_timeout_view_var
+    global show_interactive_view_var
 
     # File menu.
     file_menu = Menu(menu)
@@ -917,7 +1080,6 @@ def create_menu():
     edit_menu.add_separator()
     edit_menu.add_command(label="Clear shell", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
 
-
     # edit_menu.add_command(label="Delete", command=delete, underline=0)
     #edit_menu.add_separator()
     #edit_menu.add_command(label="Select All", command=select_all, accelerator='Ctrl+A', underline=0)
@@ -927,16 +1089,49 @@ def create_menu():
     view_menu = Menu(menu)
     menu.add_cascade(label="View", menu=view_menu, underline=0)
 
-    view_menu.add_checkbutton(
-        label="Directory",
-        onvalue=1,
-        offvalue=0,
-        variable=show_directory_view_var,
-        command=lambda: toggle_directory_visibility(frm)
-    )
+    add_view_section_to_menu("is_directory_view_visible",
+                             show_directory_view_var,
+                             view_menu,
+                             "Directory",
+                             frm,
+                             toggle_directory_view_visibility)
 
-    # Initially apply the state based on configuration
-    toggle_directory_visibility(frm)
+    add_view_section_to_menu("is_file_view_visible",
+                             show_file_view_var,
+                             view_menu,
+                             "File",
+                             script_frm,
+                             toggle_file_view_visibility)
+
+    view_menu.add_separator()
+
+    add_view_section_to_menu("is_arguments_view_visible",
+                             show_arguments_view_var,
+                             view_menu,
+                             "Script Arguments",
+                             content_frm,
+                             toggle_arguments_view_visibility)
+
+    add_view_section_to_menu("is_run_view_visible",
+                             show_run_view_var,
+                             view_menu,
+                             "Run",
+                             run_frm,
+                             toggle_run_view_visibility)
+
+    add_view_section_to_menu("is_timeout_view_visible",
+                             show_timeout_view_var,
+                             view_menu,
+                             "Timeout",
+                             line_frm,
+                             toggle_timeout_view_visibility)
+
+    add_view_section_to_menu("is_interactive_view_visible",
+                             show_interactive_view_var,
+                             view_menu,
+                             "Interactive",
+                             interactive_frm,
+                             toggle_interactive_view_visibility)
 
     # Run Menu
     # run_menu = Menu(menu)
