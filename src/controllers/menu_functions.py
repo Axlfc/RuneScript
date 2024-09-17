@@ -935,6 +935,9 @@ def create_menu():
         command=lambda: toggle_directory_visibility(frm)
     )
 
+    # Initially apply the state based on configuration
+    toggle_directory_visibility(frm)
+
     # Run Menu
     # run_menu = Menu(menu)
     # menu.add_cascade(label="Run", menu=run_menu, underline=0)
