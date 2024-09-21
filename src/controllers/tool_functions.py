@@ -631,6 +631,7 @@ def open_winget_window():
             output = run_command(f'winget install -s "winget" "{program_id}"')
             insert_output(f"Installing {program_id}...\n{output}")
             list_installed()  # Refresh the installed programs list
+            list_upgradable()  # Refresh the upgradable programs list
 
     # Function to uninstall a program
     def uninstall_program():
@@ -639,6 +640,7 @@ def open_winget_window():
             output = run_command(f'winget uninstall "{program_id}"')
             insert_output(f"Uninstalling {program_id}...\n{output}")
             list_installed()  # Refresh the installed programs list
+            list_upgradable()  # Refresh the upgradable programs list
 
     def get_program_description(program_id):
         # Function to extract the program description

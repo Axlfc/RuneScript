@@ -1169,9 +1169,9 @@ def create_menu():
     menu.add_cascade(label="System", menu=system_menu, underline=0)
     programs_submenu = Menu(menu, tearoff=0)
     system_menu.add_cascade(label="Programs", menu=programs_submenu)
-    programs_submenu.add_command(label="Open Winget Window", command=open_winget_window, compound='left', accelerator=None)
-    system_info_submenu = Menu(menu, tearoff=0)
-    programs_submenu.add_command(label="PC Information", command=open_system_info_window, compound='left', accelerator=None)
+    if get_operative_system() == "Windows":
+        programs_submenu.add_command(label="Open Winget Window", command=open_winget_window, compound='left', accelerator=None)
+    system_menu.add_command(label="PC Information", command=open_system_info_window, compound='left', accelerator=None)
 
     # Jobs Menu
     jobs_menu = Menu(menu)
