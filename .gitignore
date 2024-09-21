@@ -176,3 +176,5 @@ python_dependencies/
 data/kanban_tasks.json
 
 data/agent_config.json
+
+data/vault.txt
