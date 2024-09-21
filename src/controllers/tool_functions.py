@@ -8,9 +8,10 @@ import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, ttk, \
     simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL
+
 import webview  # pywebview
 
-from tkinter.ttk import Separator
+from tkinter.ttk import Separator, Treeview, Notebook
 import markdown
 from PIL import ImageTk
 from PIL.Image import Image
@@ -430,33 +431,362 @@ def create_settings_window():
 
 
 def open_system_info_window():
-    print("TEST")
+    # Create the main window
+    system_info_window = Toplevel()
+    system_info_window.title("System Information Viewer")
+    system_info_window.geometry("800x600")
+
+    # Create a notebook (tabbed interface)
+    notebook = Notebook(system_info_window)
+    notebook.pack(expand=True, fill='both', padx=10, pady=10)
+
+    # Function to execute PowerShell commands and fetch results
+    def run_command(command, result_queue, label):
+        try:
+            powershell_path = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            full_command = f'"{powershell_path}" -Command "{command}"'
+            result = subprocess.run(
+                full_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding='utf-8',
+                errors='replace'
+            )
+            if result.returncode == 0:
+                output = result.stdout.strip()
+            else:
+                output = f"Error: {result.stderr.strip()}"
+        except Exception as e:
+            output = f"Error: {str(e)}"
+
+        # Put the result in the queue with the associated label
+        result_queue.put((label, output))
+
+    # Worker thread function
+    def worker(commands, result_queue):
+        for label, cmd in commands.items():
+            run_command(cmd, result_queue, label)
+
+    # Function to create a frame with a treeview
+    def create_info_frame(parent, commands):
+        frame = Frame(parent)
+        frame.pack(fill='both', expand=True)
+
+        # Create a treeview
+        tree = Treeview(frame, columns=('Value',), show='tree')
+        tree.heading('#0', text='Property')
+        tree.column('#0', width=250)
+        tree.heading('Value', text='Value')
+        tree.column('Value', width=500)
+        tree.pack(side='left', fill='both', expand=True)
+
+        # Add a scrollbar
+        scrollbar = Scrollbar(frame, orient='vertical', command=tree.yview)
+        scrollbar.pack(side='right', fill='y')
+        tree.configure(yscrollcommand=scrollbar.set)
+
+        # Initialize the queue and start the worker thread
+        result_queue = queue.Queue()
+        thread = threading.Thread(target=worker, args=(commands, result_queue))
+        thread.daemon = True  # Daemonize thread
+        thread.start()
+
+        # Dictionary to hold tree items for quick access
+        tree_items = {}
+
+        # Function to process the queue and update the treeview
+        def process_queue():
+            while not result_queue.empty():
+                label, result = result_queue.get()
+                # Handle multi-line outputs
+                if '\n' in result:
+                    if label not in tree_items:
+                        parent_item = tree.insert('', 'end', text=label)
+                        tree_items[label] = parent_item
+                    else:
+                        parent_item = tree_items[label]
+                        tree.delete(*tree.get_children(parent_item))
+                    for line in result.splitlines():
+                        tree.insert(parent_item, 'end', text='', values=(line,))
+                else:
+                    if label in tree_items:
+                        tree.item(tree_items[label], values=(result,))
+                    else:
+                        item_id = tree.insert('', 'end', text=label, values=(result,))
+                        tree_items[label] = item_id
+            # Schedule the next queue check
+            frame.after(100, process_queue)  # Check every 100 milliseconds
+
+        # Start processing the queue
+        process_queue()
+
+        return frame
+
+    # System Information commands
+    system_commands = {
+        "Hostname": "$env:COMPUTERNAME",
+        "Operating System": "(Get-CimInstance Win32_OperatingSystem).Caption",
+        "OS Version": "(Get-CimInstance Win32_OperatingSystem).Version",
+        "Build Number": "(Get-CimInstance Win32_OperatingSystem).BuildNumber",
+        "System Architecture": "(Get-CimInstance Win32_OperatingSystem).OSArchitecture",
+        "Manufacturer": "(Get-CimInstance Win32_ComputerSystem).Manufacturer",
+        "Model": "(Get-CimInstance Win32_ComputerSystem).Model",
+        "Serial Number": "(Get-CimInstance Win32_BIOS).SerialNumber",
+        "BIOS Version": "(Get-CimInstance Win32_BIOS).SMBIOSBIOSVersion",
+        "System Uptime": "(New-TimeSpan -Start (Get-CimInstance "
+                         "Win32_OperatingSystem).LastBootUpTime).ToString()",
+        "Current System Time": "Get-Date",
+        "Timezone": "(Get-TimeZone).DisplayName",
+    }
+
+    # Hardware Information commands
+    hardware_commands = {
+        # CPU Information
+        "CPU Model": "(Get-CimInstance Win32_Processor).Name",
+        "CPU Manufacturer": "(Get-CimInstance Win32_Processor).Manufacturer",
+        "CPU Clock Speed (MHz)": "(Get-CimInstance Win32_Processor).MaxClockSpeed",
+        "CPU Cores": "(Get-CimInstance Win32_Processor).NumberOfCores",
+        "CPU Logical Processors": "(Get-CimInstance Win32_Processor).NumberOfLogicalProcessors",
+        "L2 Cache Size (KB)": "(Get-CimInstance Win32_Processor).L2CacheSize",
+        "L3 Cache Size (KB)": "(Get-CimInstance Win32_Processor).L3CacheSize",
+        # Memory Information
+        "Total Installed Memory (GB)": "('{0:N2}' -f ((Get-CimInstance "
+                                       "Win32_ComputerSystem).TotalPhysicalMemory / 1GB))",
+        "Available Memory (GB)": "('{0:N2}' -f ((Get-CimInstance "
+                                  "Win32_OperatingSystem).FreePhysicalMemory / 1MB / 1024))",
+        "Memory Type and Speed": "Get-CimInstance Win32_PhysicalMemory | "
+                                 "Select-Object MemoryType, Speed | Format-Table -AutoSize",
+        "Memory Slots Used": "(Get-CimInstance Win32_PhysicalMemory).Count",
+        "Total Memory Slots": "(Get-CimInstance Win32_PhysicalMemoryArray).MemoryDevices",
+        # Storage Devices
+        "Disk Drives": "Get-CimInstance Win32_DiskDrive | Select-Object Model, MediaType, "
+                       "Size | Format-Table -AutoSize",
+        "Logical Drives": "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID, "
+                          "FileSystem, Size, FreeSpace | Format-Table -AutoSize",
+        # GPU Information
+        "GPU Model": "(Get-CimInstance Win32_VideoController).Name",
+        "GPU Adapter RAM": "(Get-CimInstance Win32_VideoController).AdapterRAM",
+        "GPU Driver Version": "(Get-CimInstance Win32_VideoController).DriverVersion",
+        # Motherboard
+        "Motherboard Manufacturer": "(Get-CimInstance Win32_BaseBoard).Manufacturer",
+        "Motherboard Model": "(Get-CimInstance Win32_BaseBoard).Product",
+        # Network Interfaces
+        "Network Adapters": "Get-NetAdapter | Select-Object Name, InterfaceDescription, "
+                            "MacAddress, Status | Format-Table -AutoSize",
+        # Peripherals
+        "Audio Devices": "Get-CimInstance Win32_SoundDevice | Select-Object Name, "
+                         "Manufacturer | Format-Table -AutoSize",
+        "Input Devices": "Get-PnpDevice -Class Keyboard, Mouse | Where-Object "
+                         "{ $_.Status -eq 'OK' } | Select-Object FriendlyName | "
+                         "Format-Table -AutoSize",
+        # Displays
+        '''"Connected Monitors": "Get-CimInstance -Namespace root\\wmi -Class WmiMonitorID | "
+                              "ForEach-Object { $name = ($_.UserFriendlyName -notmatch 0 | "
+                              "ForEach-Object { [char]$_ }) -join ''; $name }",'''
+        '''"Display Resolutions": "Add-Type -AssemblyName System.Windows.Forms; "
+                               "[System.Windows.Forms.Screen]::AllScreens | ForEach-Object "
+                               "{ \"$($_.DeviceName): $($_.Bounds.Width)x$($_.Bounds.Height)\" }",'''
+        # Battery (for laptops)
+        "Battery Status": "Get-CimInstance Win32_Battery | Select-Object Name, "
+                          "EstimatedChargeRemaining, BatteryStatus | Format-Table -AutoSize",
+    }
+
+    # Network Information commands
+    network_commands = {
+        "Public IP Address": "(Invoke-WebRequest -Uri 'http://ifconfig.me/ip').Content.Trim()",
+        "Private IP Addresses": "Get-NetIPAddress -AddressFamily IPv4 | Where-Object "
+                                "{ $_.InterfaceAlias -ne 'Loopback Pseudo-Interface 1' } | "
+                                "Select-Object IPAddress | Format-Table -AutoSize",
+        "Subnet Masks": "Get-NetIPConfiguration | Select-Object InterfaceAlias, "
+                        "IPv4SubnetMask | Format-Table -AutoSize",
+        "Default Gateway": "Get-NetIPConfiguration | Select-Object InterfaceAlias, "
+                           "IPv4DefaultGateway | Format-Table -AutoSize",
+        "DNS Servers": "Get-DnsClientServerAddress -AddressFamily IPv4 | Select-Object "
+                       "InterfaceAlias, ServerAddresses | Format-Table -AutoSize",
+        "DHCP Information": "Get-NetIPConfiguration | Select-Object InterfaceAlias, "
+                            "DhcpServer, DhcpLeaseObtainedTime, DhcpLeaseExpires | "
+                            "Format-Table -AutoSize",
+        "Active Network Connections": "Get-NetTCPConnection | Where-Object "
+                                      "{ $_.State -eq 'Established' } | Select-Object "
+                                      "LocalAddress, LocalPort, RemoteAddress, RemotePort | "
+                                      "Format-Table -AutoSize",
+        "VPN Connections": "Get-VpnConnection | Select-Object Name, ConnectionStatus | Format-Table -AutoSize",
+        "Proxy Settings": "Get-ItemProperty -Path "
+                          "'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings' "
+                          "| Select-Object ProxyServer, ProxyEnable | Format-Table -AutoSize",
+        "Firewall Status": "Get-NetFirewallProfile | Select-Object Name, Enabled | "
+                           "Format-Table -AutoSize",
+    }
+
+    # Software Information commands
+    software_commands = {
+        "Installed Applications": "Get-ItemProperty @('HKLM:\\Software\\Microsoft\\Windows\\"
+                                  "CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Wow6432Node\\"
+                                  "Microsoft\\Windows\\CurrentVersion\\Uninstall\\*') | "
+                                  "Where-Object { $_.DisplayName } | Select-Object DisplayName, "
+                                  "DisplayVersion, InstallDate | Sort-Object DisplayName | "
+                                  "Format-Table -AutoSize",
+        "Running Processes": "Get-Process | Select-Object ProcessName, Id, CPU, WorkingSet | "
+                             "Format-Table -AutoSize",
+        "Startup Programs": "Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, "
+                            "Location | Format-Table -AutoSize"
+    }
+
+    # Security Information commands
+    security_commands = {
+        "User Accounts": "Get-LocalUser | Select-Object Name, Enabled | Format-Table -AutoSize",
+        '''"Group Memberships": "Get-LocalGroupMember -Group 'Administrators' | Select-Object Name, "
+                             "ObjectClass | Format-Table -AutoSize",'''
+        "Antivirus Software": "Get-CimInstance -Namespace 'root\\SecurityCenter2' -ClassName "
+                              "AntiVirusProduct | Select-Object displayName, productState | "
+                              "Format-Table -AutoSize",
+        "Firewall Configuration": "Get-NetFirewallProfile | Select-Object Name, Enabled | "
+                                  "Format-Table -AutoSize",
+        "Disk Encryption Status": "Get-BitLockerVolume | Select-Object MountPoint, VolumeStatus | "
+                                  "Format-Table -AutoSize",
+    }
+
+    # Performance Metrics commands
+    '''performance_commands = {
+        "CPU Usage (%)": "(Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples."
+                         "CookedValue",
+        "Available Memory (MB)": "(Get-Counter '\\Memory\\Available MBytes').CounterSamples."
+                                 "CookedValue",
+        "Disk Read/Write Speeds": "Get-Counter -Counter '\\PhysicalDisk(_Total)\\Disk Read "
+                                  "Bytes/sec','\\PhysicalDisk(_Total)\\Disk Write Bytes/sec' | "
+                                  "Format-Table -AutoSize",
+    }'''
+
+    # Development Environment commands
+    development_commands = {
+        "Version Control Systems": "Get-Command git, svn -ErrorAction SilentlyContinue | "
+                                   "Select-Object Name, Version | Format-Table -AutoSize",
+        "Programming Languages": "Get-Command python, java -ErrorAction SilentlyContinue | "
+                                 "Select-Object Name, Version | Format-Table -AutoSize",
+        "Environment Variables": "[Environment]::GetEnvironmentVariables() | "
+                                 "Format-Table -AutoSize",
+    }
+
+    # Miscellaneous Information commands
+    miscellaneous_commands = {
+        "Locale and Language Settings": "Get-Culture | Select-Object Name, DisplayName",
+        "Installed Fonts": "Get-ChildItem -Path $env:windir\\Fonts -Include *.ttf,*.otf -Recurse "
+                           "| Select-Object Name | Format-Table -AutoSize",
+        "Recent Application Events": "Get-EventLog -LogName Application -Newest 10 | "
+                                     "Format-Table -AutoSize",
+    }
+
+    # User-Specific Information commands
+    user_commands = {
+        "Home Directory Contents": "Get-ChildItem -Path $env:USERPROFILE | Select-Object Name | "
+                                   "Format-Table -AutoSize",
+        "Installed Browsers": "Get-ItemProperty 'HKLM:\\Software\\Clients\\StartMenuInternet\\*' | "
+                              "Select-Object '(default)' | Format-Table -AutoSize",
+    }
+
+    # Create tabs
+    system_tab = create_info_frame(notebook, system_commands)
+    hardware_tab = create_info_frame(notebook, hardware_commands)
+    network_tab = create_info_frame(notebook, network_commands)
+    software_tab = create_info_frame(notebook, software_commands)
+    security_tab = create_info_frame(notebook, security_commands)
+    # performance_tab = create_info_frame(notebook, performance_commands)
+    development_tab = create_info_frame(notebook, development_commands)
+    miscellaneous_tab = create_info_frame(notebook, miscellaneous_commands)
+    user_tab = create_info_frame(notebook, user_commands)
+
+    # Add tabs to the notebook
+    notebook.add(system_tab, text='System')
+    notebook.add(hardware_tab, text='Hardware')
+    notebook.add(network_tab, text='Network')
+    notebook.add(software_tab, text='Software')
+    notebook.add(security_tab, text='Security')
+    # notebook.add(performance_tab, text='Performance')
+    notebook.add(development_tab, text='Development')
+    notebook.add(miscellaneous_tab, text='Miscellaneous')
+    notebook.add(user_tab, text='User')
+
+    # Refresh button
+    def refresh_all():
+        tabs_and_commands = [
+            (system_tab, system_commands),
+            (hardware_tab, hardware_commands),
+            (network_tab, network_commands),
+            (software_tab, software_commands),
+            (security_tab, security_commands),
+            (performance_tab, performance_commands),
+            (development_tab, development_commands),
+            (miscellaneous_tab, miscellaneous_commands),
+            (user_tab, user_commands),
+        ]
+        for tab, commands in tabs_and_commands:
+            # Clear existing items in the treeview
+            tree = tab.winfo_children()[0]
+            tree.delete(*tree.get_children())
+            # Start a new worker thread
+            result_queue = queue.Queue()
+            thread = threading.Thread(target=worker, args=(commands, result_queue))
+            thread.daemon = True
+            thread.start()
+            # Dictionary to hold tree items
+            tree_items = {}
+
+            # Set up processing queue
+            def process_queue():
+                while not result_queue.empty():
+                    label, result = result_queue.get()
+                    # Handle multi-line outputs
+                    if '\n' in result:
+                        if label not in tree_items:
+                            parent_item = tree.insert('', 'end', text=label)
+                            tree_items[label] = parent_item
+                        else:
+                            parent_item = tree_items[label]
+                            tree.delete(*tree.get_children(parent_item))
+                        for line in result.splitlines():
+                            tree.insert(parent_item, 'end', text='', values=(line,))
+                    else:
+                        if label in tree_items:
+                            tree.item(tree_items[label], values=(result,))
+                        else:
+                            item_id = tree.insert('', 'end', text=label, values=(result,))
+                            tree_items[label] = item_id
+                tree.after(100, process_queue)
+
+            process_queue()
+
+    refresh_button = Button(system_info_window, text="Refresh All", command=refresh_all)
+    refresh_button.pack(pady=10)
 
 
 def open_winget_window():
     # Helper function to execute Winget commands
-    def run_command(command):
+    def run_command(command, result_queue, label):
         try:
-            # Append flags to suppress progress indicators
-            command += ' --disable-interactivity'
+            powershell_path = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            full_command = f'"{powershell_path}" -Command "{command}"'
             result = subprocess.run(
-                command,
+                full_command,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,  # Capture stderr as well
+                stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
-                shell=True
+                errors='replace'
             )
-            output = result.stdout
-            # Filter out lines that contain only spinner characters
-            spinner_chars = {'\\', '-', '|', '/', '█', '▒'}
-            filtered_output = '\n'.join(
-                line for line in output.splitlines()
-                if not set(line.strip()).issubset(spinner_chars) and line.strip() != ''
-            )
-            return filtered_output
+            if result.returncode == 0:
+                output = result.stdout.strip()
+            else:
+                output = f"Error: {result.stderr.strip()}"
         except Exception as e:
-            return f"Error: {str(e)}"
+            output = f"Error: {str(e)}"
+
+        # Put the result in the queue with the associated label
+        result_queue.put((label, output))
+
+    def worker(commands, result_queue):
+        for label, cmd in commands.items():
+            run_command(cmd, result_queue, label)
 
     def list_programs():
         # TODO: Open in a new window so we can right click over a program (that has to be an item of a listbox) and know the description
