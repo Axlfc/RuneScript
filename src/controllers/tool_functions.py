@@ -587,11 +587,21 @@ def open_winget_window():
         deselect_all_button.config(state=DISABLED)
         upgrade_selected_button.config(state=DISABLED)
 
+        # Disable all checkboxes
+        for widget in upgrade_checkboxes_frame.winfo_children():
+            if isinstance(widget, Checkbutton):
+                widget.config(state=DISABLED)
+
     # Function to enable all buttons after an operation is finished
     def enable_upgrade_buttons():
         select_all_button.config(state=NORMAL)
         deselect_all_button.config(state=NORMAL)
         upgrade_selected_button.config(state=NORMAL)
+
+        # Enable all checkboxes
+        for widget in upgrade_checkboxes_frame.winfo_children():
+            if isinstance(widget, Checkbutton):
+                widget.config(state=NORMAL)
 
     # Function to select all upgradable programs
     def select_all():
@@ -685,6 +695,19 @@ def open_winget_window():
 
     upgrade_checkboxes_frame = Frame(upgrade_checkboxes_canvas)
     upgrade_checkboxes_canvas.create_window((0, 0), window=upgrade_checkboxes_frame, anchor='nw')
+
+    # Add mouse wheel scrolling functionality
+    def on_mousewheel(event):
+        upgrade_checkboxes_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def bind_mousewheel(event):
+        upgrade_checkboxes_canvas.bind_all("<MouseWheel>", on_mousewheel)
+
+    def unbind_mousewheel(event):
+        upgrade_checkboxes_canvas.unbind_all("<MouseWheel>")
+
+    upgrade_checkboxes_canvas.bind('<Enter>', bind_mousewheel)
+    upgrade_checkboxes_canvas.bind('<Leave>', unbind_mousewheel)
 
     upgrade_vars = []
 
