@@ -440,6 +440,7 @@ def open_winget_window():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,  # Suppress stderr (where spinners may be sent)
                 text=True,
+                encoding='utf-8',
                 shell=True
             )
             output = result.stdout
@@ -585,6 +586,17 @@ def open_winget_window():
             insert_output(f"Uninstalling {program_id}...\n{output}")
             list_installed()  # Refresh the installed programs list
 
+    def get_program_description(program_id):
+        # Function to extract the program description
+        return run_command(f'winget show "{program_id}"')
+
+    def program_description():
+        program_id = simpledialog.askstring("Description of Program", "Enter program ID to get its description:")
+        if program_id:
+            output = get_program_description(program_id)
+            insert_output(output)
+            list_installed()  # Refresh the installed programs list
+
     # Function to display output in the text area
     def insert_output(output):
         output_text.delete(1.0, END)  # Clear previous results
@@ -650,11 +662,14 @@ def open_winget_window():
     # list_upgradable_button = Button(button_frame, text="List Upgradable", command=list_upgradable)
     # list_upgradable_button.pack(side=LEFT, padx=5)
 
-    list_all_programs_button = Button(button_frame, text="Search Program", command=list_programs)
+    list_all_programs_button = Button(button_frame, text="List All Programs", command=list_programs)
     list_all_programs_button.pack(side=LEFT, padx=5)
 
     search_button = Button(button_frame, text="Search Program", command=search_program)
     search_button.pack(side=LEFT, padx=5)
+
+    program_description_button = Button(button_frame, text="Program Description", command=program_description)
+    program_description_button.pack(side=LEFT, padx=5)
 
     install_button = Button(button_frame, text="Install Program", command=install_program)
     install_button.pack(side=LEFT, padx=5)
