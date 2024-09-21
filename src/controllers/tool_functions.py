@@ -438,7 +438,7 @@ def open_winget_window():
             result = subprocess.run(
                 command,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,  # Suppress stderr (where spinners may be sent)
+                stderr=subprocess.PIPE,  # Capture stderr as well
                 text=True,
                 encoding='utf-8',
                 shell=True
@@ -473,6 +473,7 @@ def open_winget_window():
     # Function to display upgradable programs
     def list_upgradable():
         output = run_command('winget upgrade --include-unknown')
+        removed_text = "winget"
 
         for widget in upgrade_checkboxes_frame.winfo_children():
             widget.destroy()  # Clear previous checkboxes
@@ -482,19 +483,19 @@ def open_winget_window():
 
         lines = output.splitlines()[1:]  # Skip header lines
         for i, line in enumerate(lines):
-            from_version = "None"
-            to_version = "None"
+            from_version = "Unknown"
+            to_version = "Unknown"
             if line.strip():  # Check if the line is not empty
                 match = version_pattern.search(line)
                 if match:
                     try:
-                        removed_text = "winget"
                         # The rest of the information (version details and description)
                         program_info = line[match.start():].strip().replace(removed_text, "")
                         to_version = program_info[::-1].split()[0][::-1]
                         from_version = program_info[::-1].split()[1][::-1]
-                        new_to_version = "None"
-                        new_from_version = "None"
+
+                        new_to_version = "Unknown"
+                        new_from_version = "Unknown"
 
                         if "(" in program_info and ")" in program_info:
                             new_line = line.replace(removed_text, "")
@@ -505,17 +506,18 @@ def open_winget_window():
                                 new_to_version = new_new_line[1] + " " + new_new_line[0]
                                 new_line = new_line.replace(new_to_version, "").strip()
                                 to_version = new_to_version
-                            if "(" in new_to_version and ")" in new_to_version and new_to_version != "None":
+                            if "(" in new_to_version and ")" in new_to_version and new_to_version != "Unknown":
                                 new_new_line = new_line.split()[::-1]
                                 new_from_version = new_new_line[1] + " " + new_new_line[0]
                                 from_version = new_from_version
 
-                        line = line.replace(from_version, "").replace(to_version, "").replace(removed_text, "")
+                        line = line.replace(to_version, "").replace(from_version, "").replace(removed_text, "")
                     except Exception as e:
                         pass
 
                 # Reverse String, get the first element and reverse back to get the program id
                 program_id = line[::-1].split()[0][::-1]
+
                 if program_id == "winget":
                     try:
                         removed_text = "winget"
@@ -528,7 +530,7 @@ def open_winget_window():
                     except Exception as e:
                         pass
 
-                if from_version != "None" or to_version != "None" and program_id != "()":
+                if from_version != "Unknown" and to_version != "Unknown" and program_id != "()":
                     # Create tabulated display
                     display_text = f"{program_id:<40} {from_version:<15} {to_version:<15}"
                     var = BooleanVar()
@@ -541,17 +543,55 @@ def open_winget_window():
         upgrade_checkboxes_frame.update_idletasks()
         upgrade_checkboxes_canvas.configure(scrollregion=upgrade_checkboxes_canvas.bbox("all"))
 
+    def update_output(output):
+        output_text.insert(END, output + "\n")
+        output_text.see(END)
+
     # Function to upgrade selected programs
     def upgrade_selected():
-        selected_programs = [info for var, info in upgrade_vars if var.get()]
-        if not selected_programs:
-            messagebox.showinfo("No Selection", "Please select programs to upgrade.")
-            return
-        for program_info in selected_programs:
-            program_id = program_info.split()[0]  # Assuming the ID is the first word
-            output = run_command(f'winget upgrade --include-unknown --id "{program_id}"')
-            insert_output(f"Upgrading {program_id}...\n{output}")
-        list_upgradable()  # Refresh the upgradable programs list
+        # Disable buttons during the upgrade process
+        disable_upgrade_buttons()
+
+        # Run the upgrade process in a separate thread to avoid blocking the UI
+        def upgrade_thread():
+            selected_programs = [info for var, info in upgrade_vars if var.get()]
+            if not selected_programs:
+                messagebox.showinfo("No Selection", "Please select programs to upgrade.")
+                enable_upgrade_buttons()
+                return
+
+            successfully_upgraded = []
+            for program_info in selected_programs:
+                program_id = program_info.split()[0]  # Assuming the ID is the first word
+                update_output(f"\nUpgrading {program_id}...")
+                output = run_command(f'winget upgrade --include-unknown --id "{program_id}"')
+                update_output(output)
+                successfully_upgraded.append(program_id)
+
+            # Refresh the upgradable programs list
+            list_upgradable()
+
+            # Show summary message after upgrading
+            summary = f"Programs {', '.join(successfully_upgraded)} successfully upgraded."
+            update_output(summary)
+
+            # Re-enable buttons after the upgrade process
+            enable_upgrade_buttons()
+
+        # Start the upgrade process in a new thread
+        threading.Thread(target=upgrade_thread).start()
+
+    # Function to disable all buttons during an ongoing operation
+    def disable_upgrade_buttons():
+        select_all_button.config(state=DISABLED)
+        deselect_all_button.config(state=DISABLED)
+        upgrade_selected_button.config(state=DISABLED)
+
+    # Function to enable all buttons after an operation is finished
+    def enable_upgrade_buttons():
+        select_all_button.config(state=NORMAL)
+        deselect_all_button.config(state=NORMAL)
+        upgrade_selected_button.config(state=NORMAL)
 
     # Function to select all upgradable programs
     def select_all():
@@ -656,12 +696,7 @@ def open_winget_window():
     button_frame = Frame(winget_window)
     button_frame.pack(fill=X, padx=10, pady=10)
 
-    # list_installed_button = Button(button_frame, text="List Installed", command=list_installed)
-    # list_installed_button.pack(side=LEFT, padx=5)
-
-    # list_upgradable_button = Button(button_frame, text="List Upgradable", command=list_upgradable)
-    # list_upgradable_button.pack(side=LEFT, padx=5)
-
+    # Create buttons
     list_all_programs_button = Button(button_frame, text="List All Programs", command=list_programs)
     list_all_programs_button.pack(side=LEFT, padx=5)
 
