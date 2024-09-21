@@ -715,7 +715,7 @@ def open_system_info_window():
             (network_tab, network_commands),
             (software_tab, software_commands),
             (security_tab, security_commands),
-            (performance_tab, performance_commands),
+            # (performance_tab, performance_commands),
             (development_tab, development_commands),
             (miscellaneous_tab, miscellaneous_commands),
             (user_tab, user_commands),
@@ -762,31 +762,28 @@ def open_system_info_window():
 
 def open_winget_window():
     # Helper function to execute Winget commands
-    def run_command(command, result_queue, label):
+    def run_command(command):
         try:
-            powershell_path = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-            full_command = f'"{powershell_path}" -Command "{command}"'
+            # Append flags to suppress progress indicators
+            command += ' --disable-interactivity'
             result = subprocess.run(
-                full_command,
+                command,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.PIPE,  # Capture stderr as well
                 text=True,
                 encoding='utf-8',
-                errors='replace'
+                shell=True
             )
-            if result.returncode == 0:
-                output = result.stdout.strip()
-            else:
-                output = f"Error: {result.stderr.strip()}"
+            output = result.stdout
+            # Filter out lines that contain only spinner characters
+            spinner_chars = {'\\', '-', '|', '/', '█', '▒'}
+            filtered_output = '\n'.join(
+                line for line in output.splitlines()
+                if not set(line.strip()).issubset(spinner_chars) and line.strip() != ''
+            )
+            return filtered_output
         except Exception as e:
-            output = f"Error: {str(e)}"
-
-        # Put the result in the queue with the associated label
-        result_queue.put((label, output))
-
-    def worker(commands, result_queue):
-        for label, cmd in commands.items():
-            run_command(cmd, result_queue, label)
+            return f"Error: {str(e)}"
 
     def list_programs():
         # TODO: Open in a new window so we can right click over a program (that has to be an item of a listbox) and know the description
