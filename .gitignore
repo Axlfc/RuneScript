@@ -174,3 +174,5 @@ data/conversations/
 python_dependencies/
 
 data/kanban_tasks.json
+
+data/agent_config.json

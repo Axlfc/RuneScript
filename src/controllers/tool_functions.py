@@ -2313,7 +2313,7 @@ def open_ai_assistant_window():
     # Add a function to store the selected agent for persistence
     def store_selected_agent(selected_agent):
         # Store the selected agent in a config file for persistence
-        with open("config.json", "w") as config_file:
+        with open("data/agent_config.json", "w") as config_file:
             json.dump({"selected_agent": selected_agent}, config_file)
 
     # Add code to load the selected agent from the config file at startup
@@ -2356,7 +2356,11 @@ def open_ai_assistant_window():
             ai_script_path = 'src/models/ai_assistant.py'
 
             # Pass the selected agent name to create_ai_command function if provided
-            selected_agent = selected_agent_var
+            try:
+                selected_agent = selected_agent_var
+            except Exception as e:
+                selected_agent_var = "Assistant"
+                selected_agent = selected_agent_var
             if persistent_agent_selection_var.get():
                 # Store the selected agent in a config file for persistence
                 store_selected_agent(selected_agent)
