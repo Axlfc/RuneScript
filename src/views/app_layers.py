@@ -253,29 +253,6 @@ def create_horizontal_scrollbar_lines():
     script_text.config(xscrollcommand=scrollbar.set)
 
 
-def create_interactive_textfield_lines():
-    """
-    Creates the interactive text field below the script_text widget.
-
-    This function adds an interactive text field below the script_text widget, allowing users to input or read text.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    """
-    # Make sure interactive_frm expands horizontally
-    interactive_frm.grid(row=4, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
-
-    # Create the Text widget with sticky option to expand horizontally
-    input_field = Text(interactive_frm, height=1)
-    input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
-
-    # Ensure that interactive_frm expands horizontally and the column weights are set
-    interactive_frm.grid_columnconfigure(0, weight=1)
-
-
 def create_execute_one_time_with_format():
     """
         Sets up the interface elements for scheduling a one-time script execution.

@@ -7,7 +7,7 @@ import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, ttk, \
-    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED
+    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL
 import webview  # pywebview
 
 from tkinter.ttk import Separator
@@ -427,6 +427,256 @@ def create_settings_window():
 
     # Bind the scrollbar to the canvas
     canvas.bind_all("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+
+
+def open_winget_window():
+    # Helper function to execute Winget commands
+    def run_command(command):
+        try:
+            # Append flags to suppress progress indicators
+            command += ' --disable-interactivity'
+            result = subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,  # Suppress stderr (where spinners may be sent)
+                text=True,
+                shell=True
+            )
+            output = result.stdout
+            # Filter out lines that contain only spinner characters
+            spinner_chars = {'\\', '-', '|', '/', '█', '▒'}
+            filtered_output = '\n'.join(
+                line for line in output.splitlines()
+                if not set(line.strip()).issubset(spinner_chars) and line.strip() != ''
+            )
+            return filtered_output
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def list_programs():
+        # TODO: Open in a new window so we can right click over a program (that has to be an item of a listbox) and know the description
+        output = run_command('winget search --exact')
+        insert_output(output)
+
+    # Function to display installed programs as a list
+    def list_installed():
+        output = run_command('winget list --source "winget"')
+        installed_listbox.delete(0, END)  # Clear previous items
+        # Split the output into lines and extract relevant program info
+        lines = output.splitlines()
+        for line in lines[1:]:  # Skip the first two lines of headers
+            program_info = ' '.join(line.split()).strip()  # Clean up spaces
+            if program_info:
+                installed_listbox.insert(END, program_info)
+
+    # Function to display upgradable programs
+    def list_upgradable():
+        output = run_command('winget upgrade --include-unknown')
+
+        for widget in upgrade_checkboxes_frame.winfo_children():
+            widget.destroy()  # Clear previous checkboxes
+        upgrade_vars.clear()  # Clear previous variables
+
+        version_pattern = re.compile(r'(\d+[\.-]\d+[\.-]?\d*)')
+
+        lines = output.splitlines()[1:]  # Skip header lines
+        for i, line in enumerate(lines):
+            from_version = "None"
+            to_version = "None"
+            if line.strip():  # Check if the line is not empty
+                match = version_pattern.search(line)
+                if match:
+                    try:
+                        removed_text = "winget"
+                        # The rest of the information (version details and description)
+                        program_info = line[match.start():].strip().replace(removed_text, "")
+                        to_version = program_info[::-1].split()[0][::-1]
+                        from_version = program_info[::-1].split()[1][::-1]
+                        new_to_version = "None"
+                        new_from_version = "None"
+
+                        if "(" in program_info and ")" in program_info:
+                            new_line = line.replace(removed_text, "")
+
+                            new_to_version = new_line[::-1].split()[0]
+                            if "(" in new_to_version and ")" in new_to_version:
+                                new_new_line = new_line.split()[::-1]
+                                new_to_version = new_new_line[1] + " " + new_new_line[0]
+                                new_line = new_line.replace(new_to_version, "").strip()
+                                to_version = new_to_version
+                            if "(" in new_to_version and ")" in new_to_version and new_to_version != "None":
+                                new_new_line = new_line.split()[::-1]
+                                new_from_version = new_new_line[1] + " " + new_new_line[0]
+                                from_version = new_from_version
+
+                        line = line.replace(from_version, "").replace(to_version, "").replace(removed_text, "")
+                    except Exception as e:
+                        pass
+
+                # Reverse String, get the first element and reverse back to get the program id
+                program_id = line[::-1].split()[0][::-1]
+                if program_id == "winget":
+                    try:
+                        removed_text = "winget"
+                        # The rest of the information (version details and description)
+                        new_line = line.replace(removed_text, "")
+                        to_version = new_line[::-1].split()[0][::-1]
+                        from_version = new_line[::-1].split()[1][::-1]
+                        new_line = line.replace(from_version, "").replace(to_version, "").replace(removed_text, "")
+                        program_id = new_line[::-1].split()[0][::-1]
+                    except Exception as e:
+                        pass
+
+                if from_version != "None" or to_version != "None" and program_id != "()":
+                    # Create tabulated display
+                    display_text = f"{program_id:<40} {from_version:<15} {to_version:<15}"
+                    var = BooleanVar()
+                    checkbox = Checkbutton(upgrade_checkboxes_frame, text=display_text, variable=var, anchor='w',
+                                           justify=LEFT, font=("Courier", 10))
+                    checkbox.grid(row=i, column=0, sticky="w")
+                    upgrade_vars.append((var, program_id))
+
+        # Update the scrollregion of the canvas
+        upgrade_checkboxes_frame.update_idletasks()
+        upgrade_checkboxes_canvas.configure(scrollregion=upgrade_checkboxes_canvas.bbox("all"))
+
+    # Function to upgrade selected programs
+    def upgrade_selected():
+        selected_programs = [info for var, info in upgrade_vars if var.get()]
+        if not selected_programs:
+            messagebox.showinfo("No Selection", "Please select programs to upgrade.")
+            return
+        for program_info in selected_programs:
+            program_id = program_info.split()[0]  # Assuming the ID is the first word
+            output = run_command(f'winget upgrade --include-unknown --id "{program_id}"')
+            insert_output(f"Upgrading {program_id}...\n{output}")
+        list_upgradable()  # Refresh the upgradable programs list
+
+    # Function to select all upgradable programs
+    def select_all():
+        for var, _ in upgrade_vars:  # Only use 'var', which is the BooleanVar
+            var.set(True)  # Set all checkboxes to True (selected)
+
+    # Function to deselect all upgradable programs
+    def deselect_all():
+        for var, _ in upgrade_vars:  # Only use 'var', which is the BooleanVar
+            var.set(False)  # Set all checkboxes to False (deselected)
+
+    # Function to search for installable programs
+    def search_program():
+        search_term = simpledialog.askstring("Search", "Enter program name to search:")
+        if search_term:
+            output = run_command(f'winget search --exact "{search_term}"')
+            insert_output(output)
+
+    # Function to install a program
+    def install_program():
+        program_id = simpledialog.askstring("Install", "Enter program ID to install:")
+        if program_id:
+            output = run_command(f'winget install -s "winget" "{program_id}"')
+            insert_output(f"Installing {program_id}...\n{output}")
+            list_installed()  # Refresh the installed programs list
+
+    # Function to uninstall a program
+    def uninstall_program():
+        program_id = simpledialog.askstring("Uninstall", "Enter program ID to uninstall:")
+        if program_id:
+            output = run_command(f'winget uninstall "{program_id}"')
+            insert_output(f"Uninstalling {program_id}...\n{output}")
+            list_installed()  # Refresh the installed programs list
+
+    # Function to display output in the text area
+    def insert_output(output):
+        output_text.delete(1.0, END)  # Clear previous results
+        output_text.insert(END, output)
+
+    # Create the Winget window
+    winget_window = Toplevel()
+    winget_window.title("WinGet Package Manager")
+    winget_window.geometry("1000x700")
+
+    # Create main frame
+    main_frame = Frame(winget_window)
+    main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+    # Create left frame for installed programs
+    left_frame = Frame(main_frame)
+    left_frame.pack(side=LEFT, fill=BOTH, expand=True)
+
+    installed_label = Label(left_frame, text="Installed Programs")
+    installed_label.pack()
+
+    installed_listbox = Listbox(left_frame, height=20, width=50)
+    installed_listbox.pack(side=LEFT, fill=BOTH, expand=True)
+
+    installed_scrollbar = Scrollbar(left_frame)
+    installed_scrollbar.pack(side=RIGHT, fill=Y)
+
+    installed_listbox.config(yscrollcommand=installed_scrollbar.set)
+    installed_scrollbar.config(command=installed_listbox.yview)
+
+    # Create right frame for upgradable programs
+    right_frame = Frame(main_frame)
+    right_frame.pack(side=RIGHT, fill=BOTH, expand=True)
+
+    upgradable_label = Label(right_frame, text="Upgradable Programs")
+    upgradable_label.pack()
+
+    # Create a canvas and scrollbar for the checkboxes
+    upgrade_checkboxes_canvas = Canvas(right_frame)
+    upgrade_checkboxes_canvas.pack(side=LEFT, fill=BOTH, expand=True)
+
+    upgrade_checkboxes_scrollbar = Scrollbar(right_frame, orient=VERTICAL, command=upgrade_checkboxes_canvas.yview)
+    upgrade_checkboxes_scrollbar.pack(side=RIGHT, fill=Y)
+
+    upgrade_checkboxes_canvas.configure(yscrollcommand=upgrade_checkboxes_scrollbar.set)
+
+    upgrade_checkboxes_frame = Frame(upgrade_checkboxes_canvas)
+    upgrade_checkboxes_canvas.create_window((0, 0), window=upgrade_checkboxes_frame, anchor='nw')
+
+    upgrade_vars = []
+
+    # Create the text widget to display the output from Winget commands
+    output_text = scrolledtext.ScrolledText(winget_window, wrap=WORD, height=10, width=120)
+    output_text.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+    # Create button frame
+    button_frame = Frame(winget_window)
+    button_frame.pack(fill=X, padx=10, pady=10)
+
+    # list_installed_button = Button(button_frame, text="List Installed", command=list_installed)
+    # list_installed_button.pack(side=LEFT, padx=5)
+
+    # list_upgradable_button = Button(button_frame, text="List Upgradable", command=list_upgradable)
+    # list_upgradable_button.pack(side=LEFT, padx=5)
+
+    list_all_programs_button = Button(button_frame, text="Search Program", command=list_programs)
+    list_all_programs_button.pack(side=LEFT, padx=5)
+
+    search_button = Button(button_frame, text="Search Program", command=search_program)
+    search_button.pack(side=LEFT, padx=5)
+
+    install_button = Button(button_frame, text="Install Program", command=install_program)
+    install_button.pack(side=LEFT, padx=5)
+
+    uninstall_button = Button(button_frame, text="Uninstall Program", command=uninstall_program)
+    uninstall_button.pack(side=LEFT, padx=5)
+
+    select_all_button = Button(button_frame, text="Select All", command=select_all)
+    select_all_button.pack(side=LEFT, padx=5)
+
+    deselect_all_button = Button(button_frame, text="Deselect All", command=deselect_all)
+    deselect_all_button.pack(side=LEFT, padx=5)
+
+    upgrade_selected_button = Button(button_frame, text="Upgrade Selected", command=upgrade_selected)
+    upgrade_selected_button.pack(side=LEFT, padx=5)
+
+    # Initialize the window with installed programs
+    list_installed()
+    list_upgradable()
+
+    # Insert welcome message in the output area
+    insert_output("Welcome to WinGet Package Manager.\nUse the buttons to perform WinGet operations.")
 
 
 def open_git_window(repo_dir=None):
