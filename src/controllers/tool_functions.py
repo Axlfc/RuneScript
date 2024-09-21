@@ -429,6 +429,10 @@ def create_settings_window():
     canvas.bind_all("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
 
 
+def open_system_info_window():
+    print("TEST")
+
+
 def open_winget_window():
     # Helper function to execute Winget commands
     def run_command(command):

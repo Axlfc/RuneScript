@@ -27,7 +27,7 @@ from src.controllers.tool_functions import (find_text, change_color, open_search
                                             open_change_theme_window, create_settings_window, open_git_window,
                                             open_image_generation_window, open_music_generation_window,
                                             open_audio_generation_window, open_kanban_window, read_config_parameter,
-                                            write_config_parameter, open_winget_window)
+                                            write_config_parameter, open_winget_window, open_system_info_window)
 
 from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
@@ -1167,9 +1167,11 @@ def create_menu():
     # System Menu
     system_menu = Menu(menu)
     menu.add_cascade(label="System", menu=system_menu, underline=0)
-    winget_submenu = Menu(menu, tearoff=0)
-    system_menu.add_cascade(label="Winget", menu=winget_submenu)
-    winget_submenu.add_command(label="Open Winget Window", command=open_winget_window, compound='left', accelerator=None)
+    programs_submenu = Menu(menu, tearoff=0)
+    system_menu.add_cascade(label="Programs", menu=programs_submenu)
+    programs_submenu.add_command(label="Open Winget Window", command=open_winget_window, compound='left', accelerator=None)
+    system_info_submenu = Menu(menu, tearoff=0)
+    programs_submenu.add_command(label="PC Information", command=open_system_info_window, compound='left', accelerator=None)
 
     # Jobs Menu
     jobs_menu = Menu(menu)
