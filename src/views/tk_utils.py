@@ -12,7 +12,6 @@ def configure_app():
     # height = int(width * (1 + 4 ** 0.5) / 2)
     height = 720
 
-    # root.title("Untitled* - Script Editor")
     root.title(localization_data['scripts_editor'])
     root.geometry(f"{width}x{height}")
 
