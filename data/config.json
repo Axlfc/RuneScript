@@ -6,6 +6,7 @@
         "is_run_view_visible": true,
         "is_timeout_view_visible": true,
         "is_interactive_view_visible": true,
+        "is_filesystem_view_visible": true,
         "last_saved_script": "",
         "last_opened_script": "",
         "last_edited_script": "",

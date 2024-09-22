@@ -13,15 +13,15 @@ from datetime import datetime
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
 
 
-def add_message(message, initialtime, session_id):
+def add_message(message, initial_time, session_id):
     now = datetime.now()
     time_str = now.strftime("%H-%M-%S")
-    date_str = now.strftime("%Y-%m-%d")
     session_dir = os.path.join("data", "conversations", f"session_{session_id}")
+
     if not os.path.exists(session_dir):
         os.makedirs(session_dir)
 
-    filepath = os.path.join(session_dir, f"{initialtime}.txt")
+    filepath = os.path.join(session_dir, f"{initial_time}.txt")
 
     with open(filepath, "a", encoding="utf-8") as f:
         f.write(f"{time_str}: {message.strip()}\n")

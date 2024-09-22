@@ -83,6 +83,7 @@ show_arguments_view_var = IntVar()
 show_run_view_var = IntVar()
 show_timeout_view_var = IntVar()
 show_interactive_view_var = IntVar()
+show_filesystem_view_var = IntVar()
 
 interactive_frm = Frame(root)
 
@@ -95,5 +96,7 @@ line_frm = Frame(root)
 one_time_frm = Frame(root)
 
 daily_frm = Frame(root)
+
+filesystem_frm = Frame(root)
 
 configure_app()

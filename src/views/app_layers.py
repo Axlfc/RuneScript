@@ -123,6 +123,10 @@ def create_open_script_line():
     Tooltip(redo_button, localization_data['redo'])
 
 
+def create_filesystem_window():
+    pass
+
+
 def create_content_file_window():
     """
     Sets up the main text area for file content display and editing.

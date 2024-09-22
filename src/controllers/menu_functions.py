@@ -20,7 +20,8 @@ from src.views.edit_operations import undo, redo, duplicate
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, is_modified, \
     file_name, last_saved_content, local_python_var, show_directory_view_var, show_file_view_var, frm, directory_label, \
     script_frm, content_frm, entry_arguments_entry, generate_stdin, generate_stdin_err, show_arguments_view_var, \
-    show_run_view_var, run_frm, line_frm, show_timeout_view_var, show_interactive_view_var, interactive_frm
+    show_run_view_var, run_frm, line_frm, show_timeout_view_var, show_interactive_view_var, interactive_frm, \
+    show_filesystem_view_var, filesystem_frm
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window,
                                             open_ai_assistant_window, open_webview, open_terminal_window,
                                             create_url_input_window, open_ipynb_window,
@@ -938,6 +939,10 @@ def toggle_interactive_view_visibility(frame):
         frame.grid_forget()
 
 
+def toggle_filesystem_view_visibility(frame):
+    pass
+
+
 def add_view_section_to_menu(options_parameter_name, view_variable, menu_section, view_section_name, frame, function):
     is_view_visible = read_config_parameter("options").get(options_parameter_name, "true") == "true"
     view_variable.set(1 if is_view_visible else 0)
@@ -971,6 +976,7 @@ def create_menu():
     global show_run_view_var
     global show_timeout_view_var
     global show_interactive_view_var
+    global show_filesystem_view_var
 
     # File menu.
     file_menu = Menu(menu)
@@ -1132,6 +1138,13 @@ def create_menu():
                              "Interactive",
                              interactive_frm,
                              toggle_interactive_view_visibility)
+
+    add_view_section_to_menu("is_filesystem_view_visible",
+                             show_filesystem_view_var,
+                             view_menu,
+                             "Filesystem",
+                             filesystem_frm,
+                             toggle_filesystem_view_visibility)
 
     # Run Menu
     # run_menu = Menu(menu)
