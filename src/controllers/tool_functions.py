@@ -320,6 +320,7 @@ def create_settings_window():
             setting_entries[(section, option_name)] = var
 
     def save_settings():
+        print("Save Settings Button Pressed")
         global style  # Ensure style is accessible
         updated_config_data = {'options': {}}
         for (section, option_name), var in setting_entries.items():

@@ -708,6 +708,7 @@ find_button.grid(in_=toolbar, row=0, column=9, padx=4, pady=4, sticky="w")
 def toggle_directory_view_visibility(frame):
     global current_directory
     global directory_label
+    print("DIRECTORY VIEW VISIBILITY TOGGLED")
 
     def select_directory():
         """
@@ -951,6 +952,7 @@ def toggle_filesystem_view_visibility(frame):
 
 
 def add_view_section_to_menu(options_parameter_name, view_variable, menu_section, view_section_name, frame, function):
+    print("ADDING VIEW SECTION TO MENU (", view_section_name, ")")
     # Assuming the structure is now options.options.view_options.is_*_view_visible
     is_view_visible = read_config_parameter(f"options.view_options.{options_parameter_name}")
 
@@ -970,6 +972,7 @@ def add_view_section_to_menu(options_parameter_name, view_variable, menu_section
 
 
 def toggle_view(frame, function, options_parameter_name, view_variable):
+    print("TOGGLED VIEW!!!")
     function(frame)
     update_config(options_parameter_name, view_variable.get())
 

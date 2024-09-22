@@ -8,8 +8,9 @@ import os
 
 
 def configure_app():
-    width = 485
-    height = int(width * (1 + 4 ** 0.5) / 2)
+    width = 720
+    # height = int(width * (1 + 4 ** 0.5) / 2)
+    height = 720
 
     # root.title("Untitled* - Script Editor")
     root.title(localization_data['scripts_editor'])
