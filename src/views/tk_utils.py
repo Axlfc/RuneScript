@@ -1,6 +1,8 @@
 from ttkbootstrap import Style
+
+from src.controllers.parameters import read_config_parameter
 from src.localization import localization_data
-from tkinter import Label, StringVar, IntVar, Frame, BooleanVar
+from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox
 from tkinter import scrolledtext, Text, Entry, Menu
 import os
 
@@ -40,7 +42,23 @@ fontColor = '#000000'
 fontBackground = '#FFFFFF'
 server_options = ["lmstudio", "ollama", "openai"]
 
-style = Style(theme="cosmo")
+#  style = Style(theme="cosmo")
+style = Style()
+
+
+def load_theme_setting():
+    theme = read_config_parameter("options.theme_appearance.theme")
+    if theme is None:
+        theme = 'cosmo'  # Replace 'default' with your actual default theme
+    return theme
+
+current_theme = load_theme_setting()
+
+try:
+    style.theme_use(current_theme)
+except Exception as e:
+    messagebox.showerror("Theme Error", f"The theme '{current_theme}' is not available. ({e})")
+    style.theme_use('cosmo')  # Fallback to default theme
 
 root = style.master
 

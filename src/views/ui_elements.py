@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Canvas
+from tkinter import Toplevel, Label, Canvas, Frame, Scrollbar
 
 
 class Tooltip:
@@ -90,3 +90,46 @@ class LineNumberCanvas(Canvas):
             line_num = str(i).split(".")[0]
             self.create_text(2, y, anchor="nw", text=line_num, fill="#CE9178")  # Change text color automatically
             i = self.text_widget.index(f"{i}+1line")
+
+
+class ScrollableFrame(Frame):
+    def __init__(self, parent, *args, **kwargs):
+        Frame.__init__(self, parent, *args, **kwargs)
+
+        canvas = Canvas(self)
+        scrollbar = Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Bind the mousewheel to scroll
+        self.scrollable_frame.bind("<Enter>", self._bind_to_mousewheel)
+        self.scrollable_frame.bind("<Leave>", self._unbind_from_mousewheel)
+
+    def _bind_to_mousewheel(self, event):
+        self.scrollable_frame.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.scrollable_frame.bind_all("<Button-4>", self._on_mousewheel)  # For Linux
+        self.scrollable_frame.bind_all("<Button-5>", self._on_mousewheel)  # For Linux
+
+    def _unbind_from_mousewheel(self, event):
+        self.scrollable_frame.unbind_all("<MouseWheel>")
+        self.scrollable_frame.unbind_all("<Button-4>")  # For Linux
+        self.scrollable_frame.unbind_all("<Button-5>")  # For Linux
+
+    def _on_mousewheel(self, event):
+        if event.num == 4 or event.delta > 0:
+            self.scrollable_frame.master.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.scrollable_frame.master.yview_scroll(1, "units")
+

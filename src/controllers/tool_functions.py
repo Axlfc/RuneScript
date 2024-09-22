@@ -7,11 +7,11 @@ import subprocess
 import threading
 from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, ttk, \
-    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL
+    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL, BOTTOM
 
 import webview  # pywebview
 
-from tkinter.ttk import Separator, Treeview, Notebook
+from tkinter.ttk import Separator, Treeview, Notebook, Combobox
 import markdown
 from PIL import ImageTk
 from PIL.Image import Image
@@ -19,14 +19,11 @@ from tkhtmlview import HTMLLabel
 from src.views.edit_operations import cut, copy, paste, duplicate
 from src.views.tk_utils import text, script_text, root, style
 from src.controllers.utility_functions import make_tag
-from src.views.ui_elements import Tooltip
+from src.views.ui_elements import Tooltip, ScrollableFrame
 
 from src.models.ai_assistant import find_gguf_file
 
 from lib.git import git_icons
-
-
-THEME_SETTINGS_FILE = "data/theme_settings.json"
 
 
 # Global variable to hold the Git Console window instance
@@ -44,50 +41,6 @@ def load_themes_from_json(file_path):
     except json.JSONDecodeError:
         messagebox.showerror("Error", "Error decoding themes file.")
         return []
-
-
-def open_change_theme_window():
-    themes = load_themes_from_json("data/themes.json")
-
-    theme_window = Toplevel(root)
-    theme_window.title("Change Theme")
-    theme_window.geometry("300x250")
-
-    Label(theme_window, text="Select Theme:").pack(pady=10)
-
-    # Dropdown for theme selection
-    selected_theme = StringVar()
-    selected_theme.set(themes[0])  # default value
-    theme_dropdown = OptionMenu(theme_window, selected_theme, *themes)
-    theme_dropdown.pack()
-
-    def apply_theme():
-        chosen_theme = selected_theme.get()
-        style.theme_use(chosen_theme)
-        save_theme_setting(chosen_theme)  # Save the selected theme to the file
-
-    Button(theme_window, text="Apply", command=apply_theme).pack(pady=20)
-
-
-def save_theme_setting(theme_name):
-    """
-    Saves the given theme name to a settings file.
-    """
-    settings = {'theme': theme_name}
-    with open(THEME_SETTINGS_FILE, 'w') as file:
-        json.dump(settings, file)
-
-
-def load_theme_setting():
-    """
-    Loads the theme name from the settings file.
-    If the file does not exist, it returns the default theme.
-    """
-    if os.path.exists(THEME_SETTINGS_FILE):
-        with open(THEME_SETTINGS_FILE, 'r') as file:
-            settings = json.load(file)
-            return settings.get('theme', 'superhero')  # Replace 'default' with your actual default theme
-    return 'superhero'  # Replace 'default' with your actual default theme
 
 
 def change_color():
@@ -292,15 +245,13 @@ def open_ipynb_window():
 
 
 def create_settings_window():
-    print("CREATING SETTINGS WINDOWS")
     settings_window = Toplevel()
     settings_window.title("ScriptsEditor Settings")
-    settings_window.geometry("600x400")
+    settings_window.geometry("800x600")
 
     default_config_file = "data/config.json"
     user_config_file = "data/user_config.json"
 
-    # Load configuration options from user_config.json if available; otherwise, fallback to config.json
     if os.path.exists(user_config_file):
         config_file_to_use = user_config_file
     else:
@@ -316,118 +267,110 @@ def create_settings_window():
         messagebox.showerror("Error", f"Error decoding config file ({config_file_to_use}).")
         return
 
-    # Create a canvas widget to contain settings
-    canvas = Canvas(settings_window, width=580, height=380)
-    canvas.pack(side='left', fill='both', expand=True)
+    # Main frame
+    main_frame = Frame(settings_window)
+    main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-    # Add a scrollbar to the canvas
-    scrollbar = Scrollbar(settings_window, orient='vertical', command=canvas.yview)
-    scrollbar.pack(side='right', fill='y')
+    # Notebook
+    notebook = Notebook(main_frame)
+    notebook.pack(fill=BOTH, expand=True)
 
-    # Configure the canvas to use the scrollbar
-    canvas.configure(yscrollcommand=scrollbar.set)
-    canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
+    # Bottom frame for buttons
+    bottom_frame = Frame(settings_window)
+    bottom_frame.pack(fill=X, side=BOTTOM, padx=10, pady=10)
 
-    # Create a frame inside the canvas to hold settings
-    settings_frame = Frame(canvas)
-    canvas.create_window((0, 0), window=settings_frame, anchor='nw')
-
-    # Display settings based on config data
     setting_entries = {}
 
-    for section, options in config_data.items():
-        section_label = Label(settings_frame, text=f"{section.capitalize()} Settings", font=("Arial", 12, "bold"))
-        section_label.pack(pady=10, anchor='w')
+    for section, options in config_data['options'].items():
+        # Create a frame for each section
+        section_frame = Frame(notebook)
+        notebook.add(section_frame, text=section.capitalize())
 
-        for option_name, default_value in options.items():
-            if option_name.lower() == 'last_selected_llm_server_provider':
-                #  TO-DO: Here we need to link the same configs as the ai_assistant ai_server_settings so it has similar behavior and also writes the fields in the settings accordingly and is updated flawlessly.
-                pass
+        # Create a scrollable frame
+        scrollable_frame = ScrollableFrame(section_frame)
+        scrollable_frame.pack(fill=BOTH, expand=True)
+
+        # Populate the scrollable frame with settings
+        for row, (option_name, default_value) in enumerate(options.items()):
+            label = Label(scrollable_frame.scrollable_frame, text=option_name.replace('_', ' ').capitalize())
+            label.grid(row=row, column=0, padx=5, pady=5, sticky="w")
+
             if option_name.lower() == 'font_family':
-                print("SETTING UP FONTS!")
-                # Create dropdown for font family selection
                 font_families = font.families()
-                default_font = default_value if default_value in font_families else 'Courier New'  # Default to Courier New if not found
+                default_font = default_value if default_value in font_families else 'Courier New'
                 var = StringVar(value=default_font)
-                font_label = Label(settings_frame, text="Font Family")
-                font_label.pack(anchor='w', padx=20, pady=5)
-                font_dropdown = OptionMenu(settings_frame, var, *font_families)
-                font_dropdown.pack(anchor='w', padx=20)
-                setting_entries[(section, option_name)] = var
+                widget = Combobox(scrollable_frame.scrollable_frame, textvariable=var, values=font_families)
+            elif option_name.lower() == 'theme':
+                # Load themes
+                themes = load_themes_from_json("data/themes.json")
+                default_theme = default_value if default_value in themes else themes[0]
+                var = StringVar(value=default_theme)
+                widget = Combobox(scrollable_frame.scrollable_frame, textvariable=var, values=themes)
             elif isinstance(default_value, bool):
-                # Create checkbox for boolean options
-                var = IntVar(value=default_value)
-                checkbox = Checkbutton(settings_frame, text=option_name.capitalize(), variable=var)
-                checkbox.pack(anchor='w', padx=20)
-                setting_entries[(section, option_name)] = var
-            elif isinstance(default_value, str) or isinstance(default_value, int):
-                # Create entry field for string or integer options
-                entry_label = Label(settings_frame, text=option_name.capitalize())
-                entry_label.pack(anchor='w', padx=20, pady=5)
-                entry = Entry(settings_frame)
-                if user_config_file == user_config_file:  # Prefer user_config.json if available
-                    entry.insert(END, str(default_value))
-                else:
-                    entry.insert(END, str(config_data[section][option_name]))
-                entry.pack(anchor='w', padx=20)
-                setting_entries[(section, option_name)] = entry
+                var = BooleanVar(value=default_value)
+                widget = Checkbutton(scrollable_frame.scrollable_frame, variable=var)
+            elif isinstance(default_value, (str, int)):
+                var = StringVar(value=str(default_value))
+                widget = Entry(scrollable_frame.scrollable_frame, textvariable=var)
             else:
-                # Handle other types (e.g., lists, nested dicts) accordingly
-                pass
+                continue  # Skip unsupported types
+
+            widget.grid(row=row, column=1, padx=5, pady=5, sticky="ew")
+            scrollable_frame.scrollable_frame.grid_columnconfigure(1, weight=1)
+            setting_entries[(section, option_name)] = var
 
     def save_settings():
-        # Save settings to user_config.json
-        updated_config_data = {}
-
-        for (section, option_name), widget in setting_entries.items():
-            value = widget.get()
-
+        global style  # Ensure style is accessible
+        updated_config_data = {'options': {}}
+        for (section, option_name), var in setting_entries.items():
+            value = var.get()
             if isinstance(value, str) and value.isdigit():
                 value = int(value)
-
-            updated_config_data.setdefault(section, {})[option_name] = value
+            updated_config_data['options'].setdefault(section, {})[option_name] = value
 
         with open(user_config_file, 'w') as user_config:
             json.dump(updated_config_data, user_config, indent=4)
 
+        # Apply the theme if it was changed
+        theme = updated_config_data['options'].get('theme_appearance', {}).get('theme', None)
+        if theme:
+            try:
+                style.theme_use(theme)
+            except Exception as e:
+                messagebox.showerror("Theme Error", f"The theme '{theme}' is not available. ({e})")
+
         messagebox.showinfo("Settings Saved", "Settings saved successfully!")
 
     def reset_settings():
-        # Reset settings to defaults
-        for (section, option_name), widget in setting_entries.items():
-            default_value = config_data[section][option_name]
+        global style  # Ensure style is accessible
+        for (section, option_name), var in setting_entries.items():
+            default_value = config_data['options'][section][option_name]
+            if isinstance(var, BooleanVar):
+                var.set(default_value)
+            elif isinstance(var, StringVar):
+                var.set(str(default_value))
 
-            if isinstance(widget, IntVar):
-                widget.set(default_value)
-            elif isinstance(widget, Entry):
-                widget.delete(0, END)
-                widget.insert(END, str(default_value))
-
-        # Delete user_config.json if it exists
         if os.path.exists(user_config_file):
             os.remove(user_config_file)
-            messagebox.showinfo("Reset Settings", "Settings reset to defaults. User configuration file deleted.")
 
-        # Display updated values in the settings window
-        for (section, option_name), widget in setting_entries.items():
-            updated_value = config_data[section][option_name]
+        # Reset theme to default
+        default_theme = config_data['options'].get('theme_appearance', {}).get('theme', 'default')
+        print("DEFAULT THEME:\t", default_theme)
+        try:
+            style.theme_use(default_theme)
+        except Exception as e:
+            messagebox.showerror("Theme Error", f"The default theme '{default_theme}' is not available. ({e}")
 
-            if isinstance(widget, Entry):
-                widget.delete(0, END)
-                widget.insert(END, str(updated_value))
-            elif isinstance(widget, IntVar):
-                widget.set(updated_value)
+        messagebox.showinfo("Reset Settings", "Settings reset to defaults. User configuration file deleted.")
 
-    # Save button to save changes
-    save_button = Button(settings_frame, text="Save Settings", command=save_settings)
-    save_button.pack(pady=20)
+    # Save and Reset buttons
+    save_button = Button(bottom_frame, text="Save Settings", command=save_settings)
+    save_button.pack(side=LEFT, padx=5)
 
-    # Reset button to reset settings
-    reset_button = Button(settings_frame, text="Reset Settings", command=reset_settings)
-    reset_button.pack(pady=10)
+    reset_button = Button(bottom_frame, text="Reset Settings", command=reset_settings)
+    reset_button.pack(side=LEFT, padx=5)
 
-    # Bind the scrollbar to the canvas
-    canvas.bind_all("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    return settings_window
 
 
 def open_system_info_window():
@@ -1824,92 +1767,6 @@ def open_terminal_window():
     # Bind the UP and DOWN arrow keys to navigate the command history
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
-
-
-def read_config_parameter(parameter_name):
-    """
-    Read a specific parameter from user_config.json (if available) or config.json.
-
-    Parameters:
-    - parameter_name: Name of the parameter to read.
-
-    Returns:
-    - The value of the parameter if found, otherwise None.
-    """
-    try:
-        # Try to read from user_config.json first
-        with open("data/user_config.json", 'r') as user_config_file:
-            user_config_data = json.load(user_config_file)
-            if parameter_name in user_config_data:
-                return user_config_data[parameter_name]
-    except FileNotFoundError:
-        pass  # No user_config.json file found, continue to read from config.json
-
-    # Read from config.json
-    with open("data/config.json", 'r') as config_file:
-        config_data = json.load(config_file)
-        if parameter_name in config_data:
-            return config_data[parameter_name]
-
-    # Parameter not found in both user_config.json and config.json
-    return None
-
-
-def write_config_parameter(parameter_name, parameter_value):
-    """
-    Write a parameter and its value to user_config.json, creating the file if necessary.
-
-    Parameters:
-    - parameter_name: Name of the parameter to write.
-    - parameter_value: Value to assign to the parameter.
-
-    Returns:
-    - True if the parameter was successfully written, otherwise False.
-    """
-    user_config_file_path = "data/user_config.json"
-    default_config_file_path = "data/config.json"
-
-    # Check if user_config.json exists and is not empty
-    if os.path.exists(user_config_file_path) and os.path.getsize(user_config_file_path) > 0:
-        try:
-            # Read existing user_config.json
-            with open(user_config_file_path, 'r') as user_config_file:
-                user_config_data = json.load(user_config_file)
-        except Exception as e:
-            print(f"Error reading user_config.json: {e}")
-            return False
-    else:
-        # Copy data from config.json to user_config.json
-        try:
-            with open(default_config_file_path, 'r') as default_config_file:
-                config_data = json.load(default_config_file)
-                user_config_data = {"options": config_data["options"]}  # Only copy the 'options' object
-        except Exception as e:
-            print(f"Error copying data from config.json: {e}")
-            return False
-
-        # Write the initial user_config.json
-        try:
-            with open(user_config_file_path, 'w') as user_config_file:
-                json.dump(user_config_data, user_config_file, indent=4)
-        except Exception as e:
-            print(f"Error writing user_config.json: {e}")
-            return False
-
-    # Update the specific parameter value within the options object
-    if 'options' not in user_config_data:
-        user_config_data['options'] = {}
-
-    user_config_data['options'][parameter_name] = parameter_value
-
-    # Write the updated user_config_data to user_config.json
-    try:
-        with open(user_config_file_path, 'w') as user_config_file:
-            json.dump(user_config_data, user_config_file, indent=4)
-        return True
-    except Exception as e:
-        print(f"Error writing user_config.json: {e}")
-        return False
 
 
 '''def open_ai_server_settings_window():

@@ -2,7 +2,7 @@ import json
 import os
 import sys
 import subprocess
-from tkinter import Menu, Button, messagebox, filedialog, END, Label, Checkbutton, Entry, Text
+from tkinter import Menu, Button, messagebox, filedialog, END, Label, Checkbutton, Entry, Text, BooleanVar
 
 from PIL import Image, ImageTk
 
@@ -25,10 +25,11 @@ from src.views.tk_utils import toolbar, menu, root, script_name_label, script_te
 from src.controllers.tool_functions import (find_text, change_color, open_search_replace_dialog, open_terminal_window,
                                             open_ai_assistant_window, open_webview, open_terminal_window,
                                             create_url_input_window, open_ipynb_window,
-                                            open_change_theme_window, create_settings_window, open_git_window,
+                                            create_settings_window, open_git_window,
                                             open_image_generation_window, open_music_generation_window,
-                                            open_audio_generation_window, open_kanban_window, read_config_parameter,
-                                            write_config_parameter, open_winget_window, open_system_info_window)
+                                            open_audio_generation_window, open_kanban_window, open_winget_window,
+                                            open_system_info_window)
+from src.controllers.parameters import read_config_parameter, write_config_parameter
 
 from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
@@ -778,7 +779,7 @@ def toggle_directory_view_visibility(frame):
         return text_files
 
     if show_directory_view_var.get() == 1:
-        write_config_parameter("is_directory_view_visible", "true")
+        write_config_parameter("options.view_options.is_directory_view_visible", "true")
 
         frame.grid(row=0, column=0, pady=0, sticky="ew")
 
@@ -791,7 +792,7 @@ def toggle_directory_view_visibility(frame):
         directory_label.bind("<Double-1>", lambda event: open_current_directory())
         Tooltip(directory_label, localization_data['current_directory'])
     else:
-        write_config_parameter("is_directory_view_visible", "false")
+        write_config_parameter("options.view_options.is_directory_view_visible", "false")
         frame.grid_forget()
 
     # print("IS DIRECTORY VISIBLE?\t", read_config_parameter("options").get("is_directory_view_visible"))
@@ -799,7 +800,7 @@ def toggle_directory_view_visibility(frame):
 
 def toggle_file_view_visibility(frame):
     if show_file_view_var.get() == 1:
-        write_config_parameter("is_file_view_visible", "true")
+        write_config_parameter("options.view_options.is_file_view_visible", "true")
 
         frame.grid(row=1, column=0, pady=0, sticky="ew")
         frame.grid_columnconfigure(2, weight=1)  # Make column 2 (file name entry) expandable
@@ -828,13 +829,13 @@ def toggle_file_view_visibility(frame):
         redo_button.grid(column=6, row=0, sticky="e")  # Align to the right
         Tooltip(redo_button, localization_data['redo'])
     else:
-        write_config_parameter("is_file_view_visible", "false")
+        write_config_parameter("options.view_options.is_file_view_visible", "false")
         frame.grid_forget()
 
 
 def toggle_arguments_view_visibility(frame):
     if show_arguments_view_var.get() == 1:
-        write_config_parameter("is_arguments_view_visible", "true")
+        write_config_parameter("options.view_options.is_arguments_view_visible", "true")
         frame.grid(row=5, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
 
         entry_arguments_label = Label(frame, text=localization_data['entry_arguments'])
@@ -861,13 +862,13 @@ def toggle_arguments_view_visibility(frame):
         stderr_button.grid(column=3, row=1, padx=10, sticky="e")  # Align to the right
         Tooltip(stderr_button, localization_data['see_stderr_tooltip'])
     else:
-        write_config_parameter("is_arguments_view_visible", "false")
+        write_config_parameter("options.view_options.is_arguments_view_visible", "false")
         frame.grid_forget()
 
 
 def toggle_run_view_visibility(frame):
     if show_run_view_var.get() == 1:
-        write_config_parameter("is_run_view_visible", "true")
+        write_config_parameter("options.view_options.is_run_view_visible", "true")
         if get_operative_system() != "Windows":
             frame.grid(row=8, column=0, pady=0, sticky="nsew")  # Set sticky to "e" for right alignment
             Label(frame, text=localization_data['run_inmediately']).grid(row=0, column=0, sticky="e", padx=5, pady=0)
@@ -881,13 +882,13 @@ def toggle_run_view_visibility(frame):
             run_button.grid(row=0, column=1, sticky="e", padx=5, pady=0)
             Tooltip(run_button, localization_data['run_script'])
     else:
-        write_config_parameter("is_run_view_visible", "false")
+        write_config_parameter("options.view_options.is_run_view_visible", "false")
         frame.grid_forget()
 
 
 def toggle_timeout_view_visibility(frame):
     if show_timeout_view_var.get() == 1:
-        write_config_parameter("is_timeout_view_visible", "true")
+        write_config_parameter("options.view_options.is_timeout_view_visible", "true")
         if get_operative_system() != "Windows":
             frame.grid(row=9, column=0, pady=0, sticky="nsew")
 
@@ -919,13 +920,13 @@ def toggle_timeout_view_visibility(frame):
             run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
             Tooltip(run_button, localization_data['set_duration_for_script_execution'])
     else:
-        write_config_parameter("is_timeout_view_visible", "false")
+        write_config_parameter("options.view_options.is_timeout_view_visible", "false")
         frame.grid_forget()
 
 
 def toggle_interactive_view_visibility(frame):
     if show_interactive_view_var.get() == 1:
-        write_config_parameter("is_interactive_view_visible", "true")
+        write_config_parameter("options.view_options.is_interactive_view_visible", "true")
         # Make sure interactive_frm expands horizontally
         frame.grid(row=4, column=0, pady=0, sticky="ew")  # Set sticky to "ew" to fill horizontally
 
@@ -936,7 +937,7 @@ def toggle_interactive_view_visibility(frame):
         # Ensure that interactive_frm expands horizontally and the column weights are set
         frame.grid_columnconfigure(0, weight=1)
     else:
-        write_config_parameter("is_interactive_view_visible", "false")
+        write_config_parameter("options.view_options.is_interactive_view_visible", "false")
         frame.grid_forget()
 
 
@@ -950,17 +951,41 @@ def toggle_filesystem_view_visibility(frame):
 
 
 def add_view_section_to_menu(options_parameter_name, view_variable, menu_section, view_section_name, frame, function):
-    is_view_visible = read_config_parameter("options").get(options_parameter_name, "true") == "true"
-    view_variable.set(1 if is_view_visible else 0)
+    # Assuming the structure is now options.options.view_options.is_*_view_visible
+    is_view_visible = read_config_parameter(f"options.view_options.{options_parameter_name}")
+
+    if isinstance(view_variable, BooleanVar):
+        view_variable.set(is_view_visible if isinstance(is_view_visible, bool) else True)
+    else:
+        view_variable.set(1 if is_view_visible else 0)
 
     menu_section.add_checkbutton(
         label=view_section_name,
         onvalue=1,
         offvalue=0,
         variable=view_variable,
-        command=lambda: function(frame)
+        command=lambda: toggle_view(frame, function, options_parameter_name, view_variable)
     )
+    toggle_view(frame, function, options_parameter_name, view_variable)
+
+
+def toggle_view(frame, function, options_parameter_name, view_variable):
     function(frame)
+    update_config(options_parameter_name, view_variable.get())
+
+
+def update_config(option_name, value):
+    user_config_file = "data/user_config.json"
+    try:
+        with open(user_config_file, 'r') as config_file:
+            config_data = json.load(config_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        config_data = {"options": {"view_options": {}}}
+
+    config_data["options"]["view_options"][option_name] = bool(value)
+
+    with open(user_config_file, 'w') as config_file:
+        json.dump(config_data, config_file, indent=4)
 
 
 def create_menu():
@@ -1161,7 +1186,7 @@ def create_menu():
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
 
     #tool_menu.add_command(label="Change Color", command=change_color)
-    tool_menu.add_command(label="Change Theme", command=open_change_theme_window)
+    # tool_menu.add_command(label="Change Theme", command=open_change_theme_window)
     tool_menu.add_separator()
     tool_menu.add_command(label="System Shell", command=open_terminal_window, accelerator='Ctrl+T')
     tool_menu.add_command(label="Git Console", command=open_git_window, accelerator='Ctrl+Alt+G')
