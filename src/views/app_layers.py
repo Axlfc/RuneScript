@@ -130,7 +130,11 @@ def create_filesystem_window():
 
     # Create the tree view widget
     tree = Treeview(filesystem_frm)
-    tree.pack(expand=True, fill='both')
+    tree.grid(row=0, column=0, sticky="nsew")
+
+    # Ensure that the frame can expand with the treeview
+    filesystem_frm.grid_rowconfigure(0, weight=1)
+    filesystem_frm.grid_columnconfigure(0, weight=1)
 
     # Function to update the tree view with directory contents
     def update_tree(path):
