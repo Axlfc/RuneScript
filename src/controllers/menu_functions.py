@@ -940,7 +940,12 @@ def toggle_interactive_view_visibility(frame):
 
 
 def toggle_filesystem_view_visibility(frame):
-    pass
+    if show_filesystem_view_var.get() == 1:
+        frame.grid(row=2, column=2, sticky='nsew')
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+    else:
+        frame.grid_remove()
 
 
 def add_view_section_to_menu(options_parameter_name, view_variable, menu_section, view_section_name, frame, function):

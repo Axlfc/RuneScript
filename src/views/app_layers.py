@@ -1,4 +1,5 @@
 from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL
+from tkinter.ttk import Treeview
 
 from src.controllers.tool_functions import find_text, open_search_replace_dialog
 from src.models.file_operations import prompt_rename_file
@@ -26,7 +27,8 @@ def create_footer():
 
 def create_body():
     create_content_file_window()
-    create_horizontal_scrollbar_lines()
+    # create_horizontal_scrollbar_lines()
+    create_filesystem_window()
 
 
 def undo():
@@ -124,7 +126,36 @@ def create_open_script_line():
 
 
 def create_filesystem_window():
-    pass
+    # Create the frame for the filesystem view
+
+    # Create the tree view widget
+    tree = Treeview(filesystem_frm)
+    tree.pack(expand=True, fill='both')
+
+    # Function to update the tree view with directory contents
+    def update_tree(path):
+        tree.delete(*tree.get_children())
+        for entry in os.listdir(path):
+            abs_path = os.path.join(path, entry)
+            parent_id = ''
+
+            if os.path.isdir(abs_path):
+                parent_id = tree.insert('', 'end', text=entry, open=True)
+                populate_tree(parent_id, abs_path)
+            else:
+                tree.insert('', 'end', text=entry)
+
+    # Recursive function to populate the tree view
+    def populate_tree(parent_id, path):
+        for entry in os.listdir(path):
+            abs_path = os.path.join(path, entry)
+            if os.path.isdir(abs_path):
+                oid = tree.insert(parent_id, 'end', text=entry, open=False)
+                populate_tree(oid, abs_path)
+            else:
+                tree.insert(parent_id, 'end', text=entry)
+
+    return filesystem_frm, update_tree
 
 
 def create_content_file_window():
