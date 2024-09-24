@@ -1,6 +1,7 @@
-from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL
+from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL, LEFT, BOTH, RIGHT, X, Y, BOTTOM, W
 from tkinter.ttk import Treeview
 
+from src.controllers.parameters import read_config_parameter
 from src.controllers.tool_functions import find_text, open_search_replace_dialog
 from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
@@ -82,42 +83,70 @@ def create_open_script_line():
 
 
 def create_filesystem_window():
-    # global current_directory
-    # Create the frame for the filesystem view
-    print("CREATING FILESYSTEM VIEW")
-    current_directory = directory_label.cget('text')
-    # This is returning correctly the first path of current directory
-    print(current_directory)
-    # Create the tree view widget
-    tree = Treeview(filesystem_frm)
-    tree.grid(row=0, column=0, sticky="nsew")
+    # Create a frame to hold the Treeview and scrollbars
+    tree_frame = Frame(filesystem_frm)
+    tree_frame.pack(fill=BOTH, expand=True)
 
-    # Ensure that the frame can expand with the treeview
-    filesystem_frm.grid_rowconfigure(0, weight=1)
-    filesystem_frm.grid_columnconfigure(0, weight=1)
+    # Create the tree view widget
+    tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
+
+    # Add vertical scrollbar
+    vsb = Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    vsb.pack(side=RIGHT, fill=Y)
+
+    # Add horizontal scrollbar
+    hsb = Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+    hsb.pack(side=BOTTOM, fill=X)
+
+    # Pack the tree view
+    tree.pack(side=LEFT, fill=BOTH, expand=True)
+
+    # Configure the Treeview
+    tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+    # Remove the header text
+    tree.heading('#0', text="", anchor=W)
+    tree.column('#0', width=300, minwidth=200)
 
     # Function to update the tree view with directory contents
     def update_tree(path):
-        tree.delete(*tree.get_children())
-        for entry in os.listdir(path):
-            abs_path = os.path.join(path, entry)
-            parent_id = ''
-
-            if os.path.isdir(abs_path):
-                parent_id = tree.insert('', 'end', text=entry, open=True)
-                populate_tree(parent_id, abs_path)
-            else:
-                tree.insert('', 'end', text=entry)
+        for item in tree.get_children():
+            tree.delete(item)
+        abspath = os.path.abspath(path)
+        root_node = tree.insert('', 'end', text=abspath, values=(abspath,), open=True)
+        populate_tree(root_node, abspath)
 
     # Recursive function to populate the tree view
-    def populate_tree(parent_id, path):
-        for entry in os.listdir(path):
-            abs_path = os.path.join(path, entry)
-            if os.path.isdir(abs_path):
-                oid = tree.insert(parent_id, 'end', text=entry, open=False)
-                populate_tree(oid, abs_path)
-            else:
-                tree.insert(parent_id, 'end', text=entry)
+    def populate_tree(parent, path):
+        for item in os.listdir(path):
+            if item != '.git' and item != '.idea':
+                abspath = os.path.join(path, item)
+                node = tree.insert(parent, 'end', text=item, values=(abspath,), open=False)
+                if os.path.isdir(abspath):
+                    tree.insert(node, 'end')
+
+    # Function to expand directory when double-clicked
+    def item_opened(event):
+        item = tree.focus()
+        abspath = tree.item(item, "values")[0]
+        if os.path.isdir(abspath):
+            tree.delete(*tree.get_children(item))
+            populate_tree(item, abspath)
+
+    tree.bind('<<TreeviewOpen>>', item_opened)
+
+    # Function to handle item selection
+    def on_item_select(event):
+        item = tree.focus()
+        print(f"Selected: {tree.item(item, 'text')}")
+        print(f"Full path: {tree.item(item, 'values')[0]}")
+
+    tree.bind('<<TreeviewSelect>>', on_item_select)
+
+    # Initial population of the tree
+    print("CREATING FILESYSTEM VIEW")
+    current_directory = read_config_parameter("options.file_management.current_working_directory")
+    update_tree(current_directory)
 
     return filesystem_frm, update_tree
 

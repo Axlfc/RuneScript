@@ -1,5 +1,17 @@
 import json
 import os
+import pathlib
+
+
+
+# Get the absolute path of the current file
+current_file_path = os.path.abspath(__file__)
+
+# Move two levels up to get the repository root and normalize the path
+current_repo_path = os.path.normpath(os.path.join(current_file_path, '..', '..', '..'))
+
+# Define the path to the user config file relative to the repository root and normalize it
+user_config_file_path = os.path.normpath(os.path.join(current_repo_path, "data", "user_config.json"))
 
 
 def read_config_parameter(parameter_path):
@@ -12,8 +24,6 @@ def read_config_parameter(parameter_path):
     Returns:
     - The value of the parameter if found, otherwise None.
     """
-    user_config_file_path = "data/user_config.json"
-
     # Function to get nested value
     def get_nested_value(data_dict, keys_list):
         current_level = data_dict
@@ -48,8 +58,6 @@ def write_config_parameter(parameter_path, parameter_value):
     Returns:
     - True if the parameter was successfully written, otherwise False.
     """
-    user_config_file_path = "data/user_config.json"
-
     # Read existing user_config.json
     try:
         with open(user_config_file_path, 'r') as user_config_file:
@@ -85,9 +93,12 @@ def get_scriptsstudio_directory():
 
     # Get the absolute path of the current directory
     abs_path = os.path.abspath(project_directory)
+    data_path = abs_path + "\\data"
 
     write_config_parameter("options.file_management.scriptsstudio_directory", abs_path)
-
+    write_config_parameter("options.file_management.scriptsstudio_data_directory", data_path)
+    write_config_parameter("options.file_management.scriptsstudio_config_path", data_path + "\\config.json")
+    write_config_parameter("options.file_management.scriptsstudio_user_config_path", data_path + "\\user_config.json")
     return abs_path
 
 

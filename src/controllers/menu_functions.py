@@ -281,6 +281,9 @@ def open_script():
     file_path = filedialog.askopenfilename(filetypes=file_types)
     if file_path:
         open_file(file_path)
+        write_config_parameter("options.file_management.current_file_path", file_path)
+        write_config_parameter("options.file_management.current_working_directory", directory_label.cget("text"))
+        # TO-DO: Refresh views
 
 
 def create_csv_menu(parent_menu):
@@ -664,72 +667,74 @@ find_button.config(image=image_find)
 find_button.grid(in_=toolbar, row=0, column=9, padx=4, pady=4, sticky="w")
 
 
+def select_directory():
+    """
+        Opens a dialog for the user to select a directory, and changes the current working directory to the selected one.
+
+        After the directory is selected, the function updates the directory label in the UI and opens the first text file
+        (if any) in the selected directory.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    directory = filedialog.askdirectory()
+    if directory:
+        os.chdir(directory)
+        global current_directory  # Declare current_directory as global if it's not in the same file
+        current_directory = directory  # Update the current_directory variable
+        directory_label.config(text=f"{directory}")
+        # Ask user if they want to open the first text file
+        if messagebox.askyesno(localization_data['open_script'],
+                               localization_data['open_first_file_from_directory']):
+            open_first_text_file(directory)
+        write_config_parameter("options.file_management.current_working_directory", directory)
+
+
+def open_first_text_file(directory):
+    """
+        Opens the first text file in the given directory.
+
+        This function scans the specified directory for text files and, if found, opens the first one. It is typically
+        used after changing the working directory to automatically open a text file from that directory.
+
+        Parameters:
+        directory (str): The directory path in which to search for text files.
+
+        Returns:
+        None
+    """
+    text_files = get_text_files(directory)
+    if text_files:
+        file_path = os.path.join(directory, text_files[0])
+        open_file(file_path)
+
+
+def get_text_files(directory):
+    """
+        Retrieves a list of text files in the specified directory.
+
+        This function scans the provided directory and creates a list of all files ending with a '.txt' extension.
+
+        Parameters:
+        directory (str): The directory path in which to search for text files.
+
+        Returns:
+        list: A list of text file names found in the directory.
+    """
+    text_files = []
+    for file in os.listdir(directory):
+        if file.endswith(".txt"):
+            text_files.append(file)
+    return text_files
+
+
 def toggle_directory_view_visibility(frame):
     global current_directory
     global directory_label
     print("DIRECTORY VIEW VISIBILITY TOGGLED")
-
-    def select_directory():
-        """
-            Opens a dialog for the user to select a directory, and changes the current working directory to the selected one.
-
-            After the directory is selected, the function updates the directory label in the UI and opens the first text file
-            (if any) in the selected directory.
-
-            Parameters:
-            None
-
-            Returns:
-            None
-        """
-        print("DIRECTORYYYYYYY")
-        directory = filedialog.askdirectory()
-        if directory:
-            os.chdir(directory)
-            global current_directory  # Declare current_directory as global if it's not in the same file
-            current_directory = directory  # Update the current_directory variable
-            directory_label.config(text=f"{directory}")
-            # Ask user if they want to open the first text file
-            if messagebox.askyesno(localization_data['open_script'],
-                                   localization_data['open_first_file_from_directory']):
-                open_first_text_file(directory)
-        write_config_parameter("options.file_management.current_working_directory", directory)
-
-    def open_first_text_file(directory):
-        """
-            Opens the first text file in the given directory.
-
-            This function scans the specified directory for text files and, if found, opens the first one. It is typically
-            used after changing the working directory to automatically open a text file from that directory.
-
-            Parameters:
-            directory (str): The directory path in which to search for text files.
-
-            Returns:
-            None
-        """
-        text_files = get_text_files(directory)
-        if text_files:
-            file_path = os.path.join(directory, text_files[0])
-            open_file(file_path)
-
-    def get_text_files(directory):
-        """
-            Retrieves a list of text files in the specified directory.
-
-            This function scans the provided directory and creates a list of all files ending with a '.txt' extension.
-
-            Parameters:
-            directory (str): The directory path in which to search for text files.
-
-            Returns:
-            list: A list of text file names found in the directory.
-        """
-        text_files = []
-        for file in os.listdir(directory):
-            if file.endswith(".txt"):
-                text_files.append(file)
-        return text_files
 
     if show_directory_view_var.get() == 1:
         write_config_parameter("options.view_options.is_directory_view_visible", "true")
@@ -740,7 +745,7 @@ def toggle_directory_view_visibility(frame):
         directory_button.grid(column=0, row=0, sticky="w")
 
         Tooltip(directory_button, localization_data['choose_working_directory'])
-
+        
         directory_label.grid(column=1, row=0, padx=5, sticky="ew")
         directory_label.bind("<Double-1>", lambda event: open_current_directory(read_config_parameter("options.file_management.current_working_directory")))
         Tooltip(directory_label, localization_data['current_directory'])

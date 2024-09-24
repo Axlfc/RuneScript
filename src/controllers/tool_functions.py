@@ -341,6 +341,8 @@ def create_settings_window():
 
         messagebox.showinfo("Settings Saved", "Settings saved successfully!")
 
+        # TO-DO: Reload main app GUI
+
     def reset_settings():
         global style  # Ensure style is accessible
         for (section, option_name), var in setting_entries.items():
