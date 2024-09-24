@@ -114,6 +114,19 @@ def write_config_parameter(parameter_path, parameter_value):
         print(f"Error writing user_config.json: {e}")
         return False
 
+
+def get_scriptsstudio_directory():
+    # Get the current working directory
+    project_directory = os.getcwd()
+
+    # Get the absolute path of the current directory
+    abs_path = os.path.abspath(project_directory)
+
+    write_config_parameter("options.file_management.scriptsstudio_directory", abs_path)
+
+    return abs_path
+
+
 def ensure_user_config():
     config_path = 'data/config.json'
     user_config_path = 'data/user_config.json'

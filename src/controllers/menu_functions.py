@@ -265,11 +265,16 @@ def open_file(file_path):
     """
     global is_modified, file_name, last_saved_content
 
+    print("OPEN FILE IS CALLED!")
+
     file_name = file_path
     # Update the directory label with the directory of the opened file
     directory_path = os.path.dirname(file_path)
     directory_label.config(text=f"{directory_path}")
+    print("DIRECTORY LABEL:\t", directory_path)
+    write_config_parameter("options.file_management.current_file_directory", directory_path)
     script_name_label.config(text=f"{localization_data['save_changes']}{os.path.basename(file_path)}")
+
 
     # Try opening the file with different encodings
     encodings = ['utf-8', 'cp1252', 'ISO-8859-1', 'utf-16']
@@ -310,6 +315,8 @@ def open_script():
         Returns:
         None
     """
+
+    print("OPEN SCRIPT IS CALLED!")
     if is_modified:
         response = messagebox.askyesnocancel(localization_data['save_changes'],
                                              localization_data['save_confirmation'])
@@ -323,6 +330,7 @@ def open_script():
     file_path = filedialog.askopenfilename(filetypes=file_types)
     if file_path:
         open_file(file_path)
+
 
 def create_csv_menu(parent_menu):
     """

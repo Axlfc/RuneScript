@@ -126,8 +126,12 @@ def create_open_script_line():
 
 
 def create_filesystem_window():
+    # global current_directory
     # Create the frame for the filesystem view
-
+    print("CREATING FILESYSTEM VIEW")
+    current_directory = directory_label.cget('text')
+    # This is returning correctly the first path of current directory
+    print(current_directory)
     # Create the tree view widget
     tree = Treeview(filesystem_frm)
     tree.grid(row=0, column=0, sticky="nsew")
