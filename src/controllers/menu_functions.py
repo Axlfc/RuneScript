@@ -34,6 +34,7 @@ from src.controllers.parameters import read_config_parameter, write_config_param
 from src.controllers.tool_functions import open_git_window, git_console_instance
 from lib.git import git_icons
 import lib.git as git
+from src.views.tree_functions import update_tree
 from src.views.ui_elements import Tooltip
 
 # Add this line
@@ -284,6 +285,7 @@ def open_script():
         write_config_parameter("options.file_management.current_file_path", file_path)
         write_config_parameter("options.file_management.current_working_directory", directory_label.cget("text"))
         # TO-DO: Refresh views
+        update_tree(read_config_parameter("options.file_management.current_working_directory"))
 
 
 def create_csv_menu(parent_menu):
@@ -691,6 +693,7 @@ def select_directory():
                                localization_data['open_first_file_from_directory']):
             open_first_text_file(directory)
         write_config_parameter("options.file_management.current_working_directory", directory)
+        update_tree(current_directory)
 
 
 def open_first_text_file(directory):
