@@ -1,6 +1,6 @@
 from ttkbootstrap import Style
 
-from src.controllers.parameters import read_config_parameter
+from src.controllers.parameters import ensure_user_config, load_theme_setting
 from src.localization import localization_data
 from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox
 from tkinter import scrolledtext, Text, Entry, Menu
@@ -42,16 +42,12 @@ fontColor = '#000000'
 fontBackground = '#FFFFFF'
 server_options = ["lmstudio", "ollama", "openai"]
 
-#  style = Style(theme="cosmo")
+
+# Load user_config.json, if there is not, create it.
+ensure_user_config()
+
+# Load style
 style = Style()
-
-
-def load_theme_setting():
-    theme = read_config_parameter("options.theme_appearance.theme")
-    if theme is None:
-        theme = 'cosmo'  # Replace 'default' with your actual default theme
-    return theme
-
 current_theme = load_theme_setting()
 
 try:
