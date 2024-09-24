@@ -95,7 +95,10 @@ def get_scriptsstudio_directory():
     abs_path = os.path.abspath(project_directory)
     data_path = abs_path + "\\data"
 
+    # This is hardcoded for developing our own project ScriptsStudio... This might change in the future.
     write_config_parameter("options.file_management.current_working_directory", "")
+    write_config_parameter("options.file_management.current_file_path", "")
+    
     write_config_parameter("options.file_management.scriptsstudio_directory", abs_path)
     write_config_parameter("options.file_management.scriptsstudio_data_directory", data_path)
     write_config_parameter("options.file_management.scriptsstudio_config_path", data_path + "\\config.json")

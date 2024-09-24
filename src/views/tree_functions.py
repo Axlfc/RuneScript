@@ -1,4 +1,7 @@
 import os
+
+from src.controllers.file_operations import open_file
+from src.controllers.parameters import write_config_parameter
 from src.views.tk_utils import tree
 
 
@@ -34,3 +37,12 @@ def on_item_select(event):
     item = tree.focus()
     print(f"Selected: {tree.item(item, 'text')}")
     print(f"Full path: {tree.item(item, 'values')[0]}")
+
+
+def on_double_click(event):
+
+    item = tree.identify('item', event.x, event.y)
+    filepath = tree.item(item, "values")[0]
+    if os.path.isfile(filepath):
+        open_file(filepath)
+        write_config_parameter("options.file_management.current_file_path", filepath)

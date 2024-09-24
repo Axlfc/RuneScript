@@ -11,7 +11,7 @@ from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, un
 from src.models.script_operations import (run_script_with_timeout, run_script_once, run_script_crontab,
                                           get_operative_system)
 from src.views.edit_operations import undo, redo
-from src.views.tree_functions import item_opened, update_tree, on_item_select
+from src.views.tree_functions import item_opened, update_tree, on_item_select, on_double_click
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 
@@ -111,6 +111,8 @@ def create_filesystem_window():
     tree.bind('<<TreeviewOpen>>', item_opened)
 
     tree.bind('<<TreeviewSelect>>', on_item_select)
+
+    tree.bind("<Double-1>", on_double_click)
 
     # Initial population of the tree
     print("CREATING FILESYSTEM VIEW")

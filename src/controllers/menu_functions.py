@@ -11,9 +11,7 @@ from src.controllers.scheduled_tasks import open_cron_window, open_at_window, op
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import get_operative_system, see_stdout, see_stderr, run_script, run_script_windows, \
     run_script_with_timeout
-from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_html, generate_html_from_markdown, \
-    run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
-    change_interpreter, render_markdown_to_latex
+
 from src.localization import localization_data
 from src.views.edit_operations import undo, redo, duplicate, copy, cut, paste
 
@@ -36,6 +34,7 @@ from lib.git import git_icons
 import lib.git as git
 from src.views.tree_functions import update_tree
 from src.views.ui_elements import Tooltip
+from src.controllers.file_operations import open_file, open_script, update_title
 
 # Add this line
 git_console_instance = None
@@ -77,6 +76,7 @@ def init_git_console():
     global git_console_instance
     if git_console_instance is None:
         git_console_instance = "Something"
+
 
 def open_current_directory(directory=directory_label.cget("text")):
     if sys.platform == "win32":
@@ -128,22 +128,6 @@ def set_modified_status(value):
     global is_modified  # Add file_name to the global declaration
     is_modified = value
     update_title()
-
-
-def update_title():
-    """
-    Updates the application window's title based on the file's modified status and the current file name.
-    """
-    global is_modified
-
-    title = os.path.basename(file_name) if file_name else localization_data['untitled']
-
-    if is_modified:
-        root.title(f"*{title} - {localization_data['scripts_editor']}")
-    else:
-        root.title(f"{title} - {localization_data['scripts_editor']}")
-
-    script_name_label.config(text=f"{localization_data['script_name_label']}{os.path.basename(title)}")
 
 
 def new():
@@ -200,260 +184,6 @@ def on_text_change(event=None):
         if not is_modified:  # Only update if the status is currently 'not modified'
             is_modified = True
             update_title()
-
-
-def open_file(file_path):
-    """
-        Opens the specified file and updates the editor with its contents.
-
-        This function reads the content from the specified file path and updates the script editor. It tries various
-        encodings to ensure correct file reading and updates the UI based on the file extension.
-
-        Parameters:
-        file_path (str): The path of the file to open.
-
-        Returns:
-        None
-    """
-    global is_modified, file_name, last_saved_content
-
-    print("OPEN FILE IS CALLED!")
-
-    file_name = file_path
-    # Update the directory label with the directory of the opened file
-    directory_path = os.path.dirname(file_path)
-    directory_label.config(text=f"{directory_path}")
-    print("DIRECTORY LABEL:\t", directory_path)
-    write_config_parameter("options.file_management.current_file_directory", directory_path)
-    script_name_label.config(text=f"{localization_data['save_changes']}{os.path.basename(file_path)}")
-
-
-    # Try opening the file with different encodings
-    encodings = ['utf-8', 'cp1252', 'ISO-8859-1', 'utf-16']
-    for encoding in encodings:
-        try:
-            with open(file_path, 'r', encoding=encoding) as file:
-                script_content = file.read()
-                break
-        except UnicodeDecodeError:
-            continue
-    else:
-        # If all encodings fail, use 'utf-8' with 'replace' option
-        with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
-            script_content = file.read()
-            last_saved_content = script_content  # Update the last saved content
-
-    script_text.delete("1.0", END)
-    script_text.insert("1.0", script_content)
-
-    # Update dynamic menu and title based on file extension
-    ext = os.path.splitext(file_path)[1]
-    update_menu_based_on_extension(ext)
-    # Reset the modified flag after loading the file
-    is_modified = False
-    update_title()
-
-
-def open_script():
-    """
-        Opens an existing file into the script editor.
-
-        This function displays a file dialog for the user to choose a file. Once a file is selected, it is opened
-        and its contents are displayed in the script editor.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-
-    print("OPEN SCRIPT IS CALLED!")
-    if is_modified:
-        response = messagebox.askyesnocancel(localization_data['save_changes'],
-                                             localization_data['save_confirmation'])
-        if response:  # User wants to save changes
-            if not save():
-                return  # If save was not successful, cancel the file open operation
-        elif response is None:  # User cancelled the prompt
-            return  # Cancel the file open operation
-
-    # If there are no unsaved changes, or the user has dealt with them, show the open file dialog
-    file_path = filedialog.askopenfilename(filetypes=file_types)
-    if file_path:
-        open_file(file_path)
-        write_config_parameter("options.file_management.current_file_path", file_path)
-        write_config_parameter("options.file_management.current_working_directory", directory_label.cget("text"))
-        # TO-DO: Refresh views
-        update_tree(read_config_parameter("options.file_management.current_working_directory"))
-
-
-def create_csv_menu(parent_menu):
-    """
-        Creates a submenu for CSV-related operations.
-
-        This function adds specific options related to CSV files, such as data analysis, to the given parent menu.
-
-        Parameters:
-        parent_menu (Menu): The parent menu to which the CSV submenu will be added.
-
-        Returns:
-        None
-    """
-    entries = {
-        "Analyze Data": analyze_csv_data
-    }
-    create_submenu(parent_menu, "CSV", entries)
-
-
-def create_bash_menu(parent_menu):
-    parent_menu.add_command(label="Analyze Data")
-
-
-def create_powershell_menu(parent_menu):
-    parent_menu.add_command(label="Analyze Data")
-
-
-def create_markdown_menu(parent_menu):
-    entries = {
-        "Render HTML": render_markdown_to_html,
-        "Generate HTML": generate_html_from_markdown,
-        "Render LaTeX PDF": render_markdown_to_latex
-    }
-    create_submenu(parent_menu, "Markdown", entries)
-
-
-def create_javascript_menu(parent_menu):
-    entries = {
-        "Analyze Data": run_javascript_analysis
-    }
-    create_submenu(parent_menu, "JavaScript", entries)
-
-
-def create_html_menu(parent_menu):
-    parent_menu.add_command(label="Analyze Data")
-
-
-def create_css_menu(parent_menu):
-    parent_menu.add_command(label="Analyze Data")
-
-
-def create_java_menu(parent_menu):
-    parent_menu.add_command(label="Analyze Data")
-
-
-def create_cpp_menu(parent_menu):
-    parent_menu.add_command(label="Analyze Data")
-
-
-def create_generic_text_menu(parent_menu):
-    entries = {
-        "Analyze Data": analyze_generic_text_data
-    }
-    create_submenu(parent_menu, "Text", entries)
-
-
-def create_latex_menu(parent_menu):
-    entries = {
-        "Render PDF": render_latex_to_pdf,
-        "Generate PDF": generate_latex_pdf
-    }
-    create_submenu(parent_menu, "LaTeX", entries)
-
-
-def create_python_menu(parent_menu):
-    entries = {
-        "Create Virtual Environment": change_interpreter,  # create_venv_at_path, / Change Virtual Environment
-        "Manage pip packages": change_interpreter,  # show_local_pip_packages
-        "Change Interpreter": change_interpreter
-        # Add more options as needed
-    }
-
-    parent_menu.add_checkbutton(
-        label="ScriptsEditor Local Python 3",
-        variable=local_python_var,
-        command=run_python_script
-    )
-
-    create_submenu(parent_menu, "Interpreter", entries)
-
-
-def update_menu_based_on_extension(ext):
-    """
-    Updates the application menu based on the file extension of the currently open file.
-
-    Parameters:
-    ext (str): The file extension of the currently open file.
-
-    Returns:
-    None
-    """
-
-    # Menu creators for different file extensions
-    menu_creators = {
-        ".py": create_python_menu,
-        ".csv": create_csv_menu,
-        ".txt": create_generic_text_menu,
-        ".md": create_markdown_menu,
-        ".js": create_javascript_menu,
-        ".html": create_html_menu,
-        ".css": create_css_menu,
-        ".java": create_java_menu,
-        ".cpp": create_cpp_menu,
-        ".tex": create_latex_menu,
-        ".sh": create_bash_menu,
-        ".ps1": create_powershell_menu
-    }
-
-    # File type labels
-    file_type_labels = {
-        ".py": "Python",
-        ".csv": "CSV",
-        ".txt": "Text",
-        ".md": "Markdown",
-        ".js": "Javascript",
-        ".html": "HTML",
-        ".css": "CSS",
-        ".java": "Java",
-        ".cpp": "C++",
-        ".tex": "LaTeX",
-        ".sh": "Bash",
-        ".ps1": "PowerShell"
-    }
-
-    # Find the index of the 'Jobs' menu
-    jobs_menu_index = None
-    for index in range(menu.index('end') + 1):
-        if 'Jobs' in menu.entrycget(index, 'label'):
-            jobs_menu_index = index
-            break
-
-    if jobs_menu_index is None:
-        return
-
-    # Check if a dynamic menu already exists and delete it if found
-    dynamic_menu_index = None
-    for index in range(menu.index('end') + 1):
-        try:
-            if menu.entrycget(index, 'label') in file_type_labels.values() or menu.entrycget(index, 'label') == "Other":
-                dynamic_menu_index = index
-                menu.delete(dynamic_menu_index)
-                break
-        except Exception as e:
-            continue
-
-    # Create and insert the new dynamic menu
-    dynamic_menu = Menu(menu, tearoff=0, name='dynamic')
-    if ext in menu_creators:
-        menu_creators[ext](dynamic_menu)
-        label = file_type_labels.get(ext, "Other")
-    else:
-        create_generic_text_menu(dynamic_menu)
-        label = "Other"
-
-    # Insert the dynamic menu after the Jobs menu
-    menu.insert_cascade(jobs_menu_index + 1, label=label, menu=dynamic_menu)
-
 
 def update_title_with_filename(file_name):
     """
@@ -1214,22 +944,3 @@ def get_scheduled_tasks(submenu):
     else:
         submenu.add_command(label="at", command=open_at_window)
         submenu.add_command(label="crontab", command=open_cron_window)
-
-
-def create_submenu(parent_menu, title, entries):
-    """
-        Creates a submenu with specified entries under the given parent menu.
-
-        Parameters:
-        parent_menu (Menu): The parent menu to which the submenu will be added.
-        title (str): The title of the submenu.
-        entries (dict): A dictionary of menu item labels and their corresponding command functions.
-
-        Returns:
-        None
-    """
-    submenu = Menu(parent_menu, tearoff=0)
-    parent_menu.add_cascade(label=title, menu=submenu)
-
-    for label, command in entries.items():
-        submenu.add_command(label=label, command=command)
