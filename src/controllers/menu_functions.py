@@ -1021,18 +1021,18 @@ def create_menu():
     file_menu.add_command(label="Open", command=open_script, compound='left', image=image_open, accelerator='Ctrl+O',
                           underline=0)
     # TODO:
-    file_menu.add_command(label="Recent files", command=open_script, compound='left', image=None, accelerator='Ctrl+O',
-                          underline=0)
+    '''file_menu.add_command(label="Recent files", command=open_script, compound='left', image=None, accelerator='Ctrl+O',
+                          underline=0)'''
     # TODO:
     file_menu.add_command(label="Close", command=open_script, compound='left', image=None, accelerator='Ctrl+W',
                           underline=0)
     # TODO:
-    file_menu.add_command(label="Close All", command=open_script, compound='left', image=None, accelerator='Ctrl+Shift+W',
-                          underline=0)
+    '''file_menu.add_command(label="Close All", command=open_script, compound='left', image=None, accelerator='Ctrl+Shift+W',
+                          underline=0)'''
     file_menu.add_command(label="Save", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
                           underline=0)
-    file_menu.add_command(label="Save All Files", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
-                          underline=0)
+    '''file_menu.add_command(label="Save All Files", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
+                          underline=0)'''
     file_menu.add_command(label="Save As...", command=save_as_new_script, accelerator='Ctrl+Shift+S', underline=1)
     file_menu.add_command(label="Save Copy...", command=save_as_new_script, accelerator=None, underline=1)
     file_menu.add_command(label="Move / Rename", command=None, accelerator=None, underline=0)
@@ -1108,17 +1108,17 @@ def create_menu():
     # edit_menu.add_command(label="Toggle comment", command=duplicate, compound='left', accelerator='Ctrl+3')
     # edit_menu.add_command(label="Comment out", command=duplicate, compound='left', accelerator='Alt+3')
     # edit_menu.add_command(label="Uncomment", command=duplicate, compound='left', accelerator='Alt+4')
+    # edit_menu.add_separator()
+    # edit_menu.add_command(label="Go to line...", command=duplicate, compound='left', accelerator='Ctrl+G')
     edit_menu.add_separator()
-    edit_menu.add_command(label="Go to line...", command=duplicate, compound='left', accelerator='Ctrl+G')
-    edit_menu.add_separator()
-    edit_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
+    # edit_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
 
     find_submenu = Menu(menu, tearoff=0)
     edit_menu.add_cascade(label="Find", menu=find_submenu)
     find_submenu.add_command(label="Find", command=find_text, compound='left', image=image_find, accelerator='Ctrl+F')
     find_submenu.add_command(label="Find and Replace", command=open_search_replace_dialog, compound='left', image=image_find, accelerator='Ctrl+R')
-    edit_menu.add_separator()
-    edit_menu.add_command(label="Clear shell", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
+    # edit_menu.add_separator()
+    # edit_menu.add_command(label="Clear shell", command=duplicate, compound='left', image=image_find, accelerator='Ctrl+L')
 
     # edit_menu.add_command(label="Delete", command=delete, underline=0)
     #edit_menu.add_separator()
