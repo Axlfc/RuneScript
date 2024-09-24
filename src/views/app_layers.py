@@ -9,6 +9,7 @@ from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, un
                                             duplicate)
 from src.models.script_operations import (run_script_with_timeout, run_script_once, run_script_crontab,
                                           get_operative_system)
+from src.views.edit_operations import undo, redo
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 
@@ -31,52 +32,7 @@ def create_body():
     create_filesystem_window()
 
 
-def undo():
-    """
-        Reverts the last action taken in the script text editor.
-
-        This function undoes the last change made to the text in the script editor, allowing for simple
-        mistake correction.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    print("Undo function called.")
-    script_text.edit_undo()
-
-
-def redo():
-    """
-        Redoes the last action that was undone in the script text editor.
-
-        If an action was undone using the undo function, this function allows the user to redo that action.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    print("Redo function called.")
-    script_text.edit_redo()
-
-
 def create_footer_line():
-    """
-        Creates the interface elements for opening a script file.
-
-        This includes buttons and labels to facilitate the opening of script files from the file system into the application.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-
     # TODO: print("Footer not seen")
     pass
 
@@ -185,6 +141,7 @@ def create_content_file_window():
     line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
 
     def show_context_menu(event):
+        global is_modified
         # TODO: Locales
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
@@ -195,9 +152,9 @@ def create_content_file_window():
         context_menu.add_command(label=localization_data['paste'], command=paste, accelerator='Ctrl+V')
         context_menu.add_command(label=localization_data['copy'], command=copy, accelerator='Ctrl+C')
         context_menu.add_command(label=localization_data['cut'], command=cut, accelerator='Ctrl+X')
-        context_menu.add_command(label="Select All", command=duplicate, accelerator='Ctrl+A')
-        context_menu.add_separator()
-        context_menu.add_command(label="Go to line...", command=duplicate, accelerator='Ctrl+G')
+        # context_menu.add_command(label=localization_data['duplicate'], command=duplicate, accelerator='Ctrl+D')
+        # context_menu.add_separator()
+        # context_menu.add_command(label="Go to line...", command=duplicate, accelerator='Ctrl+G')
         context_menu.add_separator()
         #  context_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
 
@@ -207,44 +164,44 @@ def create_content_file_window():
         find_submenu.add_command(label="Find", command=find_text, compound='left', accelerator='Ctrl+F')
         find_submenu.add_command(label="Find and Replace", command=open_search_replace_dialog, compound='left', accelerator='Ctrl+R')
 
-        context_menu.add_separator()
-        context_menu.add_command(label="Run", command=duplicate, accelerator='F5')
-        context_menu.add_command(label="Debug", command=duplicate, accelerator='F9')
-        context_menu.add_command(label="Run Preferences", command=duplicate, accelerator='F10')
-        context_menu.add_separator()
-        open_in_submenu = Menu(menu, tearoff=0)
-        context_menu.add_cascade(label="Open in", menu=open_in_submenu)
-        open_in_submenu.add_command(label="Explorer", command=duplicate, compound='left', accelerator='Ctrl+F')
-        open_in_submenu.add_command(label="Terminal", command=duplicate, compound='left', accelerator='Ctrl+R')
-        context_menu.add_separator()
-        git_submenu = Menu(menu, tearoff=0)
-        context_menu.add_cascade(label="Git", menu=git_submenu, accelerator='Ctl+Alt+G')
-        git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
-        git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
-                                accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        context_menu.add_separator()
-        context_menu.add_command(label="Clear script", command=duplicate, compound='left', accelerator='Ctrl+L')
+        #context_menu.add_separator()
+        #context_menu.add_command(label="Run", command=duplicate, accelerator='F5')
+        #context_menu.add_command(label="Debug", command=duplicate, accelerator='F9')
+        #context_menu.add_command(label="Run Preferences", command=duplicate, accelerator='F10')
+        #context_menu.add_separator()
+        #open_in_submenu = Menu(menu, tearoff=0)
+        #context_menu.add_cascade(label="Open in", menu=open_in_submenu)
+        #open_in_submenu.add_command(label="Explorer", command=duplicate, compound='left', accelerator='Ctrl+F')
+        #open_in_submenu.add_command(label="Terminal", command=duplicate, compound='left', accelerator='Ctrl+R')
+        #context_menu.add_separator()
+        #git_submenu = Menu(menu, tearoff=0)
+        #context_menu.add_cascade(label="Git", menu=git_submenu, accelerator='Ctl+Alt+G')
+        #git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
+        #git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        '''git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
+                                accelerator='Ctrl+Alt+A')'''
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #context_menu.add_separator()
+        #context_menu.add_command(label="Clear script", command=duplicate, compound='left', accelerator='Ctrl+L')
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -275,6 +232,14 @@ def create_content_file_window():
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
     script_text.bind("<<Modified>>", on_text_change)
+
+    status_bar = Label(frm, text="Status Bar")
+
+    is_modified = False
+
+    # Add Keyboard Shortcuts Here
+    #script_text.bind("<Control-z>", undo)
+    #script_text.bind("<Control-y>", redo)
 
 
 def create_horizontal_scrollbar_lines():

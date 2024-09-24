@@ -15,7 +15,7 @@ from src.controllers.script_tasks import analyze_csv_data, render_markdown_to_ht
     run_javascript_analysis, analyze_generic_text_data, render_latex_to_pdf, generate_latex_pdf, run_python_script, \
     change_interpreter, render_markdown_to_latex
 from src.localization import localization_data
-from src.views.edit_operations import undo, redo, duplicate
+from src.views.edit_operations import undo, redo, duplicate, copy, cut, paste
 
 from src.views.tk_utils import toolbar, menu, root, script_name_label, script_text, is_modified, \
     file_name, last_saved_content, local_python_var, show_directory_view_var, show_file_view_var, frm, directory_label, \
@@ -77,70 +77,13 @@ def init_git_console():
     if git_console_instance is None:
         git_console_instance = "Something"
 
-
-def cut():
-    """
-        Cuts the selected text from the script editor to the clipboard.
-
-        This function removes the currently selected text from the document and places it on the clipboard,
-        allowing it to be pasted elsewhere.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    #set_modified_status(True)
-    script_text.event_generate("<<Cut>>")
-
-
-def copy():
-    """
-        Copies the selected text from the script editor to the clipboard.
-
-        This function copies the currently selected text to the clipboard without removing it from the document.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    # set_modified_status(True)
-    script_text.event_generate("<<Copy>>")
-
-
-def paste():
-    """
-        Pastes text from the clipboard into the script editor at the cursor's current location.
-
-        This function inserts the contents of the clipboard into the document at the current cursor position.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    # set_modified_status(True)
-    script_text.event_generate("<<Paste>>")
-
-
-'''def duplicate():
-    """
-        Duplicates the selected text in the script editor.
-
-        This function creates a copy of the selected text and inserts it immediately after the current selection.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-        """
-    # set_modified_status(True)
-    script_text.event_generate("<<Duplicate>>")'''
+def open_current_directory(directory=directory_label.cget("text")):
+    if sys.platform == "win32":
+        os.startfile(directory)
+    elif sys.platform == "darwin":
+        subprocess.run(["open", directory])
+    else:  # Assuming Linux or similar
+        subprocess.run(["xdg-open", directory])
 
 
 # Help Menu
@@ -158,6 +101,14 @@ def about(event=None):
     """
     messagebox.showinfo(localization_data['about_scripts_editor'],
                         localization_data['scripts_editor_info'])
+
+
+def open_scriptsstudio_folder():
+    open_current_directory(read_config_parameter("options.file_management.scriptsstudio_directory"))
+
+
+def open_scriptsstudio_data_folder():
+    open_current_directory(read_config_parameter("options.file_management.scriptsstudio_directory") + "\\data")
 
 
 def set_modified_status(value):
@@ -731,6 +682,7 @@ def toggle_directory_view_visibility(frame):
             Returns:
             None
         """
+        print("DIRECTORYYYYYYY")
         directory = filedialog.askdirectory()
         if directory:
             os.chdir(directory)
@@ -741,6 +693,7 @@ def toggle_directory_view_visibility(frame):
             if messagebox.askyesno(localization_data['open_script'],
                                    localization_data['open_first_file_from_directory']):
                 open_first_text_file(directory)
+        write_config_parameter("options.file_management.current_working_directory", directory)
 
     def open_first_text_file(directory):
         """
@@ -759,15 +712,6 @@ def toggle_directory_view_visibility(frame):
         if text_files:
             file_path = os.path.join(directory, text_files[0])
             open_file(file_path)
-
-    def open_current_directory():
-        directory = directory_label.cget("text")
-        if sys.platform == "win32":
-            os.startfile(directory)
-        elif sys.platform == "darwin":
-            subprocess.run(["open", directory])
-        else:  # Assuming Linux or similar
-            subprocess.run(["xdg-open", directory])
 
     def get_text_files(directory):
         """
@@ -798,7 +742,7 @@ def toggle_directory_view_visibility(frame):
         Tooltip(directory_button, localization_data['choose_working_directory'])
 
         directory_label.grid(column=1, row=0, padx=5, sticky="ew")
-        directory_label.bind("<Double-1>", lambda event: open_current_directory())
+        directory_label.bind("<Double-1>", lambda event: open_current_directory(read_config_parameter("options.file_management.current_working_directory")))
         Tooltip(directory_label, localization_data['current_directory'])
     else:
         write_config_parameter("options.view_options.is_directory_view_visible", "false")
@@ -1091,20 +1035,20 @@ def create_menu():
                           accelerator='Ctrl+V',
                           underline=0
                           )
-    edit_menu.add_command(label="Duplicate",
+    '''edit_menu.add_command(label="Duplicate",
                           command=duplicate,
                           compound='left',
                           image=image_paste,
                           accelerator='Ctrl+D',
                           underline=0
-                          )
-    edit_menu.add_command(label="Select All",
-                          command=duplicate,
+                          )'''
+    '''edit_menu.add_command(label="Select All",
+                          command=select_all,
                           compound='left',
                           image=image_duplicate,
-                          accelerator='Ctrl+D',
+                          accelerator='Ctrl+A',
                           underline=0
-                          )
+                          )'''
     # TODO: python specific menu sections (triggered by python dynamic menu)
     # edit_menu.add_separator()
     # edit_menu.add_command(label="Indent selected lines", command=duplicate, compound='left', accelerator='Tab')
@@ -1198,7 +1142,7 @@ def create_menu():
 
     #tool_menu.add_command(label="Change Color", command=change_color)
     # tool_menu.add_command(label="Change Theme", command=open_change_theme_window)
-    tool_menu.add_separator()
+    # tool_menu.add_separator()
     tool_menu.add_command(label="System Shell", command=open_terminal_window, accelerator='Ctrl+T')
     tool_menu.add_command(label="Git Console", command=open_git_window, accelerator='Ctrl+Alt+G')
     tool_menu.add_command(label="Kanban", command=open_kanban_window, accelerator='Alt+K')
@@ -1210,8 +1154,8 @@ def create_menu():
     #tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))
     #tool_menu.add_command(label="Web Browser", command=create_url_input_window)
     #tool_menu.add_command(label="big-AGI", command=lambda: open_webview('big-AGI', 'http://localhost:3000'))
-    tool_menu.add_command(label="Open ScriptsStudio program folder...", command=about, accelerator=None)
-    tool_menu.add_command(label="Open ScriptsStudio data folder...", command=about, accelerator=None)
+    tool_menu.add_command(label="Open ScriptsStudio program folder...", command=open_scriptsstudio_folder, accelerator=None)
+    tool_menu.add_command(label="Open ScriptsStudio data folder...", command=open_scriptsstudio_data_folder, accelerator=None)
     tool_menu.add_separator()
     tool_menu.add_command(label="Options...",
                           command=create_settings_window,

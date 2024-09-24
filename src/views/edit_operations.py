@@ -4,89 +4,18 @@ from tkinter.constants import SEL_FIRST, SEL_LAST
 from src.views.tk_utils import root, text, script_text
 
 
-def cut(event=None):
-    """
-        Cuts the selected text from the editor and places it into the clipboard.
-    """
-    try:
-        # Check if there is selected text
-        selected_text = text.get(SEL_FIRST, SEL_LAST)
-        root.clipboard_clear()
-        root.clipboard_append(string=selected_text)
-        text.delete(SEL_FIRST, SEL_LAST)
-    except Exception as e:
-        # No text is selected
-        pass
-
-
-def copy(event=None):
-    """
-        Copies the selected text from the editor to the clipboard.
-    """
-    try:
-        selected_text = text.get(SEL_FIRST, SEL_LAST)
-        root.clipboard_clear()
-        root.clipboard_append(string=selected_text)
-    except Exception as e:
-        # No text is selected
-        pass
-
-
-def paste(event=None):
-    """
-        Pastes text from the clipboard into the editor at the current cursor position.
-
-        This function retrieves everything from the clipboard and inserts it at the current cursor position in the editor.
-
-        Parameters:
-        event (optional): An event object representing the event that triggered this function.
-
-        Returns:
-        None
-    """
-    # get gives everyting from the clipboard and paste it on the current cursor position
-    # it does'nt removes it from the clipboard.
-    text.insert(INSERT, root.clipboard_get())
-
-
-def select_all(event=None):
-    """
-        Selects all the text within the editor.
-
-        This function adds a 'select' tag from the beginning to the end of the text, effectively selecting all the text.
-
-        Parameters:
-        event (optional): An event object representing the event that triggered this function.
-
-        Returns:
-        None
-    """
-    text.tag_add(SEL, "1.0", END)
-
-
-def delete_all():
-    """
-        Deletes all text in the editor.
-
-        This function removes all the content in the editor, clearing the text field.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    text.delete(1.0, END)
-
-
 def duplicate(event=None):
+    """
+    Duplicates the currently selected text.
+    """
     try:
         selected_text = text.get(SEL_FIRST, SEL_LAST)
-        text.insert(INSERT, selected_text)
-    except Exception:  # Specific exception for better clarity
-        print("No text is selected or other widget-specific error.")
+        if selected_text:  # Ensure there is selected text
+            text.insert(INSERT, selected_text)
+        else:
+            print("No text is selected.")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"No text is selected or other widget-specific error: {e}")
 
 
 def undo():
@@ -101,7 +30,11 @@ def undo():
         Returns:
         None
     """
-    script_text.edit_undo()
+    try:
+        print("UNDO TRIGGERED")
+        script_text.edit_undo()
+    except Exception as e:
+        print("ERROR:\t", e)
 
 
 def redo():
@@ -116,7 +49,11 @@ def redo():
         Returns:
         None
     """
-    script_text.edit_redo()
+    try:
+        print("REDO TRIGGERED")
+        script_text.edit_redo()
+    except Exception as e:
+        print("ERROR:\t", e)
 
 
 def delete():
@@ -132,3 +69,73 @@ def delete():
         None
     """
     text.delete(index1=SEL_FIRST, index2=SEL_LAST)
+
+
+def select_all():
+    text.tag_add("start", "1.0", "end")
+
+
+def cut():
+    """
+        Cuts the selected text from the script editor to the clipboard.
+
+        This function removes the currently selected text from the document and places it on the clipboard,
+        allowing it to be pasted elsewhere.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    #set_modified_status(True)
+    script_text.event_generate("<<Cut>>")
+
+
+def copy():
+    """
+        Copies the selected text from the script editor to the clipboard.
+
+        This function copies the currently selected text to the clipboard without removing it from the document.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    # set_modified_status(True)
+    script_text.event_generate("<<Copy>>")
+
+
+def paste():
+    """
+        Pastes text from the clipboard into the script editor at the cursor's current location.
+
+        This function inserts the contents of the clipboard into the document at the current cursor position.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+    """
+    # set_modified_status(True)
+    script_text.event_generate("<<Paste>>")
+
+
+def duplicate():
+    """
+        Duplicates the selected text in the script editor.
+
+        This function creates a copy of the selected text and inserts it immediately after the current selection.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+        """
+    # set_modified_status(True)
+    print("DUPLICAT")
+    script_text.event_generate("<<Duplicate>>")
