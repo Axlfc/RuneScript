@@ -11,6 +11,7 @@ from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, un
 from src.models.script_operations import (run_script_with_timeout, run_script_once, run_script_crontab,
                                           get_operative_system)
 from src.views.edit_operations import undo, redo
+from src.views.tree_functions import item_opened, update_tree, on_item_select
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 
@@ -84,11 +85,10 @@ def create_open_script_line():
 
 def create_filesystem_window():
     # Create a frame to hold the Treeview and scrollbars
-    tree_frame = Frame(filesystem_frm)
-    tree_frame.pack(fill=BOTH, expand=True)
+    #tree_frame.grid(row=0, column=0, sticky="nsew")
 
     # Create the tree view widget
-    tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
+    #tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
 
     # Add vertical scrollbar
     vsb = Scrollbar(tree_frame, orient="vertical", command=tree.yview)
@@ -108,38 +108,7 @@ def create_filesystem_window():
     tree.heading('#0', text="", anchor=W)
     tree.column('#0', width=300, minwidth=200)
 
-    # Function to update the tree view with directory contents
-    def update_tree(path):
-        for item in tree.get_children():
-            tree.delete(item)
-        abspath = os.path.abspath(path)
-        root_node = tree.insert('', 'end', text=abspath, values=(abspath,), open=True)
-        populate_tree(root_node, abspath)
-
-    # Recursive function to populate the tree view
-    def populate_tree(parent, path):
-        for item in os.listdir(path):
-            if item != '.git' and item != '.idea':
-                abspath = os.path.join(path, item)
-                node = tree.insert(parent, 'end', text=item, values=(abspath,), open=False)
-                if os.path.isdir(abspath):
-                    tree.insert(node, 'end')
-
-    # Function to expand directory when double-clicked
-    def item_opened(event):
-        item = tree.focus()
-        abspath = tree.item(item, "values")[0]
-        if os.path.isdir(abspath):
-            tree.delete(*tree.get_children(item))
-            populate_tree(item, abspath)
-
     tree.bind('<<TreeviewOpen>>', item_opened)
-
-    # Function to handle item selection
-    def on_item_select(event):
-        item = tree.focus()
-        print(f"Selected: {tree.item(item, 'text')}")
-        print(f"Full path: {tree.item(item, 'values')[0]}")
 
     tree.bind('<<TreeviewSelect>>', on_item_select)
 

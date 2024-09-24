@@ -1,3 +1,5 @@
+from tkinter.ttk import Treeview
+
 from ttkbootstrap import Style
 
 from src.controllers.parameters import ensure_user_config, load_theme_setting, get_scriptsstudio_directory
@@ -8,9 +10,9 @@ import os
 
 
 def configure_app():
-    width = 720
+    width = 800
     # height = int(width * (1 + 4 ** 0.5) / 2)
-    height = 640
+    height = 600
 
     root.title(localization_data['scripts_editor'])
     root.geometry(f"{width}x{height}")
@@ -115,5 +117,13 @@ one_time_frm = Frame(root)
 daily_frm = Frame(root)
 
 filesystem_frm = Frame(root)
+
+tree_frame = Frame(filesystem_frm)
+
+# Create a frame to hold the Treeview and scrollbars
+tree_frame.grid(row=0, column=0, sticky="nsew")
+
+# Create the tree view widget
+tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
 
 configure_app()
