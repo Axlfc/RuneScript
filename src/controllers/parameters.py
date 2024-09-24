@@ -113,3 +113,26 @@ def write_config_parameter(parameter_path, parameter_value):
     except Exception as e:
         print(f"Error writing user_config.json: {e}")
         return False
+
+def ensure_user_config():
+    config_path = 'data/config.json'
+    user_config_path = 'data/user_config.json'
+
+    # Check if user_config.json exists
+    if not os.path.exists(user_config_path):
+        # Open config.json in read mode and create user_config.json in write mode
+        with open(config_path, 'r') as config_file:
+            with open(user_config_path, 'w') as user_config_file:
+                # Read from config.json and write to user_config.json
+                user_config_file.write(config_file.read())
+        #  print(f"Copied {config_path} to {user_config_path}")
+    else:
+        #  print(f"{user_config_path} already exists, doing nothing.")
+        pass
+
+
+def load_theme_setting():
+    theme = read_config_parameter("options.theme_appearance.theme")
+    if theme is None:
+        theme = 'cosmo'  # Replace 'default' with your actual default theme
+    return theme
