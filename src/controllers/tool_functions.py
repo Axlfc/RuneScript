@@ -16,7 +16,6 @@ import markdown
 from PIL import ImageTk
 from PIL.Image import Image
 from tkhtmlview import HTMLLabel
-from src.views.edit_operations import cut, copy, paste, duplicate
 from src.views.tk_utils import text, script_text, root, style
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
@@ -341,6 +340,8 @@ def create_settings_window():
                 messagebox.showerror("Theme Error", f"The theme '{theme}' is not available. ({e})")
 
         messagebox.showinfo("Settings Saved", "Settings saved successfully!")
+
+        # TO-DO: Reload main app GUI
 
     def reset_settings():
         global style  # Ensure style is accessible

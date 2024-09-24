@@ -39,6 +39,12 @@
             "high_contrast_mode": false
         },
         "file_management": {
+            "scriptsstudio_directory": "",
+            "scriptsstudio_data_directory": "",
+            "scriptsstudio_config_path": "",
+            "scriptsstudio_user_config_path": "",
+            "current_working_directory": "",
+            "current_file_path": "",
             "last_saved_script": "",
             "last_opened_script": "",
             "last_edited_script": "",

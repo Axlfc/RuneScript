@@ -1,6 +1,6 @@
 from ttkbootstrap import Style
 
-from src.controllers.parameters import ensure_user_config, load_theme_setting
+from src.controllers.parameters import ensure_user_config, load_theme_setting, get_scriptsstudio_directory
 from src.localization import localization_data
 from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox
 from tkinter import scrolledtext, Text, Entry, Menu
@@ -10,7 +10,7 @@ import os
 def configure_app():
     width = 720
     # height = int(width * (1 + 4 ** 0.5) / 2)
-    height = 720
+    height = 640
 
     root.title(localization_data['scripts_editor'])
     root.geometry(f"{width}x{height}")
@@ -45,6 +45,9 @@ server_options = ["lmstudio", "ollama", "openai"]
 
 # Load user_config.json, if there is not, create it.
 ensure_user_config()
+
+# Save ScriptsStudio path
+get_scriptsstudio_directory()
 
 # Load style
 style = Style()

@@ -1,6 +1,7 @@
-from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL
+from tkinter import Button, Checkbutton, Scrollbar, HORIZONTAL, LEFT, BOTH, RIGHT, X, Y, BOTTOM, W
 from tkinter.ttk import Treeview
 
+from src.controllers.parameters import read_config_parameter
 from src.controllers.tool_functions import find_text, open_search_replace_dialog
 from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
@@ -9,6 +10,7 @@ from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, un
                                             duplicate)
 from src.models.script_operations import (run_script_with_timeout, run_script_once, run_script_crontab,
                                           get_operative_system)
+from src.views.edit_operations import undo, redo
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 
@@ -31,52 +33,7 @@ def create_body():
     create_filesystem_window()
 
 
-def undo():
-    """
-        Reverts the last action taken in the script text editor.
-
-        This function undoes the last change made to the text in the script editor, allowing for simple
-        mistake correction.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    print("Undo function called.")
-    script_text.edit_undo()
-
-
-def redo():
-    """
-        Redoes the last action that was undone in the script text editor.
-
-        If an action was undone using the undo function, this function allows the user to redo that action.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-    print("Redo function called.")
-    script_text.edit_redo()
-
-
 def create_footer_line():
-    """
-        Creates the interface elements for opening a script file.
-
-        This includes buttons and labels to facilitate the opening of script files from the file system into the application.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-    """
-
     # TODO: print("Footer not seen")
     pass
 
@@ -126,38 +83,70 @@ def create_open_script_line():
 
 
 def create_filesystem_window():
-    # Create the frame for the filesystem view
+    # Create a frame to hold the Treeview and scrollbars
+    tree_frame = Frame(filesystem_frm)
+    tree_frame.pack(fill=BOTH, expand=True)
 
     # Create the tree view widget
-    tree = Treeview(filesystem_frm)
-    tree.grid(row=0, column=0, sticky="nsew")
+    tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
 
-    # Ensure that the frame can expand with the treeview
-    filesystem_frm.grid_rowconfigure(0, weight=1)
-    filesystem_frm.grid_columnconfigure(0, weight=1)
+    # Add vertical scrollbar
+    vsb = Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    vsb.pack(side=RIGHT, fill=Y)
+
+    # Add horizontal scrollbar
+    hsb = Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+    hsb.pack(side=BOTTOM, fill=X)
+
+    # Pack the tree view
+    tree.pack(side=LEFT, fill=BOTH, expand=True)
+
+    # Configure the Treeview
+    tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+    # Remove the header text
+    tree.heading('#0', text="", anchor=W)
+    tree.column('#0', width=300, minwidth=200)
 
     # Function to update the tree view with directory contents
     def update_tree(path):
-        tree.delete(*tree.get_children())
-        for entry in os.listdir(path):
-            abs_path = os.path.join(path, entry)
-            parent_id = ''
-
-            if os.path.isdir(abs_path):
-                parent_id = tree.insert('', 'end', text=entry, open=True)
-                populate_tree(parent_id, abs_path)
-            else:
-                tree.insert('', 'end', text=entry)
+        for item in tree.get_children():
+            tree.delete(item)
+        abspath = os.path.abspath(path)
+        root_node = tree.insert('', 'end', text=abspath, values=(abspath,), open=True)
+        populate_tree(root_node, abspath)
 
     # Recursive function to populate the tree view
-    def populate_tree(parent_id, path):
-        for entry in os.listdir(path):
-            abs_path = os.path.join(path, entry)
-            if os.path.isdir(abs_path):
-                oid = tree.insert(parent_id, 'end', text=entry, open=False)
-                populate_tree(oid, abs_path)
-            else:
-                tree.insert(parent_id, 'end', text=entry)
+    def populate_tree(parent, path):
+        for item in os.listdir(path):
+            if item != '.git' and item != '.idea':
+                abspath = os.path.join(path, item)
+                node = tree.insert(parent, 'end', text=item, values=(abspath,), open=False)
+                if os.path.isdir(abspath):
+                    tree.insert(node, 'end')
+
+    # Function to expand directory when double-clicked
+    def item_opened(event):
+        item = tree.focus()
+        abspath = tree.item(item, "values")[0]
+        if os.path.isdir(abspath):
+            tree.delete(*tree.get_children(item))
+            populate_tree(item, abspath)
+
+    tree.bind('<<TreeviewOpen>>', item_opened)
+
+    # Function to handle item selection
+    def on_item_select(event):
+        item = tree.focus()
+        print(f"Selected: {tree.item(item, 'text')}")
+        print(f"Full path: {tree.item(item, 'values')[0]}")
+
+    tree.bind('<<TreeviewSelect>>', on_item_select)
+
+    # Initial population of the tree
+    print("CREATING FILESYSTEM VIEW")
+    current_directory = read_config_parameter("options.file_management.current_working_directory")
+    update_tree(current_directory)
 
     return filesystem_frm, update_tree
 
@@ -181,6 +170,7 @@ def create_content_file_window():
     line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
 
     def show_context_menu(event):
+        global is_modified
         # TODO: Locales
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
@@ -191,9 +181,9 @@ def create_content_file_window():
         context_menu.add_command(label=localization_data['paste'], command=paste, accelerator='Ctrl+V')
         context_menu.add_command(label=localization_data['copy'], command=copy, accelerator='Ctrl+C')
         context_menu.add_command(label=localization_data['cut'], command=cut, accelerator='Ctrl+X')
-        context_menu.add_command(label="Select All", command=duplicate, accelerator='Ctrl+A')
-        context_menu.add_separator()
-        context_menu.add_command(label="Go to line...", command=duplicate, accelerator='Ctrl+G')
+        # context_menu.add_command(label=localization_data['duplicate'], command=duplicate, accelerator='Ctrl+D')
+        # context_menu.add_separator()
+        # context_menu.add_command(label="Go to line...", command=duplicate, accelerator='Ctrl+G')
         context_menu.add_separator()
         #  context_menu.add_command(label="Auto-complete", command=duplicate, compound='left', accelerator='Ctrl+Space')
 
@@ -203,44 +193,44 @@ def create_content_file_window():
         find_submenu.add_command(label="Find", command=find_text, compound='left', accelerator='Ctrl+F')
         find_submenu.add_command(label="Find and Replace", command=open_search_replace_dialog, compound='left', accelerator='Ctrl+R')
 
-        context_menu.add_separator()
-        context_menu.add_command(label="Run", command=duplicate, accelerator='F5')
-        context_menu.add_command(label="Debug", command=duplicate, accelerator='F9')
-        context_menu.add_command(label="Run Preferences", command=duplicate, accelerator='F10')
-        context_menu.add_separator()
-        open_in_submenu = Menu(menu, tearoff=0)
-        context_menu.add_cascade(label="Open in", menu=open_in_submenu)
-        open_in_submenu.add_command(label="Explorer", command=duplicate, compound='left', accelerator='Ctrl+F')
-        open_in_submenu.add_command(label="Terminal", command=duplicate, compound='left', accelerator='Ctrl+R')
-        context_menu.add_separator()
-        git_submenu = Menu(menu, tearoff=0)
-        context_menu.add_cascade(label="Git", menu=git_submenu, accelerator='Ctl+Alt+G')
-        git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
-        git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
-                                accelerator='Ctrl+Alt+A')
-        git_submenu.add_separator()
-        git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
-        context_menu.add_separator()
-        context_menu.add_command(label="Clear script", command=duplicate, compound='left', accelerator='Ctrl+L')
+        #context_menu.add_separator()
+        #context_menu.add_command(label="Run", command=duplicate, accelerator='F5')
+        #context_menu.add_command(label="Debug", command=duplicate, accelerator='F9')
+        #context_menu.add_command(label="Run Preferences", command=duplicate, accelerator='F10')
+        #context_menu.add_separator()
+        #open_in_submenu = Menu(menu, tearoff=0)
+        #context_menu.add_cascade(label="Open in", menu=open_in_submenu)
+        #open_in_submenu.add_command(label="Explorer", command=duplicate, compound='left', accelerator='Ctrl+F')
+        #open_in_submenu.add_command(label="Terminal", command=duplicate, compound='left', accelerator='Ctrl+R')
+        #context_menu.add_separator()
+        #git_submenu = Menu(menu, tearoff=0)
+        #context_menu.add_cascade(label="Git", menu=git_submenu, accelerator='Ctl+Alt+G')
+        #git_submenu.add_command(label="Commit File...", command=duplicate, compound='left', accelerator='Ctrl+Alt+C')
+        #git_submenu.add_command(label="Add", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Blame", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Diff", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Push...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Pull...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Fetch", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Merge...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Rebase...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Branches", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="New Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Delete Branch...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Reset HEAD...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Stash Changes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        '''git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
+                                accelerator='Ctrl+Alt+A')'''
+        #git_submenu.add_separator()
+        #git_submenu.add_command(label="Manage Remotes...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #git_submenu.add_command(label="Clone...", command=duplicate, compound='left', accelerator='Ctrl+Alt+A')
+        #context_menu.add_separator()
+        #context_menu.add_command(label="Clear script", command=duplicate, compound='left', accelerator='Ctrl+L')
 
         # Post the context menu at the cursor location
         context_menu.post(event.x_root, event.y_root)
@@ -271,6 +261,14 @@ def create_content_file_window():
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
     script_text.bind("<<Modified>>", on_text_change)
+
+    status_bar = Label(frm, text="Status Bar")
+
+    is_modified = False
+
+    # Add Keyboard Shortcuts Here
+    #script_text.bind("<Control-z>", undo)
+    #script_text.bind("<Control-y>", redo)
 
 
 def create_horizontal_scrollbar_lines():
