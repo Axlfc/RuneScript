@@ -231,10 +231,10 @@ def create_content_file_window():
 
     script_text.bind("<Button-3>", show_context_menu)
     #script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
-    # script_text.bind("<Key>", on_text_change)  # Add this line to track text insertion
+    script_text.bind("<Key>", on_text_change)  # Add this line to track text insertion
     # script_text.bind("<<Modified>>", on_text_change)
 
-    script_text.bind("<<Modified>>", on_text_change)
+    #script_text.bind("<<TextModified>>", on_text_change)
 
     status_bar = Label(frm, text="Status Bar")
 
