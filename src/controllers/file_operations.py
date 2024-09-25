@@ -225,14 +225,12 @@ def on_text_change(event=None):
     if current_content != last_saved_content:
         print("Content has been modified.")
         if not is_modified:
-            print("WHY")
             is_modified = True
             update_title()
 
     else:
         print("No changes detected.")
-        if is_modified:
-            print("NOT")
+        if not is_modified:
             is_modified = False
             update_title()
 
