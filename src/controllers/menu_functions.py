@@ -34,7 +34,8 @@ from lib.git import git_icons
 import lib.git as git
 from src.views.tree_functions import update_tree
 from src.views.ui_elements import Tooltip
-from src.controllers.file_operations import open_file, open_script, update_title
+from src.controllers.file_operations import open_file, open_script, update_title, file_types, new, save, save_script, \
+    save_as_new_script, close
 
 # Add this line
 git_console_instance = None
@@ -46,30 +47,6 @@ save_new_icon = "🆕"
 undo_icon = "⮪"
 redo_icon = "⮬"
 run_icon = "▶"
-
-file_types = [
-    ("All Files", "*.*"),
-    ("Python Scripts", "*.py"),
-    ("Shell Scripts", "*.sh"),
-    ("PowerShell Scripts", "*.ps1"),
-    ("Text Files", "*.txt"),
-    ("LaTeX Files", "*.tex"),
-    ("CSV Files", "*.csv"),
-    ("JavaScript Files", "*.js"),
-    ("HTML Files", "*.html"),
-    ("CSS Files", "*.css"),
-    ("Java Files", "*.java"),
-    ("C++ Files", "*.cpp"),
-    ("Ruby Scripts", "*.rb"),
-    ("Perl Scripts", "*.pl"),
-    ("PHP Scripts", "*.php"),
-    ("Python Notebooks", "*.ipynb"),
-    ("Swift Scripts", "*.swift"),
-    ("Go Files", "*.go"),
-    ("R Scripts", "*.r"),
-    ("Rust Files", "*.rs"),
-    ("Dart Files", "*.dart")
-]
 
 
 def init_git_console():
@@ -110,210 +87,6 @@ def open_scriptsstudio_folder():
 
 def open_scriptsstudio_data_folder():
     open_current_directory(read_config_parameter("options.file_management.scriptsstudio_directory") + "\\data")
-
-
-def set_modified_status(value):
-    """
-        Sets the modified status of the current file.
-
-        This function updates the global 'is_modified' flag to the given value, indicating whether the current file
-        has unsaved changes.
-
-        Parameters:
-        value (bool): The modified status to set (True or False).
-
-        Returns:
-        None
-    """
-    global is_modified  # Add file_name to the global declaration
-    is_modified = value
-    update_title()
-
-
-def new():
-    """
-        Creates a new file in the editor.
-        Prompts the user to save the current file if it is modified, then clears the text editor.
-    """
-    global is_modified
-    if is_modified:
-        response = messagebox.askyesnocancel(localization_data['save_file'], localization_data['save_changes_confirmation'])
-        if response:  # User chose 'Yes'
-            save()
-            clear_editor()
-        elif response is None:  # User chose 'Cancel'
-            return  # Cancel new file operation
-        elif not response:
-            clear_editor()
-
-    file_name = ""
-    clear_editor()  # Clears the editor after handling the save dialog
-
-
-def clear_editor():
-    """
-        Clears the text editor and resets the title and modified flag.
-    """
-    global file_name
-    global is_modified
-
-    script_text.delete('1.0', 'end')
-    file_name = ""
-    is_modified = False
-    update_title()
-
-
-def on_text_change(event=None):
-    """
-        Updates the modified flag when text in the editor changes.
-    """
-    global is_modified
-    current_content = script_text.get("1.0", END).strip()
-
-    # Check if the content is empty and if the file is considered 'new' (i.e., not yet saved or loaded from disk)
-    if current_content != last_saved_content:
-        if not is_modified:  # Update only if there are changes
-            is_modified = True
-            update_title()
-            print("DEBUG: WE REACHED ORIGINAL FILE TEXT CONTENT")  # Debug print statement added
-    elif not current_content and (not file_name or file_name == "Untitled"):
-        if is_modified:  # Only update if the status is currently 'modified'
-            is_modified = False
-            update_title()
-    else:
-        if not is_modified:  # Only update if the status is currently 'not modified'
-            is_modified = True
-            update_title()
-
-def update_title_with_filename(file_name):
-    """
-        Updates the window title with the name of the currently open file.
-
-        This function sets the application window's title to include the base name of the given file path.
-
-        Parameters:
-        file_name (str): The full path of the currently open file.
-
-        Returns:
-        None
-    """
-    # Esta función actualizará el título de la ventana con el nuevo nombre de archivo
-    base_name = os.path.basename(file_name)
-    root.title(f"{base_name} - Scripts Editor")
-
-
-def update_modification_status(event):
-    """
-        Updates the modification status of the file to 'modified'.
-
-        This function should be called whenever a change is made to the text content, setting the file's status
-        as modified.
-
-        Parameters:
-        event: The event object representing the triggering event.
-
-        Returns:
-        None
-    """
-    set_modified_status(True)
-
-
-def save():
-    """
-    Saves the current file. If the file doesn't have a name, calls 'save_as' function.
-    """
-    global is_modified, file_name
-
-    if not file_name or file_name == "Untitled":
-        return save_as()  # If no filename, use 'Save As' to get a new filename
-
-    try:
-        with open(file_name, 'w', encoding='utf-8') as file:
-            file.write(script_text.get('1.0', 'end-1c'))
-            is_modified = False
-            update_title()
-            messagebox.showinfo("Save", "File saved successfully!")
-            return True
-    except Exception as e:
-        messagebox.showerror("Save Error", f"An error occurred: {e}")
-        return False
-
-
-def save_as():
-    print("ENTERING SAVE AS")
-    """
-        Opens a 'Save As' dialog to save the current file with a specified name.
-    """
-    global file_name
-    global is_modified
-
-    new_file_name = filedialog.asksaveasfilename(defaultextension=".*", filetypes=file_types)
-    if not new_file_name:
-        return False
-
-    file_name = new_file_name
-    save()
-    update_script_name_label(new_file_name)
-    update_title()
-    return True
-
-
-def close(event=None):
-    if save():  # Proceed only if the user saves the file or chooses not to save
-        root.quit()
-
-
-def save_file(file_name, content):
-    with open(file_name, "w", encoding='utf-8') as file:
-        file.write(content)
-    messagebox.showinfo("Save", "Script saved successfully!")
-
-
-def save_script():
-    """
-    Triggered when 'Save' is clicked. Saves the current file or prompts to save as new if it's a new file.
-    """
-    global file_name, is_modified
-
-    if not file_name or file_name == "Untitled":
-        # If the file is new (i.e., no file_name or it's 'Untitled'), use 'save_as_new_script'
-        print("Saving new script...")
-        save_as_new_script()
-    else:
-        # If the file exists, just save it
-        print("Saving existing script...")
-        content = script_text.get("1.0", "end-1c")  # Get text from editor
-        try:
-            with open(file_name, 'w', encoding='utf-8') as file:
-                file.write(content)
-            is_modified = False  # Reset modification status
-            update_title()  # Update the window title
-            update_script_name_label(file_name)  # Ensure the script name label is updated
-            messagebox.showinfo("Save", "File saved successfully!")
-        except Exception as e:
-            messagebox.showerror("Save Error", f"An error occurred while saving: {e}")
-
-
-def save_as_new_script():
-    """
-    Saves the current content as a new file. Opens a file dialog for the user to choose where to save.
-    """
-    global file_name, is_modified
-
-    new_file_name = filedialog.asksaveasfilename(defaultextension=".*", filetypes=file_types)
-    if not new_file_name:
-        return  # User cancelled the 'Save As' operation
-
-    file_name = new_file_name  # Update file name
-    save_script()  # Call save_script to save the file
-
-
-def update_script_name_label(file_path):
-    """
-    Updates the script name label with the base name of the provided file path.
-    """
-    base_name = os.path.basename(file_path)
-    script_name_label.config(text=f"File Name: {base_name}")
 
 
 # TOOLBAR BUTTONS
@@ -467,7 +240,7 @@ def get_text_files(directory):
 def toggle_directory_view_visibility(frame):
     global current_directory
     global directory_label
-    print("DIRECTORY VIEW VISIBILITY TOGGLED")
+    # print("DIRECTORY VIEW VISIBILITY TOGGLED")
 
     if show_directory_view_var.get() == 1:
         write_config_parameter("options.view_options.is_directory_view_visible", "true")
@@ -642,7 +415,7 @@ def toggle_filesystem_view_visibility(frame):
 
 
 def add_view_section_to_menu(options_parameter_name, view_variable, menu_section, view_section_name, frame, function):
-    print("ADDING VIEW SECTION TO MENU (", view_section_name, ")")
+    # print("ADDING VIEW SECTION TO MENU (", view_section_name, ")")
     # Assuming the structure is now options.options.view_options.is_*_view_visible
     is_view_visible = read_config_parameter(f"options.view_options.{options_parameter_name}")
 
@@ -662,7 +435,7 @@ def add_view_section_to_menu(options_parameter_name, view_variable, menu_section
 
 
 def toggle_view(frame, function, options_parameter_name, view_variable):
-    print("TOGGLED VIEW!!!")
+    # print("TOGGLED VIEW!!!")
     function(frame)
     update_config(options_parameter_name, view_variable.get())
 

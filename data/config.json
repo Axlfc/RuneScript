@@ -45,6 +45,7 @@
             "scriptsstudio_user_config_path": "",
             "current_working_directory": "",
             "current_file_path": "",
+            "current_file_directory": "",
             "last_saved_script": "",
             "last_opened_script": "",
             "last_edited_script": "",

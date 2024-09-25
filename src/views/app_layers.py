@@ -5,7 +5,7 @@ from src.controllers.parameters import read_config_parameter
 from src.controllers.tool_functions import find_text, open_search_replace_dialog
 from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import (create_menu, run_icon, redo_icon, undo_icon, save_new_icon, save_icon, \
-    open_icon, open_script, save_script, save_as_new_script, update_modification_status, on_text_change, cut, copy,
+    open_icon, open_script, save_script, save_as_new_script, cut, copy,
                                             paste,
                                             duplicate)
 from src.models.script_operations import (run_script_with_timeout, run_script_once, run_script_crontab,
@@ -14,7 +14,7 @@ from src.views.edit_operations import undo, redo
 from src.views.tree_functions import item_opened, update_tree, on_item_select, on_double_click
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
-
+from src.controllers.file_operations import on_text_change
 
 def create_app():
     create_menu()
@@ -135,13 +135,13 @@ def create_content_file_window():
     Returns:
     None
     """
+    global is_modified
     original_text = script_text.get("1.0", "end-1c")  # Store the original text of the file
 
     line_numbers = LineNumberCanvas(script_text, width=0)
     line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
 
     def show_context_menu(event):
-        global is_modified
         # TODO: Locales
         # Create the context menu
         context_menu = Menu(root, tearoff=0)
@@ -230,12 +230,13 @@ def create_content_file_window():
     script_text.config(insertbackground='#F0F0F0', selectbackground='#4d4d4d')
 
     script_text.bind("<Button-3>", show_context_menu)
-    script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
+    #script_text.bind("<Key>", update_modification_status)  # Add this line to track text insertion
+    # script_text.bind("<Key>", on_text_change)  # Add this line to track text insertion
+    # script_text.bind("<<Modified>>", on_text_change)
+
     script_text.bind("<<Modified>>", on_text_change)
 
     status_bar = Label(frm, text="Status Bar")
-
-    is_modified = False
 
     # Add Keyboard Shortcuts Here
     #script_text.bind("<Control-z>", undo)
