@@ -5,9 +5,12 @@ import queue
 import re
 import subprocess
 import threading
-from tkinter import colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
-    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, ttk, \
-    simpledialog, Text, DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL, BOTTOM
+import math
+import cmath
+from tkinter import (colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
+    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, simpledialog, Text, \
+                     DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL, \
+                     BOTTOM)
 
 import webview  # pywebview
 
@@ -23,6 +26,8 @@ from src.views.ui_elements import Tooltip, ScrollableFrame
 from src.models.ai_assistant import find_gguf_file
 
 from lib.git import git_icons
+
+from src.models.calculator import *
 
 
 # Global variable to hold the Git Console window instance
@@ -1694,6 +1699,167 @@ def open_kanban_window():
     refresh_kanban_board()
 
     kanban_window.protocol("WM_DELETE_WINDOW", lambda: (save_kanban_data(), kanban_window.destroy()))
+
+
+def open_calculator_window():
+    calculator_window = Toplevel()
+    calculator_window.title("Advanced Scientific Calculator")
+    calculator_window.geometry("500x600")
+    #  calculator_window.configure(bg='#2C3E50')
+
+    expression_entry = Entry(calculator_window, width=30, font=('Arial', 18), borderwidth=2, relief='solid',
+                             justify='right')
+    expression_entry.grid(row=0, column=0, columnspan=5, padx=10, pady=10, sticky='nsew')
+
+    result_label = Label(calculator_window, text="", font=('Arial', 14))
+    result_label.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky='nsew')
+
+    def button_click(value):
+        current = expression_entry.get()
+        if current in ("Error", "Invalid Input"):
+            expression_entry.delete(0, END)
+        expression_entry.insert(END, value)
+
+    def clear_entry():
+        expression_entry.delete(0, END)
+        result_label.config(text="")
+
+    def backspace():
+        current = expression_entry.get()
+        expression_entry.delete(len(current) - 1, END)
+
+    def toggle_scientific_calculator_buttons():
+        print("TOGGLE SCIENTIFIC CALCULATOR BUTTONS!!")
+        # x² to x³
+        # xʸ to x⁽¹/ʸ⁾ (Surd[x,y])
+        # sin to asin
+        # cos to acos
+        # tan to atan
+        # √ to ¹/ₓ
+        # 10ˣ to eˣ
+        # log to ln
+        # Exp to dms
+        # Mod to deg
+
+    def balance_parentheses(expr):
+        open_count = expr.count('(')
+        close_count = expr.count(')')
+        return expr + ')' * (open_count - close_count)
+
+    def evaluate_expression():
+        try:
+            expression = expression_entry.get().strip()
+            print("THE EXPRESSION IS:\t", expression)
+            if not expression:  # Check if expression is empty
+                result_label.config(text="Error: Empty expression")
+                return
+
+            expression = balance_parentheses(expression)
+            print("THE BALANCED EXPRESSION IS:\t", expression)
+
+            # Replace operators and functions
+            replacements = {
+                'sin': 'sin', 'cos': 'cos', 'tan': 'tan',
+                'log': 'log', 'ln': 'ln',
+                'sqrt': 'sqrt', 'abs': 'abs', 'π': 'math.pi', 'e': 'math.e', '**': '**',
+                '^': '**', '√': 'sqrt', 'asin': 'math.asin', 'acos': 'math.acos', 'atan': 'math.atan',
+            }
+
+            # Update expression with replacements
+            for old, new in replacements.items():
+                expression = expression.replace(old, new)
+
+            # Handle factorial (n!)
+            expression = re.sub(r'(\d+)!', r'factorial(\1)', expression)
+
+            print("THE REPLACEMENT EXPRESSION IS:\t", expression)
+
+            # Handle operations: replace operators with corresponding functions
+            expression = expression.replace('+', ' + ').replace('-', ' - ').replace('*', ' * ').replace('/', ' / ')
+
+            # Now safe_dict should include the correct operator functions
+            safe_dict = {
+                'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
+                'sqrt': math.sqrt, 'abs': abs, 'log': math.log,
+                'ln': math.log, 'factorial': math.factorial, 'math': math
+            }
+
+            result = eval(expression, {"__builtins__": None}, safe_dict)
+            print("THIS IS THE RESULT:\t", result)
+
+            if isinstance(result, (int, float)):
+                formatted_result = f"{result:.8g}"
+            elif isinstance(result, complex):
+                formatted_result = f"{result.real:.8g} + {result.imag:.8g}j" if result.imag != 0 else f"{result.real:.8g}"
+            else:
+                formatted_result = str(result)
+
+            result_label.config(text=formatted_result)
+
+        except Exception as e:
+            print("SOMETHING HAPPENED:", e)  # Debugging print
+            result_label.config(text=f"Error: {str(e)}")
+
+    def scientific_function_click(func_name):
+        expression_entry.insert(END, f"{func_name}(")
+
+    '''button_texts = [
+        ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('/', 1, 3), ('C', 1, 4),
+        ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('*', 2, 3), ('(', 2, 4),
+        ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('-', 3, 3), (')', 3, 4),
+        ('0', 4, 0), ('.', 4, 1), ('10^x', 4, 2), ('+', 4, 3), ('=', 4, 4),
+        ('sin', 5, 0), ('cos', 5, 1), ('tan', 5, 2), ('log', 5, 3), ('ln', 5, 4),
+        ('√', 6, 0), ('π', 6, 1), ('e', 6, 2), ('abs', 6, 3), ('j', 6, 4),
+        ('asin', 7, 0), ('acos', 7, 1), ('atan', 7, 2), ('10^x', 7, 3), ('x!', 7, 4)
+    ]'''
+
+    button_texts = [
+            ('x²', 1, 0), ('xʸ', 1, 1), ('sin', 1, 2), ('cos', 1, 3), ('tan', 1, 4),
+            ('√', 2, 0), ('10ˣ', 2, 1), ('log', 2, 2), ('Exp', 2, 3), ('Mod', 2, 4),
+            ('↑', 3, 0), ('CE', 3, 1), ('C', 3, 2), ('←', 3, 3), ('/', 3, 4),
+            ('π', 4, 0), ('7', 4, 1), ('8', 4, 2), ('9', 4, 3), ('*', 4, 4),
+            ('e', 5, 0), ('4', 5, 1), ('5', 5, 2), ('6', 5, 3), ('-', 5, 4),
+            ('x!', 6, 0), ('1', 6, 1), ('2', 6, 2), ('3', 6, 3), ('+', 6, 4),
+            ('(', 7, 0), (')', 7, 1), ('0', 7, 2), ('.', 7, 3), ('=', 7, 4)
+        ]
+
+    for (text, row, col) in button_texts:
+        if text == '=':
+            btn = Button(calculator_window, text=text, width=8, height=2, command=evaluate_expression)
+        elif text == 'C':
+            btn = Button(calculator_window, text=text, width=8, height=2, command=clear_entry)
+        elif text == '10ˣ':
+            btn = Button(calculator_window, text=text, width=8, height=2, command=lambda: button_click('10**'))
+        elif text in ('sin', 'cos', 'tan', 'log', 'ln', 'abs', 'asin', 'acos', 'atan', '√'):
+            btn = Button(calculator_window, text=text, width=8, height=2,
+                         command=lambda t=text: scientific_function_click(t))
+        elif text in ('π', 'e', 'j'):
+            btn = Button(calculator_window, text=text, width=8, height=2, command=lambda t=text: button_click(t))
+        elif text == 'x!':
+            btn = Button(calculator_window, text=text, width=8, height=2,
+                         command=lambda: button_click('factorial('))
+        elif text == '←':
+            btn = Button(calculator_window, text='←', width=8, height=2, command=backspace)
+        elif text == '↑':
+            btn = Button(calculator_window, text='↑', width=8, height=2, command=toggle_scientific_calculator_buttons)
+        else:
+            btn = Button(calculator_window, text=text, width=8, height=2, command=lambda t=text: button_click(t))
+
+        btn.grid(row=row + 1, column=col, padx=2, pady=2)
+
+    # Backspace button to delete the last number
+    #btn_backspace = Button(calculator_window, text='←', width=8, height=2, command=backspace)
+    #btn_backspace.grid(row=8, column=0, columnspan=5, padx=2, pady=2)
+
+    for i in range(9):
+        calculator_window.grid_rowconfigure(i, weight=1)
+    for i in range(5):
+        calculator_window.grid_columnconfigure(i, weight=1)
+
+    calculator_window.bind('<Return>', lambda event: evaluate_expression())
+    calculator_window.bind('<Escape>', lambda event: clear_entry())
+
+    calculator_window.mainloop()
 
 
 def open_terminal_window():
