@@ -1729,17 +1729,32 @@ def open_calculator_window():
         expression_entry.delete(len(current) - 1, END)
 
     def toggle_scientific_calculator_buttons():
-        print("TOGGLE SCIENTIFIC CALCULATOR BUTTONS!!")
-        # x² to x³
-        # xʸ to x⁽¹/ʸ⁾ (Surd[x,y])
-        # sin to asin
-        # cos to acos
-        # tan to atan
-        # √ to ¹/ₓ
-        # 10ˣ to eˣ
-        # log to ln
-        # Exp to dms
-        # Mod to deg
+        # Dictionary mapping standard buttons to their scientific counterparts
+        toggle_map = {
+            "x²": "x³",
+            "xʸ": "x⁽¹/ʸ⁾",  # Surd[x,y]
+            "sin": "asin",
+            "cos": "acos",
+            "tan": "atan",
+            "√": "¹/ₓ",
+            "10ˣ": "eˣ",
+            "log": "ln",
+            "Exp": "dms",
+            "Mod": "deg"
+        }
+
+        # Iterate over the buttons and update their text based on current state
+        for btn in calculator_buttons:
+            current_text = btn["text"]  # Get the text of the button
+
+            # Check if the button's text is in the toggle map
+            if current_text in toggle_map:
+                # Toggle between standard and scientific text
+                btn["text"] = toggle_map[current_text]
+            elif current_text in toggle_map.values():
+                # Reverse toggle for scientific to standard
+                reverse_map = {v: k for k, v in toggle_map.items()}  # Reverse the mapping
+                btn["text"] = reverse_map[current_text]
 
     def balance_parentheses(expr):
         open_count = expr.count('(')
@@ -1823,6 +1838,8 @@ def open_calculator_window():
             ('(', 7, 0), (')', 7, 1), ('0', 7, 2), ('.', 7, 3), ('=', 7, 4)
         ]
 
+    calculator_buttons = []
+
     for (text, row, col) in button_texts:
         if text == '=':
             btn = Button(calculator_window, text=text, width=8, height=2, command=evaluate_expression)
@@ -1844,7 +1861,7 @@ def open_calculator_window():
             btn = Button(calculator_window, text='↑', width=8, height=2, command=toggle_scientific_calculator_buttons)
         else:
             btn = Button(calculator_window, text=text, width=8, height=2, command=lambda t=text: button_click(t))
-
+        calculator_buttons.append(btn)
         btn.grid(row=row + 1, column=col, padx=2, pady=2)
 
     # Backspace button to delete the last number
