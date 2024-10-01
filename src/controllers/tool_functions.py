@@ -1705,7 +1705,6 @@ def open_calculator_window():
     calculator_window = Toplevel()
     calculator_window.title("Advanced Scientific Calculator")
     calculator_window.geometry("500x600")
-    #  calculator_window.configure(bg='#2C3E50')
 
     expression_entry = Entry(calculator_window, width=30, font=('Arial', 18), borderwidth=2, relief='solid',
                              justify='right')
@@ -1713,6 +1712,8 @@ def open_calculator_window():
 
     result_label = Label(calculator_window, text="", font=('Arial', 14))
     result_label.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky='nsew')
+
+    original_states = {}  # Dictionary to store the original state of buttons
 
     def button_click(value):
         current = expression_entry.get()
@@ -1731,30 +1732,39 @@ def open_calculator_window():
     def toggle_scientific_calculator_buttons():
         # Dictionary mapping standard buttons to their scientific counterparts
         toggle_map = {
-            "x²": "x³",
-            "xʸ": "x⁽¹/ʸ⁾",  # Surd[x,y]
-            "sin": "asin",
-            "cos": "acos",
-            "tan": "atan",
-            "√": "¹/ₓ",
-            "10ˣ": "eˣ",
-            "log": "ln",
-            "Exp": "dms",
-            "Mod": "deg"
+            "x²": ("x³", lambda: button_click("**3")),
+            "xʸ": ("x⁽¹/ʸ⁾", lambda: button_click("**(1/y)")),
+            "sin": ("asin", lambda: scientific_function_click("asin")),
+            "cos": ("acos", lambda: scientific_function_click("acos")),
+            "tan": ("atan", lambda: scientific_function_click("atan")),
+            "√": ("¹/ₓ", lambda: button_click("1/")),
+            "10ˣ": ("eˣ", lambda: button_click("math.e**")),
+            "log": ("ln", lambda: scientific_function_click("ln")),
+            "Exp": ("dms", lambda: button_click("dms(")),
+            "Mod": ("deg", lambda: button_click("deg("))
         }
 
-        # Iterate over the buttons and update their text based on current state
         for btn in calculator_buttons:
-            current_text = btn["text"]  # Get the text of the button
+            current_text = btn["text"]
 
-            # Check if the button's text is in the toggle map
+            # Toggle to scientific function
             if current_text in toggle_map:
-                # Toggle between standard and scientific text
-                btn["text"] = toggle_map[current_text]
-            elif current_text in toggle_map.values():
-                # Reverse toggle for scientific to standard
-                reverse_map = {v: k for k, v in toggle_map.items()}  # Reverse the mapping
-                btn["text"] = reverse_map[current_text]
+                if btn not in original_states:
+                    # Save the original text and command
+                    original_states[btn] = (current_text, btn["command"])
+
+                new_text, new_command = toggle_map[current_text]
+                btn.config(text=new_text, command=new_command)
+
+            # Reverse toggle to original function
+            elif any(current_text == pair[0] for pair in toggle_map.values()):
+                reverse_map = {v[0]: (k, v[1]) for k, v in toggle_map.items()}  # Reverse the mapping
+                original_text, original_command = reverse_map[current_text]
+
+                # Restore original state if it exists
+                if btn in original_states:
+                    original_text, original_command = original_states[btn]
+                    btn.config(text=original_text, command=original_command)
 
     def balance_parentheses(expr):
         open_count = expr.count('(')
@@ -1764,35 +1774,27 @@ def open_calculator_window():
     def evaluate_expression():
         try:
             expression = expression_entry.get().strip()
-            print("THE EXPRESSION IS:\t", expression)
-            if not expression:  # Check if expression is empty
+            if not expression:
                 result_label.config(text="Error: Empty expression")
                 return
 
             expression = balance_parentheses(expression)
-            print("THE BALANCED EXPRESSION IS:\t", expression)
 
             # Replace operators and functions
             replacements = {
                 'sin': 'sin', 'cos': 'cos', 'tan': 'tan',
-                'log': 'log', 'ln': 'ln',
-                'sqrt': 'sqrt', 'abs': 'abs', 'π': 'math.pi', 'e': 'math.e', '**': '**',
+                'log': 'log', 'ln': 'ln', 'sqrt': 'sqrt',
+                'abs': 'abs', 'π': 'math.pi', 'e': 'math.e', '**': '**',
                 '^': '**', '√': 'sqrt', 'asin': 'math.asin', 'acos': 'math.acos', 'atan': 'math.atan',
             }
 
-            # Update expression with replacements
             for old, new in replacements.items():
                 expression = expression.replace(old, new)
 
-            # Handle factorial (n!)
             expression = re.sub(r'(\d+)!', r'factorial(\1)', expression)
 
-            print("THE REPLACEMENT EXPRESSION IS:\t", expression)
-
-            # Handle operations: replace operators with corresponding functions
             expression = expression.replace('+', ' + ').replace('-', ' - ').replace('*', ' * ').replace('/', ' / ')
 
-            # Now safe_dict should include the correct operator functions
             safe_dict = {
                 'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
                 'sqrt': math.sqrt, 'abs': abs, 'log': math.log,
@@ -1800,7 +1802,6 @@ def open_calculator_window():
             }
 
             result = eval(expression, {"__builtins__": None}, safe_dict)
-            print("THIS IS THE RESULT:\t", result)
 
             if isinstance(result, (int, float)):
                 formatted_result = f"{result:.8g}"
@@ -1812,31 +1813,20 @@ def open_calculator_window():
             result_label.config(text=formatted_result)
 
         except Exception as e:
-            print("SOMETHING HAPPENED:", e)  # Debugging print
             result_label.config(text=f"Error: {str(e)}")
 
     def scientific_function_click(func_name):
         expression_entry.insert(END, f"{func_name}(")
 
-    '''button_texts = [
-        ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('/', 1, 3), ('C', 1, 4),
-        ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('*', 2, 3), ('(', 2, 4),
-        ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('-', 3, 3), (')', 3, 4),
-        ('0', 4, 0), ('.', 4, 1), ('10^x', 4, 2), ('+', 4, 3), ('=', 4, 4),
-        ('sin', 5, 0), ('cos', 5, 1), ('tan', 5, 2), ('log', 5, 3), ('ln', 5, 4),
-        ('√', 6, 0), ('π', 6, 1), ('e', 6, 2), ('abs', 6, 3), ('j', 6, 4),
-        ('asin', 7, 0), ('acos', 7, 1), ('atan', 7, 2), ('10^x', 7, 3), ('x!', 7, 4)
-    ]'''
-
     button_texts = [
-            ('x²', 1, 0), ('xʸ', 1, 1), ('sin', 1, 2), ('cos', 1, 3), ('tan', 1, 4),
-            ('√', 2, 0), ('10ˣ', 2, 1), ('log', 2, 2), ('Exp', 2, 3), ('Mod', 2, 4),
-            ('↑', 3, 0), ('CE', 3, 1), ('C', 3, 2), ('←', 3, 3), ('/', 3, 4),
-            ('π', 4, 0), ('7', 4, 1), ('8', 4, 2), ('9', 4, 3), ('*', 4, 4),
-            ('e', 5, 0), ('4', 5, 1), ('5', 5, 2), ('6', 5, 3), ('-', 5, 4),
-            ('x!', 6, 0), ('1', 6, 1), ('2', 6, 2), ('3', 6, 3), ('+', 6, 4),
-            ('(', 7, 0), (')', 7, 1), ('0', 7, 2), ('.', 7, 3), ('=', 7, 4)
-        ]
+        ('x²', 1, 0), ('xʸ', 1, 1), ('sin', 1, 2), ('cos', 1, 3), ('tan', 1, 4),
+        ('√', 2, 0), ('10ˣ', 2, 1), ('log', 2, 2), ('Exp', 2, 3), ('Mod', 2, 4),
+        ('↑', 3, 0), ('CE', 3, 1), ('C', 3, 2), ('←', 3, 3), ('/', 3, 4),
+        ('π', 4, 0), ('7', 4, 1), ('8', 4, 2), ('9', 4, 3), ('*', 4, 4),
+        ('e', 5, 0), ('4', 5, 1), ('5', 5, 2), ('6', 5, 3), ('-', 5, 4),
+        ('x!', 6, 0), ('1', 6, 1), ('2', 6, 2), ('3', 6, 3), ('+', 6, 4),
+        ('(', 7, 0), (')', 7, 1), ('0', 7, 2), ('.', 7, 3), ('=', 7, 4)
+    ]
 
     calculator_buttons = []
 
@@ -1853,20 +1843,16 @@ def open_calculator_window():
         elif text in ('π', 'e', 'j'):
             btn = Button(calculator_window, text=text, width=8, height=2, command=lambda t=text: button_click(t))
         elif text == 'x!':
-            btn = Button(calculator_window, text=text, width=8, height=2,
-                         command=lambda: button_click('factorial('))
+            btn = Button(calculator_window, text=text, width=8, height=2, command=lambda: button_click('factorial('))
         elif text == '←':
             btn = Button(calculator_window, text='←', width=8, height=2, command=backspace)
         elif text == '↑':
             btn = Button(calculator_window, text='↑', width=8, height=2, command=toggle_scientific_calculator_buttons)
         else:
             btn = Button(calculator_window, text=text, width=8, height=2, command=lambda t=text: button_click(t))
+
         calculator_buttons.append(btn)
         btn.grid(row=row + 1, column=col, padx=2, pady=2)
-
-    # Backspace button to delete the last number
-    #btn_backspace = Button(calculator_window, text='←', width=8, height=2, command=backspace)
-    #btn_backspace.grid(row=8, column=0, columnspan=5, padx=2, pady=2)
 
     for i in range(9):
         calculator_window.grid_rowconfigure(i, weight=1)
