@@ -16,11 +16,14 @@ import markdown
 from PIL import ImageTk
 from PIL.Image import Image
 from tkhtmlview import HTMLLabel
+
+from src.controllers.parameters import read_config_parameter, write_config_parameter
 from src.views.tk_utils import text, script_text, root, style
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
 
 from src.models.ai_assistant import find_gguf_file
+from src.views.edit_operations import cut, copy, paste, duplicate
 
 from lib.git import git_icons
 
@@ -1770,79 +1773,6 @@ def open_terminal_window():
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
 
-
-'''def open_ai_server_settings_window():
-    def toggle_display(selected_server):
-        # Get server details from llm_server_providers.json based on selected server
-        print("SERVER DETAILS:\n", server_details)
-
-        if selected_server in server_details:
-            print("SELECTED SERVER:\t", selected_server)
-            server_url_entry.delete(0, END)
-            server_url_entry.insert(0, server_details[selected_server]["server_url"])
-
-            api_key_entry.delete(0, END)
-            api_key_entry.insert(0, server_details[selected_server]["api_key"])
-
-        if selected_server == "lmstudio":
-            server_url_entry.grid()
-            # api_key_entry.grid()
-        elif selected_server == "ollama":
-            server_url_entry.grid()
-            # api_key_entry.grid()
-        elif selected_server == "openai":
-            server_url_entry.grid()
-            api_key_entry.grid()
-        else:
-            server_url_entry.grid_remove()
-            api_key_entry.grid_remove()
-
-    # Load server details from llm_server_providers.json
-    with open("data/llm_server_providers.json", 'r') as server_file:
-        server_details = json.load(server_file)
-
-    settings_window = Toplevel()
-    settings_window.title("AI Server Settings")
-    settings_window.geometry("400x300")
-
-    Label(settings_window, text="Select Server:").grid(row=0, column=0)
-    selected_server = StringVar(settings_window)
-    selected_server.set(read_config_parameter("options").get("last_selected_llm_server_provider", "lmstudio"))  # Set default selection
-
-    # Dropdown menu options based on available servers in llm_server_providers.json
-    server_options = list(server_details.keys())
-    server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
-    server_dropdown.grid(row=0, column=1)
-
-    Label(settings_window, text="Server URL:").grid(row=1, column=0)
-    server_url_entry = Entry(settings_window, width=25)
-    server_url_entry.grid(row=1, column=1)
-
-    Label(settings_window, text="API Key:").grid(row=2, column=0)
-    api_key_entry = Entry(settings_window, width=25)
-    api_key_entry.grid(row=2, column=1)
-
-    # Initial display based on default selection
-    # toggle_display(selected_server.get())
-
-    # Callback function to handle dropdown selection changes
-    def on_server_selection_change(*args):
-        toggle_display(selected_server.get())
-
-    # Bind the callback function to the dropdown selection
-    selected_server.trace("w", on_server_selection_change)
-
-    def save_ai_server_settings(server_url, api_key):
-        # Save settings to user_config.json
-        write_config_parameter("last_selected_llm_server_provider", selected_server.get())
-        write_config_parameter("server_url", server_url)
-        write_config_parameter("api_key", api_key)
-        messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
-
-    Button(settings_window, text="Save", command=lambda: save_ai_server_settings(server_url_entry.get(), api_key_entry.get())).grid(row=3, column=0, columnspan=2)
-'''
-
-
 def open_audio_generation_window():
     def generate_audio():
         model_path = model_path_entry.get()
@@ -2124,6 +2054,85 @@ def open_ai_assistant_window():
         #  subprocess.run(["python", "-m", "llama_cpp.server", "--port", "8004", "--model",
         #  ".\\src\\models\\model\\llama-2-7b-chat.Q4_K_M.gguf"])
 
+    '''def open_ai_server_settings_window():
+        def toggle_display(selected_server):
+            server_info = server_details.get(selected_server, {})
+            server_url = server_info.get("server_url", "")
+            api_key = server_info.get("api_key", "")
+
+            server_url_entry.delete(0, END)
+            server_url_entry.insert(0, server_url)
+            api_key_entry.delete(0, END)
+            api_key_entry.insert(0, api_key)
+
+            if selected_server in ["lmstudio", "ollama", "openai", "llama-cpp-python", "claude"]:
+                server_url_entry.grid()
+                server_url_label.grid()
+            else:
+                server_url_entry.grid_remove()
+                server_url_label.grid_remove()
+
+            if selected_server == "openai" or selected_server == "claude":
+                api_key_entry.grid()
+                api_key_label.grid()
+            else:
+                api_key_entry.grid_remove()
+                api_key_label.grid_remove()
+
+        def load_server_details():
+            try:
+                with open("data/llm_server_providers.json", 'r') as server_file:
+                    return json.load(server_file)
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                messagebox.showerror("Error", f"Failed to load server details: {str(e)}")
+                return {}
+
+        def save_ai_server_settings():
+            selected = selected_server.get()
+            server_url = server_url_entry.get()
+            api_key = api_key_entry.get()
+
+            write_config_parameter("options.network_settings.last_selected_llm_server_provider", selected)
+            write_config_parameter("options.network_settings.server_url", server_url)
+            write_config_parameter("options.network_settings.api_key", api_key)
+
+            messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
+            settings_window.destroy()
+
+        server_details = load_server_details()
+
+        settings_window = Toplevel()
+        settings_window.title("AI Server Settings")
+        settings_window.geometry("400x300")
+
+        Label(settings_window, text="Select Server:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        selected_server = StringVar(settings_window)
+        last_selected = read_config_parameter("options.network_settings.last_selected_llm_server_provider")
+        selected_server.set(last_selected if last_selected in server_details else next(iter(server_details), ""))
+
+        server_options = list(server_details.keys())
+        server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
+        server_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+
+        server_url_label = Label(settings_window, text="Server URL:")
+        server_url_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        server_url_entry = Entry(settings_window, width=25)
+        server_url_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+
+        api_key_label = Label(settings_window, text="API Key:")
+        api_key_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        api_key_entry = Entry(settings_window, width=25, show="*")
+        api_key_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+
+        Button(settings_window, text="Save", command=save_ai_server_settings).grid(row=3, column=0, columnspan=2,
+                                                                                   pady=10)
+
+        selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
+        toggle_display(selected_server.get())
+
+        settings_window.columnconfigure(1, weight=1)
+        settings_window.mainloop()'''
+
     def open_ai_server_agent_settings_window():
         def load_agents():
             """
@@ -2232,7 +2241,7 @@ def open_ai_assistant_window():
     # Create a 'Settings' Menu
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
-    #menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
+    # menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
     menu_bar.add_command(label="Agent Options", command=open_ai_server_agent_settings_window)
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
