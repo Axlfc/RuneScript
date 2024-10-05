@@ -26,7 +26,7 @@ from src.controllers.tool_functions import (find_text, change_color, open_search
                                             create_settings_window, open_git_window,
                                             open_image_generation_window, open_music_generation_window,
                                             open_audio_generation_window, open_kanban_window, open_winget_window,
-                                            open_system_info_window)
+                                            open_system_info_window, open_calculator_window)
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 
 from src.controllers.tool_functions import open_git_window, git_console_instance
@@ -660,6 +660,7 @@ def create_menu():
     #tool_menu.add_command(label="Notebook", command=open_ipynb_window, accelerator='Alt+N')
     tool_menu.add_command(label="AI Assistant", command=open_ai_assistant_window, accelerator='Alt+G')
     tool_menu.add_command(label="Generate Image", command=open_image_generation_window, accelerator='Alt+I')
+    tool_menu.add_command(label="Calculator", command=open_calculator_window, accelerator='Alt+C')
     #  tool_menu.add_command(label="Generate Audio", command=open_audio_generation_window, accelerator='Alt+A')
     #  tool_menu.add_command(label="Generate Music", command=open_music_generation_window, accelerator='Alt+M')
     #tool_menu.add_command(label="BlackBox", command=lambda: open_webview('BlackBox', 'https://www.blackbox.ai/form'))

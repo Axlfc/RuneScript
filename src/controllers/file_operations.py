@@ -6,7 +6,7 @@ from src.controllers.menu_creators import create_python_menu, create_csv_menu, c
     create_latex_menu, create_bash_menu, create_powershell_menu
 from src.controllers.parameters import write_config_parameter
 from src.localization import localization_data
-from src.views.tk_utils import directory_label, script_name_label, script_text, root, menu, is_modified, file_name
+from src.views.tk_utils import directory_label, script_name_label, script_text, root, menu, is_modified, file_name, last_saved_content
 
 
 file_types = [
