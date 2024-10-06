@@ -9,6 +9,7 @@ import time
 import json
 from datetime import datetime
 
+from src.controllers.parameters import read_config_parameter
 
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
 
@@ -62,6 +63,9 @@ def initialize_client():
     client = openai.OpenAI(base_url="http://localhost:8004/v1/", api_key="not-needed")
     return client
 
+def initialize_client_with_parameters(url, api_key):
+    client = openai.OpenAI(base_url=url, api_key=api_key)
+    return client
 
 def process_chat_completions(client, history):
     response = client.chat.completions.create(
@@ -137,7 +141,9 @@ def main():
     agent_name = sys.argv[2] if len(sys.argv) > 2 else None
 
     init()
-    client = initialize_client()
+    #  client = initialize_client()
+    client = initialize_client_with_parameters(read_config_parameter("options.network_settings.server_url"),
+                                               read_config_parameter("options.network_settings.api_key"))
     model_path = find_gguf_file()
 
     if agent_name:

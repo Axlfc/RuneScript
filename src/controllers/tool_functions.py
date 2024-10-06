@@ -13,6 +13,7 @@ from tkinter import (colorchooser, END, Toplevel, Label, Entry, Button, scrolled
                      BOTTOM)
 
 import webview  # pywebview
+from datetime import datetime
 
 from tkinter.ttk import Separator, Treeview, Notebook, Combobox
 import markdown
@@ -21,7 +22,7 @@ from PIL.Image import Image
 from tkhtmlview import HTMLLabel
 
 from src.controllers.parameters import read_config_parameter, write_config_parameter
-from src.views.tk_utils import text, script_text, root, style
+from src.views.tk_utils import text, script_text, root, style, current_session
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
 
@@ -29,8 +30,6 @@ from src.models.ai_assistant import find_gguf_file
 from src.views.edit_operations import cut, copy, paste, duplicate
 
 from lib.git import git_icons
-
-from src.models.calculator import *
 
 
 # Global variable to hold the Git Console window instance
@@ -1942,6 +1941,7 @@ def open_terminal_window():
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
 
+
 def open_audio_generation_window():
     def generate_audio():
         model_path = model_path_entry.get()
@@ -2223,7 +2223,7 @@ def open_ai_assistant_window():
         #  subprocess.run(["python", "-m", "llama_cpp.server", "--port", "8004", "--model",
         #  ".\\src\\models\\model\\llama-2-7b-chat.Q4_K_M.gguf"])
 
-    '''def open_ai_server_settings_window():
+    def open_ai_server_settings_window():
         def toggle_display(selected_server):
             server_info = server_details.get(selected_server, {})
             server_url = server_info.get("server_url", "")
@@ -2300,7 +2300,7 @@ def open_ai_assistant_window():
         toggle_display(selected_server.get())
 
         settings_window.columnconfigure(1, weight=1)
-        settings_window.mainloop()'''
+        settings_window.mainloop()
 
     def open_ai_server_agent_settings_window():
         def load_agents():
@@ -2392,7 +2392,6 @@ def open_ai_assistant_window():
         # Initial update of instructions
         update_instructions(selected_agent_var.get())
 
-
     original_md_content = ""
     rendered_html_content = ""
     markdown_render_enabled = False
@@ -2410,7 +2409,7 @@ def open_ai_assistant_window():
     # Create a 'Settings' Menu
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
-    # menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
+    menu_bar.add_command(label="AI Server Settings", command=open_ai_server_settings_window)
     menu_bar.add_command(label="Agent Options", command=open_ai_server_agent_settings_window)
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
@@ -2690,7 +2689,10 @@ def open_ai_assistant_window():
             pass  # Ignore if the config file doesn't exist
 
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
-        global original_md_content, selected_agent_var
+        global original_md_content, selected_agent_var, current_session
+
+        if not current_session:
+            create_session()
 
         if ai_command.strip():
             script_content = ""
@@ -2890,17 +2892,75 @@ def open_ai_assistant_window():
     # Initialize a pointer to the current position in the command history
     history_pointer = [0]
 
+    class Session:
+        def __init__(self, name):
+            self.id = datetime.now().strftime("%Y%m%d%H%M%S")
+            self.name = name
+            self.messages = []
+            self.folder_path = os.path.join("data", "conversations", f"session_{self.id}")
+            self.file_path = os.path.join(self.folder_path, "conversation.txt")
+            os.makedirs(self.folder_path, exist_ok=True)
+
+        def add_message(self, role, content):
+            message = f"{role}: {content}\n"
+            self.messages.append(message)
+            self.save()
+
+        def save(self):
+            with open(self.file_path, "a", encoding="utf-8") as f:
+                f.write(self.messages[-1])
+
+        def load(self):
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.messages = data["messages"]
+
     def create_session():
-        print("Creating new session...")
-        session_id = len(session_data) + 1
-        session_data.append({"id": session_id, "name": f"Session {session_id}", "content": ""})
+        global current_session
+        session_number = len(session_data) + 1
+        session_name = f"Session {session_number}"
+        current_session = Session(session_name)
+        session_data.append(current_session)
         update_sessions_list()
+        select_session(len(session_data) - 1)  # Select the newly created session
+
+    def update_chat_display():
+        output_text.delete("1.0", END)
+        if current_session:
+            with open(current_session.file_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    role, content = line.split(": ", 1)
+                    role_tag = "user" if role == "user" else "ai"
+                    output_text.insert(END, line, role_tag)
+        output_text.see(END)
+
+    def load_session(session_id):
+        global current_session
+        for index, session in enumerate(session_data):
+            if session.id == session_id:
+                current_session = session
+                select_session(index)
+                break
+        update_chat_display()
+
+    def select_session(index):
+        sessions_list.selection_clear(0, END)
+        sessions_list.selection_set(index)
+        sessions_list.activate(index)
+        sessions_list.see(index)
+        write_config_parameter("options.network_settings.last_selected_session_id", index + 1)
+        update_chat_display()
 
     def update_sessions_list():
-        print("Updating sessions list...")
         sessions_list.delete(0, END)
         for session in session_data:
-            sessions_list.insert(END, session["name"])
+            sessions_list.insert(END, session.name)
+
+    def on_session_select(event):
+        selected_indices = sessions_list.curselection()
+        if selected_indices:
+            index = selected_indices[0]
+            load_session(session_data[index].id)
 
     def show_session_context_menu(event, session_index):
         session_context_menu = Menu(ai_assistant_window, tearoff=0)
@@ -2916,6 +2976,7 @@ def open_ai_assistant_window():
         with open(f"session_{session['id']}.txt", "w") as f:
             f.write(session["content"])
             messagebox.showinfo("Delete Session", f"Session {session['id']} deleted successfully.")
+
     def rename_session(session_index):
         print(f"Renaming session {session_index}...")
         session = session_data[session_index]

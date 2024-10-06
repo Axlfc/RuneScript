@@ -35,6 +35,7 @@ include_selected_text_in_command = False
 original_md_content = None
 render_markdown_var = None
 rendered_html_content = None
+current_session = None
 
 
 file_name = ""  # Current file name.
