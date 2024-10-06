@@ -2893,31 +2893,55 @@ def open_ai_assistant_window():
     history_pointer = [0]
 
     class Session:
-        def __init__(self, name):
+
+        def __init__(self, name, load_existing=False):
+
             self.id = datetime.now().strftime("%Y%m%d%H%M%S")
+
             self.name = name
-            self.messages = []
-            self.folder_path = os.path.join("data", "conversations", f"session_{self.id}")
-            self.file_path = os.path.join("data", "conversations", f"session_{self.id}", f"session_{self.id}.json")  # Ensure this is correct
-            os.makedirs(self.folder_path, exist_ok=True)
+
+            self.file_path = os.path.join("data", "conversations", f"session_{self.id}.json")
+
+            if load_existing and os.path.exists(self.file_path):
+
+                self.load()
+
+            else:
+
+                self.messages = []
+
+                self.save()  # Initialize file with empty data
 
         def add_message(self, role, content):
-            message = f"{role}: {content}\n"
+
+            message = {
+
+                "role": role,
+
+                "content": content,
+
+                "timestamp": datetime.now().isoformat()
+
+            }
+
             self.messages.append(message)
+
             self.save()
 
         def save(self):
+
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+
+            data = {"session_id": self.id, "session_name": self.name, "messages": self.messages}
+
             with open(self.file_path, "w", encoding="utf-8") as f:
-                json.dump({
-                    "id": self.id,
-                    "name": self.name,
-                    "messages": self.messages
-                }, f, ensure_ascii=False, indent=2)
+                json.dump(data, f, ensure_ascii=False, indent=2)
 
         def load(self):
+
             with open(self.file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+
                 self.messages = data["messages"]
 
     def create_session():
@@ -2930,11 +2954,16 @@ def open_ai_assistant_window():
         select_session(len(session_data) - 1)  # Select the newly created session
 
     def update_chat_display():
-        output_text.delete("1.0", END)
-        for message in current_session.messages:
-            role_tag = "user" if message["role"] == "user" else "ai"
-            output_text.insert(END, f"{message['role']}: {message['content']}\n", role_tag)
-        output_text.see(END)
+        if current_session and os.path.exists(current_session.file_path):
+            with open(current_session.file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                output_text.delete("1.0", END)
+                for message in data["messages"]:
+                    role_tag = "user" if message["role"] == "user" else "ai"
+                    output_text.insert(END, f"{message['role']}: {message['content']}\n", role_tag)
+                output_text.see(END)
+        else:
+            print("Session file not found or no session is currently active.")
 
     def load_session(session_id):
         global current_session

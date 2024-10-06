@@ -14,18 +14,29 @@ from src.controllers.parameters import read_config_parameter
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
 
 
-def add_message(message, initial_time, session_id):
-    now = datetime.now()
-    time_str = now.strftime("%H-%M-%S")
+def add_message(session_id, message):
     session_dir = os.path.join("data", "conversations", f"session_{session_id}")
+    file_path = os.path.join(session_dir, f"{session_id}.json")
 
     if not os.path.exists(session_dir):
         os.makedirs(session_dir)
 
-    filepath = os.path.join(session_dir, f"{initial_time}.txt")
+    if not os.path.isfile(file_path):
+        data = {
+            "session_id": session_id,
+            "messages": []
+        }
+    else:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
 
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write(f"{time_str}: {message.strip()}\n")
+    data['messages'].append({
+        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "content": message
+    })
+
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False, indent=4)
 
 
 def find_gguf_file():
@@ -87,34 +98,27 @@ def process_chat_completions(client, history):
     return response
 
 
-def chat_loop(prompt, client, model_path, system_prompt="You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."):
+def chat_loop(prompt, client, model_path,
+              system_prompt="You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful.",
+              session_id=0):
     history = [
-        {"role": "system",
-         "content": system_prompt},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt},
     ]
-    #  print(Fore.LIGHTMAGENTA_EX + prompt, end="\n")
-    response = client.chat.completions.create(
-        model=model_path,
-        messages=history,
-        stream=True,
-        max_tokens=4096,
-    )
+    response = client.chat.completions.create(model=model_path, messages=history, stream=True, max_tokens=4096)
     answer = ""
     for chunk in response:
         if chunk.choices[0].delta.content is not None:
-            answer += chunk.choices[0].delta.content
-            print(
-                chunk.choices[0].delta.content,
-                end="",
-                flush=True,
-            )
-    print()
+            message = chunk.choices[0].delta.content
+            print(message, end="", flush=True)
+            answer += message
+
+    print("\n> ")
     print()
     print("> ")
 
     print("THIS IS THE ANSWER:::\n\n{{{", answer, "}}}\n\n")
-    add_message(answer, initial_time, session_id="fake_session_id")
+    add_message(session_id, answer)
 
 
 def load_agent_from_json(agent_name):
@@ -134,8 +138,8 @@ def main():
         sys.exit(1)
 
     user_input = sys.argv[1]
-    initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-    add_message(user_input, initial_time, session_id="fake_session_id")
+    session_id = datetime.now().strftime("%Y%m%d%H%M%S")  # Generate a unique session ID
+    add_message(session_id, user_input)
 
     if user_input == "exit" or user_input == "quit":
         exit(0)
@@ -143,7 +147,6 @@ def main():
     agent_name = sys.argv[2] if len(sys.argv) > 2 else None
 
     init()
-    #  client = initialize_client()
     client = initialize_client_with_parameters(read_config_parameter("options.network_settings.server_url"),
                                                read_config_parameter("options.network_settings.api_key"))
     model_path = find_gguf_file()
@@ -152,14 +155,13 @@ def main():
         try:
             agent = load_agent_from_json(agent_name)
             system_prompt = agent["instructions"]
-
         except Exception as e:
             print(f"Error loading agent: {e}")
             sys.exit(1)
     else:
         system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
 
-    chat_loop(user_input, client, model_path, system_prompt)
+    chat_loop(user_input, client, model_path, system_prompt, session_id)
 
 
 if __name__ == "__main__":
