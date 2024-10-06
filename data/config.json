@@ -43,6 +43,7 @@
             "scriptsstudio_data_directory": "",
             "scriptsstudio_config_path": "",
             "scriptsstudio_user_config_path": "",
+            "scriptsstudio_models_path": "",
             "current_working_directory": "",
             "current_file_path": "",
             "current_file_directory": "",

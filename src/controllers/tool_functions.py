@@ -2898,7 +2898,7 @@ def open_ai_assistant_window():
             self.name = name
             self.messages = []
             self.folder_path = os.path.join("data", "conversations", f"session_{self.id}")
-            self.file_path = os.path.join(self.folder_path, "conversation.txt")
+            self.file_path = os.path.join("data", "conversations", f"session_{self.id}", f"session_{self.id}.json")  # Ensure this is correct
             os.makedirs(self.folder_path, exist_ok=True)
 
         def add_message(self, role, content):
@@ -2907,8 +2907,13 @@ def open_ai_assistant_window():
             self.save()
 
         def save(self):
-            with open(self.file_path, "a", encoding="utf-8") as f:
-                f.write(self.messages[-1])
+            os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+            with open(self.file_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "id": self.id,
+                    "name": self.name,
+                    "messages": self.messages
+                }, f, ensure_ascii=False, indent=2)
 
         def load(self):
             with open(self.file_path, "r", encoding="utf-8") as f:
@@ -2916,22 +2921,19 @@ def open_ai_assistant_window():
                 self.messages = data["messages"]
 
     def create_session():
-        global current_session
-        session_number = len(session_data) + 1
-        session_name = f"Session {session_number}"
+        global current_session, session_data
+        session_name = f"Session {len(session_data) + 1}"
         current_session = Session(session_name)
         session_data.append(current_session)
+        current_session.save()  # Ensure the file is created immediately
         update_sessions_list()
         select_session(len(session_data) - 1)  # Select the newly created session
 
     def update_chat_display():
         output_text.delete("1.0", END)
-        if current_session:
-            with open(current_session.file_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    role, content = line.split(": ", 1)
-                    role_tag = "user" if role == "user" else "ai"
-                    output_text.insert(END, line, role_tag)
+        for message in current_session.messages:
+            role_tag = "user" if message["role"] == "user" else "ai"
+            output_text.insert(END, f"{message['role']}: {message['content']}\n", role_tag)
         output_text.see(END)
 
     def load_session(session_id):

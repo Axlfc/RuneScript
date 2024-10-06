@@ -63,9 +63,11 @@ def initialize_client():
     client = openai.OpenAI(base_url="http://localhost:8004/v1/", api_key="not-needed")
     return client
 
+
 def initialize_client_with_parameters(url, api_key):
     client = openai.OpenAI(base_url=url, api_key=api_key)
     return client
+
 
 def process_chat_completions(client, history):
     response = client.chat.completions.create(
