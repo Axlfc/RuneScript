@@ -2202,7 +2202,7 @@ def add_current_selected_text(include_selected_text):
     include_selected_text_in_command = include_selected_text
 
 
-def open_ai_assistant_window():
+def open_ai_assistant_window(session_id=None):
     """
     Opens a window for interacting with an AI assistant.
 
@@ -2697,7 +2697,6 @@ def open_ai_assistant_window():
         if ai_command.strip():
             script_content = ""
             if selected_text_var.get():
-                # Use only selected text from the main script window
                 try:
                     script_content = "```\n" + script_text.get(script_text.tag_ranges("sel")[0],
                                                                script_text.tag_ranges("sel")[1]) + "```\n\n"
@@ -2705,14 +2704,18 @@ def open_ai_assistant_window():
                     messagebox.showerror("Error", "No text selected in main script window.")
                     return
             elif opened_script_var.get():
-                # Use full content of the main script window
                 script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
 
             combined_command = f"{script_content}{ai_command}"
 
+            # Add user message to the session and save
+            current_session.add_message("user", combined_command)
+
             # Insert the user command with a newline and a visual separator
             original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"  # A line of dashes as a separator
+
+
             output_text.insert("end", f"You: {combined_command}\n", "user")
             output_text.insert("end", "-" * 80 + "\n")
             entry.delete(0, END)
@@ -2893,65 +2896,45 @@ def open_ai_assistant_window():
     history_pointer = [0]
 
     class Session:
-
         def __init__(self, name, load_existing=False):
-
             self.id = datetime.now().strftime("%Y%m%d%H%M%S")
-
             self.name = name
-
-            self.file_path = os.path.join("data", "conversations", f"session_{self.id}.json")
+            self.file_path = os.path.join("data", "conversations", self.id, f"session_{self.id}.json")
+            self.messages = []  # Initialize messages list here
 
             if load_existing and os.path.exists(self.file_path):
-
                 self.load()
-
             else:
-
-                self.messages = []
-
-                self.save()  # Initialize file with empty data
+                self.save()  # Save to initialize file
 
         def add_message(self, role, content):
-
             message = {
-
                 "role": role,
-
                 "content": content,
-
                 "timestamp": datetime.now().isoformat()
-
             }
-
-            self.messages.append(message)
-
-            self.save()
+            self.messages.append(message)  # Append to messages list
+            self.save()  # Save the updated list to file
 
         def save(self):
-
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
-
             data = {"session_id": self.id, "session_name": self.name, "messages": self.messages}
-
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
 
         def load(self):
-
             with open(self.file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-
-                self.messages = data["messages"]
+                self.messages = data.get("messages", [])  # Load existing messages, if any
 
     def create_session():
         global current_session, session_data
         session_name = f"Session {len(session_data) + 1}"
-        current_session = Session(session_name)
+        print("CREATING SESSION:\t", session_name)
+        current_session = Session(session_name)  # Initialize only once per session
         session_data.append(current_session)
-        current_session.save()  # Ensure the file is created immediately
         update_sessions_list()
-        select_session(len(session_data) - 1)  # Select the newly created session
+        select_session(len(session_data) - 1)  # Automatically select the new session
 
     def update_chat_display():
         if current_session and os.path.exists(current_session.file_path):
@@ -2967,10 +2950,9 @@ def open_ai_assistant_window():
 
     def load_session(session_id):
         global current_session
-        for index, session in enumerate(session_data):
+        for session in session_data:
             if session.id == session_id:
                 current_session = session
-                select_session(index)
                 break
         update_chat_display()
 
