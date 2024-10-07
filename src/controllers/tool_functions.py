@@ -2639,15 +2639,14 @@ def open_ai_assistant_window(session_id=None):
             entry.insert(0, command)
 
     def stream_output(process):
-        try:
-            output_buffer = ""  # Initialize an empty buffer
-            buffer_size = 2  # Set the size of the buffer to hold the last two characters
+        global current_session
+        ai_response_buffer = ""  # Initialize a buffer to collect the AI response incrementally
 
+        try:
             while True:
                 char = process.stdout.read(1)  # Read one character at a time
                 if char:
-                    global original_md_content
-                    original_md_content += char
+                    ai_response_buffer += char  # Append character to the AI response buffer
 
                     if markdown_render_enabled:
                         update_html_content()
@@ -2655,14 +2654,16 @@ def open_ai_assistant_window(session_id=None):
                         output_text.insert(END, char, "ai")
                         output_text.see(END)
 
-                    # Update buffer
-                    output_buffer += char
-                    output_buffer = output_buffer[-buffer_size:]
+                    # Optionally: if you want to append to the session on every character, do it here.
+                    # This can be resource-intensive, so it's usually better to wait until the response is complete.
 
-                    if output_buffer == '> ':
-                        break
                 elif process.poll() is not None:
-                    break
+                    break  # Exit the loop if the process has terminated
+
+            # Once the AI response is fully collected, add it to the session file
+            if ai_response_buffer:
+                current_session.add_message("ai", ai_response_buffer)
+
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n", "error")
         finally:
@@ -2735,7 +2736,9 @@ def open_ai_assistant_window(session_id=None):
                 store_selected_agent(selected_agent)
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
 
+            print("SAVE AI MESSAGE BEFORE")
             process_ai_command(command)
+            print("SAVE AI MESSAGE END")
         else:
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
 
@@ -2764,6 +2767,7 @@ def open_ai_assistant_window(session_id=None):
             update_html_content()
             # Update the status label with the name of the selected agent
             status_label_var.set(f"{selected_agent_var} is thinking")  # Update label to show the agent is processing
+
 
     def read_ai_command(command_name, user_prompt):
         # Path to commands.json file

@@ -117,8 +117,8 @@ def chat_loop(prompt, client, model_path,
     print()
     print("> ")
 
-    print("THIS IS THE ANSWER:::\n\n{{{", answer, "}}}\n\n")
-    add_message(session_id, answer)
+    # print("THIS IS THE ANSWER:::\n\n{{{", answer, "}}}\n\n")
+    #add_message(session_id, answer)
 
 
 def load_agent_from_json(agent_name):
@@ -139,7 +139,7 @@ def main():
 
     user_input = sys.argv[1]
     session_id = datetime.now().strftime("%Y%m%d%H%M%S")  # Generate a unique session ID
-    add_message(session_id, user_input)
+    # add_message(session_id, user_input)
 
     if user_input == "exit" or user_input == "quit":
         exit(0)
