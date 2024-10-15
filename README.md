@@ -1,11 +1,11 @@
 # ScriptsEditor: Your Versatile Script Editor
 
 [![License: GPL-2.0](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
-![Commits](https://img.shields.io/github/commit-activity/m/Axlfc/scriptseditor.svg?style=v2-blue)
-![Issues](https://img.shields.io/github/issues/Axlfc/scriptseditor.svg?style=v2-blue)
-![Contributors](https://img.shields.io/github/contributors/Axlfc/scriptseditor.svg?style=v2-blue)
-![Stargazers](https://img.shields.io/github/stars/Axlfc/scriptseditor.svg?style=v2-blue)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)](https://github.com/Axlfc/ScriptsEditor/releases)
+[![Commits](https://img.shields.io/github/commit-activity/m/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/commits/master/)
+[![Issues](https://img.shields.io/github/issues/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/issues)
+[![Contributors](https://img.shields.io/github/contributors/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/graphs/contributors)
+[![Stargazers](https://img.shields.io/github/stars/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/stargazers)
 
 ScriptsEditor is a powerful and versatile script writing and editing platform built with Python, tailored for developers, scriptwriters, and coding enthusiasts. Designed to streamline your workflow, it offers advanced script execution capabilities, seamless Git integration, and an intelligent AI assistant for enhanced productivity. Whether you're managing cron jobs, editing scripts, or generating creative assets, ScriptsEditor provides a scalable, user-friendly environment to boost efficiency and manage complex projects effortlessly. Perfect for those seeking a dynamic tool that adapts to both code and creative needs.
 
