@@ -2,8 +2,12 @@
 
 [![License: GPL-2.0](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
+![Commits](https://img.shields.io/github/commit-activity/m/Axlfc/scriptseditor.svg?style=v2-blue)
+![Issues](https://img.shields.io/github/issues/Axlfc/scriptseditor.svg?style=v2-blue)
+![Contributors](https://img.shields.io/github/contributors/Axlfc/scriptseditor.svg?style=v2-blue)
+![Stargazers](https://img.shields.io/github/stars/Axlfc/scriptseditor.svg?style=v2-blue)
 
-ScriptsEditor is a powerful and versatile script writing and editing platform designed for developers, scriptwriters, and coding enthusiasts. With features like advanced script execution using `at` or `crontab`, seamless version control integration, and a generative AI assistant, ScriptsEditor provides a comprehensive and user-friendly environment for coding and script management.
+ScriptsEditor is a powerful and versatile script writing and editing platform built with Python, tailored for developers, scriptwriters, and coding enthusiasts. Designed to streamline your workflow, it offers advanced script execution capabilities, seamless Git integration, and an intelligent AI assistant for enhanced productivity. Whether you're managing cron jobs, editing scripts, or generating creative assets, ScriptsEditor provides a scalable, user-friendly environment to boost efficiency and manage complex projects effortlessly. Perfect for those seeking a dynamic tool that adapts to both code and creative needs.
 
 ![ScriptsEditor Screenshot](images/ScriptsStudio130.gif)
 
@@ -20,9 +24,16 @@ ScriptsEditor is a powerful and versatile script writing and editing platform de
 - [License](#license)
 
 ## Features
-- Advanced script execution with `at` or `crontab`
-- Version control integration
-- Generative AI assistant with custom actions and agent selections
+- Save, open, and edit scripts with an intuitive editor
+- Script execution from within ScriptsEditor - Run immediately, Timeout, Entry Arguments...
+- Advanced script execution with `at`, `crontab`, or Windows Scheduled Tasks
+- **Shell integration**: Run custom system commands and manage tasks
+- Basic Kanban application for project management
+- System information display and program installation using **Winget**
+- **Git Console**: Manage Git repositories from within the Git Console Window, including commits and branches _(work in progress)_
+- **AI Assistant**: Multi-agent selection for local LLMs or external APIs (ChatGPT, Claude, etc.) _(work in progress)_
+- Integration with **Stable Diffusion** and **Stable Audio** for image and audio generation _(work in progress)_
+- Built-in **calculator window** _(work in progress)_
 
 ## Installation
 
