@@ -6,3 +6,5 @@ tkinterhtml
 pywebview
 ttkbootstrap
 markdown2
+requests
+python-dotenv

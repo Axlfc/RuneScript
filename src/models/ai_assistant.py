@@ -3,11 +3,13 @@ import platform
 import sys
 import time
 import openai
+import requests
 from colorama import init
 from colorama import Fore, Back, Style
 import time
 import json
 from datetime import datetime
+from dotenv import load_dotenv
 
 from src.controllers.parameters import read_config_parameter
 
@@ -132,6 +134,79 @@ def load_agent_from_json(agent_name):
     raise ValueError(f"No agent found with the name: {agent_name}")
 
 
+def initialize_gemini_client():
+    load_dotenv()
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+    return {
+        "api_key": GEMINI_API_KEY,
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
+    }
+
+
+def process_gemini_chat(client, prompt):
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
+    try:
+        response = requests.post(
+            f"{client['base_url']}?key={client['api_key']}",
+            headers=headers,
+            json=data
+        )
+
+        response.raise_for_status()
+
+        result = response.json()
+
+        if 'candidates' in result and len(result['candidates']) > 0:
+            candidate = result['candidates'][0]
+            if 'content' in candidate:
+                content = candidate['content']
+                if 'parts' in content and len(content['parts']) > 0:
+                    return content['parts'][0]['text']
+                else:
+                    return "Error: No text content found in the response."
+            else:
+                return "Error: Unexpected response structure from Gemini API."
+        else:
+            return "Error: No valid response received from Gemini API."
+
+    except requests.exceptions.RequestException as e:
+        return f"Error: Request to Gemini API failed. Details: {str(e)}"
+    except json.JSONDecodeError:
+        return "Error: Invalid response received from Gemini API."
+    except Exception as e:
+        return f"Error: An unexpected error occurred. Details: {str(e)}"
+
+
+def chat_loop_gemini(prompt, client, system_prompt, session_id):
+    conversation = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+
+    full_prompt = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in conversation])
+
+    response = process_gemini_chat(client, full_prompt)
+
+    if response.startswith("Error:"):
+        print(f"An error occurred: {response}")
+    else:
+        print("Gemini:", response)
+
+    print("\n> ")
+    print()
+    print("> ")
+
+    # Optional: Add the response to the conversation history
+    # conversation.append({"role": "assistant", "content": response})
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python ai_assistant.py \"<user_input>\" [<agent_name>]")
@@ -152,21 +227,23 @@ def main():
     server_url = read_config_parameter("options.network_settings.server_url")
     api_key = read_config_parameter("options.network_settings.api_key")
 
+    if agent_name:
+        try:
+            agent = load_agent_from_json(agent_name)
+            system_prompt = agent["instructions"]
+        except Exception as e:
+            print(f"Error loading agent: {e}")
+            sys.exit(1)
+    else:
+        system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
+
     if selected_llm_server_provider == "llama-cpp-python":
         client = initialize_client_with_parameters(server_url, api_key)
         model_path = find_gguf_file()
-
-        if agent_name:
-            try:
-                agent = load_agent_from_json(agent_name)
-                system_prompt = agent["instructions"]
-            except Exception as e:
-                print(f"Error loading agent: {e}")
-                sys.exit(1)
-        else:
-            system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
-
         chat_loop(user_input, client, model_path, system_prompt, session_id)
+    elif selected_llm_server_provider == "gemini":
+        client = initialize_gemini_client()
+        chat_loop_gemini(user_input, client, system_prompt, session_id)
     else:
         print("UNSUPPORTED LLM SERVER PROVIDER")
 
