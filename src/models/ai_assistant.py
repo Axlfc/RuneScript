@@ -147,21 +147,28 @@ def main():
     agent_name = sys.argv[2] if len(sys.argv) > 2 else None
 
     init()
-    client = initialize_client_with_parameters(read_config_parameter("options.network_settings.server_url"),
-                                               read_config_parameter("options.network_settings.api_key"))
-    model_path = find_gguf_file()
 
-    if agent_name:
-        try:
-            agent = load_agent_from_json(agent_name)
-            system_prompt = agent["instructions"]
-        except Exception as e:
-            print(f"Error loading agent: {e}")
-            sys.exit(1)
+    selected_llm_server_provider = read_config_parameter("options.network_settings.last_selected_llm_server_provider")
+    server_url = read_config_parameter("options.network_settings.server_url")
+    api_key = read_config_parameter("options.network_settings.api_key")
+
+    if selected_llm_server_provider == "llama-cpp-python":
+        client = initialize_client_with_parameters(server_url, api_key)
+        model_path = find_gguf_file()
+
+        if agent_name:
+            try:
+                agent = load_agent_from_json(agent_name)
+                system_prompt = agent["instructions"]
+            except Exception as e:
+                print(f"Error loading agent: {e}")
+                sys.exit(1)
+        else:
+            system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
+
+        chat_loop(user_input, client, model_path, system_prompt, session_id)
     else:
-        system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
-
-    chat_loop(user_input, client, model_path, system_prompt, session_id)
+        print("UNSUPPORTED LLM SERVER PROVIDER")
 
 
 if __name__ == "__main__":

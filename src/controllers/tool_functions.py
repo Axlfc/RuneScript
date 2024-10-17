@@ -2310,8 +2310,11 @@ def open_ai_assistant_window(session_id=None):
                     return
 
             if new_api_key not in api_keys.values():
-                update_env_file(api_key_field, new_api_key)
-                messagebox.showinfo("AI Server Settings", "API Key updated successfully!")
+                if selected in ["openai", "claude", "gemini"]:
+                    update_env_file(api_key_field, new_api_key)
+                    messagebox.showinfo("AI Server Settings", "API Key updated successfully!")
+                else:
+                    api_key_field = "not-needed"
             else:
                 messagebox.showinfo("AI Server Settings", "No changes made. The API Key entered is a placeholder.")
 
