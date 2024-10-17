@@ -10,6 +10,7 @@ import time
 import json
 from datetime import datetime
 from dotenv import load_dotenv
+import anthropic
 
 from src.controllers.parameters import read_config_parameter
 
@@ -207,6 +208,42 @@ def chat_loop_gemini(prompt, client, system_prompt, session_id):
     # conversation.append({"role": "assistant", "content": response})
 
 
+def initialize_claude_client():
+    load_dotenv()
+    CLAUDE_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+    return anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+
+
+def process_claude_chat(client, prompt):
+    try:
+        response = client.completions.create(
+            model="claude-3-opus-20240229",
+            max_tokens=1000,
+            temperature=0.7,
+            prompt=f"\n\nHuman: {prompt}\n\nAssistant:"
+        )
+        return response.completion
+    except anthropic.APIError as e:
+        return f"Error: Claude API request failed. Details: {str(e)}"
+    except Exception as e:
+        return f"Error: An unexpected error occurred. Details: {str(e)}"
+
+
+def chat_loop_claude(prompt, client, system_prompt, session_id):
+    full_prompt = f"{system_prompt}\n\nHuman: {prompt}\n\nAssistant:"
+
+    response = process_claude_chat(client, full_prompt)
+
+    if response.startswith("Error:"):
+        print(f"An error occurred: {response}")
+    else:
+        print("Claude:", response)
+
+    print("\n> ")
+    print()
+    print("> ")
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python ai_assistant.py \"<user_input>\" [<agent_name>]")
@@ -244,6 +281,9 @@ def main():
     elif selected_llm_server_provider == "gemini":
         client = initialize_gemini_client()
         chat_loop_gemini(user_input, client, system_prompt, session_id)
+    elif selected_llm_server_provider == "claude":
+        client = initialize_claude_client()
+        chat_loop_claude(user_input, client, system_prompt, session_id)
     else:
         print("UNSUPPORTED LLM SERVER PROVIDER")
 
