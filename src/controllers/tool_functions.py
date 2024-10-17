@@ -2224,6 +2224,8 @@ def open_ai_assistant_window(session_id=None):
         #  ".\\src\\models\\model\\llama-2-7b-chat.Q4_K_M.gguf"])
 
     def open_ai_server_settings_window():
+        json_path = 'data/llm_server_providers.json'
+
         def toggle_display(selected_server):
             server_info = server_details.get(selected_server, {})
             server_url = server_info.get("server_url", "")
@@ -2234,14 +2236,14 @@ def open_ai_assistant_window(session_id=None):
             api_key_entry.delete(0, END)
             api_key_entry.insert(0, api_key)
 
-            if selected_server in ["lmstudio", "ollama", "openai", "llama-cpp-python", "claude"]:
+            if selected_server in ["lmstudio", "ollama", "openai", "llama-cpp-python", "claude", "gemini"]:
                 server_url_entry.grid()
                 server_url_label.grid()
             else:
                 server_url_entry.grid_remove()
                 server_url_label.grid_remove()
 
-            if selected_server == "openai" or selected_server == "claude":
+            if selected_server in ["openai", "claude", "gemini"]:
                 api_key_entry.grid()
                 api_key_label.grid()
             else:
@@ -2256,16 +2258,66 @@ def open_ai_assistant_window(session_id=None):
                 messagebox.showerror("Error", f"Failed to load server details: {str(e)}")
                 return {}
 
+        def load_api_key_names():
+            with open(json_path, 'r') as file:
+                data = json.load(file)
+            api_keys = {provider: details['api_key'] for provider, details in data.items() if
+                        details['api_key'] != 'not-needed'}
+            return api_keys
+
+        def get_env_variable(variable_name):
+            env_path = '.env'
+            if os.path.exists(env_path):
+                with open(env_path, 'r') as file:
+                    for line in file:
+                        if line.startswith(f"{variable_name}="):
+                            return line.split('=', 1)[1].strip()
+
+        def update_env_file(api_key_field, new_api_key):
+            env_path = '.env'
+            updated = False
+            if os.path.exists(env_path):
+                with open(env_path, 'r') as file:
+                    lines = file.readlines()
+                with open(env_path, 'w') as file:
+                    for line in lines:
+                        if line.startswith(api_key_field + '='):
+                            file.write(f'{api_key_field}={new_api_key}\n')
+                            updated = True
+                        else:
+                            file.write(line)
+                if not updated:
+                    with open(env_path, 'a') as file:
+                        file.write(f'{api_key_field}={new_api_key}\n')
+            else:
+                with open(env_path, 'w') as file:
+                    file.write(f'{api_key_field}={new_api_key}\n')
+
         def save_ai_server_settings():
-            selected = selected_server.get()
             server_url = server_url_entry.get()
-            api_key = api_key_entry.get()
+            api_keys = load_api_key_names()
+            selected = selected_server.get()
+            new_api_key = api_key_entry.get()
+            api_key_field = api_keys.get(selected)
+
+            if not new_api_key:
+                # If no new API key is entered, try to load from .env
+                env_api_key = get_env_variable(api_key_field)
+                if env_api_key:
+                    new_api_key = env_api_key
+                else:
+                    messagebox.showerror("Error", f"No API key found for {selected}. Please enter a valid API key.")
+                    return
+
+            if new_api_key not in api_keys.values():
+                update_env_file(api_key_field, new_api_key)
+                messagebox.showinfo("AI Server Settings", "API Key updated successfully!")
+            else:
+                messagebox.showinfo("AI Server Settings", "No changes made. The API Key entered is a placeholder.")
 
             write_config_parameter("options.network_settings.last_selected_llm_server_provider", selected)
             write_config_parameter("options.network_settings.server_url", server_url)
-            write_config_parameter("options.network_settings.api_key", api_key)
-
-            messagebox.showinfo("AI Server Settings", "Settings saved successfully!")
+            write_config_parameter("options.network_settings.api_key", api_key_field)
             settings_window.destroy()
 
         server_details = load_server_details()

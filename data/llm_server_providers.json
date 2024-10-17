@@ -22,5 +22,9 @@
     "claude": {
     "server_url": "https://api.anthropic.com",
     "api_key": "CLAUDE_API_KEY"
+  },
+    "gemini": {
+    "server_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+    "api_key": "GEMINI_API_KEY"
   }
 }
