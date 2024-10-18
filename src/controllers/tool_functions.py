@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import platform
 import queue
 import re
 import subprocess
@@ -2794,7 +2795,6 @@ def open_ai_assistant_window(session_id=None):
                 selected_agent_var = "Assistant"
                 selected_agent = selected_agent_var
 
-
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
 
             print("SAVE AI MESSAGE BEFORE")
@@ -2804,10 +2804,17 @@ def open_ai_assistant_window(session_id=None):
             entry.config(state='normal')  # Re-enable the entry widget if no command is entered
 
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
-        if agent_name:
-            return ['python', ai_script_path, user_prompt, agent_name]
+        # Determine the operating system
+        if platform.system() == "Windows":
+            python_executable = os.path.join('venv', 'Scripts', 'python')
         else:
-            return ['python', ai_script_path, user_prompt]
+            python_executable = os.path.join('venv', 'bin', 'python3')
+
+        # Construct the command
+        if agent_name:
+            return [python_executable, ai_script_path, user_prompt, agent_name]
+        else:
+            return [python_executable, ai_script_path, user_prompt]
 
     def process_ai_command(command):
         global process, selected_agent_var
