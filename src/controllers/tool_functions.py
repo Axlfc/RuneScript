@@ -2781,14 +2781,20 @@ def open_ai_assistant_window(session_id=None):
             ai_script_path = 'src/models/ai_assistant.py'
 
             # Pass the selected agent name to create_ai_command function if provided
-            try:
-                selected_agent = selected_agent_var
-            except Exception as e:
-                selected_agent_var = "Assistant"
-                selected_agent = selected_agent_var
             if persistent_agent_selection_var.get():
+                try:
+                    selected_agent = selected_agent_var
+                except Exception as e:
+                    selected_agent_var = "Assistant"
+                    selected_agent = selected_agent_var
                 # Store the selected agent in a config file for persistence
                 store_selected_agent(selected_agent)
+            else:
+                print("Non persistant agent")
+                selected_agent_var = "Assistant"
+                selected_agent = selected_agent_var
+
+
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
 
             print("SAVE AI MESSAGE BEFORE")
