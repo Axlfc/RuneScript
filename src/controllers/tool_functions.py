@@ -2764,7 +2764,7 @@ def open_ai_assistant_window(session_id=None):
 
             combined_command = f"{script_content}{ai_command}"
 
-            # Add user message to the session and save
+            # Add user message to the current session and save
             current_session.add_message("user", combined_command)
 
             # Insert the user command with a newline and a visual separator
@@ -2955,16 +2955,17 @@ def open_ai_assistant_window(session_id=None):
     history_pointer = [0]
 
     class Session:
-        def __init__(self, name, load_existing=False):
-            self.id = datetime.now().strftime("%Y%m%d%H%M%S")
-            self.name = name
+        def __init__(self, session_id, load_existing=True):
+            self.id = session_id
+            self.name = ""
             self.file_path = os.path.join("data", "conversations", self.id, f"session_{self.id}.json")
-            self.messages = []  # Initialize messages list here
+            self.messages = []
 
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
-                self.save()  # Save to initialize file
+                self.name = f"Session {self.id}"
+                self.save()
 
         def add_message(self, role, content):
             message = {
@@ -2984,49 +2985,75 @@ def open_ai_assistant_window(session_id=None):
         def load(self):
             with open(self.file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                self.messages = data.get("messages", [])  # Load existing messages, if any
+                self.name = data.get("session_name", f"Session {self.id}")
+                self.messages = data.get("messages", [])
 
     def create_session():
         global current_session, session_data
-        session_name = f"Session {len(session_data) + 1}"
-        print("CREATING SESSION:\t", session_name)
-        current_session = Session(session_name)  # Initialize only once per session
+        new_session_id = datetime.now().strftime("%Y%m%d%H%M%S")
+        current_session = Session(new_session_id, load_existing=False)
         session_data.append(current_session)
         update_sessions_list()
-        select_session(len(session_data) - 1)  # Automatically select the new session
+        select_session(len(session_data) - 1)
 
     def update_chat_display():
-        if current_session and os.path.exists(current_session.file_path):
-            with open(current_session.file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                output_text.delete("1.0", END)
-                for message in data["messages"]:
-                    role_tag = "user" if message["role"] == "user" else "ai"
-                    output_text.insert(END, f"{message['role']}: {message['content']}\n", role_tag)
-                output_text.see(END)
-        else:
-            print("Session file not found or no session is currently active.")
+        output_text.delete("1.0", END)
+        if current_session:
+            for message in current_session.messages:
+                role_tag = "user" if message["role"] == "user" else "ai"
+                output_text.insert(END, f"{message['role']}: {message['content']}\n", role_tag)
+        output_text.see(END)
 
     def load_session(session_id):
         global current_session
         for session in session_data:
             if session.id == session_id:
                 current_session = session
+                current_session.load()  # Ensure the latest data is loaded
                 break
         update_chat_display()
 
     def select_session(index):
+        global current_session
         sessions_list.selection_clear(0, END)
         sessions_list.selection_set(index)
         sessions_list.activate(index)
         sessions_list.see(index)
-        write_config_parameter("options.network_settings.last_selected_session_id", index + 1)
+        current_session = session_data[index]
+        current_session.load()  # Ensure the latest data is loaded
         update_chat_display()
+        write_config_parameter("options.network_settings.last_selected_session_id", index + 1)
 
     def update_sessions_list():
         sessions_list.delete(0, END)
         for session in session_data:
             sessions_list.insert(END, session.name)
+
+    def load_sessions(session_listbox):
+        sessions_path = 'data/conversations'
+        session_folders = [f for f in os.listdir(sessions_path) if os.path.isdir(os.path.join(sessions_path, f))]
+        session_listbox.delete(0, 'end')  # Clear existing entries in the listbox
+
+        for session_folder in session_folders:
+            session = Session(session_folder, load_existing=True)
+            session_listbox.insert('end', session.name)
+
+    def initialize_ai_assistant_window():
+        global session_data, current_session
+        sessions_path = 'data/conversations'
+        session_data = []
+
+        if os.path.exists(sessions_path):
+            for session_folder in os.listdir(sessions_path):
+                session = Session(session_folder, load_existing=True)
+                session_data.append(session)
+
+        update_sessions_list()
+
+        if session_data:
+            select_session(len(session_data) - 1)
+        else:
+            create_session()
 
     def on_session_select(event):
         selected_indices = sessions_list.curselection()
@@ -3050,11 +3077,11 @@ def open_ai_assistant_window(session_id=None):
             messagebox.showinfo("Delete Session", f"Session {session['id']} deleted successfully.")
 
     def rename_session(session_index):
-        print(f"Renaming session {session_index}...")
         session = session_data[session_index]
-        new_name = simpledialog.askstring("Rename Session", "Enter new session name:")
+        new_name = simpledialog.askstring("Rename Session", "Enter new session name:", initialvalue=session.name)
         if new_name:
-            session["name"] = new_name
+            session.name = new_name
+            session.save()
             update_sessions_list()
 
     def archive_session(session_index):
@@ -3085,9 +3112,13 @@ def open_ai_assistant_window(session_id=None):
         session_context_menu.post(event.x_root, event.y_root)
 
     sessions_list.bind("<Button-3>", handle_session_click)
+    sessions_list.bind("<<ListboxSelect>>", on_session_select)
 
     #create_session_button = Button(ai_assistant_window, text="Create New Session", command=create_session)
     #create_session_button.pack(side="left")
+
+    # Call initialize_ai_assistant_window after creating the window and its widgets
+    initialize_ai_assistant_window()
 
     ai_assistant_window.mainloop()
 

@@ -8,3 +8,4 @@ ttkbootstrap
 markdown2
 requests
 python-dotenv
+anthropic
