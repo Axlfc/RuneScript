@@ -9,9 +9,10 @@ import threading
 import math
 import cmath
 from tkinter import (colorchooser, END, Toplevel, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar, \
-    messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox, simpledialog, Text, \
+                     messagebox, OptionMenu, Checkbutton, Scrollbar, Canvas, Frame, font, filedialog, Listbox,
+                     simpledialog, Text, \
                      DISABLED, NORMAL, SUNKEN, W, BOTH, LEFT, SINGLE, X, RAISED, WORD, RIGHT, Y, BooleanVar, VERTICAL, \
-                     BOTTOM)
+                     BOTTOM, INSERT, SEL_FIRST, SEL_LAST)
 
 import webview  # pywebview
 from datetime import datetime
@@ -1713,38 +1714,66 @@ def open_calculator_window():
                              justify='right')
     expression_entry.grid(row=0, column=0, columnspan=5, padx=10, pady=10, sticky='nsew')
 
-    result_label = Label(calculator_window, text="", font=('Arial', 14))
+    # Change result display back to Label for better readability
+    result_label = Label(calculator_window, text="", font=('Arial', 20, 'bold'), anchor='e',
+                         background='white', foreground='black', borderwidth=2, relief='solid')
     result_label.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky='nsew')
 
     original_states = {}  # Dictionary to store the original state of buttons
+
+    def update_result_display(message):
+        result_label.config(text=message)
+
+    def copy_result_to_clipboard(event):
+        result = result_label.cget("text")
+        calculator_window.clipboard_clear()
+        calculator_window.clipboard_append(result)
+
+    result_label.bind("<Button-1>", copy_result_to_clipboard)
+    result_label.bind("<Double-Button-1>", copy_result_to_clipboard)
 
     def button_click(value):
         current = expression_entry.get()
         if current in ("Error", "Invalid Input"):
             expression_entry.delete(0, END)
-        expression_entry.insert(END, value)
+        if expression_entry.selection_present():
+            selection_start = expression_entry.index(SEL_FIRST)
+            selection_end = expression_entry.index(SEL_LAST)
+            expression_entry.delete(selection_start, selection_end)
+            expression_entry.insert(selection_start, value)
+            expression_entry.icursor(selection_start + len(value))
+        else:
+            cursor_position = expression_entry.index(INSERT)
+            expression_entry.insert(cursor_position, value)
+            expression_entry.icursor(cursor_position + len(value))
 
     def clear_entry():
         expression_entry.delete(0, END)
-        result_label.config(text="")
+        update_result_display("")
 
     def backspace():
-        current = expression_entry.get()
-        expression_entry.delete(len(current) - 1, END)
+        if expression_entry.selection_present():
+            selection_start = expression_entry.index(SEL_FIRST)
+            selection_end = expression_entry.index(SEL_LAST)
+            expression_entry.delete(selection_start, selection_end)
+            expression_entry.icursor(selection_start)
+        else:
+            cursor_position = expression_entry.index(INSERT)
+            if cursor_position > 0:
+                expression_entry.delete(cursor_position - 1, cursor_position)
 
     def toggle_scientific_calculator_buttons():
-        # Dictionary mapping standard buttons to their scientific counterparts
         toggle_map = {
-            "x²": ("x³", lambda: button_click("**3")),
-            "xʸ": ("x⁽¹/ʸ⁾", lambda: button_click("**(1/y)")),
+            "x²": ("x³", lambda value="**3": button_click(value)),
+            "xʸ": ("x⁽¹/ʸ⁾", lambda value="**(1/y)": button_click(value)),
             "sin": ("asin", lambda: scientific_function_click("asin")),
             "cos": ("acos", lambda: scientific_function_click("acos")),
             "tan": ("atan", lambda: scientific_function_click("atan")),
-            "√": ("¹/ₓ", lambda: button_click("1/")),
-            "10ˣ": ("eˣ", lambda: button_click("math.e**")),
+            "√": ("¹/ₓ", lambda value="1/": button_click(value)),
+            "10ˣ": ("eˣ", lambda value="math.e**": button_click(value)),
             "log": ("ln", lambda: scientific_function_click("ln")),
-            "Exp": ("dms", lambda: button_click("dms(")),
-            "Mod": ("deg", lambda: button_click("deg("))
+            "Exp": ("dms", lambda value="dms(": button_click(value)),
+            "Mod": ("deg", lambda value="deg(": button_click(value))
         }
 
         for btn in calculator_buttons:
@@ -1761,7 +1790,7 @@ def open_calculator_window():
 
             # Reverse toggle to original function
             elif any(current_text == pair[0] for pair in toggle_map.values()):
-                reverse_map = {v[0]: (k, v[1]) for k, v in toggle_map.items()}  # Reverse the mapping
+                reverse_map = {v[0]: (k, v[1]) for k, v in toggle_map.items()}
                 original_text, original_command = reverse_map[current_text]
 
                 # Restore original state if it exists
@@ -1778,7 +1807,7 @@ def open_calculator_window():
         try:
             expression = expression_entry.get().strip()
             if not expression:
-                result_label.config(text="Error: Empty expression")
+                update_result_display("Error: Empty expression")
                 return
 
             expression = balance_parentheses(expression)
@@ -1786,23 +1815,36 @@ def open_calculator_window():
             # Replace operators and functions
             replacements = {
                 'sin': 'sin', 'cos': 'cos', 'tan': 'tan',
+                'asin': 'asin', 'acos': 'acos', 'atan': 'atan',
                 'log': 'log', 'ln': 'ln', 'sqrt': 'sqrt',
-                'abs': 'abs', 'π': 'math.pi', 'e': 'math.e', '**': '**',
-                '^': '**', '√': 'sqrt', 'asin': 'math.asin', 'acos': 'math.acos', 'atan': 'math.atan',
+                'abs': 'abs', 'π': 'pi', 'e': 'e', '**': '**',
+                '^': '**', '√': 'sqrt'
             }
 
             for old, new in replacements.items():
                 expression = expression.replace(old, new)
 
-            expression = re.sub(r'(\d+)!', r'factorial(\1)', expression)
+            # Handle factorial
+            expression = re.sub(r'(\([^()]*\)|\d+)!', r'factorial\1', expression)
 
-            expression = expression.replace('+', ' + ').replace('-', ' - ').replace('*', ' * ').replace('/', ' / ')
+            # Handle implicit multiplication (e.g., 2pi)
+            expression = re.sub(r'(\d+)([a-zA-Z\(])', r'\1*\2', expression)
+            expression = re.sub(r'([a-zA-Z\)])(\d+)', r'\1*\2', expression)
+
+            # Ensure operators are spaced
+            expression = re.sub(r'([^\s\w\.\(\)])', r' \1 ', expression)
 
             safe_dict = {
                 'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
-                'sqrt': math.sqrt, 'abs': abs, 'log': math.log,
-                'ln': math.log, 'factorial': math.factorial, 'math': math
+                'asin': math.asin, 'acos': math.acos, 'atan': math.atan,
+                'sqrt': math.sqrt, 'abs': abs, 'log': math.log10,
+                'ln': math.log, 'factorial': math.factorial, 'pi': math.pi, 'e': math.e
             }
+
+            # Validate the expression
+            if re.search(r'[^\d\w\s\+\-\*\/\^\(\)\.\,\!]', expression):
+                update_result_display("Error: Invalid characters in expression")
+                return
 
             result = eval(expression, {"__builtins__": None}, safe_dict)
 
@@ -1813,13 +1855,29 @@ def open_calculator_window():
             else:
                 formatted_result = str(result)
 
-            result_label.config(text=formatted_result)
+            update_result_display(formatted_result)
 
+        except ZeroDivisionError:
+            update_result_display("Error: Division by zero")
+        except ValueError as ve:
+            update_result_display(f"Error: {str(ve)}")
+        except SyntaxError:
+            update_result_display("Error: Invalid syntax")
         except Exception as e:
-            result_label.config(text=f"Error: {str(e)}")
+            update_result_display(f"Error: {str(e)}")
 
     def scientific_function_click(func_name):
-        expression_entry.insert(END, f"{func_name}(")
+        value = f"{func_name}("
+        if expression_entry.selection_present():
+            selection_start = expression_entry.index(SEL_FIRST)
+            selection_end = expression_entry.index(SEL_LAST)
+            expression_entry.delete(selection_start, selection_end)
+            expression_entry.insert(selection_start, value)
+            expression_entry.icursor(selection_start + len(value))
+        else:
+            cursor_position = expression_entry.index(INSERT)
+            expression_entry.insert(cursor_position, value)
+            expression_entry.icursor(cursor_position + len(value))
 
     button_texts = [
         ('x²', 1, 0), ('xʸ', 1, 1), ('sin', 1, 2), ('cos', 1, 3), ('tan', 1, 4),
@@ -1846,7 +1904,7 @@ def open_calculator_window():
         elif text in ('π', 'e', 'j'):
             btn = Button(calculator_window, text=text, width=8, height=2, command=lambda t=text: button_click(t))
         elif text == 'x!':
-            btn = Button(calculator_window, text=text, width=8, height=2, command=lambda: button_click('factorial('))
+            btn = Button(calculator_window, text=text, width=8, height=2, command=lambda: button_click('!'))
         elif text == '←':
             btn = Button(calculator_window, text='←', width=8, height=2, command=backspace)
         elif text == '↑':
@@ -1867,7 +1925,7 @@ def open_calculator_window():
 
     calculator_window.mainloop()
 
-
+    
 def open_terminal_window():
     """
         Opens a new window functioning as a terminal within the application.
