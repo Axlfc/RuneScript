@@ -1714,7 +1714,7 @@ def open_calculator_window():
                              justify='right')
     expression_entry.grid(row=0, column=0, columnspan=5, padx=10, pady=10, sticky='nsew')
 
-    # Change result display back to Label for better readability
+    # Result display
     result_label = Label(calculator_window, text="", font=('Arial', 20, 'bold'), anchor='e',
                          background='white', foreground='black', borderwidth=2, relief='solid')
     result_label.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky='nsew')
@@ -1750,6 +1750,32 @@ def open_calculator_window():
     def clear_entry():
         expression_entry.delete(0, END)
         update_result_display("")
+
+    def clear_last_entry():
+        current = expression_entry.get()
+        cursor_position = expression_entry.index(INSERT)
+
+        if expression_entry.selection_present():
+            # Delete selected text
+            selection_start = expression_entry.index(SEL_FIRST)
+            selection_end = expression_entry.index(SEL_LAST)
+            expression_entry.delete(selection_start, selection_end)
+            expression_entry.icursor(selection_start)
+            return
+
+        if cursor_position == 0:
+            return  # Nothing to delete
+
+        # Pattern to match tokens (numbers, words, or single non-space characters)
+        pattern = r'(\d+\.\d+|\d+|[a-zA-Z_][a-zA-Z0-9_]*|\S)'
+        tokens = list(re.finditer(pattern, current[:cursor_position]))
+        if not tokens:
+            return
+
+        last_token = tokens[-1]
+        start, end = last_token.start(), last_token.end()
+        expression_entry.delete(start, cursor_position)
+        expression_entry.icursor(start)
 
     def backspace():
         if expression_entry.selection_present():
@@ -1896,6 +1922,8 @@ def open_calculator_window():
             btn = Button(calculator_window, text=text, width=8, height=2, command=evaluate_expression)
         elif text == 'C':
             btn = Button(calculator_window, text=text, width=8, height=2, command=clear_entry)
+        elif text == 'CE':
+            btn = Button(calculator_window, text=text, width=8, height=2, command=clear_last_entry)
         elif text == '10ˣ':
             btn = Button(calculator_window, text=text, width=8, height=2, command=lambda: button_click('10**'))
         elif text in ('sin', 'cos', 'tan', 'log', 'ln', 'abs', 'asin', 'acos', 'atan', '√'):
@@ -1925,7 +1953,6 @@ def open_calculator_window():
 
     calculator_window.mainloop()
 
-    
 def open_terminal_window():
     """
         Opens a new window functioning as a terminal within the application.
