@@ -4928,7 +4928,7 @@ def open_ai_assistant_window(session_id=None):
 def open_translator_window():
     translator_win = Toplevel()
     translator_win.title("Real-time Translator")
-    translator_win.geometry("700x500")  # Adjust the size for better fitting of elements
+    translator_win.geometry("600x400")  # Adjust the size for better fitting of elements
 
     # Row 1: Output area for translated text (wider and more emphasized)
     output_text = scrolledtext.ScrolledText(translator_win, height=15, width=85)  # Widened for translation emphasis
