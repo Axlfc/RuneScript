@@ -2,16 +2,11 @@ import json
 import os
 import pathlib
 
-
-
-# Get the absolute path of the current file
 current_file_path = os.path.abspath(__file__)
-
-# Move two levels up to get the repository root and normalize the path
-current_repo_path = os.path.normpath(os.path.join(current_file_path, '..', '..', '..'))
-
-# Define the path to the user config file relative to the repository root and normalize it
-user_config_file_path = os.path.normpath(os.path.join(current_repo_path, "data", "user_config.json"))
+current_repo_path = os.path.normpath(os.path.join(current_file_path, "..", "..", ".."))
+user_config_file_path = os.path.normpath(
+    os.path.join(current_repo_path, "data", "user_config.json")
+)
 
 
 def read_config_parameter(parameter_path):
@@ -24,24 +19,32 @@ def read_config_parameter(parameter_path):
     Returns:
     - The value of the parameter if found, otherwise None.
     """
-    # Function to get nested value
+
     def get_nested_value(data_dict, keys_list):
+        """
+        get_nested_value
+
+        Args:
+            data_dict (Any): Description of data_dict.
+            keys_list (Any): Description of keys_list.
+
+        Returns:
+            None: Description of return value.
+        """
         current_level = data_dict
         for key in keys_list:
             if isinstance(current_level, dict) and key in current_level:
                 current_level = current_level[key]
             else:
-                return None  # Key not found
+                return None
         return current_level
 
-    path_parts = parameter_path.split('.')
-
-    # Read from user_config.json
+    path_parts = parameter_path.split(".")
     try:
-        with open(user_config_file_path, 'r') as user_config_file:
+        with open(user_config_file_path, "r") as user_config_file:
             user_config_data = json.load(user_config_file)
             value = get_nested_value(user_config_data, path_parts)
-            return value  # May return None if the value is not found
+            return value
     except Exception as e:
         print(f"Error reading user_config.json: {e}")
         return None
@@ -58,28 +61,21 @@ def write_config_parameter(parameter_path, parameter_value):
     Returns:
     - True if the parameter was successfully written, otherwise False.
     """
-    # Read existing user_config.json
     try:
-        with open(user_config_file_path, 'r') as user_config_file:
+        with open(user_config_file_path, "r") as user_config_file:
             user_config_data = json.load(user_config_file)
     except Exception as e:
         print(f"Error reading user_config.json: {e}")
         return False
-
-    # Update the specific parameter value within the nested structure
-    path_parts = parameter_path.split('.')
+    path_parts = parameter_path.split(".")
     current_level = user_config_data
-
     for part in path_parts[:-1]:
         if part not in current_level:
             current_level[part] = {}
         current_level = current_level[part]
-
     current_level[path_parts[-1]] = parameter_value
-
-    # Write the updated user_config_data to user_config.json
     try:
-        with open(user_config_file_path, 'w') as user_config_file:
+        with open(user_config_file_path, "w") as user_config_file:
             json.dump(user_config_data, user_config_file, indent=4)
         return True
     except Exception as e:
@@ -88,43 +84,65 @@ def write_config_parameter(parameter_path, parameter_value):
 
 
 def get_scriptsstudio_directory():
-    # Get the current working directory
-    project_directory = os.getcwd()
+    """
+    get_scriptsstudio_directory
 
-    # Get the absolute path of the current directory
+    Args:
+        None
+
+    Returns:
+        None: Description of return value.
+    """
+    project_directory = os.getcwd()
     abs_path = os.path.abspath(project_directory)
     data_path = abs_path + "\\data"
-
-    # This is hardcoded for developing our own project ScriptsStudio... This might change in the future.
     write_config_parameter("options.file_management.current_working_directory", "")
     write_config_parameter("options.file_management.current_file_path", "")
-    
     write_config_parameter("options.file_management.scriptsstudio_directory", abs_path)
-    write_config_parameter("options.file_management.scriptsstudio_data_directory", data_path)
-    write_config_parameter("options.file_management.scriptsstudio_config_path", data_path + "\\config.json")
-    write_config_parameter("options.file_management.scriptsstudio_user_config_path", data_path + "\\user_config.json")
+    write_config_parameter(
+        "options.file_management.scriptsstudio_data_directory", data_path
+    )
+    write_config_parameter(
+        "options.file_management.scriptsstudio_config_path", data_path + "\\config.json"
+    )
+    write_config_parameter(
+        "options.file_management.scriptsstudio_user_config_path",
+        data_path + "\\user_config.json",
+    )
     return abs_path
 
 
 def ensure_user_config():
-    config_path = 'data/config.json'
-    user_config_path = 'data/user_config.json'
+    """
+    ensure_user_config
 
-    # Check if user_config.json exists
+    Args:
+        None
+
+    Returns:
+        None: Description of return value.
+    """
+    config_path = "data/config.json"
+    user_config_path = "data/user_config.json"
     if not os.path.exists(user_config_path):
-        # Open config.json in read mode and create user_config.json in write mode
-        with open(config_path, 'r') as config_file:
-            with open(user_config_path, 'w') as user_config_file:
-                # Read from config.json and write to user_config.json
+        with open(config_path, "r") as config_file:
+            with open(user_config_path, "w") as user_config_file:
                 user_config_file.write(config_file.read())
-        #  print(f"Copied {config_path} to {user_config_path}")
     else:
-        #  print(f"{user_config_path} already exists, doing nothing.")
         pass
 
 
 def load_theme_setting():
+    """
+    load_theme_setting
+
+    Args:
+        None
+
+    Returns:
+        None: Description of return value.
+    """
     theme = read_config_parameter("options.theme_appearance.theme")
     if theme is None:
-        theme = 'cosmo'  # Replace 'default' with your actual default theme
+        theme = "cosmo"
     return theme

@@ -1,31 +1,55 @@
 import os
-
 from src.controllers.file_operations import open_file
 from src.controllers.parameters import write_config_parameter
 from src.views.tk_utils import tree
 
 
-# Function to update the tree view with directory contents
 def update_tree(path):
+    """
+    update_tree
+
+    Args:
+        path (Any): Description of path.
+
+    Returns:
+        None: Description of return value.
+    """
     for item in tree.get_children():
         tree.delete(item)
     abspath = os.path.abspath(path)
-    root_node = tree.insert('', 'end', text=abspath, values=(abspath,), open=True)
+    root_node = tree.insert("", "end", text=abspath, values=(abspath,), open=True)
     populate_tree(root_node, abspath)
 
 
-# Recursive function to populate the tree view
 def populate_tree(parent, path):
+    """
+    populate_tree
+
+    Args:
+        parent (Any): Description of parent.
+        path (Any): Description of path.
+
+    Returns:
+        None: Description of return value.
+    """
     for item in os.listdir(path):
-        if item != '.git' and item != '.idea':
+        if item != ".git" and item != ".idea":
             abspath = os.path.join(path, item)
-            node = tree.insert(parent, 'end', text=item, values=(abspath,), open=False)
+            node = tree.insert(parent, "end", text=item, values=(abspath,), open=False)
             if os.path.isdir(abspath):
-                tree.insert(node, 'end')
+                tree.insert(node, "end")
 
 
-# Function to expand directory when double-clicked
 def item_opened(event):
+    """
+    item_opened
+
+    Args:
+        event (Any): Description of event.
+
+    Returns:
+        None: Description of return value.
+    """
     item = tree.focus()
     abspath = tree.item(item, "values")[0]
     if os.path.isdir(abspath):
@@ -34,14 +58,31 @@ def item_opened(event):
 
 
 def on_item_select(event):
+    """
+    on_item_select
+
+    Args:
+        event (Any): Description of event.
+
+    Returns:
+        None: Description of return value.
+    """
     item = tree.focus()
     print(f"Selected: {tree.item(item, 'text')}")
     print(f"Full path: {tree.item(item, 'values')[0]}")
 
 
 def on_double_click(event):
+    """
+    on_double_click
 
-    item = tree.identify('item', event.x, event.y)
+    Args:
+        event (Any): Description of event.
+
+    Returns:
+        None: Description of return value.
+    """
+    item = tree.identify("item", event.x, event.y)
     filepath = tree.item(item, "values")[0]
     if os.path.isfile(filepath):
         open_file(filepath)

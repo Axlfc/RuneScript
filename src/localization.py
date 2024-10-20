@@ -2,9 +2,17 @@ import json
 
 
 def load_localization(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
+    """
+    load_localization
+
+    Args:
+        file_path (Any): Description of file_path.
+
+    Returns:
+        None: Description of return value.
+    """
+    with open(file_path, "r", encoding="utf-8") as file:
         return json.load(file)
 
 
-# Assuming your en.json is in the same directory as your Python files
-localization_data = load_localization('data/locales/en.json')
+localization_data = load_localization("data/locales/en.json")
