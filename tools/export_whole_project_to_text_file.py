@@ -2,7 +2,7 @@ import os
 
 
 def export_python_scripts_to_txt(directory, output_filename):
-    """
+    """ ""\"
     export_python_scripts_to_txt
 
     Args:
@@ -11,7 +11,7 @@ def export_python_scripts_to_txt(directory, output_filename):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     if not os.path.isdir(directory):
         print(f"The directory {directory} does not exist.")
         return
@@ -40,7 +40,7 @@ controllers_output_file = "exported_controllers.txt"
 def export_all_python_scripts_to_txt_from_mvc_project(
     main_directory_path, output_filename
 ):
-    """
+    """ ""\"
     export_all_python_scripts_to_txt_from_mvc_project
 
     Args:
@@ -49,7 +49,7 @@ def export_all_python_scripts_to_txt_from_mvc_project(
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     sections = {
         "models": os.path.join(main_directory_path, "models"),
         "views": os.path.join(main_directory_path, "views"),

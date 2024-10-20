@@ -3,8 +3,9 @@ import ast
 from typing import List, Union
 import black
 
+
 def read_file_with_fallback_encoding(file_path: str) -> str:
-    """
+    """ ""\"
     Attempt to read a file with UTF-8 encoding, falling back to other encodings if necessary.
 
     Args:
@@ -15,7 +16,7 @@ def read_file_with_fallback_encoding(file_path: str) -> str:
 
     Raises:
         ValueError: If the file cannot be decoded with any of the attempted encodings.
-    """
+    ""\" """
     encodings = ["utf-8", "latin-1", "ascii", "cp1252"]
     for encoding in encodings:
         try:
@@ -27,8 +28,9 @@ def read_file_with_fallback_encoding(file_path: str) -> str:
         f"Unable to decode the file {file_path} with any of the attempted encodings."
     )
 
+
 def generate_comment(node: Union[ast.FunctionDef, ast.ClassDef]) -> str:
-    """
+    """ ""\"
     Generate a docstring for a function or class based on its definition.
 
     Args:
@@ -36,22 +38,15 @@ def generate_comment(node: Union[ast.FunctionDef, ast.ClassDef]) -> str:
 
     Returns:
         str: A formatted docstring string for the function or class.
-    """
-    # Base indentation level (number of spaces)
-    base_indent = " " * 4  # Adjust if your code uses a different indentation level
-
-    # Indentation inside the docstring
+    ""\" """
+    base_indent = " " * 4
     docstring_indent = base_indent
-
-    # Indentation for the content inside Args and Returns (additional 4 spaces)
     content_indent = base_indent + " " * 4
-
     docstring_lines = []
-    docstring_lines.append("")  # Blank line after opening triple quotes
-
+    docstring_lines.append("")
     if isinstance(node, ast.FunctionDef):
         docstring_lines.append(f"{docstring_indent}{node.name}")
-        docstring_lines.append("")  # Blank line
+        docstring_lines.append("")
         docstring_lines.append(f"{docstring_indent}Args:")
         args = [arg.arg for arg in node.args.args]
         if args:
@@ -61,7 +56,7 @@ def generate_comment(node: Union[ast.FunctionDef, ast.ClassDef]) -> str:
                 )
         else:
             docstring_lines.append(f"{content_indent}None")
-        docstring_lines.append("")  # Blank line
+        docstring_lines.append("")
         docstring_lines.append(f"{docstring_indent}Returns:")
         returns = "None" if node.returns is None else "Any"
         docstring_lines.append(
@@ -71,15 +66,13 @@ def generate_comment(node: Union[ast.FunctionDef, ast.ClassDef]) -> str:
         docstring_lines.append(f"{docstring_indent}{node.name}")
         docstring_lines.append("")
         docstring_lines.append(f"{docstring_indent}Description of the class.")
-
-    docstring_lines.append("")  # Blank line before closing triple quotes
-
-    # Combine the docstring lines
+    docstring_lines.append("")
     docstring = "\n".join(docstring_lines)
     return docstring
 
+
 def add_comments_to_file(file_path: str) -> None:
-    """
+    """ ""\"
     Add comments to all functions and classes in a Python file that don't already have them.
 
     Args:
@@ -87,33 +80,28 @@ def add_comments_to_file(file_path: str) -> None:
 
     Returns:
         None
-    """
+    ""\" """
     try:
         file_content = read_file_with_fallback_encoding(file_path)
         tree = ast.parse(file_content)
     except (ValueError, SyntaxError) as e:
         print(f"Error parsing file {file_path}: {str(e)}")
         return
-
     modified = False
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and not ast.get_docstring(
             node
         ):
             comment = generate_comment(node)
-            # Create a docstring node without extra quotes
             docstring_node = ast.Expr(value=ast.Constant(value=comment))
-            # Insert the docstring node at the beginning of the function/class body
             node.body.insert(0, docstring_node)
             modified = True
-
     if modified:
         try:
             modified_content = ast.unparse(tree)
         except AttributeError:
             print("ast.unparse is not available. Please use Python 3.9 or newer.")
             return
-        # Format code with black
         modified_content = black.format_str(
             modified_content, mode=black.FileMode(line_length=88)
         )
@@ -122,8 +110,9 @@ def add_comments_to_file(file_path: str) -> None:
     else:
         print(f"No changes needed for file: {file_path}")
 
+
 def process_project(project_root: str, exclude_paths: List[str]) -> None:
-    """
+    """ ""\"
     Process all Python files in the project, adding comments where necessary.
 
     Args:
@@ -132,7 +121,7 @@ def process_project(project_root: str, exclude_paths: List[str]) -> None:
 
     Returns:
         None
-    """
+    ""\" """
     for root, _, files in os.walk(project_root):
         if any(exclude in root for exclude in exclude_paths):
             continue
@@ -142,8 +131,9 @@ def process_project(project_root: str, exclude_paths: List[str]) -> None:
                 print(f"Processing file: {file_path}")
                 add_comments_to_file(file_path)
 
+
 def main():
-    """
+    """ ""\"
     Main function to run the script.
 
     Args:
@@ -151,7 +141,7 @@ def main():
 
     Returns:
         None
-    """
+    ""\" """
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     exclude_paths = [
         "ai_docs",
@@ -164,6 +154,7 @@ def main():
     ]
     process_project(project_root, exclude_paths)
     print("Comment addition process completed.")
+
 
 if __name__ == "__main__":
     main()

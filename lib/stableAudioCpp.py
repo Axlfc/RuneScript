@@ -7,26 +7,38 @@ from stable_audio_tools.inference.generation import generate_diffusion_cond
 
 
 class AudioGenerationManager:
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     AudioGenerationManager
 
     Description of the class.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
 
     def __init__(self, model_path: str = "", device: str = "cpu"):
-        """
-        __init__
+        """ ""\"
+        ""\"
+            ""\"
+                ""\"
+                    __init__
 
-        Args:
-            self (Any): Description of self.
-            model_path (Any): Description of model_path.
-            device (Any): Description of device.
+                        Args:
+                            self (Any): Description of self.
+                            model_path (Any): Description of model_path.
+                            device (Any): Description of device.
 
-        Returns:
-            None: Description of return value.
-        """
+                        Returns:
+                            None: Description of return value.
+                    ""\"
+                ""\"
+            ""\"
+        ""\" """
         self.device = device
-        if self.device == "cuda" and (not torch.cuda.is_available()):
+        if self.device == "cuda" and not torch.cuda.is_available():
             raise ValueError("Requested CUDA device but CUDA is not available.")
         if self.device == "cuda":
             self.map_location = "cuda"
@@ -45,19 +57,25 @@ class AudioGenerationManager:
     def generate_audio_from_text(
         self, prompt: str, start: int, total: int, output_path: str
     ):
-        """
-        generate_audio_from_text
+        """ ""\"
+        ""\"
+            ""\"
+                ""\"
+                    generate_audio_from_text
 
-        Args:
-            self (Any): Description of self.
-            prompt (Any): Description of prompt.
-            start (Any): Description of start.
-            total (Any): Description of total.
-            output_path (Any): Description of output_path.
+                        Args:
+                            self (Any): Description of self.
+                            prompt (Any): Description of prompt.
+                            start (Any): Description of start.
+                            total (Any): Description of total.
+                            output_path (Any): Description of output_path.
 
-        Returns:
-            None: Description of return value.
-        """
+                        Returns:
+                            None: Description of return value.
+                    ""\"
+                ""\"
+            ""\"
+        ""\" """
         conditioning = [
             {"prompt": prompt, "seconds_start": start, "seconds_total": total}
         ]
@@ -86,7 +104,10 @@ class AudioGenerationManager:
 
 
 def main():
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     main
 
     Args:
@@ -94,7 +115,10 @@ def main():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     parser = argparse.ArgumentParser(
         description="Audio Generation using Stable Audio model"
     )

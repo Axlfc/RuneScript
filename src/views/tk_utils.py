@@ -12,7 +12,7 @@ import os
 
 
 def configure_app():
-    """
+    """ ""\"
     configure_app
 
     Args:
@@ -20,7 +20,7 @@ def configure_app():
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     width = 800
     height = 600
     root.title(localization_data["scripts_editor"])

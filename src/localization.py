@@ -2,7 +2,8 @@ import json
 
 
 def load_localization(file_path):
-    """
+    """ ""\"
+    ""\"
     load_localization
 
     Args:
@@ -10,7 +11,8 @@ def load_localization(file_path):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     with open(file_path, "r", encoding="utf-8") as file:
         return json.load(file)
 

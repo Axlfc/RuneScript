@@ -9,7 +9,10 @@ def show_balloon_notification(
     message_duration=10,
     custom_icon_path=None,
 ):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     show_balloon_notification
 
     Args:
@@ -21,18 +24,45 @@ def show_balloon_notification(
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     icon_path_ps = (
         f"'{custom_icon_path}'"
         if custom_icon_path and custom_icon_path != "None"
         else "$null"
     )
-    ps_script = f"\n    Add-Type -AssemblyName System.Windows.Forms\n    Add-Type -AssemblyName System.Drawing\n\n    $notifyIcon = New-Object System.Windows.Forms.NotifyIcon\n\n    if ({icon_path_ps} -and {icon_path_ps} -ne $null) {{\n        $icon = New-Object System.Drawing.Icon({icon_path_ps})\n        $notifyIcon.Icon = $icon\n    }} else {{\n        # Fallback to Application icon if no custom icon is provided\n        $notifyIcon.Icon = [System.Drawing.SystemIcons]::Application\n    }}\n\n    $notifyIcon.Visible = $True\n    $notifyIcon.BalloonTipTitle = '{title}'\n    $notifyIcon.BalloonTipText = '{message_text}'\n    $notifyIcon.ShowBalloonTip({message_duration * 1000})\n\n    Start-Sleep -Seconds {message_duration}\n    $notifyIcon.Dispose()\n    "
+    ps_script = f"""
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+
+    $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
+
+    if ({icon_path_ps} -and {icon_path_ps} -ne $null) {{
+        $icon = New-Object System.Drawing.Icon({icon_path_ps})
+        $notifyIcon.Icon = $icon
+    }} else {{
+        # Fallback to Application icon if no custom icon is provided
+        $notifyIcon.Icon = [System.Drawing.SystemIcons]::Application
+    }}
+
+    $notifyIcon.Visible = $True
+    $notifyIcon.BalloonTipTitle = '{title}'
+    $notifyIcon.BalloonTipText = '{message_text}'
+    $notifyIcon.ShowBalloonTip({message_duration * 1000})
+
+    Start-Sleep -Seconds {message_duration}
+    $notifyIcon.Dispose()
+    """
     subprocess.run(["powershell", "-Command", ps_script], check=True)
 
 
 def main():
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     main
 
     Args:
@@ -40,7 +70,10 @@ def main():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     parser = argparse.ArgumentParser(description="Show balloon notification for tasks.")
     parser.add_argument("--task_name", default="Default Task", help="Name of the task")
     parser.add_argument(

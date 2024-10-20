@@ -2,24 +2,24 @@ from tkinter import Toplevel, Label, Canvas, Frame, Scrollbar
 
 
 class Tooltip:
-    """
+    """ ""\"
     Tooltip
 
     Description of the class.
-    """
+    ""\" """
 
     def __init__(self, widget, text):
-        """
+        """ ""\"
         __init__
 
-        Args:
-            self (Any): Description of self.
-            widget (Any): Description of widget.
-            text (Any): Description of text.
+            Args:
+                self (Any): Description of self.
+                widget (Any): Description of widget.
+                text (Any): Description of text.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         self.widget = widget
         self.text = text
         self.tooltip = None
@@ -28,58 +28,58 @@ class Tooltip:
         self.widget.bind("<Motion>", self.motion)
 
     def enter(self, event):
-        """
+        """ ""\"
         enter
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         if not self.tooltip:
             self.show_tooltip(event)
 
     def leave(self, event):
-        """
+        """ ""\"
         leave
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         self.destroy_tooltip()
 
     def motion(self, event):
-        """
+        """ ""\"
         motion
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         if self.tooltip:
             self.adjust_tooltip_position(event.x_root, event.y_root)
 
     def adjust_tooltip_position(self, x, y):
-        """
+        """ ""\"
         adjust_tooltip_position
 
-        Args:
-            self (Any): Description of self.
-            x (Any): Description of x.
-            y (Any): Description of y.
+            Args:
+                self (Any): Description of self.
+                x (Any): Description of x.
+                y (Any): Description of y.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         screen_width = self.tooltip.winfo_screenwidth()
         screen_height = self.tooltip.winfo_screenheight()
         tooltip_width = 200
@@ -91,16 +91,16 @@ class Tooltip:
         self.tooltip.wm_geometry(f"+{x}+{y}")
 
     def show_tooltip(self, event):
-        """
+        """ ""\"
         show_tooltip
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         self.tooltip = Toplevel()
         self.tooltip.wm_geometry("+0+0")
         self.tooltip.wm_overrideredirect(True)
@@ -115,38 +115,38 @@ class Tooltip:
         self.adjust_tooltip_position(event.x_root, event.y_root)
 
     def destroy_tooltip(self):
-        """
+        """ ""\"
         destroy_tooltip
 
-        Args:
-            self (Any): Description of self.
+            Args:
+                self (Any): Description of self.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         if self.tooltip:
             self.tooltip.destroy()
             self.tooltip = None
 
 
 class LineNumberCanvas(Canvas):
-    """
+    """ ""\"
     LineNumberCanvas
 
     Description of the class.
-    """
+    ""\" """
 
     def __init__(self, text_widget, *args, **kwargs):
-        """
+        """ ""\"
         __init__
 
-        Args:
-            self (Any): Description of self.
-            text_widget (Any): Description of text_widget.
+            Args:
+                self (Any): Description of self.
+                text_widget (Any): Description of text_widget.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         super().__init__(*args, **kwargs)
         self.text_widget = text_widget
         self.text_widget.bind("<KeyPress>", self.on_text_change)
@@ -157,20 +157,22 @@ class LineNumberCanvas(Canvas):
         self.text_widget.bind("<Configure>", self.on_text_change)
 
     def on_text_change(self, event=None):
-        """
+        """ ""\"
         on_text_change
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         self.redraw()
 
     def redraw(self):
-        """Redraw line numbers"""
+        """ ""\"
+        Redraw line numbers
+        ""\" """
         self.delete("all")
         end_line_num = int(self.text_widget.index("end-1c").split(".")[0])
         max_line_num_length = len(str(end_line_num))
@@ -188,23 +190,23 @@ class LineNumberCanvas(Canvas):
 
 
 class ScrollableFrame(Frame):
-    """
+    """ ""\"
     ScrollableFrame
 
     Description of the class.
-    """
+    ""\" """
 
     def __init__(self, parent, *args, **kwargs):
-        """
+        """ ""\"
         __init__
 
-        Args:
-            self (Any): Description of self.
-            parent (Any): Description of parent.
+            Args:
+                self (Any): Description of self.
+                parent (Any): Description of parent.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         Frame.__init__(self, parent, *args, **kwargs)
         canvas = Canvas(self)
         scrollbar = Scrollbar(self, orient="vertical", command=canvas.yview)
@@ -220,46 +222,46 @@ class ScrollableFrame(Frame):
         self.scrollable_frame.bind("<Leave>", self._unbind_from_mousewheel)
 
     def _bind_to_mousewheel(self, event):
-        """
+        """ ""\"
         _bind_to_mousewheel
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         self.scrollable_frame.bind_all("<MouseWheel>", self._on_mousewheel)
         self.scrollable_frame.bind_all("<Button-4>", self._on_mousewheel)
         self.scrollable_frame.bind_all("<Button-5>", self._on_mousewheel)
 
     def _unbind_from_mousewheel(self, event):
-        """
+        """ ""\"
         _unbind_from_mousewheel
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         self.scrollable_frame.unbind_all("<MouseWheel>")
         self.scrollable_frame.unbind_all("<Button-4>")
         self.scrollable_frame.unbind_all("<Button-5>")
 
     def _on_mousewheel(self, event):
-        """
+        """ ""\"
         _on_mousewheel
 
-        Args:
-            self (Any): Description of self.
-            event (Any): Description of event.
+            Args:
+                self (Any): Description of self.
+                event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+            Returns:
+                None: Description of return value.
+        ""\" """
         if event.num == 4 or event.delta > 0:
             self.scrollable_frame.master.yview_scroll(-1, "units")
         elif event.num == 5 or event.delta < 0:

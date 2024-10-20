@@ -18,7 +18,7 @@ from src.views.tk_utils import (
 
 
 def get_execution_command(file_path, entry_arguments):
-    """
+    """ ""\"
     get_execution_command
 
     Args:
@@ -27,7 +27,7 @@ def get_execution_command(file_path, entry_arguments):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     file_extension = os.path.splitext(file_path)[1].lower()
     if file_extension == ".py":
         if platform.system() == "Windows":
@@ -96,7 +96,7 @@ def get_execution_command(file_path, entry_arguments):
 
 
 def run_script_windows():
-    """
+    """ ""\"
     run_script_windows
 
     Args:
@@ -104,7 +104,7 @@ def run_script_windows():
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     script = script_text.get("1.0", "end-1c")
     entry_arguments = entry_arguments_entry.get().split()
     generate_stdout = generate_stdin.get()
@@ -138,7 +138,7 @@ def run_script_windows():
 
 
 def run_script():
-    """
+    """ ""\"
     Executes the script present in the script_text widget.
 
     This function runs the script, capturing standard output and error if specified.
@@ -149,7 +149,7 @@ def run_script():
 
     Returns:
     None
-    """
+    ""\" """
     script = script_text.get("1.0", "end-1c")
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
@@ -178,7 +178,7 @@ def run_script():
 
 
 def run_script_with_timeout(timeout_seconds):
-    """
+    """ ""\"
     Executes the script with a specified timeout.
 
     Runs the script and automatically stops it after the provided timeout period.
@@ -189,7 +189,7 @@ def run_script_with_timeout(timeout_seconds):
 
     Returns:
     None
-    """
+    ""\" """
     script = script_text.get("1.0", "end-1c")
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
@@ -219,7 +219,7 @@ def run_script_with_timeout(timeout_seconds):
 
 
 def run_script_once(schedule_time):
-    """
+    """ ""\"
     Schedules the script for a one-time execution at a specified time.
 
     The function uses the 'at' command to schedule the script. It validates the provided time format
@@ -230,7 +230,7 @@ def run_script_once(schedule_time):
 
     Returns:
     None
-    """
+    ""\" """
     script_path = os.path.join(
         directory_label.cget("text"), script_name_label.cget("text")
     )
@@ -246,9 +246,9 @@ def run_script_once(schedule_time):
     hour = int(match.group(1))
     minute = int(match.group(2))
     am_pm = match.group(3)
-    if am_pm and am_pm.lower() == "pm" and (hour != 12):
+    if am_pm and am_pm.lower() == "pm" and hour != 12:
         hour += 12
-    if am_pm and am_pm.lower() == "am" and (hour == 12):
+    if am_pm and am_pm.lower() == "am" and hour == 12:
         hour = 0
     if not validate_time(hour, minute):
         return
@@ -262,7 +262,9 @@ def run_script_once(schedule_time):
             if generate_stderr
             else "/dev/null"
         )
-        at_command = f"atq; at {at_time} <<EOF\n{script_path} {arguments} {stdout_redirect} {stderr_redirect}\nEOF"
+        at_command = f"""atq; at {at_time} <<EOF
+{script_path} {arguments} {stdout_redirect} {stderr_redirect}
+EOF"""
         process = subprocess.Popen(at_command, shell=True)
         process.wait()
         messagebox.showinfo(
@@ -271,12 +273,13 @@ def run_script_once(schedule_time):
     except Exception as e:
         messagebox.showerror(
             "Error Scheduling Script",
-            f"An error occurred while scheduling the script:\n{str(e)}",
+            f"""An error occurred while scheduling the script:
+{str(e)}""",
         )
 
 
 def run_script_crontab(minute, hour, day, month, day_of_week):
-    """
+    """ ""\"
     Schedules the script using the crontab format.
 
     Sets up a cron job to execute the script at specified intervals. The function builds the cron schedule
@@ -287,8 +290,8 @@ def run_script_crontab(minute, hour, day, month, day_of_week):
 
     Returns:
     None
-    """
-    if not minute or not hour or (not day) or (not month) or (not day_of_week):
+    ""\" """
+    if not minute or not hour or not day or not month or not day_of_week:
         messagebox.showerror(
             "Error Scheduling Script", "All cron schedule fields must be filled."
         )
@@ -318,12 +321,13 @@ def run_script_crontab(minute, hour, day, month, day_of_week):
     except Exception as e:
         messagebox.showerror(
             "Error Scheduling Script",
-            f"An error occurred while scheduling the script:\n{str(e)}",
+            f"""An error occurred while scheduling the script:
+{str(e)}""",
         )
 
 
 def see_stdout():
-    """
+    """ ""\"
     Displays the standard output of the last executed script.
 
     Opens a new window to show the content of the script's stdout captured during the last execution.
@@ -334,7 +338,7 @@ def see_stdout():
 
     Returns:
     None
-    """
+    ""\" """
     stdout_window = Toplevel(root)
     stdout_window.title("Standard Output (stdout)")
     stdout_text = Text(stdout_window)
@@ -348,7 +352,7 @@ def see_stdout():
 
 
 def see_stderr():
-    """
+    """ ""\"
     Displays the standard error output of the last executed script.
 
     Opens a new window to show the content of the script's stderr captured during the last execution.
@@ -359,7 +363,7 @@ def see_stderr():
 
     Returns:
     None
-    """
+    ""\" """
     stderr_window = Toplevel(root)
     stderr_window.title("Standard Error (stderr)")
     stderr_text = Text(stderr_window)
@@ -375,7 +379,7 @@ def see_stderr():
 
 
 def get_operative_system():
-    """
+    """ ""\"
     Populates the 'Jobs' submenu with options based on the operating system.
 
     For Windows, it adds an option to view scheduled tasks. For other systems, it adds options for 'at' and 'crontab' jobs.
@@ -385,7 +389,7 @@ def get_operative_system():
 
     Returns:
     None
-    """
+    ""\" """
     if platform.system() == "Windows":
         return "Windows"
     else:

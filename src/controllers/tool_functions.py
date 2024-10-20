@@ -68,7 +68,8 @@ git_console_instance = None
 
 
 def load_themes_from_json(file_path):
-    """
+    """ ""\"
+    ""\"
     load_themes_from_json
 
     Args:
@@ -76,7 +77,8 @@ def load_themes_from_json(file_path):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     try:
         with open(file_path, "r") as file:
             data = json.load(file)
@@ -90,7 +92,8 @@ def load_themes_from_json(file_path):
 
 
 def change_color():
-    """
+    """ ""\"
+    ""\"
     Changes the text color in the application's text widget.
 
     This function opens a color chooser dialog, allowing the user to select a new color for the text.
@@ -101,7 +104,8 @@ def change_color():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     color = colorchooser.askcolor(initialcolor="#ff0000")
     color_name = color[1]
     global fontColor
@@ -115,7 +119,8 @@ def change_color():
 
 
 def colorize_text():
-    """
+    """ ""\"
+    ""\"
     Applies color to the text in the script text widget.
 
     This function retrieves the current content of the script text widget, deletes it, and reinserts it,
@@ -126,14 +131,16 @@ def colorize_text():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     script_content = script_text.get("1.0", "end")
     script_text.delete("1.0", "end")
     script_text.insert("1.0", script_content)
 
 
 def check(value):
-    """
+    """ ""\"
+    ""\"
     Highlights all occurrences of a specified value in the script text widget.
 
     This function searches for the given value in the script text widget and applies a 'found' tag with a
@@ -144,7 +151,8 @@ def check(value):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     script_text.tag_remove("found", "1.0", END)
     if value:
         script_text.tag_config("found", background="yellow")
@@ -158,7 +166,8 @@ def check(value):
 
 
 def search_and_replace(search_text, replace_text):
-    """
+    """ ""\"
+    ""\"
     Replaces all occurrences of a specified search text with a replacement text in the script text widget.
 
     This function finds each occurrence of the search text and replaces it with the provided replacement text.
@@ -169,7 +178,8 @@ def search_and_replace(search_text, replace_text):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     if search_text:
         start_index = "1.0"
         while True:
@@ -185,7 +195,8 @@ def search_and_replace(search_text, replace_text):
 
 
 def find_text(event=None):
-    """
+    """ ""\"
+    ""\"
     Opens a dialog for finding text within the script text widget.
 
     This function creates a new window with an entry field where the user can input a text string
@@ -196,7 +207,8 @@ def find_text(event=None):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     search_toplevel = Toplevel(root)
     search_toplevel.title("Find Text")
     search_toplevel.transient(root)
@@ -220,7 +232,8 @@ def find_text(event=None):
 
 
 def find_text_cancel_button(search_toplevel):
-    """
+    """ ""\"
+    ""\"
     Removes search highlights and closes the search dialog.
 
     This function is called to close the search dialog and remove any search highlights
@@ -231,14 +244,16 @@ def find_text_cancel_button(search_toplevel):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     text.tag_remove("found", "1.0", END)
     search_toplevel.destroy()
     return "break"
 
 
 def open_search_replace_dialog():
-    """
+    """ ""\"
+    ""\"
     Opens a dialog for searching and replacing text within the script text widget.
 
     This function creates a new window with fields for inputting the search and replace texts
@@ -249,7 +264,8 @@ def open_search_replace_dialog():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     search_replace_toplevel = Toplevel(root)
     search_replace_toplevel.title("Search and Replace")
     search_replace_toplevel.transient(root)
@@ -270,7 +286,8 @@ def open_search_replace_dialog():
 
 
 def open_ipynb_window():
-    """
+    """ ""\"
+    ""\"
     open_ipynb_window
 
     Args:
@@ -278,12 +295,14 @@ def open_ipynb_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     print("OPEN IPYTHON TERMINAL")
 
 
 def create_settings_window():
-    """
+    """ ""\"
+    ""\"
     create_settings_window
 
     Args:
@@ -291,7 +310,8 @@ def create_settings_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     settings_window = Toplevel()
     settings_window.title("ScriptsEditor Settings")
     settings_window.geometry("800x600")
@@ -361,15 +381,17 @@ def create_settings_window():
             setting_entries[section, option_name] = var
 
     def save_settings():
-        """
-        save_settings
+        """ ""\"
+        ""\"
+            save_settings
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print("Save Settings Button Pressed")
         global style
         updated_config_data = {"options": {}}
@@ -395,15 +417,17 @@ def create_settings_window():
         messagebox.showinfo("Settings Saved", "Settings saved successfully!")
 
     def reset_settings():
-        """
-        reset_settings
+        """ ""\"
+        ""\"
+            reset_settings
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global style
         for (section, option_name), var in setting_entries.items():
             default_value = config_data["options"][section][option_name]
@@ -437,7 +461,8 @@ def create_settings_window():
 
 
 def open_system_info_window():
-    """
+    """ ""\"
+    ""\"
     open_system_info_window
 
     Args:
@@ -445,7 +470,8 @@ def open_system_info_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     system_info_window = Toplevel()
     system_info_window.title("System Information Viewer")
     system_info_window.geometry("800x600")
@@ -453,17 +479,19 @@ def open_system_info_window():
     notebook.pack(expand=True, fill="both", padx=10, pady=10)
 
     def run_command(command, result_queue, label):
-        """
-        run_command
+        """ ""\"
+        ""\"
+            run_command
 
-        Args:
-            command (Any): Description of command.
-            result_queue (Any): Description of result_queue.
-            label (Any): Description of label.
+                Args:
+                    command (Any): Description of command.
+                    result_queue (Any): Description of result_queue.
+                    label (Any): Description of label.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             powershell_path = (
                 "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
@@ -486,30 +514,34 @@ def open_system_info_window():
         result_queue.put((label, output))
 
     def worker(commands, result_queue):
-        """
-        worker
+        """ ""\"
+        ""\"
+            worker
 
-        Args:
-            commands (Any): Description of commands.
-            result_queue (Any): Description of result_queue.
+                Args:
+                    commands (Any): Description of commands.
+                    result_queue (Any): Description of result_queue.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         for label, cmd in commands.items():
             run_command(cmd, result_queue, label)
 
     def create_info_frame(parent, commands):
-        """
-        create_info_frame
+        """ ""\"
+        ""\"
+            create_info_frame
 
-        Args:
-            parent (Any): Description of parent.
-            commands (Any): Description of commands.
+                Args:
+                    parent (Any): Description of parent.
+                    commands (Any): Description of commands.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         frame = Frame(parent)
         frame.pack(fill="both", expand=True)
         tree = Treeview(frame, columns=("Value",), show="tree")
@@ -528,15 +560,17 @@ def open_system_info_window():
         tree_items = {}
 
         def process_queue():
-            """
-            process_queue
+            """ ""\"
+            ""\"
+                    process_queue
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             while not result_queue.empty():
                 label, result = result_queue.get()
                 if "\n" in result:
@@ -595,7 +629,11 @@ def open_system_info_window():
         "Network Adapters": "Get-NetAdapter | Select-Object Name, InterfaceDescription, MacAddress, Status | Format-Table -AutoSize",
         "Audio Devices": "Get-CimInstance Win32_SoundDevice | Select-Object Name, Manufacturer | Format-Table -AutoSize",
         "Input Devices": "Get-PnpDevice -Class Keyboard, Mouse | Where-Object { $_.Status -eq 'OK' } | Select-Object FriendlyName | Format-Table -AutoSize",
-        '"Connected Monitors": "Get-CimInstance -Namespace root\\wmi -Class WmiMonitorID | "\n                              "ForEach-Object { $name = ($_.UserFriendlyName -notmatch 0 | "\n                              "ForEach-Object { [char]$_ }) -join \'\'; $name }","Display Resolutions": "Add-Type -AssemblyName System.Windows.Forms; "\n                               "[System.Windows.Forms.Screen]::AllScreens | ForEach-Object "\n                               "{ "$($_.DeviceName): $($_.Bounds.Width)x$($_.Bounds.Height)" }",Battery Status': "Get-CimInstance Win32_Battery | Select-Object Name, EstimatedChargeRemaining, BatteryStatus | Format-Table -AutoSize",
+        """"Connected Monitors": "Get-CimInstance -Namespace root\\wmi -Class WmiMonitorID | "
+                              "ForEach-Object { $name = ($_.UserFriendlyName -notmatch 0 | "
+                              "ForEach-Object { [char]$_ }) -join ''; $name }","Display Resolutions": "Add-Type -AssemblyName System.Windows.Forms; "
+                               "[System.Windows.Forms.Screen]::AllScreens | ForEach-Object "
+                               "{ "$($_.DeviceName): $($_.Bounds.Width)x$($_.Bounds.Height)" }",Battery Status""": "Get-CimInstance Win32_Battery | Select-Object Name, EstimatedChargeRemaining, BatteryStatus | Format-Table -AutoSize",
     }
     network_commands = {
         "Public IP Address": "(Invoke-WebRequest -Uri 'http://ifconfig.me/ip').Content.Trim()",
@@ -616,11 +654,20 @@ def open_system_info_window():
     }
     security_commands = {
         "User Accounts": "Get-LocalUser | Select-Object Name, Enabled | Format-Table -AutoSize",
-        '"Group Memberships": "Get-LocalGroupMember -Group \'Administrators\' | Select-Object Name, "\n                             "ObjectClass | Format-Table -AutoSize",Antivirus Software': "Get-CimInstance -Namespace 'root\\SecurityCenter2' -ClassName AntiVirusProduct | Select-Object displayName, productState | Format-Table -AutoSize",
+        """"Group Memberships": "Get-LocalGroupMember -Group 'Administrators' | Select-Object Name, "
+                             "ObjectClass | Format-Table -AutoSize",Antivirus Software""": "Get-CimInstance -Namespace 'root\\SecurityCenter2' -ClassName AntiVirusProduct | Select-Object displayName, productState | Format-Table -AutoSize",
         "Firewall Configuration": "Get-NetFirewallProfile | Select-Object Name, Enabled | Format-Table -AutoSize",
         "Disk Encryption Status": "Get-BitLockerVolume | Select-Object MountPoint, VolumeStatus | Format-Table -AutoSize",
     }
-    'performance_commands = {\n        "CPU Usage (%)": "(Get-Counter \'\\Processor(_Total)\\% Processor Time\').CounterSamples."\n                         "CookedValue",\n        "Available Memory (MB)": "(Get-Counter \'\\Memory\\Available MBytes\').CounterSamples."\n                                 "CookedValue",\n        "Disk Read/Write Speeds": "Get-Counter -Counter \'\\PhysicalDisk(_Total)\\Disk Read "\n                                  "Bytes/sec\',\'\\PhysicalDisk(_Total)\\Disk Write Bytes/sec\' | "\n                                  "Format-Table -AutoSize",\n    }'
+    """performance_commands = {
+        "CPU Usage (%)": "(Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples."
+                         "CookedValue",
+        "Available Memory (MB)": "(Get-Counter '\\Memory\\Available MBytes').CounterSamples."
+                                 "CookedValue",
+        "Disk Read/Write Speeds": "Get-Counter -Counter '\\PhysicalDisk(_Total)\\Disk Read "
+                                  "Bytes/sec','\\PhysicalDisk(_Total)\\Disk Write Bytes/sec' | "
+                                  "Format-Table -AutoSize",
+    }"""
     development_commands = {
         "Version Control Systems": "Get-Command git, svn -ErrorAction SilentlyContinue | Select-Object Name, Version | Format-Table -AutoSize",
         "Programming Languages": "Get-Command python, java -ErrorAction SilentlyContinue | Select-Object Name, Version | Format-Table -AutoSize",
@@ -653,15 +700,17 @@ def open_system_info_window():
     notebook.add(user_tab, text="User")
 
     def refresh_all():
-        """
-        refresh_all
+        """ ""\"
+        ""\"
+            refresh_all
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         tabs_and_commands = [
             (system_tab, system_commands),
             (hardware_tab, hardware_commands),
@@ -682,15 +731,17 @@ def open_system_info_window():
             tree_items = {}
 
             def process_queue():
-                """
-                process_queue
+                """ ""\"
+                ""\"
+                            process_queue
 
-                Args:
-                    None
+                                        Args:
+                                            None
 
-                Returns:
-                    None: Description of return value.
-                """
+                                        Returns:
+                                            None: Description of return value.
+                            ""\"
+                ""\" """
                 while not result_queue.empty():
                     label, result = result_queue.get()
                     if "\n" in result:
@@ -716,7 +767,8 @@ def open_system_info_window():
 
 
 def open_winget_window():
-    """
+    """ ""\"
+    ""\"
     open_winget_window
 
     Args:
@@ -724,18 +776,21 @@ def open_winget_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
 
     def run_command(command):
-        """
-        run_command
+        """ ""\"
+        ""\"
+            run_command
 
-        Args:
-            command (Any): Description of command.
+                Args:
+                    command (Any): Description of command.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             command += " --disable-interactivity"
             result = subprocess.run(
@@ -749,40 +804,41 @@ def open_winget_window():
             output = result.stdout
             spinner_chars = {"\\", "-", "|", "/", "█", "▒"}
             filtered_output = "\n".join(
-                (
-                    line
-                    for line in output.splitlines()
-                    if not set(line.strip()).issubset(spinner_chars)
-                    and line.strip() != ""
-                )
+                line
+                for line in output.splitlines()
+                if not set(line.strip()).issubset(spinner_chars) and line.strip() != ""
             )
             return filtered_output
         except Exception as e:
             return f"Error: {str(e)}"
 
     def list_programs():
-        """
-        list_programs
+        """ ""\"
+        ""\"
+            list_programs
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         output = run_command("winget search --exact")
         insert_output(output)
 
     def list_installed():
-        """
-        list_installed
+        """ ""\"
+        ""\"
+            list_installed
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         output = run_command('winget list --source "winget"')
         installed_listbox.delete(0, END)
         lines = output.splitlines()
@@ -792,15 +848,17 @@ def open_winget_window():
                 installed_listbox.insert(END, program_info)
 
     def list_upgradable():
-        """
-        list_upgradable
+        """ ""\"
+        ""\"
+            list_upgradable
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         output = run_command("winget upgrade --include-unknown")
         removed_text = "winget"
         for widget in upgrade_checkboxes_frame.winfo_children():
@@ -833,7 +891,7 @@ def open_winget_window():
                             if (
                                 "(" in new_to_version
                                 and ")" in new_to_version
-                                and (new_to_version != "Unknown")
+                                and new_to_version != "Unknown"
                             ):
                                 new_new_line = new_line.split()[::-1]
                                 new_from_version = (
@@ -865,7 +923,7 @@ def open_winget_window():
                 if (
                     from_version != "Unknown"
                     and to_version != "Unknown"
-                    and (program_id != "()")
+                    and program_id != "()"
                 ):
                     display_text = (
                         f"{program_id:<40} {from_version:<15} {to_version:<15}"
@@ -887,40 +945,46 @@ def open_winget_window():
         )
 
     def update_output(output):
-        """
-        update_output
+        """ ""\"
+        ""\"
+            update_output
 
-        Args:
-            output (Any): Description of output.
+                Args:
+                    output (Any): Description of output.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         output_text.insert(END, output + "\n")
         output_text.see(END)
 
     def upgrade_selected():
-        """
-        upgrade_selected
+        """ ""\"
+        ""\"
+            upgrade_selected
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         disable_upgrade_buttons()
 
         def upgrade_thread():
-            """
-            upgrade_thread
+            """ ""\"
+            ""\"
+                    upgrade_thread
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             selected_programs = [info for var, info in upgrade_vars if var.get()]
             if not selected_programs:
                 messagebox.showinfo(
@@ -947,15 +1011,17 @@ def open_winget_window():
         threading.Thread(target=upgrade_thread).start()
 
     def disable_upgrade_buttons():
-        """
-        disable_upgrade_buttons
+        """ ""\"
+        ""\"
+            disable_upgrade_buttons
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         select_all_button.config(state=DISABLED)
         deselect_all_button.config(state=DISABLED)
         upgrade_selected_button.config(state=DISABLED)
@@ -964,15 +1030,17 @@ def open_winget_window():
                 widget.config(state=DISABLED)
 
     def enable_upgrade_buttons():
-        """
-        enable_upgrade_buttons
+        """ ""\"
+        ""\"
+            enable_upgrade_buttons
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         select_all_button.config(state=NORMAL)
         deselect_all_button.config(state=NORMAL)
         upgrade_selected_button.config(state=NORMAL)
@@ -981,56 +1049,64 @@ def open_winget_window():
                 widget.config(state=NORMAL)
 
     def select_all():
-        """
-        select_all
+        """ ""\"
+        ""\"
+            select_all
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         for var, _ in upgrade_vars:
             var.set(True)
 
     def deselect_all():
-        """
-        deselect_all
+        """ ""\"
+        ""\"
+            deselect_all
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         for var, _ in upgrade_vars:
             var.set(False)
 
     def search_program():
-        """
-        search_program
+        """ ""\"
+        ""\"
+            search_program
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         search_term = simpledialog.askstring("Search", "Enter program name to search:")
         if search_term:
             output = run_command(f'winget search --exact "{search_term}"')
             insert_output(output)
 
     def install_program():
-        """
-        install_program
+        """ ""\"
+        ""\"
+            install_program
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         program_id = simpledialog.askstring("Install", "Enter program ID to install:")
         if program_id:
             output = run_command(f'winget install -s "winget" "{program_id}"')
@@ -1039,15 +1115,17 @@ def open_winget_window():
             list_upgradable()
 
     def uninstall_program():
-        """
-        uninstall_program
+        """ ""\"
+        ""\"
+            uninstall_program
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         program_id = simpledialog.askstring(
             "Uninstall", "Enter program ID to uninstall:"
         )
@@ -1058,27 +1136,31 @@ def open_winget_window():
             list_upgradable()
 
     def get_program_description(program_id):
-        """
-        get_program_description
+        """ ""\"
+        ""\"
+            get_program_description
 
-        Args:
-            program_id (Any): Description of program_id.
+                Args:
+                    program_id (Any): Description of program_id.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         return run_command(f'winget show "{program_id}"')
 
     def program_description():
-        """
-        program_description
+        """ ""\"
+        ""\"
+            program_description
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         program_id = simpledialog.askstring(
             "Description of Program", "Enter program ID to get its description:"
         )
@@ -1088,15 +1170,17 @@ def open_winget_window():
             list_installed()
 
     def insert_output(output):
-        """
-        insert_output
+        """ ""\"
+        ""\"
+            insert_output
 
-        Args:
-            output (Any): Description of output.
+                Args:
+                    output (Any): Description of output.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         output_text.delete(1.0, END)
         output_text.insert(END, output)
 
@@ -1132,39 +1216,45 @@ def open_winget_window():
     )
 
     def on_mousewheel(event):
-        """
-        on_mousewheel
+        """ ""\"
+        ""\"
+            on_mousewheel
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         upgrade_checkboxes_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def bind_mousewheel(event):
-        """
-        bind_mousewheel
+        """ ""\"
+        ""\"
+            bind_mousewheel
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         upgrade_checkboxes_canvas.bind_all("<MouseWheel>", on_mousewheel)
 
     def unbind_mousewheel(event):
-        """
-        unbind_mousewheel
+        """ ""\"
+        ""\"
+            unbind_mousewheel
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         upgrade_checkboxes_canvas.unbind_all("<MouseWheel>")
 
     upgrade_checkboxes_canvas.bind("<Enter>", bind_mousewheel)
@@ -1207,12 +1297,14 @@ def open_winget_window():
     list_installed()
     list_upgradable()
     insert_output(
-        "Welcome to WinGet Package Manager.\nUse the buttons to perform WinGet operations."
+        """Welcome to WinGet Package Manager.
+Use the buttons to perform WinGet operations."""
     )
 
 
 def open_git_window(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
     open_git_window
 
     Args:
@@ -1220,20 +1312,23 @@ def open_git_window(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     global git_console_instance
     command_history = []
 
     def execute_command(command):
-        """
-        execute_command
+        """ ""\"
+        ""\"
+            execute_command
 
-        Args:
-            command (Any): Description of command.
+                Args:
+                    command (Any): Description of command.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if command.strip():
             command_history.append(command)
             history_pointer[0] = len(command_history)
@@ -1253,15 +1348,17 @@ def open_git_window(repo_dir=None):
             output_text.see(END)
 
     def populate_branch_menu():
-        """
-        populate_branch_menu
+        """ ""\"
+        ""\"
+            populate_branch_menu
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         branch_menu.delete(0, END)
         try:
             branches_output = subprocess.check_output(
@@ -1286,15 +1383,17 @@ def open_git_window(repo_dir=None):
             )
 
     def update_commit_list(commit_list):
-        """
-        update_commit_list
+        """ ""\"
+        ""\"
+            update_commit_list
 
-        Args:
-            commit_list (Any): Description of commit_list.
+                Args:
+                    commit_list (Any): Description of commit_list.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         command = 'git log --no-merges --color --graph --pretty=format:"%h %d %s - <%an (%cr)>" --abbrev-commit --branches'
         output = subprocess.check_output(command, shell=True, text=True)
         commit_list.delete(0, END)
@@ -1310,15 +1409,17 @@ def open_git_window(repo_dir=None):
         apply_visual_styles(commit_list)
 
     def apply_visual_styles(commit_list):
-        """
-        apply_visual_styles
+        """ ""\"
+        ""\"
+            apply_visual_styles
 
-        Args:
-            commit_list (Any): Description of commit_list.
+                Args:
+                    commit_list (Any): Description of commit_list.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         current_commit = get_current_checkout_commit()
         for i in range(commit_list.size()):
             item = commit_list.get(i)
@@ -1330,15 +1431,17 @@ def open_git_window(repo_dir=None):
                 commit_list.itemconfig(i, {"fg": "gray"})
 
     def commit_list_context_menu(event):
-        """
-        commit_list_context_menu
+        """ ""\"
+        ""\"
+            commit_list_context_menu
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         context_menu = Menu(commit_list, tearoff=0)
         context_menu.add_command(
             label="Checkout",
@@ -1355,15 +1458,17 @@ def open_git_window(repo_dir=None):
         context_menu.post(event.x_root, event.y_root)
 
     def checkout_commit(commit_info):
-        """
-        checkout_commit
+        """ ""\"
+        ""\"
+            checkout_commit
 
-        Args:
-            commit_info (Any): Description of commit_info.
+                Args:
+                    commit_info (Any): Description of commit_info.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         commit_hash = commit_info.split(" ")[0]
         try:
             execute_command(f"checkout {commit_hash}")
@@ -1376,15 +1481,17 @@ def open_git_window(repo_dir=None):
         apply_visual_styles(commit_list)
 
     def view_commit_details(commit_hash):
-        """
-        view_commit_details
+        """ ""\"
+        ""\"
+            view_commit_details
 
-        Args:
-            commit_hash (Any): Description of commit_hash.
+                Args:
+                    commit_hash (Any): Description of commit_hash.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             commit_hash_number = commit_hash[:7]
             output = subprocess.check_output(
@@ -1405,15 +1512,17 @@ def open_git_window(repo_dir=None):
             ).pack(pady=20, padx=20)
 
     def get_current_checkout_commit():
-        """
-        get_current_checkout_commit
+        """ ""\"
+        ""\"
+            get_current_checkout_commit
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         current_commit = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True
         ).strip()
@@ -1421,30 +1530,34 @@ def open_git_window(repo_dir=None):
         return current_commit
 
     def checkout_branch(branch):
-        """
-        checkout_branch
+        """ ""\"
+        ""\"
+            checkout_branch
 
-        Args:
-            branch (Any): Description of branch.
+                Args:
+                    branch (Any): Description of branch.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         execute_command(f"checkout {branch}")
         populate_branch_menu()
         update_commit_list(commit_list)
         update_status()
 
     def define_ansi_tags(text_widget):
-        """
-        define_ansi_tags
+        """ ""\"
+        ""\"
+            define_ansi_tags
 
-        Args:
-            text_widget (Any): Description of text_widget.
+                Args:
+                    text_widget (Any): Description of text_widget.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         text_widget.tag_configure("added", background="light green", foreground="black")
         text_widget.tag_configure(
             "removed", background="light coral", foreground="black"
@@ -1473,16 +1586,18 @@ def open_git_window(repo_dir=None):
         text_widget.tag_configure("info", foreground="blue")
 
     def apply_ansi_styles(text_widget, text):
-        """
-        apply_ansi_styles
+        """ ""\"
+        ""\"
+            apply_ansi_styles
 
-        Args:
-            text_widget (Any): Description of text_widget.
-            text (Any): Description of text.
+                Args:
+                    text_widget (Any): Description of text_widget.
+                    text (Any): Description of text.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         ansi_escape = re.compile("\\x1B\\[([0-9;]*[mK])")
         pos = 0
         lines = text.splitlines()
@@ -1497,12 +1612,16 @@ def open_git_window(repo_dir=None):
             elif cleaned_line.startswith("Date: "):
                 text_widget.insert("end", "Date: ", "date")
                 text_widget.insert("end", cleaned_line[6:] + "\n")
-            elif cleaned_line.startswith("+ ") or (
-                cleaned_line.startswith("+") and (not cleaned_line.startswith("+++"))
+            elif (
+                cleaned_line.startswith("+ ")
+                or cleaned_line.startswith("+")
+                and not cleaned_line.startswith("+++")
             ):
                 text_widget.insert("end", cleaned_line + "\n", "added")
-            elif cleaned_line.startswith("- ") or (
-                cleaned_line.startswith("-") and (not cleaned_line.startswith("---"))
+            elif (
+                cleaned_line.startswith("- ")
+                or cleaned_line.startswith("-")
+                and not cleaned_line.startswith("---")
             ):
                 text_widget.insert("end", cleaned_line + "\n", "removed")
             elif cleaned_line.startswith("@@ "):
@@ -1517,17 +1636,19 @@ def open_git_window(repo_dir=None):
                 text_widget.insert("end", cleaned_line + "\n")
 
     def insert_ansi_text(widget, text, tag=""):
-        """
-        insert_ansi_text
+        """ ""\"
+        ""\"
+            insert_ansi_text
 
-        Args:
-            widget (Any): Description of widget.
-            text (Any): Description of text.
-            tag (Any): Description of tag.
+                Args:
+                    widget (Any): Description of widget.
+                    text (Any): Description of text.
+                    tag (Any): Description of tag.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         ansi_escape = re.compile("\\x1B\\[(?P<code>\\d+(;\\d+)*)m")
         segments = ansi_escape.split(text)
         tag = None
@@ -1541,50 +1662,52 @@ def open_git_window(repo_dir=None):
                     widget.tag_configure(tag, **get_ansi_style(tag))
 
     def get_ansi_tag(codes):
-        """
-        get_ansi_tag
+        """ ""\"
+        ""\"
+            get_ansi_tag
 
-        Args:
-            codes (Any): Description of codes.
+                Args:
+                    codes (Any): Description of codes.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         fg_map = {
-            30: "black",
-            31: "red",
-            32: "green",
-            33: "yellow",
-            34: "blue",
-            35: "magenta",
-            36: "cyan",
-            37: "white",
-            90: "bright_black",
-            91: "bright_red",
-            92: "bright_green",
-            93: "bright_yellow",
-            94: "bright_blue",
-            95: "bright_magenta",
-            96: "bright_cyan",
-            97: "bright_white",
+            (30): "black",
+            (31): "red",
+            (32): "green",
+            (33): "yellow",
+            (34): "blue",
+            (35): "magenta",
+            (36): "cyan",
+            (37): "white",
+            (90): "bright_black",
+            (91): "bright_red",
+            (92): "bright_green",
+            (93): "bright_yellow",
+            (94): "bright_blue",
+            (95): "bright_magenta",
+            (96): "bright_cyan",
+            (97): "bright_white",
         }
         bg_map = {
-            40: "bg_black",
-            41: "bg_red",
-            42: "bg_green",
-            43: "bg_yellow",
-            44: "bg_blue",
-            45: "bg_magenta",
-            46: "bg_cyan",
-            47: "bg_white",
-            100: "bg_bright_black",
-            101: "bg_bright_red",
-            102: "bg_bright_green",
-            103: "bg_bright_yellow",
-            104: "bg_bright_blue",
-            105: "bg_bright_magenta",
-            106: "bg_bright_cyan",
-            107: "bg_bright_white",
+            (40): "bg_black",
+            (41): "bg_red",
+            (42): "bg_green",
+            (43): "bg_yellow",
+            (44): "bg_blue",
+            (45): "bg_magenta",
+            (46): "bg_cyan",
+            (47): "bg_white",
+            (100): "bg_bright_black",
+            (101): "bg_bright_red",
+            (102): "bg_bright_green",
+            (103): "bg_bright_yellow",
+            (104): "bg_bright_blue",
+            (105): "bg_bright_magenta",
+            (106): "bg_bright_cyan",
+            (107): "bg_bright_white",
         }
         styles = []
         for code in codes:
@@ -1599,15 +1722,17 @@ def open_git_window(repo_dir=None):
         return "_".join(styles) if styles else None
 
     def get_ansi_style(tag):
-        """
-        get_ansi_style
+        """ ""\"
+        ""\"
+            get_ansi_style
 
-        Args:
-            tag (Any): Description of tag.
+                Args:
+                    tag (Any): Description of tag.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         styles = {
             "black": {"foreground": "black"},
             "red": {"foreground": "red"},
@@ -1673,15 +1798,17 @@ def open_git_window(repo_dir=None):
     status_bar.pack(side="top", fill="x")
 
     def update_status(commit_hash="HEAD"):
-        """
-        update_status
+        """ ""\"
+        ""\"
+            update_status
 
-        Args:
-            commit_hash (Any): Description of commit_hash.
+                Args:
+                    commit_hash (Any): Description of commit_hash.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             branch_name = subprocess.check_output(
                 ["git", "rev-parse", "--abbrev-ref", commit_hash], text=True
@@ -1701,15 +1828,17 @@ def open_git_window(repo_dir=None):
     history_pointer = [0]
 
     def navigate_history(event):
-        """
-        navigate_history
+        """ ""\"
+        ""\"
+            navigate_history
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if command_history:
             if event.keysym == "Up":
                 history_pointer[0] = max(0, history_pointer[0] - 1)
@@ -1724,57 +1853,65 @@ def open_git_window(repo_dir=None):
             entry.insert(0, command)
 
     def add_selected_text_to_git_staging():
-        """
-        add_selected_text_to_git_staging
+        """ ""\"
+        ""\"
+            add_selected_text_to_git_staging
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text:
             execute_command(f"add -f {selected_text}")
 
     def unstage_selected_text():
-        """
-        unstage_selected_text
+        """ ""\"
+        ""\"
+            unstage_selected_text
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text:
             execute_command(f"reset -- {selected_text}")
 
     def get_git_status():
-        """
-        get_git_status
+        """ ""\"
+        ""\"
+            get_git_status
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         return subprocess.check_output(
             ["git", "status", "--porcelain", "-u"], text=True
         )
 
     def show_git_diff():
-        """
-        show_git_diff
+        """ ""\"
+        ""\"
+            show_git_diff
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         git_diff_command = "git diff --color"
         try:
             output = subprocess.check_output(
@@ -1803,15 +1940,17 @@ def open_git_window(repo_dir=None):
             output_text.insert(END, f"Error: {e.output}\n", "error")
 
     def update_output_text(output_text_widget):
-        """
-        update_output_text
+        """ ""\"
+        ""\"
+            update_output_text
 
-        Args:
-            output_text_widget (Any): Description of output_text_widget.
+                Args:
+                    output_text_widget (Any): Description of output_text_widget.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         git_status = get_git_status()
         define_ansi_tags(output_text_widget)
         if git_status == "":
@@ -1904,7 +2043,8 @@ def open_git_window(repo_dir=None):
 
 
 def open_kanban_window():
-    """
+    """ ""\"
+    ""\"
     open_kanban_window
 
     Args:
@@ -1912,7 +2052,8 @@ def open_kanban_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     global kanban_data, columns_frame, drag_label
     kanban_data = {
         "columns": [
@@ -1947,15 +2088,17 @@ def open_kanban_window():
     drag_label = None
 
     def load_kanban_data():
-        """
-        load_kanban_data
+        """ ""\"
+        ""\"
+            load_kanban_data
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global kanban_data
         try:
             with open("data/kanban_tasks.json", "r") as f:
@@ -1964,28 +2107,32 @@ def open_kanban_window():
             save_kanban_data()
 
     def save_kanban_data():
-        """
-        save_kanban_data
+        """ ""\"
+        ""\"
+            save_kanban_data
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         with open("data/kanban_tasks.json", "w") as f:
             json.dump(kanban_data, f, indent=4)
 
     def on_drag_start(event):
-        """
-        on_drag_start
+        """ ""\"
+        ""\"
+            on_drag_start
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global drag_label
         widget = event.widget
         index = widget.nearest(event.y)
@@ -1999,15 +2146,17 @@ def open_kanban_window():
             drag_label.place(x=event.x_root, y=event.y_root, anchor="center")
 
     def on_drag_motion(event):
-        """
-        on_drag_motion
+        """ ""\"
+        ""\"
+            on_drag_motion
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global drag_label
         widget = event.widget
         if hasattr(widget, "drag_data") and drag_label:
@@ -2021,15 +2170,17 @@ def open_kanban_window():
                 target.master.config(bg="lightgreen")
 
     def on_drop(event):
-        """
-        on_drop
+        """ ""\"
+        ""\"
+            on_drop
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global drag_label
         widget = event.widget
         if hasattr(widget, "drag_data"):
@@ -2054,32 +2205,36 @@ def open_kanban_window():
             delattr(widget, "drag_data")
 
     def setup_drag_and_drop(listbox, column):
-        """
-        setup_drag_and_drop
+        """ ""\"
+        ""\"
+            setup_drag_and_drop
 
-        Args:
-            listbox (Any): Description of listbox.
-            column (Any): Description of column.
+                Args:
+                    listbox (Any): Description of listbox.
+                    column (Any): Description of column.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         listbox.column = column
         listbox.bind("<ButtonPress-1>", on_drag_start)
         listbox.bind("<B1-Motion>", on_drag_motion)
         listbox.bind("<ButtonRelease-1>", on_drop)
 
     def add_task(event, column):
-        """
-        add_task
+        """ ""\"
+        ""\"
+            add_task
 
-        Args:
-            event (Any): Description of event.
-            column (Any): Description of column.
+                Args:
+                    event (Any): Description of event.
+                    column (Any): Description of column.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         task_title = event.widget.get()
         if task_title:
             new_task = {
@@ -2093,15 +2248,17 @@ def open_kanban_window():
             refresh_kanban_board()
 
     def create_column(column_name):
-        """
-        create_column
+        """ ""\"
+        ""\"
+            create_column
 
-        Args:
-            column_name (Any): Description of column_name.
+                Args:
+                    column_name (Any): Description of column_name.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         column_frame = Frame(columns_frame, borderwidth=2, relief="raised")
         column_frame.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
         label = Label(
@@ -2119,15 +2276,17 @@ def open_kanban_window():
         entry.bind("<Return>", lambda event, col=column_name: add_task(event, col))
 
     def refresh_kanban_board():
-        """
-        refresh_kanban_board
+        """ ""\"
+        ""\"
+            refresh_kanban_board
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         for widget in columns_frame.winfo_children():
             widget.destroy()
         for column in kanban_data["columns"]:
@@ -2150,7 +2309,8 @@ def open_kanban_window():
 
 
 def open_calculator_window():
-    """
+    """ ""\"
+    ""\"
     open_calculator_window
 
     Args:
@@ -2158,7 +2318,8 @@ def open_calculator_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     calculator_window = Toplevel()
     calculator_window.title("Advanced Scientific Calculator")
     calculator_window.geometry("500x600")
@@ -2187,27 +2348,31 @@ def open_calculator_window():
     original_states = {}
 
     def update_result_display(message):
-        """
-        update_result_display
+        """ ""\"
+        ""\"
+            update_result_display
 
-        Args:
-            message (Any): Description of message.
+                Args:
+                    message (Any): Description of message.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         result_label.config(text=message)
 
     def copy_result_to_clipboard(event):
-        """
-        copy_result_to_clipboard
+        """ ""\"
+        ""\"
+            copy_result_to_clipboard
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         result = result_label.cget("text")
         calculator_window.clipboard_clear()
         calculator_window.clipboard_append(result)
@@ -2216,15 +2381,17 @@ def open_calculator_window():
     result_label.bind("<Double-Button-1>", copy_result_to_clipboard)
 
     def button_click(value):
-        """
-        button_click
+        """ ""\"
+        ""\"
+            button_click
 
-        Args:
-            value (Any): Description of value.
+                Args:
+                    value (Any): Description of value.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         current = expression_entry.get()
         if current in ("Error", "Invalid Input"):
             expression_entry.delete(0, END)
@@ -2240,28 +2407,32 @@ def open_calculator_window():
             expression_entry.icursor(cursor_position + len(value))
 
     def clear_entry():
-        """
-        clear_entry
+        """ ""\"
+        ""\"
+            clear_entry
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         expression_entry.delete(0, END)
         update_result_display("")
 
     def clear_last_entry():
-        """
-        clear_last_entry
+        """ ""\"
+        ""\"
+            clear_last_entry
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         current = expression_entry.get()
         cursor_position = expression_entry.index(INSERT)
         if expression_entry.selection_present():
@@ -2277,20 +2448,22 @@ def open_calculator_window():
         if not tokens:
             return
         last_token = tokens[-1]
-        start, end = (last_token.start(), last_token.end())
+        start, end = last_token.start(), last_token.end()
         expression_entry.delete(start, cursor_position)
         expression_entry.icursor(start)
 
     def backspace():
-        """
-        backspace
+        """ ""\"
+        ""\"
+            backspace
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if expression_entry.selection_present():
             selection_start = expression_entry.index(SEL_FIRST)
             selection_end = expression_entry.index(SEL_LAST)
@@ -2302,15 +2475,17 @@ def open_calculator_window():
                 expression_entry.delete(cursor_position - 1, cursor_position)
 
     def toggle_scientific_calculator_buttons():
-        """
-        toggle_scientific_calculator_buttons
+        """ ""\"
+        ""\"
+            toggle_scientific_calculator_buttons
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         toggle_map = {
             "x²": ("x³", lambda value="**3": button_click(value)),
             "xʸ": ("x⁽¹/ʸ⁾", lambda value="**(1/y)": button_click(value)),
@@ -2327,10 +2502,10 @@ def open_calculator_window():
             current_text = btn["text"]
             if current_text in toggle_map:
                 if btn not in original_states:
-                    original_states[btn] = (current_text, btn["command"])
+                    original_states[btn] = current_text, btn["command"]
                 new_text, new_command = toggle_map[current_text]
                 btn.config(text=new_text, command=new_command)
-            elif any((current_text == pair[0] for pair in toggle_map.values())):
+            elif any(current_text == pair[0] for pair in toggle_map.values()):
                 reverse_map = {v[0]: (k, v[1]) for k, v in toggle_map.items()}
                 original_text, original_command = reverse_map[current_text]
                 if btn in original_states:
@@ -2338,29 +2513,33 @@ def open_calculator_window():
                     btn.config(text=original_text, command=original_command)
 
     def balance_parentheses(expr):
-        """
-        balance_parentheses
+        """ ""\"
+        ""\"
+            balance_parentheses
 
-        Args:
-            expr (Any): Description of expr.
+                Args:
+                    expr (Any): Description of expr.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         open_count = expr.count("(")
         close_count = expr.count(")")
         return expr + ")" * (open_count - close_count)
 
     def evaluate_expression():
-        """
-        evaluate_expression
+        """ ""\"
+        ""\"
+            evaluate_expression
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             expression = expression_entry.get().strip()
             if not expression:
@@ -2430,15 +2609,17 @@ def open_calculator_window():
             update_result_display(f"Error: {str(e)}")
 
     def scientific_function_click(func_name):
-        """
-        scientific_function_click
+        """ ""\"
+        ""\"
+            scientific_function_click
 
-        Args:
-            func_name (Any): Description of func_name.
+                Args:
+                    func_name (Any): Description of func_name.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         value = f"{func_name}("
         if expression_entry.selection_present():
             selection_start = expression_entry.index(SEL_FIRST)
@@ -2585,7 +2766,8 @@ def open_calculator_window():
 
 
 def open_terminal_window():
-    """
+    """ ""\"
+    ""\"
     Opens a new window functioning as a terminal within the application.
 
     This function creates a top-level window that simulates a terminal, allowing users to
@@ -2596,7 +2778,8 @@ def open_terminal_window():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     terminal_window = Toplevel()
     terminal_window.title("Terminal")
     terminal_window.geometry("600x400")
@@ -2606,15 +2789,17 @@ def open_terminal_window():
     history_pointer = [0]
 
     def execute_command(event=None):
-        """
-        execute_command
+        """ ""\"
+        ""\"
+            execute_command
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         command = entry.get()
         if command.strip():
             command_history.append(command)
@@ -2634,15 +2819,17 @@ def open_terminal_window():
             output_text.see(END)
 
     def navigate_history(event):
-        """
-        navigate_history
+        """ ""\"
+        ""\"
+            navigate_history
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if command_history:
             if event.keysym == "Up":
                 history_pointer[0] = max(0, history_pointer[0] - 1)
@@ -2665,7 +2852,8 @@ def open_terminal_window():
 
 
 def open_audio_generation_window():
-    """
+    """ ""\"
+    ""\"
     open_audio_generation_window
 
     Args:
@@ -2673,18 +2861,21 @@ def open_audio_generation_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
 
     def generate_audio():
-        """
-        generate_audio
+        """ ""\"
+        ""\"
+            generate_audio
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         model_path = model_path_entry.get()
         prompt = prompt_entry.get()
         start_time = start_time_entry.get()
@@ -2693,9 +2884,9 @@ def open_audio_generation_window():
         if (
             not model_path
             or not prompt
-            or (not start_time)
-            or (not duration)
-            or (not output_path)
+            or not start_time
+            or not duration
+            or not output_path
         ):
             messagebox.showwarning("Input Error", "Please fill all fields.")
             return
@@ -2711,20 +2902,22 @@ def open_audio_generation_window():
     def run_audio_generation(
         model_path, prompt, start_time, duration, output_path, output_queue
     ):
-        """
-        run_audio_generation
+        """ ""\"
+        ""\"
+            run_audio_generation
 
-        Args:
-            model_path (Any): Description of model_path.
-            prompt (Any): Description of prompt.
-            start_time (Any): Description of start_time.
-            duration (Any): Description of duration.
-            output_path (Any): Description of output_path.
-            output_queue (Any): Description of output_queue.
+                Args:
+                    model_path (Any): Description of model_path.
+                    prompt (Any): Description of prompt.
+                    start_time (Any): Description of start_time.
+                    duration (Any): Description of duration.
+                    output_path (Any): Description of output_path.
+                    output_queue (Any): Description of output_queue.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             process = subprocess.Popen(
                 [
@@ -2760,15 +2953,17 @@ def open_audio_generation_window():
         output_queue.put("DONE")
 
     def update_progress(output_queue):
-        """
-        update_progress
+        """ ""\"
+        ""\"
+            update_progress
 
-        Args:
-            output_queue (Any): Description of output_queue.
+                Args:
+                    output_queue (Any): Description of output_queue.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             while not output_queue.empty():
                 line = output_queue.get_nowait()
@@ -2781,52 +2976,58 @@ def open_audio_generation_window():
         except queue.Empty:
             pass
         finally:
-            if not "AUDIO GENERATED AT" in status_label.cget("text") and (
-                not "failed" in status_label.cget("text")
-            ):
+            if not "AUDIO GENERATED AT" in status_label.cget(
+                "text"
+            ) and not "failed" in status_label.cget("text"):
                 generation_window.after(100, lambda: update_progress(output_queue))
             else:
                 generate_button.config(state=NORMAL)
 
     def load_audio(audio_path):
-        """
-        load_audio
+        """ ""\"
+        ""\"
+            load_audio
 
-        Args:
-            audio_path (Any): Description of audio_path.
+                Args:
+                    audio_path (Any): Description of audio_path.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             status_label.config(text=f"Audio generated at {audio_path}")
         except Exception as e:
             messagebox.showerror("Audio Error", f"Could not load audio: {e}")
 
     def select_model_path():
-        """
-        select_model_path
+        """ ""\"
+        ""\"
+            select_model_path
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         path = filedialog.askopenfilename(filetypes=[("Checkpoint Files", "*.ckpt")])
         model_path_entry.delete(0, END)
         model_path_entry.insert(0, path)
 
     def select_output_path():
-        """
-        select_output_path
+        """ ""\"
+        ""\"
+            select_output_path
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         path = filedialog.asksaveasfilename(
             defaultextension=".wav", filetypes=[("WAV Files", "*.wav")]
         )
@@ -2889,7 +3090,8 @@ def open_audio_generation_window():
 
 
 def open_music_generation_window():
-    """
+    """ ""\"
+    ""\"
     open_music_generation_window
 
     Args:
@@ -2897,12 +3099,14 @@ def open_music_generation_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     pass
 
 
 def open_image_generation_window():
-    """
+    """ ""\"
+    ""\"
     open_image_generation_window
 
     Args:
@@ -2910,22 +3114,25 @@ def open_image_generation_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
 
     def generate_image():
-        """
-        generate_image
+        """ ""\"
+        ""\"
+            generate_image
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         model_path = model_path_entry.get()
         prompt = prompt_entry.get()
         output_path = output_path_entry.get()
-        if not model_path or not prompt or (not output_path):
+        if not model_path or not prompt or not output_path:
             messagebox.showwarning("Input Error", "Please fill all fields.")
             return
         status_label.config(text="Starting image generation...")
@@ -2938,18 +3145,20 @@ def open_image_generation_window():
         generation_window.after(100, lambda: update_progress(output_queue))
 
     def run_image_generation(model_path, prompt, output_path, output_queue):
-        """
-        run_image_generation
+        """ ""\"
+        ""\"
+            run_image_generation
 
-        Args:
-            model_path (Any): Description of model_path.
-            prompt (Any): Description of prompt.
-            output_path (Any): Description of output_path.
-            output_queue (Any): Description of output_queue.
+                Args:
+                    model_path (Any): Description of model_path.
+                    prompt (Any): Description of prompt.
+                    output_path (Any): Description of output_path.
+                    output_queue (Any): Description of output_queue.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             process = subprocess.Popen(
                 [
@@ -2980,15 +3189,17 @@ def open_image_generation_window():
         output_queue.put("DONE")
 
     def update_progress(output_queue):
-        """
-        update_progress
+        """ ""\"
+        ""\"
+            update_progress
 
-        Args:
-            output_queue (Any): Description of output_queue.
+                Args:
+                    output_queue (Any): Description of output_queue.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             while not output_queue.empty():
                 line = output_queue.get_nowait()
@@ -3001,23 +3212,25 @@ def open_image_generation_window():
         except queue.Empty:
             pass
         finally:
-            if not "IMAGE GENERATED AT" in status_label.cget("text") and (
-                not "failed" in status_label.cget("text")
-            ):
+            if not "IMAGE GENERATED AT" in status_label.cget(
+                "text"
+            ) and not "failed" in status_label.cget("text"):
                 generation_window.after(100, lambda: update_progress(output_queue))
             else:
                 generate_button.config(state=NORMAL)
 
     def load_image(image_path):
-        """
-        load_image
+        """ ""\"
+        ""\"
+            load_image
 
-        Args:
-            image_path (Any): Description of image_path.
+                Args:
+                    image_path (Any): Description of image_path.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             img = Image.open(image_path)
             img = img.resize((250, 250), Image.ANTIALIAS)
@@ -3028,29 +3241,33 @@ def open_image_generation_window():
             messagebox.showerror("Image Error", f"Could not load image: {e}")
 
     def select_model_path():
-        """
-        select_model_path
+        """ ""\"
+        ""\"
+            select_model_path
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         path = filedialog.askopenfilename(filetypes=[("Checkpoint Files", "*.ckpt")])
         model_path_entry.delete(0, END)
         model_path_entry.insert(0, path)
 
     def select_output_path():
-        """
-        select_output_path
+        """ ""\"
+        ""\"
+            select_output_path
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         path = filedialog.asksaveasfilename(
             defaultextension=".png", filetypes=[("PNG Files", "*.png")]
         )
@@ -3103,7 +3320,8 @@ def open_image_generation_window():
 
 
 def add_current_main_opened_script(include_main_script):
-    """
+    """ ""\"
+    ""\"
     add_current_main_opened_script
 
     Args:
@@ -3111,13 +3329,15 @@ def add_current_main_opened_script(include_main_script):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     global include_main_script_in_command
     include_main_script_in_command = include_main_script
 
 
 def add_current_selected_text(include_selected_text):
-    """
+    """ ""\"
+    ""\"
     add_current_selected_text
 
     Args:
@@ -3125,13 +3345,15 @@ def add_current_selected_text(include_selected_text):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     global include_selected_text_in_command
     include_selected_text_in_command = include_selected_text
 
 
 def open_ai_assistant_window(session_id=None):
-    """
+    """ ""\"
+    ""\"
     Opens a window for interacting with an AI assistant.
 
     This function creates a new window where users can input commands or queries, and the AI assistant
@@ -3142,44 +3364,51 @@ def open_ai_assistant_window(session_id=None):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
     def start_llama_cpp_python_server():
-        """
-        start_llama_cpp_python_server
+        """ ""\"
+        ""\"
+            start_llama_cpp_python_server
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         file_path = find_gguf_file()
         print("THE PATH TO THE MODEL IS:\t", file_path)
 
     def open_ai_server_settings_window():
-        """
-        open_ai_server_settings_window
+        """ ""\"
+        ""\"
+            open_ai_server_settings_window
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         json_path = "data/llm_server_providers.json"
 
         def toggle_display(selected_server):
-            """
-            toggle_display
+            """ ""\"
+            ""\"
+                    toggle_display
 
-            Args:
-                selected_server (Any): Description of selected_server.
+                            Args:
+                                selected_server (Any): Description of selected_server.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             server_info = server_details.get(selected_server, {})
             server_url = server_info.get("server_url", "")
             api_key = server_info.get("api_key", "")
@@ -3208,15 +3437,17 @@ def open_ai_assistant_window(session_id=None):
                 api_key_label.grid_remove()
 
         def load_server_details():
-            """
-            load_server_details
+            """ ""\"
+            ""\"
+                    load_server_details
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             try:
                 with open("data/llm_server_providers.json", "r") as server_file:
                     return json.load(server_file)
@@ -3227,15 +3458,17 @@ def open_ai_assistant_window(session_id=None):
                 return {}
 
         def load_api_key_names():
-            """
-            load_api_key_names
+            """ ""\"
+            ""\"
+                    load_api_key_names
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             with open(json_path, "r") as file:
                 data = json.load(file)
             api_keys = {
@@ -3246,15 +3479,17 @@ def open_ai_assistant_window(session_id=None):
             return api_keys
 
         def get_env_variable(variable_name):
-            """
-            get_env_variable
+            """ ""\"
+            ""\"
+                    get_env_variable
 
-            Args:
-                variable_name (Any): Description of variable_name.
+                            Args:
+                                variable_name (Any): Description of variable_name.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             env_path = ".env"
             if os.path.exists(env_path):
                 with open(env_path, "r") as file:
@@ -3263,16 +3498,18 @@ def open_ai_assistant_window(session_id=None):
                             return line.split("=", 1)[1].strip()
 
         def update_env_file(api_key_field, new_api_key):
-            """
-            update_env_file
+            """ ""\"
+            ""\"
+                    update_env_file
 
-            Args:
-                api_key_field (Any): Description of api_key_field.
-                new_api_key (Any): Description of new_api_key.
+                            Args:
+                                api_key_field (Any): Description of api_key_field.
+                                new_api_key (Any): Description of new_api_key.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             env_path = ".env"
             updated = False
             if os.path.exists(env_path):
@@ -3293,15 +3530,17 @@ def open_ai_assistant_window(session_id=None):
                     file.write(f"{api_key_field}={new_api_key}\n")
 
         def save_ai_server_settings():
-            """
-            save_ai_server_settings
+            """ ""\"
+            ""\"
+                    save_ai_server_settings
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             server_url = server_url_entry.get()
             api_keys = load_api_key_names()
             selected = selected_server.get()
@@ -3373,23 +3612,27 @@ def open_ai_assistant_window(session_id=None):
         settings_window.mainloop()
 
     def open_ai_server_agent_settings_window():
-        """
-        open_ai_server_agent_settings_window
+        """ ""\"
+        ""\"
+            open_ai_server_agent_settings_window
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
 
         def load_agents():
-            """
-            Load agents from the JSON file located at ScriptsEditor/data/agents.json.
+            """ ""\"
+            ""\"
+                    Load agents from the JSON file located at ScriptsEditor/data/agents.json.
 
-            Returns:
-            agents (list): A list of agents loaded from the JSON file.
-            """
+                            Returns:
+                            agents (list): A list of agents loaded from the JSON file.
+                    ""\"
+            ""\" """
             current_dir = os.path.dirname(os.path.abspath(__file__))
             json_file_path = os.path.join(
                 current_dir, "..", "..", "data", "agents.json"
@@ -3410,15 +3653,17 @@ def open_ai_assistant_window(session_id=None):
                 return []
 
         def update_instructions(selected_agent):
-            """
-            update_instructions
+            """ ""\"
+            ""\"
+                    update_instructions
 
-            Args:
-                selected_agent (Any): Description of selected_agent.
+                            Args:
+                                selected_agent (Any): Description of selected_agent.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             global selected_agent_var
             selected_agent_var = selected_agent
             for agent in agents:
@@ -3430,15 +3675,17 @@ def open_ai_assistant_window(session_id=None):
                     break
 
         def save_agent_settings():
-            """
-            save_agent_settings
+            """ ""\"
+            ""\"
+                    save_agent_settings
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             global selected_agent_var
             selected_agent = selected_agent_var
             print("SAVE_AGENT_SETTINTS!!!\n", selected_agent, "\n", "* " * 25)
@@ -3537,7 +3784,13 @@ def open_ai_assistant_window(session_id=None):
         command=lambda: add_current_selected_text(add_current_selected_text_var.get()),
     )
     persistent_agent_selection_var = IntVar()
-    'settings_menu.add_checkbutton(\n        label="Persistent Agent Selection",\n        onvalue=1,\n        offvalue=0,\n        variable=persistent_agent_selection_var,\n        #command=lambda: add_current_selected_text(add_current_selected_text_var.get())\n    )'
+    """settings_menu.add_checkbutton(
+        label="Persistent Agent Selection",
+        onvalue=1,
+        offvalue=0,
+        variable=persistent_agent_selection_var,
+        #command=lambda: add_current_selected_text(add_current_selected_text_var.get())
+    )"""
     session_list_frame = Frame(ai_assistant_window)
     session_list_frame.pack(side="left", fill="y")
     Label(session_list_frame, text="SESSIONS", font=("Helvetica", 10, "bold")).pack(
@@ -3555,30 +3808,34 @@ def open_ai_assistant_window(session_id=None):
     links_list.pack(fill="both", expand=True)
 
     def refresh_links_list():
-        """
-        refresh_links_list
+        """ ""\"
+        ""\"
+            refresh_links_list
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print("Refreshing links list...")
         links_list.delete(0, END)
         for idx, url in enumerate(url_data):
             links_list.insert(END, url)
 
     def add_new_link():
-        """
-        add_new_link
+        """ ""\"
+        ""\"
+            add_new_link
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print("Adding new link...")
         new_url = simpledialog.askstring("Add New Link", "Enter URL:")
         if new_url:
@@ -3586,15 +3843,17 @@ def open_ai_assistant_window(session_id=None):
             refresh_links_list()
 
     def delete_selected_link():
-        """
-        delete_selected_link
+        """ ""\"
+        ""\"
+            delete_selected_link
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print("Deleting selected link...")
         selected_link_index = links_list.curselection()
         if selected_link_index:
@@ -3602,15 +3861,17 @@ def open_ai_assistant_window(session_id=None):
             refresh_links_list()
 
     def edit_selected_link():
-        """
-        edit_selected_link
+        """ ""\"
+        ""\"
+            edit_selected_link
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selected_link_index = links_list.curselection()
         if selected_link_index:
             selected_link = links_list.get(selected_link_index)
@@ -3624,15 +3885,17 @@ def open_ai_assistant_window(session_id=None):
     links_context_menu = Menu(ai_assistant_window, tearoff=0)
 
     def show_links_context_menu(event):
-        """
-        show_links_context_menu
+        """ ""\"
+        ""\"
+            show_links_context_menu
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if links_list.size() == 0:
             links_context_menu.delete(0, END)
             links_context_menu.add_command(label="Add New Link", command=add_new_link)
@@ -3664,15 +3927,17 @@ def open_ai_assistant_window(session_id=None):
     document_checkbuttons = []
 
     def refresh_documents_list():
-        """
-        refresh_documents_list
+        """ ""\"
+        ""\"
+            refresh_documents_list
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print("Refreshing documents list...")
         for widget in documents_frame.winfo_children():
             widget.destroy()
@@ -3684,15 +3949,17 @@ def open_ai_assistant_window(session_id=None):
             document_checkbuttons.append((doc_path, var))
 
     def add_new_document():
-        """
-        add_new_document
+        """ ""\"
+        ""\"
+            add_new_document
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print("Adding new document...")
         file_path = filedialog.askopenfilename(
             initialdir=".",
@@ -3710,15 +3977,17 @@ def open_ai_assistant_window(session_id=None):
     )
 
     def show_documents_context_menu(event):
-        """
-        show_documents_context_menu
+        """ ""\"
+        ""\"
+            show_documents_context_menu
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         documents_context_menu.post(event.x_root, event.y_root)
 
     documents_frame.bind("<Button-3>", show_documents_context_menu)
@@ -3741,58 +4010,66 @@ def open_ai_assistant_window(session_id=None):
     entry.focus()
 
     def on_md_content_change(event=None):
-        """
-        on_md_content_change
+        """ ""\"
+        ""\"
+            on_md_content_change
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global original_md_content
         original_md_content = script_text.get("1.0", END)
         if markdown_render_enabled:
             update_html_content()
 
     def update_html_content():
-        """
-        update_html_content
+        """ ""\"
+        ""\"
+            update_html_content
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
 
     def update_html_content_thread():
-        """
-        update_html_content_thread
+        """ ""\"
+        ""\"
+            update_html_content_thread
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
 
     def toggle_render_markdown(is_checked):
-        """
-        toggle_render_markdown
+        """ ""\"
+        ""\"
+            toggle_render_markdown
 
-        Args:
-            is_checked (Any): Description of is_checked.
+                Args:
+                    is_checked (Any): Description of is_checked.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global markdown_render_enabled
         markdown_render_enabled = bool(is_checked)
         if markdown_render_enabled:
@@ -3806,15 +4083,17 @@ def open_ai_assistant_window(session_id=None):
             output_text.pack(fill="both", expand=True)
 
     def navigate_history(event):
-        """
-        navigate_history
+        """ ""\"
+        ""\"
+            navigate_history
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if command_history:
             if event.keysym == "Up":
                 history_pointer[0] = max(0, history_pointer[0] - 1)
@@ -3829,15 +4108,17 @@ def open_ai_assistant_window(session_id=None):
             entry.insert(0, command)
 
     def stream_output(process):
-        """
-        stream_output
+        """ ""\"
+        ""\"
+            stream_output
 
-        Args:
-            process (Any): Description of process.
+                Args:
+                    process (Any): Description of process.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global current_session
         ai_response_buffer = ""
         try:
@@ -3860,42 +4141,48 @@ def open_ai_assistant_window(session_id=None):
             on_processing_complete()
 
     def on_processing_complete():
-        """
-        on_processing_complete
+        """ ""\"
+        ""\"
+            on_processing_complete
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         load_selected_agent()
         entry.config(state="normal")
         status_label_var.set("READY")
 
     def store_selected_agent(selected_agent):
-        """
-        store_selected_agent
+        """ ""\"
+        ""\"
+            store_selected_agent
 
-        Args:
-            selected_agent (Any): Description of selected_agent.
+                Args:
+                    selected_agent (Any): Description of selected_agent.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         with open("data/agent_config.json", "w") as config_file:
             json.dump({"selected_agent": selected_agent}, config_file)
 
     def load_selected_agent():
-        """
-        load_selected_agent
+        """ ""\"
+        ""\"
+            load_selected_agent
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         try:
             with open("data/config.json", "r") as config_file:
                 config_data = json.load(config_file)
@@ -3904,17 +4191,19 @@ def open_ai_assistant_window(session_id=None):
             pass
 
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
-        """
-        execute_ai_assistant_command
+        """ ""\"
+        ""\"
+            execute_ai_assistant_command
 
-        Args:
-            opened_script_var (Any): Description of opened_script_var.
-            selected_text_var (Any): Description of selected_text_var.
-            ai_command (Any): Description of ai_command.
+                Args:
+                    opened_script_var (Any): Description of opened_script_var.
+                    selected_text_var (Any): Description of selected_text_var.
+                    ai_command (Any): Description of ai_command.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global original_md_content, selected_agent_var, current_session
         if not current_session:
             create_session()
@@ -3968,17 +4257,19 @@ def open_ai_assistant_window(session_id=None):
             entry.config(state="normal")
 
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
-        """
-        create_ai_command
+        """ ""\"
+        ""\"
+            create_ai_command
 
-        Args:
-            ai_script_path (Any): Description of ai_script_path.
-            user_prompt (Any): Description of user_prompt.
-            agent_name (Any): Description of agent_name.
+                Args:
+                    ai_script_path (Any): Description of ai_script_path.
+                    user_prompt (Any): Description of user_prompt.
+                    agent_name (Any): Description of agent_name.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if platform.system() == "Windows":
             python_executable = os.path.join("venv", "Scripts", "python")
         else:
@@ -3989,15 +4280,17 @@ def open_ai_assistant_window(session_id=None):
             return [python_executable, ai_script_path, user_prompt]
 
     def process_ai_command(command):
-        """
-        process_ai_command
+        """ ""\"
+        ""\"
+            process_ai_command
 
-        Args:
-            command (Any): Description of command.
+                Args:
+                    command (Any): Description of command.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global process, selected_agent_var
         try:
             if "process" in globals() and process.poll() is None:
@@ -4019,32 +4312,36 @@ def open_ai_assistant_window(session_id=None):
             status_label_var.set(f"{selected_agent_var} is thinking")
 
     def read_ai_command(command_name, user_prompt):
-        """
-        read_ai_command
+        """ ""\"
+        ""\"
+            read_ai_command
 
-        Args:
-            command_name (Any): Description of command_name.
-            user_prompt (Any): Description of user_prompt.
+                Args:
+                    command_name (Any): Description of command_name.
+                    user_prompt (Any): Description of user_prompt.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         commands_file = "data/commands.json"
         try:
             with open(commands_file, "r") as f:
                 commands_data = json.load(f)
 
             def find_command(commands, command_name):
-                """
-                find_command
+                """ ""\"
+                ""\"
+                            find_command
 
-                Args:
-                    commands (Any): Description of commands.
-                    command_name (Any): Description of command_name.
+                                        Args:
+                                            commands (Any): Description of commands.
+                                            command_name (Any): Description of command_name.
 
-                Returns:
-                    None: Description of return value.
-                """
+                                        Returns:
+                                            None: Description of return value.
+                            ""\"
+                ""\" """
                 for command in commands:
                     if command["name"] == command_name:
                         return command
@@ -4069,15 +4366,17 @@ def open_ai_assistant_window(session_id=None):
             return f"Error: Failed to decode JSON from '{commands_file}'."
 
     def ai_assistant_rightclick_menu(command):
-        """
-        ai_assistant_rightclick_menu
+        """ ""\"
+        ""\"
+            ai_assistant_rightclick_menu
 
-        Args:
-            command (Any): Description of command.
+                Args:
+                    command (Any): Description of command.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
             fix_user_prompt = read_ai_command(command, selected_text)
@@ -4088,41 +4387,47 @@ def open_ai_assistant_window(session_id=None):
             )
 
     def nlp_custom():
-        """
-        nlp_custom
+        """ ""\"
+        ""\"
+            nlp_custom
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
             print(read_ai_command("code-optimize", selected_text))
 
     def show_context_menu(event):
-        """
-        show_context_menu
+        """ ""\"
+        ""\"
+            show_context_menu
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         commands_file = "data/commands.json"
 
         def load_commands():
-            """
-            load_commands
+            """ ""\"
+            ""\"
+                    load_commands
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             try:
                 with open(commands_file, "r") as f:
                     commands_data = json.load(f)
@@ -4132,16 +4437,18 @@ def open_ai_assistant_window(session_id=None):
                 return []
 
         def add_commands_to_menu(menu, commands):
-            """
-            add_commands_to_menu
+            """ ""\"
+            ""\"
+                    add_commands_to_menu
 
-            Args:
-                menu (Any): Description of menu.
-                commands (Any): Description of commands.
+                            Args:
+                                menu (Any): Description of menu.
+                                commands (Any): Description of commands.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             for command in commands:
                 if "submenu" in command:
                     submenu = Menu(menu, tearoff=0)
@@ -4174,15 +4481,17 @@ def open_ai_assistant_window(session_id=None):
         context_menu.focus_set()
 
         def destroy_menu():
-            """
-            destroy_menu
+            """ ""\"
+            ""\"
+                    destroy_menu
 
-            Args:
-                None
+                            Args:
+                                None
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             context_menu.unpost()
 
         context_menu.bind("<Leave>", lambda e: destroy_menu())
@@ -4205,24 +4514,28 @@ def open_ai_assistant_window(session_id=None):
     history_pointer = [0]
 
     class Session:
-        """
-        Session
+        """ ""\"
+        ""\"
+            Session
 
-        Description of the class.
-        """
+                Description of the class.
+            ""\"
+        ""\" """
 
         def __init__(self, session_id, load_existing=True):
-            """
-            __init__
+            """ ""\"
+            ""\"
+                    __init__
 
-            Args:
-                self (Any): Description of self.
-                session_id (Any): Description of session_id.
-                load_existing (Any): Description of load_existing.
+                            Args:
+                                self (Any): Description of self.
+                                session_id (Any): Description of session_id.
+                                load_existing (Any): Description of load_existing.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             self.id = session_id
             self.name = ""
             self.file_path = os.path.join(
@@ -4236,17 +4549,19 @@ def open_ai_assistant_window(session_id=None):
                 self.save()
 
         def add_message(self, role, content):
-            """
-            add_message
+            """ ""\"
+            ""\"
+                    add_message
 
-            Args:
-                self (Any): Description of self.
-                role (Any): Description of role.
-                content (Any): Description of content.
+                            Args:
+                                self (Any): Description of self.
+                                role (Any): Description of role.
+                                content (Any): Description of content.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             message = {
                 "role": role,
                 "content": content,
@@ -4256,15 +4571,17 @@ def open_ai_assistant_window(session_id=None):
             self.save()
 
         def save(self):
-            """
-            save
+            """ ""\"
+            ""\"
+                    save
 
-            Args:
-                self (Any): Description of self.
+                            Args:
+                                self (Any): Description of self.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
             data = {
                 "session_id": self.id,
@@ -4275,30 +4592,34 @@ def open_ai_assistant_window(session_id=None):
                 json.dump(data, f, ensure_ascii=False, indent=2)
 
         def load(self):
-            """
-            load
+            """ ""\"
+            ""\"
+                    load
 
-            Args:
-                self (Any): Description of self.
+                            Args:
+                                self (Any): Description of self.
 
-            Returns:
-                None: Description of return value.
-            """
+                            Returns:
+                                None: Description of return value.
+                    ""\"
+            ""\" """
             with open(self.file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 self.name = data.get("session_name", f"Session {self.id}")
                 self.messages = data.get("messages", [])
 
     def create_session():
-        """
-        create_session
+        """ ""\"
+        ""\"
+            create_session
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global current_session, session_data
         new_session_id = datetime.now().strftime("%Y%m%d%H%M%S")
         current_session = Session(new_session_id, load_existing=False)
@@ -4307,15 +4628,17 @@ def open_ai_assistant_window(session_id=None):
         select_session(len(session_data) - 1)
 
     def update_chat_display():
-        """
-        update_chat_display
+        """ ""\"
+        ""\"
+            update_chat_display
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         output_text.delete("1.0", END)
         if current_session:
             for message in current_session.messages:
@@ -4326,15 +4649,17 @@ def open_ai_assistant_window(session_id=None):
         output_text.see(END)
 
     def load_session(session_id):
-        """
-        load_session
+        """ ""\"
+        ""\"
+            load_session
 
-        Args:
-            session_id (Any): Description of session_id.
+                Args:
+                    session_id (Any): Description of session_id.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global current_session
         for session in session_data:
             if session.id == session_id:
@@ -4344,15 +4669,17 @@ def open_ai_assistant_window(session_id=None):
         update_chat_display()
 
     def select_session(index):
-        """
-        select_session
+        """ ""\"
+        ""\"
+            select_session
 
-        Args:
-            index (Any): Description of index.
+                Args:
+                    index (Any): Description of index.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global current_session
         sessions_list.selection_clear(0, END)
         sessions_list.selection_set(index)
@@ -4366,29 +4693,33 @@ def open_ai_assistant_window(session_id=None):
         )
 
     def update_sessions_list():
-        """
-        update_sessions_list
+        """ ""\"
+        ""\"
+            update_sessions_list
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         sessions_list.delete(0, END)
         for session in session_data:
             sessions_list.insert(END, session.name)
 
     def load_sessions(session_listbox):
-        """
-        load_sessions
+        """ ""\"
+        ""\"
+            load_sessions
 
-        Args:
-            session_listbox (Any): Description of session_listbox.
+                Args:
+                    session_listbox (Any): Description of session_listbox.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         sessions_path = "data/conversations"
         session_folders = [
             f
@@ -4401,15 +4732,17 @@ def open_ai_assistant_window(session_id=None):
             session_listbox.insert("end", session.name)
 
     def initialize_ai_assistant_window():
-        """
-        initialize_ai_assistant_window
+        """ ""\"
+        ""\"
+            initialize_ai_assistant_window
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         global session_data, current_session
         sessions_path = "data/conversations"
         session_data = []
@@ -4424,31 +4757,35 @@ def open_ai_assistant_window(session_id=None):
             create_session()
 
     def on_session_select(event):
-        """
-        on_session_select
+        """ ""\"
+        ""\"
+            on_session_select
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selected_indices = sessions_list.curselection()
         if selected_indices:
             index = selected_indices[0]
             load_session(session_data[index].id)
 
     def show_session_context_menu(event, session_index):
-        """
-        show_session_context_menu
+        """ ""\"
+        ""\"
+            show_session_context_menu
 
-        Args:
-            event (Any): Description of event.
-            session_index (Any): Description of session_index.
+                Args:
+                    event (Any): Description of event.
+                    session_index (Any): Description of session_index.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         session_context_menu = Menu(ai_assistant_window, tearoff=0)
         session_context_menu.add_command(
             label="Share Chat", command=lambda: save_session(session_index)
@@ -4465,15 +4802,17 @@ def open_ai_assistant_window(session_id=None):
         session_context_menu.post(event.x_root, event.y_root)
 
     def save_session(session_index):
-        """
-        save_session
+        """ ""\"
+        ""\"
+            save_session
 
-        Args:
-            session_index (Any): Description of session_index.
+                Args:
+                    session_index (Any): Description of session_index.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print(f"Saving session {session_index}...")
         session = session_data[session_index]
         with open(f"session_{session['id']}.txt", "w") as f:
@@ -4483,15 +4822,17 @@ def open_ai_assistant_window(session_id=None):
             )
 
     def rename_session(session_index):
-        """
-        rename_session
+        """ ""\"
+        ""\"
+            rename_session
 
-        Args:
-            session_index (Any): Description of session_index.
+                Args:
+                    session_index (Any): Description of session_index.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         session = session_data[session_index]
         new_name = simpledialog.askstring(
             "Rename Session", "Enter new session name:", initialvalue=session.name
@@ -4502,15 +4843,17 @@ def open_ai_assistant_window(session_id=None):
             update_sessions_list()
 
     def archive_session(session_index):
-        """
-        archive_session
+        """ ""\"
+        ""\"
+            archive_session
 
-        Args:
-            session_index (Any): Description of session_index.
+                Args:
+                    session_index (Any): Description of session_index.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print(f"Archiving session {session_index}...")
         messagebox.showinfo(
             "Archive Session",
@@ -4518,15 +4861,17 @@ def open_ai_assistant_window(session_id=None):
         )
 
     def delete_session(session_index):
-        """
-        delete_session
+        """ ""\"
+        ""\"
+            delete_session
 
-        Args:
-            session_index (Any): Description of session_index.
+                Args:
+                    session_index (Any): Description of session_index.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         print(f"Deleting session {session_index}...")
         session = session_data.pop(session_index)
         update_sessions_list()
@@ -4535,15 +4880,17 @@ def open_ai_assistant_window(session_id=None):
         )
 
     def handle_session_click(event):
-        """
-        handle_session_click
+        """ ""\"
+        ""\"
+            handle_session_click
 
-        Args:
-            event (Any): Description of event.
+                Args:
+                    event (Any): Description of event.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         session_context_menu = Menu(ai_assistant_window, tearoff=0)
         try:
             session_index = sessions_list.curselection()[0]
@@ -4578,7 +4925,8 @@ def open_ai_assistant_window(session_id=None):
 
 
 def _create_webview_process(title, url):
-    """
+    """ ""\"
+    ""\"
     _create_webview_process
 
     Args:
@@ -4587,7 +4935,8 @@ def _create_webview_process(title, url):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     webview.create_window(
         title, url, width=800, height=600, text_select=True, zoomable=True
     )
@@ -4595,7 +4944,8 @@ def _create_webview_process(title, url):
 
 
 def open_webview(title, url):
-    """
+    """ ""\"
+    ""\"
     open_webview
 
     Args:
@@ -4604,7 +4954,8 @@ def open_webview(title, url):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     webview_process = multiprocessing.Process(
         target=_create_webview_process, args=(title, url)
     )
@@ -4612,7 +4963,8 @@ def open_webview(title, url):
 
 
 def open_url_in_webview(url):
-    """
+    """ ""\"
+    ""\"
     open_url_in_webview
 
     Args:
@@ -4620,7 +4972,8 @@ def open_url_in_webview(url):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     webview.create_window(
         "My Web Browser",
         url,
@@ -4636,7 +4989,8 @@ def open_url_in_webview(url):
 
 
 def on_go_button_clicked(entry, window):
-    """
+    """ ""\"
+    ""\"
     on_go_button_clicked
 
     Args:
@@ -4645,9 +4999,10 @@ def on_go_button_clicked(entry, window):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     url = entry.get()
-    if not url.startswith("http://") and (not url.startswith("https://")):
+    if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
     on_close(window)
     webview_process = multiprocessing.Process(target=open_url_in_webview, args=(url,))
@@ -4655,7 +5010,8 @@ def on_go_button_clicked(entry, window):
 
 
 def create_url_input_window():
-    """
+    """ ""\"
+    ""\"
     create_url_input_window
 
     Args:
@@ -4663,7 +5019,8 @@ def create_url_input_window():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     window = Toplevel(root)
     window.title("Enter URL")
     entry = Entry(window, width=50)
@@ -4678,12 +5035,17 @@ def create_url_input_window():
 
 
 def on_enter(event, entry, window):
-    """Event handler to trigger navigation when Enter key is pressed."""
+    """ ""\"
+    ""\"
+    Event handler to trigger navigation when Enter key is pressed.
+    ""\"
+    ""\" """
     on_go_button_clicked(entry, window)
 
 
 def on_close(window):
-    """
+    """ ""\"
+    ""\"
     on_close
 
     Args:
@@ -4691,5 +5053,6 @@ def on_close(window):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     window.destroy()

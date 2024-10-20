@@ -7,7 +7,8 @@ from lib.winTaskScheduler import list_tasks, delete_task, at_function, crontab_f
 
 
 def open_at_window():
-    """
+    """ ""\"
+    ""\"
     Opens a window displaying the list of scheduled 'at' jobs.
 
     This function creates a new window that lists all currently scheduled 'at' jobs. It provides
@@ -18,18 +19,21 @@ def open_at_window():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
 
     def update_at_jobs():
-        """
-        update_at_jobs
+        """ ""\"
+        ""\"
+            update_at_jobs
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         listbox.delete(0, END)
         populate_at_jobs(listbox)
         at_window.after(5000, update_at_jobs)
@@ -52,7 +56,8 @@ def open_at_window():
 
 
 def populate_at_jobs(listbox):
-    """
+    """ ""\"
+    ""\"
     Populates the given listbox with the current 'at' jobs.
 
     Retrieves the list of scheduled 'at' jobs and displays them in the provided listbox widget.
@@ -63,7 +68,8 @@ def populate_at_jobs(listbox):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     try:
         at_output = subprocess.check_output(["atq"], text=True).splitlines()
         if not at_output:
@@ -77,7 +83,8 @@ def populate_at_jobs(listbox):
 
 
 def remove_selected_at_job(listbox):
-    """
+    """ ""\"
+    ""\"
     Removes the selected 'at' job from the schedule.
 
     This function deletes the 'at' job that is currently selected in the listbox. It also handles
@@ -88,7 +95,8 @@ def remove_selected_at_job(listbox):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     selected_indices = listbox.curselection()
     if not selected_indices:
         return
@@ -106,7 +114,8 @@ def remove_selected_at_job(listbox):
 
 
 def open_cron_window():
-    """
+    """ ""\"
+    ""\"
     Opens a window displaying the list of scheduled 'cron' jobs.
 
     This function creates a new window that lists all currently scheduled 'cron' jobs. It provides
@@ -117,18 +126,21 @@ def open_cron_window():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
 
     def update_cron_jobs():
-        """
-        update_cron_jobs
+        """ ""\"
+        ""\"
+            update_cron_jobs
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         listbox.delete(0, END)
         populate_cron_jobs(listbox)
         crontab_window.after(5000, update_cron_jobs)
@@ -152,7 +164,8 @@ def open_cron_window():
 
 
 def populate_cron_jobs(listbox):
-    """
+    """ ""\"
+    ""\"
     Populates the given listbox with the current 'cron' jobs.
 
     Retrieves the list of scheduled 'cron' jobs and displays them in the provided listbox widget.
@@ -163,7 +176,8 @@ def populate_cron_jobs(listbox):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     try:
         cron_output = subprocess.check_output(["crontab", "-l"], text=True).splitlines()
         if not cron_output:
@@ -178,7 +192,8 @@ def populate_cron_jobs(listbox):
 
 
 def remove_selected_cron_job(listbox):
-    """
+    """ ""\"
+    ""\"
     Removes the selected 'cron' job from the schedule.
 
     This function deletes the 'cron' job that is currently selected in the listbox. It handles
@@ -189,7 +204,8 @@ def remove_selected_cron_job(listbox):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     selected_indices = listbox.curselection()
     if not selected_indices:
         return
@@ -212,7 +228,8 @@ def remove_selected_cron_job(listbox):
 
 
 def open_scheduled_tasks_window():
-    """
+    """ ""\"
+    ""\"
     Opens a window for managing scheduled tasks.
 
     This function creates a new window displaying all scheduled tasks, allowing the user to view and
@@ -223,7 +240,8 @@ def open_scheduled_tasks_window():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     window = Toplevel()
     window.title("Scheduled Tasks")
     window.geometry("600x400")
@@ -232,15 +250,17 @@ def open_scheduled_tasks_window():
     last_selected_index = [None]
 
     def populate_tasks():
-        """
-        populate_tasks
+        """ ""\"
+        ""\"
+            populate_tasks
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         if listbox.curselection():
             last_selected_index[0] = listbox.curselection()[0]
         listbox.delete(0, END)
@@ -255,15 +275,17 @@ def open_scheduled_tasks_window():
             listbox.see(last_selected_index[0])
 
     def delete_selected_task():
-        """
-        delete_selected_task
+        """ ""\"
+        ""\"
+            delete_selected_task
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         selection = listbox.curselection()
         if not selection:
             messagebox.showerror("Error", "No task selected")
@@ -279,15 +301,17 @@ def open_scheduled_tasks_window():
             messagebox.showerror("Error", f"Failed to delete task: {e}")
 
     def update_tasks():
-        """
-        update_tasks
+        """ ""\"
+        ""\"
+            update_tasks
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         populate_tasks()
         window.after(5000, update_tasks)
 
@@ -299,7 +323,8 @@ def open_scheduled_tasks_window():
 
 
 def open_new_at_task_window():
-    """
+    """ ""\"
+    ""\"
     Opens a window for creating a new 'at' task.
 
     Provides an interface for the user to schedule a new 'at' job by specifying the task name, time,
@@ -310,7 +335,8 @@ def open_new_at_task_window():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     new_task_window = Toplevel(root)
     new_task_window.title("New 'at' Task")
     new_task_window.geometry("400x150")
@@ -325,15 +351,17 @@ def open_new_at_task_window():
     program_path_entry.grid(row=2, column=1)
 
     def create_at_job():
-        """
-        create_at_job
+        """ ""\"
+        ""\"
+            create_at_job
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         task_name = task_name_entry.get()
         time = time_entry.get()
         program_path = program_path_entry.get()
@@ -353,7 +381,8 @@ def open_new_at_task_window():
 
 
 def open_new_crontab_task_window():
-    """
+    """ ""\"
+    ""\"
     Opens a window for creating a new 'crontab' task.
 
     Offers an interface for scheduling a new 'cron' job with detailed time settings and script path.
@@ -364,7 +393,8 @@ def open_new_crontab_task_window():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     new_cron_task_window = Toplevel(root)
     new_cron_task_window.title("New 'crontab' Task")
     new_cron_task_window.geometry("500x300")
@@ -391,15 +421,17 @@ def open_new_crontab_task_window():
     script_path_entry.grid(row=6, column=1)
 
     def create_crontab_job():
-        """
-        create_crontab_job
+        """ ""\"
+        ""\"
+            create_crontab_job
 
-        Args:
-            None
+                Args:
+                    None
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         name = name_entry.get()
         minute = minute_entry.get()
         hour = hour_entry.get()

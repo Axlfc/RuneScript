@@ -10,7 +10,8 @@ user_config_file_path = os.path.normpath(
 
 
 def read_config_parameter(parameter_path):
-    """
+    """ ""\"
+    ""\"
     Read a specific parameter from user_config.json (if available).
 
     Parameters:
@@ -18,19 +19,22 @@ def read_config_parameter(parameter_path):
 
     Returns:
     - The value of the parameter if found, otherwise None.
-    """
+    ""\"
+    ""\" """
 
     def get_nested_value(data_dict, keys_list):
-        """
-        get_nested_value
+        """ ""\"
+        ""\"
+            get_nested_value
 
-        Args:
-            data_dict (Any): Description of data_dict.
-            keys_list (Any): Description of keys_list.
+                Args:
+                    data_dict (Any): Description of data_dict.
+                    keys_list (Any): Description of keys_list.
 
-        Returns:
-            None: Description of return value.
-        """
+                Returns:
+                    None: Description of return value.
+            ""\"
+        ""\" """
         current_level = data_dict
         for key in keys_list:
             if isinstance(current_level, dict) and key in current_level:
@@ -51,7 +55,8 @@ def read_config_parameter(parameter_path):
 
 
 def write_config_parameter(parameter_path, parameter_value):
-    """
+    """ ""\"
+    ""\"
     Write a parameter and its value to user_config.json, creating the file if necessary.
 
     Parameters:
@@ -60,7 +65,8 @@ def write_config_parameter(parameter_path, parameter_value):
 
     Returns:
     - True if the parameter was successfully written, otherwise False.
-    """
+    ""\"
+    ""\" """
     try:
         with open(user_config_file_path, "r") as user_config_file:
             user_config_data = json.load(user_config_file)
@@ -84,7 +90,8 @@ def write_config_parameter(parameter_path, parameter_value):
 
 
 def get_scriptsstudio_directory():
-    """
+    """ ""\"
+    ""\"
     get_scriptsstudio_directory
 
     Args:
@@ -92,7 +99,8 @@ def get_scriptsstudio_directory():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     project_directory = os.getcwd()
     abs_path = os.path.abspath(project_directory)
     data_path = abs_path + "\\data"
@@ -113,7 +121,8 @@ def get_scriptsstudio_directory():
 
 
 def ensure_user_config():
-    """
+    """ ""\"
+    ""\"
     ensure_user_config
 
     Args:
@@ -121,7 +130,8 @@ def ensure_user_config():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     config_path = "data/config.json"
     user_config_path = "data/user_config.json"
     if not os.path.exists(user_config_path):
@@ -133,7 +143,8 @@ def ensure_user_config():
 
 
 def load_theme_setting():
-    """
+    """ ""\"
+    ""\"
     load_theme_setting
 
     Args:
@@ -141,7 +152,8 @@ def load_theme_setting():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     theme = read_config_parameter("options.theme_appearance.theme")
     if theme is None:
         theme = "cosmo"

@@ -40,7 +40,10 @@ git_icons = {
 
 
 def run_git_command(command, *args, repo_dir=None, encoding="utf-8"):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     Executes a git command and handles errors.
 
     Args:
@@ -51,7 +54,10 @@ def run_git_command(command, *args, repo_dir=None, encoding="utf-8"):
 
     Returns:
     str: Standard output from the git command.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     try:
         result = subprocess.run(
             ["git"] + [command] + list(args),
@@ -71,7 +77,10 @@ def run_git_command(command, *args, repo_dir=None, encoding="utf-8"):
 
 
 def is_git_repository(directory_path):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     is_git_repository
 
     Args:
@@ -79,7 +88,10 @@ def is_git_repository(directory_path):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     try:
         subprocess.check_call(["git", "-C", directory_path, "status"], check=True)
         return True
@@ -88,7 +100,10 @@ def is_git_repository(directory_path):
 
 
 def is_valid_branch_name(branch):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     is_valid_branch_name
 
     Args:
@@ -96,12 +111,18 @@ def is_valid_branch_name(branch):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     return re.match("^[\\w.-]+$", branch) is not None
 
 
 def is_valid_file_path(file_path):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     is_valid_file_path
 
     Args:
@@ -109,12 +130,18 @@ def is_valid_file_path(file_path):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     return os.path.isfile(file_path)
 
 
 def is_valid_repo_url(url):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     is_valid_repo_url
 
     Args:
@@ -122,18 +149,27 @@ def is_valid_repo_url(url):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     return True
 
 
 def git_tag(tag_name, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     Adds a Git tag to the current repository.
 
     Args:
         tag_name (str): The name of the tag to create.
         repo_dir (str, optional): The directory of the Git repository.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     try:
         run_git_command("tag", tag_name, repo_dir=repo_dir)
         logger.info(f"{git_icons['tag']} Tag '{tag_name}' created successfully.")
@@ -146,7 +182,10 @@ def git_tag(tag_name, repo_dir=None):
 
 
 def git_commit(message, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_commit
 
     Args:
@@ -155,7 +194,10 @@ def git_commit(message, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     status_output = run_git_command("status", repo_dir=repo_dir)
     if "Changes not staged for commit" in status_output:
         logger.error(
@@ -178,7 +220,10 @@ def git_commit(message, repo_dir=None):
 
 
 def git_push(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_push
 
     Args:
@@ -186,13 +231,19 @@ def git_push(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("push", repo_dir=repo_dir)
     logger.info(f"{git_icons['push']} Push successful")
 
 
 def git_pull(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_pull
 
     Args:
@@ -200,13 +251,19 @@ def git_pull(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("pull", repo_dir=repo_dir)
     logger.info(f"{git_icons['pull']} Pull successful")
 
 
 def git_merge(branch, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_merge
 
     Args:
@@ -215,7 +272,10 @@ def git_merge(branch, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     if not is_valid_branch_name(branch):
         logger.error("Invalid branch name provided.")
         sys.exit(1)
@@ -224,7 +284,10 @@ def git_merge(branch, repo_dir=None):
 
 
 def git_clone(url, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_clone
 
     Args:
@@ -233,7 +296,10 @@ def git_clone(url, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     if not is_valid_repo_url(url):
         logger.error("Invalid repository URL provided.")
         sys.exit(1)
@@ -242,7 +308,10 @@ def git_clone(url, repo_dir=None):
 
 
 def git_fetch(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_fetch
 
     Args:
@@ -250,13 +319,19 @@ def git_fetch(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("fetch", repo_dir=repo_dir)
     logger.info(f"{git_icons['fetch']} Fetch successful")
 
 
 def git_add(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_add
 
     Args:
@@ -264,13 +339,19 @@ def git_add(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("add", ".", repo_dir=repo_dir)
     logger.info(f"{git_icons['add']} Add successful")
 
 
 def git_checkout(branch, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_checkout
 
     Args:
@@ -279,13 +360,19 @@ def git_checkout(branch, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("checkout", branch, repo_dir=repo_dir)
     logger.info(f"{git_icons['checkout']} Checkout to {branch} successful")
 
 
 def git_branch(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_branch
 
     Args:
@@ -293,13 +380,19 @@ def git_branch(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     branches = run_git_command("branch", repo_dir=repo_dir)
     logger.info(f"{git_icons['branch']} Branches:\n{branches}")
 
 
 def git_hard(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_hard
 
     Args:
@@ -307,13 +400,19 @@ def git_hard(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("reset", "--hard", repo_dir=repo_dir)
     logger.info(f"{git_icons['hard']} Hard reset successful")
 
 
 def git_pristine(delete_ignored_files=False, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_pristine
 
     Args:
@@ -322,7 +421,10 @@ def git_pristine(delete_ignored_files=False, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("reset", "--hard", repo_dir=repo_dir)
     if delete_ignored_files:
         run_git_command("clean", "-fdx", repo_dir=repo_dir)
@@ -332,7 +434,10 @@ def git_pristine(delete_ignored_files=False, repo_dir=None):
 
 
 def git_status(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_status
 
     Args:
@@ -340,14 +445,20 @@ def git_status(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     status = run_git_command("status", repo_dir=repo_dir)
     diff = run_git_command("diff", "--color", repo_dir=repo_dir)
     logger.info(f"{git_icons['status']} Status:\n{status}")
 
 
 def git_log(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_log
 
     Args:
@@ -355,7 +466,10 @@ def git_log(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     log_format = "%Cred%h %Cblue%an%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset"
     log = run_git_command(
         "log",
@@ -369,7 +483,10 @@ def git_log(repo_dir=None):
 
 
 def git_diff(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_diff
 
     Args:
@@ -377,14 +494,20 @@ def git_diff(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("config", "--local", "color.ui", "auto", repo_dir=repo_dir)
     diff = run_git_command("diff", "--color", repo_dir=repo_dir)
     logger.info(f"{git_icons['diff']} Diff:\n{diff}")
 
 
 def git_blame(file, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_blame
 
     Args:
@@ -393,13 +516,19 @@ def git_blame(file, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     blame = run_git_command("blame", file, repo_dir=repo_dir)
     logger.info(f"{git_icons['blame']} Blame:\n{blame}")
 
 
 def git_rebase(branch, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_rebase
 
     Args:
@@ -408,13 +537,19 @@ def git_rebase(branch, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("rebase", branch, repo_dir=repo_dir)
     logger.info(f"{git_icons['rebase']} Rebase onto {branch} successful")
 
 
 def git_stash(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_stash
 
     Args:
@@ -422,13 +557,19 @@ def git_stash(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("stash", repo_dir=repo_dir)
     logger.info(f"{git_icons['stash']} Stash successful")
 
 
 def git_unstash(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_unstash
 
     Args:
@@ -436,13 +577,19 @@ def git_unstash(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("stash", "pop", repo_dir=repo_dir)
     logger.info(f"{git_icons['unstash']} Unstash successful")
 
 
 def git_remote(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_remote
 
     Args:
@@ -450,13 +597,19 @@ def git_remote(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     remotes = run_git_command("remote", "-v", repo_dir=repo_dir)
     logger.info(f"{git_icons['remote']} Remotes:\n{remotes}")
 
 
 def git_config(username=None, email=None, repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_config
 
     Args:
@@ -466,7 +619,10 @@ def git_config(username=None, email=None, repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     if username:
         run_git_command("config", "user.name", username, repo_dir=repo_dir)
         logger.info(f"{git_icons['config']} Config user.name set to {username}")
@@ -476,7 +632,10 @@ def git_config(username=None, email=None, repo_dir=None):
 
 
 def git_init(repo_dir=None):
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     git_init
 
     Args:
@@ -484,13 +643,19 @@ def git_init(repo_dir=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     run_git_command("init", repo_dir=repo_dir)
     logger.info(f"{git_icons['init']} Git repository initialized")
 
 
 def main():
-    """
+    """ ""\"
+    ""\"
+    ""\"
+    ""\"
     main
 
     Args:
@@ -498,7 +663,10 @@ def main():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\"
+    ""\"
+    ""\" """
     parser = argparse.ArgumentParser(description="Emulate Git aliases in Python")
     parser.add_argument(
         "--repo-dir", help="Directory of the git repository", default=default_repo_dir
@@ -614,8 +782,8 @@ def main():
     if args.command is not None:
         if not args.repo_dir:
             args.repo_dir = default_repo_dir
-        if args.command not in ["clone", "init"] and (
-            not is_git_repository(args.repo_dir)
+        if args.command not in ["clone", "init"] and not is_git_repository(
+            args.repo_dir
         ):
             logger.error(
                 f"{args.repo_dir} is not a Git repository. Please check the directory path and try again."

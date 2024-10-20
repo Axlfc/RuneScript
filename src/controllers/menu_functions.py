@@ -111,7 +111,8 @@ run_icon = "▶"
 
 
 def init_git_console():
-    """
+    """ ""\"
+    ""\"
     init_git_console
 
     Args:
@@ -119,14 +120,16 @@ def init_git_console():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     global git_console_instance
     if git_console_instance is None:
         git_console_instance = "Something"
 
 
 def open_current_directory(directory=directory_label.cget("text")):
-    """
+    """ ""\"
+    ""\"
     open_current_directory
 
     Args:
@@ -134,7 +137,8 @@ def open_current_directory(directory=directory_label.cget("text")):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if sys.platform == "win32":
         os.startfile(directory)
     elif sys.platform == "darwin":
@@ -144,7 +148,8 @@ def open_current_directory(directory=directory_label.cget("text")):
 
 
 def about(event=None):
-    """
+    """ ""\"
+    ""\"
     Displays the 'About' information of the application.
 
     This function triggers a messagebox that provides details about the ScriptsEditor, including its creation and version.
@@ -154,7 +159,8 @@ def about(event=None):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     messagebox.showinfo(
         localization_data["about_scripts_editor"],
         localization_data["scripts_editor_info"],
@@ -162,7 +168,8 @@ def about(event=None):
 
 
 def open_scriptsstudio_folder():
-    """
+    """ ""\"
+    ""\"
     open_scriptsstudio_folder
 
     Args:
@@ -170,14 +177,16 @@ def open_scriptsstudio_folder():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     open_current_directory(
         read_config_parameter("options.file_management.scriptsstudio_directory")
     )
 
 
 def open_scriptsstudio_data_folder():
-    """
+    """ ""\"
+    ""\"
     open_scriptsstudio_data_folder
 
     Args:
@@ -185,7 +194,8 @@ def open_scriptsstudio_data_folder():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     open_current_directory(
         read_config_parameter("options.file_management.scriptsstudio_directory")
         + "\\data"
@@ -271,7 +281,8 @@ find_button.grid(in_=toolbar, row=0, column=9, padx=4, pady=4, sticky="w")
 
 
 def select_directory():
-    """
+    """ ""\"
+    ""\"
     Opens a dialog for the user to select a directory, and changes the current working directory to the selected one.
 
     After the directory is selected, the function updates the directory label in the UI and opens the first text file
@@ -282,7 +293,8 @@ def select_directory():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     directory = filedialog.askdirectory()
     if directory:
         os.chdir(directory)
@@ -301,7 +313,8 @@ def select_directory():
 
 
 def open_first_text_file(directory):
-    """
+    """ ""\"
+    ""\"
     Opens the first text file in the given directory.
 
     This function scans the specified directory for text files and, if found, opens the first one. It is typically
@@ -312,7 +325,8 @@ def open_first_text_file(directory):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     text_files = get_text_files(directory)
     if text_files:
         file_path = os.path.join(directory, text_files[0])
@@ -320,7 +334,8 @@ def open_first_text_file(directory):
 
 
 def get_text_files(directory):
-    """
+    """ ""\"
+    ""\"
     Retrieves a list of text files in the specified directory.
 
     This function scans the provided directory and creates a list of all files ending with a '.txt' extension.
@@ -330,7 +345,8 @@ def get_text_files(directory):
 
     Returns:
     list: A list of text file names found in the directory.
-    """
+    ""\"
+    ""\" """
     text_files = []
     for file in os.listdir(directory):
         if file.endswith(".txt"):
@@ -339,7 +355,8 @@ def get_text_files(directory):
 
 
 def toggle_directory_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_directory_view_visibility
 
     Args:
@@ -347,7 +364,8 @@ def toggle_directory_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     global current_directory
     global directory_label
     if show_directory_view_var.get() == 1:
@@ -374,7 +392,8 @@ def toggle_directory_view_visibility(frame):
 
 
 def toggle_file_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_file_view_visibility
 
     Args:
@@ -382,7 +401,8 @@ def toggle_file_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if show_file_view_var.get() == 1:
         write_config_parameter("options.view_options.is_file_view_visible", "true")
         frame.grid(row=1, column=0, pady=0, sticky="ew")
@@ -411,7 +431,8 @@ def toggle_file_view_visibility(frame):
 
 
 def toggle_arguments_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_arguments_view_visibility
 
     Args:
@@ -419,7 +440,8 @@ def toggle_arguments_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if show_arguments_view_var.get() == 1:
         write_config_parameter("options.view_options.is_arguments_view_visible", "true")
         frame.grid(row=5, column=0, pady=0, sticky="ew")
@@ -457,7 +479,8 @@ def toggle_arguments_view_visibility(frame):
 
 
 def toggle_run_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_run_view_visibility
 
     Args:
@@ -465,7 +488,8 @@ def toggle_run_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if show_run_view_var.get() == 1:
         write_config_parameter("options.view_options.is_run_view_visible", "true")
         if get_operative_system() != "Windows":
@@ -490,7 +514,8 @@ def toggle_run_view_visibility(frame):
 
 
 def toggle_timeout_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_timeout_view_visibility
 
     Args:
@@ -498,7 +523,8 @@ def toggle_timeout_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if show_timeout_view_var.get() == 1:
         write_config_parameter("options.view_options.is_timeout_view_visible", "true")
         if get_operative_system() != "Windows":
@@ -541,7 +567,8 @@ def toggle_timeout_view_visibility(frame):
 
 
 def toggle_interactive_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_interactive_view_visibility
 
     Args:
@@ -549,7 +576,8 @@ def toggle_interactive_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if show_interactive_view_var.get() == 1:
         write_config_parameter(
             "options.view_options.is_interactive_view_visible", "true"
@@ -566,7 +594,8 @@ def toggle_interactive_view_visibility(frame):
 
 
 def toggle_filesystem_view_visibility(frame):
-    """
+    """ ""\"
+    ""\"
     toggle_filesystem_view_visibility
 
     Args:
@@ -574,7 +603,8 @@ def toggle_filesystem_view_visibility(frame):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if show_filesystem_view_var.get() == 1:
         frame.grid(row=2, column=2, sticky="nsew")
         frame.grid_columnconfigure(0, weight=1)
@@ -591,7 +621,8 @@ def add_view_section_to_menu(
     frame,
     function,
 ):
-    """
+    """ ""\"
+    ""\"
     add_view_section_to_menu
 
     Args:
@@ -604,7 +635,8 @@ def add_view_section_to_menu(
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     is_view_visible = read_config_parameter(
         f"options.view_options.{options_parameter_name}"
     )
@@ -627,7 +659,8 @@ def add_view_section_to_menu(
 
 
 def toggle_view(frame, function, options_parameter_name, view_variable):
-    """
+    """ ""\"
+    ""\"
     toggle_view
 
     Args:
@@ -638,13 +671,15 @@ def toggle_view(frame, function, options_parameter_name, view_variable):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     function(frame)
     update_config(options_parameter_name, view_variable.get())
 
 
 def update_config(option_name, value):
-    """
+    """ ""\"
+    ""\"
     update_config
 
     Args:
@@ -653,7 +688,8 @@ def update_config(option_name, value):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     user_config_file = "data/user_config.json"
     try:
         with open(user_config_file, "r") as config_file:
@@ -666,7 +702,8 @@ def update_config(option_name, value):
 
 
 def create_menu():
-    """
+    """ ""\"
+    ""\"
     Creates and adds the main menu to the application window.
 
     This function sets up the menu bar at the top of the application, adding file, edit, and other menus
@@ -677,7 +714,8 @@ def create_menu():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     global show_directory_view_var
     global show_file_view_var
     global show_arguments_view_var
@@ -703,7 +741,8 @@ def create_menu():
         accelerator="Ctrl+O",
         underline=0,
     )
-    "file_menu.add_command(label=\"Recent files\", command=open_script, compound='left', image=None, accelerator='Ctrl+O',\n                          underline=0)"
+    """file_menu.add_command(label="Recent files", command=open_script, compound='left', image=None, accelerator='Ctrl+O',
+                          underline=0)"""
     file_menu.add_command(
         label="Close",
         command=open_script,
@@ -712,7 +751,8 @@ def create_menu():
         accelerator="Ctrl+W",
         underline=0,
     )
-    "file_menu.add_command(label=\"Close All\", command=open_script, compound='left', image=None, accelerator='Ctrl+Shift+W',\n                          underline=0)"
+    """file_menu.add_command(label="Close All", command=open_script, compound='left', image=None, accelerator='Ctrl+Shift+W',
+                          underline=0)"""
     file_menu.add_command(
         label="Save",
         command=save_script,
@@ -721,7 +761,8 @@ def create_menu():
         accelerator="Ctrl+S",
         underline=0,
     )
-    "file_menu.add_command(label=\"Save All Files\", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',\n                          underline=0)"
+    """file_menu.add_command(label="Save All Files", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
+                          underline=0)"""
     file_menu.add_command(
         label="Save As...",
         command=save_as_new_script,
@@ -785,8 +826,20 @@ def create_menu():
         accelerator="Ctrl+V",
         underline=0,
     )
-    "edit_menu.add_command(label=\"Duplicate\",\n                          command=duplicate,\n                          compound='left',\n                          image=image_paste,\n                          accelerator='Ctrl+D',\n                          underline=0\n                          )"
-    "edit_menu.add_command(label=\"Select All\",\n                          command=select_all,\n                          compound='left',\n                          image=image_duplicate,\n                          accelerator='Ctrl+A',\n                          underline=0\n                          )"
+    """edit_menu.add_command(label="Duplicate",
+                          command=duplicate,
+                          compound='left',
+                          image=image_paste,
+                          accelerator='Ctrl+D',
+                          underline=0
+                          )"""
+    """edit_menu.add_command(label="Select All",
+                          command=select_all,
+                          compound='left',
+                          image=image_duplicate,
+                          accelerator='Ctrl+A',
+                          underline=0
+                          )"""
     edit_menu.add_separator()
     find_submenu = Menu(menu, tearoff=0)
     edit_menu.add_cascade(label="Find", menu=find_submenu)
@@ -942,7 +995,8 @@ def create_menu():
 
 
 def get_scheduled_tasks(submenu):
-    """
+    """ ""\"
+    ""\"
     Populates the 'Jobs' submenu with options based on the operating system.
 
     For Windows, it adds an option to view scheduled tasks. For other systems, it adds options for 'at' and 'crontab' jobs.
@@ -952,7 +1006,8 @@ def get_scheduled_tasks(submenu):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     if get_operative_system() == "Windows":
         submenu.add_command(
             label="Scheduled Tasks", command=open_scheduled_tasks_window

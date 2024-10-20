@@ -4,9 +4,9 @@ from src.views.tk_utils import root, text, script_text
 
 
 def duplicate(event=None):
-    """
+    """ ""\"
     Duplicates the currently selected text.
-    """
+    ""\" """
     try:
         selected_text = text.get(SEL_FIRST, SEL_LAST)
         if selected_text:
@@ -18,7 +18,7 @@ def duplicate(event=None):
 
 
 def undo():
-    """
+    """ ""\"
     Undoes the last action in the script text editor.
 
     This function reverts the last change made in the script text editor, typically used for undoing edits.
@@ -28,7 +28,7 @@ def undo():
 
     Returns:
     None
-    """
+    ""\" """
     try:
         print("UNDO TRIGGERED")
         script_text.edit_undo()
@@ -37,7 +37,7 @@ def undo():
 
 
 def redo():
-    """
+    """ ""\"
     Redoes the last undone action in the script text editor.
 
     If actions were previously undone using the undo function, this function allows redoing those actions.
@@ -47,7 +47,7 @@ def redo():
 
     Returns:
     None
-    """
+    ""\" """
     try:
         print("REDO TRIGGERED")
         script_text.edit_redo()
@@ -56,7 +56,7 @@ def redo():
 
 
 def delete():
-    """
+    """ ""\"
     Deletes the currently selected text in the editor.
 
     This function removes the text that is currently selected within the editor.
@@ -66,12 +66,12 @@ def delete():
 
     Returns:
     None
-    """
+    ""\" """
     text.delete(index1=SEL_FIRST, index2=SEL_LAST)
 
 
 def select_all():
-    """
+    """ ""\"
     select_all
 
     Args:
@@ -79,12 +79,12 @@ def select_all():
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     text.tag_add("start", "1.0", "end")
 
 
 def cut():
-    """
+    """ ""\"
     Cuts the selected text from the script editor to the clipboard.
 
     This function removes the currently selected text from the document and places it on the clipboard,
@@ -95,12 +95,12 @@ def cut():
 
     Returns:
     None
-    """
+    ""\" """
     script_text.event_generate("<<Cut>>")
 
 
 def copy():
-    """
+    """ ""\"
     Copies the selected text from the script editor to the clipboard.
 
     This function copies the currently selected text to the clipboard without removing it from the document.
@@ -110,12 +110,12 @@ def copy():
 
     Returns:
     None
-    """
+    ""\" """
     script_text.event_generate("<<Copy>>")
 
 
 def paste():
-    """
+    """ ""\"
     Pastes text from the clipboard into the script editor at the cursor's current location.
 
     This function inserts the contents of the clipboard into the document at the current cursor position.
@@ -125,12 +125,12 @@ def paste():
 
     Returns:
     None
-    """
+    ""\" """
     script_text.event_generate("<<Paste>>")
 
 
 def duplicate():
-    """
+    """ ""\"
     Duplicates the selected text in the script editor.
 
     This function creates a copy of the selected text and inserts it immediately after the current selection.
@@ -140,6 +140,6 @@ def duplicate():
 
     Returns:
     None
-    """
+    ""\" """
     print("DUPLICAT")
     script_text.event_generate("<<Duplicate>>")

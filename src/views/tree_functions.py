@@ -5,7 +5,7 @@ from src.views.tk_utils import tree
 
 
 def update_tree(path):
-    """
+    """ ""\"
     update_tree
 
     Args:
@@ -13,7 +13,7 @@ def update_tree(path):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     for item in tree.get_children():
         tree.delete(item)
     abspath = os.path.abspath(path)
@@ -22,7 +22,7 @@ def update_tree(path):
 
 
 def populate_tree(parent, path):
-    """
+    """ ""\"
     populate_tree
 
     Args:
@@ -31,7 +31,7 @@ def populate_tree(parent, path):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     for item in os.listdir(path):
         if item != ".git" and item != ".idea":
             abspath = os.path.join(path, item)
@@ -41,7 +41,7 @@ def populate_tree(parent, path):
 
 
 def item_opened(event):
-    """
+    """ ""\"
     item_opened
 
     Args:
@@ -49,7 +49,7 @@ def item_opened(event):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     item = tree.focus()
     abspath = tree.item(item, "values")[0]
     if os.path.isdir(abspath):
@@ -58,7 +58,7 @@ def item_opened(event):
 
 
 def on_item_select(event):
-    """
+    """ ""\"
     on_item_select
 
     Args:
@@ -66,14 +66,14 @@ def on_item_select(event):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     item = tree.focus()
     print(f"Selected: {tree.item(item, 'text')}")
     print(f"Full path: {tree.item(item, 'values')[0]}")
 
 
 def on_double_click(event):
-    """
+    """ ""\"
     on_double_click
 
     Args:
@@ -81,7 +81,7 @@ def on_double_click(event):
 
     Returns:
         None: Description of return value.
-    """
+    ""\" """
     item = tree.identify("item", event.x, event.y)
     filepath = tree.item(item, "values")[0]
     if os.path.isfile(filepath):

@@ -53,12 +53,14 @@ file_types = [
 
 
 def open_file(file_path):
-    """
+    """ ""\"
+    ""\"
     Opens the specified file and updates the editor with its contents.
 
     This function reads the content from the specified file path and updates the script editor. It tries various
     encodings to ensure correct file reading and updates the UI based on the file extension.
-    """
+    ""\"
+    ""\" """
     global is_modified, file_name, last_saved_content
     if not prompt_save_changes():
         return
@@ -96,7 +98,8 @@ def open_file(file_path):
 
 
 def open_script():
-    """
+    """ ""\"
+    ""\"
     Opens an existing file into the script editor.
 
     This function displays a file dialog for the user to choose a file. Once a file is selected, it is opened
@@ -107,7 +110,8 @@ def open_script():
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     print("OPEN SCRIPT IS CALLED!")
     if is_modified:
         response = messagebox.askyesnocancel(
@@ -129,7 +133,8 @@ def open_script():
 
 
 def update_menu_based_on_extension(ext):
-    """
+    """ ""\"
+    ""\"
     Updates the application menu based on the file extension of the currently open file.
 
     Parameters:
@@ -137,7 +142,8 @@ def update_menu_based_on_extension(ext):
 
     Returns:
     None
-    """
+    ""\"
+    ""\" """
     menu_creators = {
         ".py": create_python_menu,
         ".csv": create_csv_menu,
@@ -196,9 +202,11 @@ def update_menu_based_on_extension(ext):
 
 
 def update_title():
-    """
+    """ ""\"
+    ""\"
     Updates the application window's title based on the file's modified status and the current file name.
-    """
+    ""\"
+    ""\" """
     global is_modified
     print("RENAME MAIN WINDOW TRIGGERED, IS MODIFIED?", is_modified)
     title = os.path.basename(file_name) if file_name else localization_data["untitled"]
@@ -210,9 +218,11 @@ def update_title():
 
 
 def on_text_change(event=None):
-    """
+    """ ""\"
+    ""\"
     Updates the modified flag when text in the editor changes.
-    """
+    ""\"
+    ""\" """
     global is_modified, last_saved_content
     print("on_text_change triggered")
     current_content = script_text.get("1.0", END)
@@ -229,9 +239,11 @@ def on_text_change(event=None):
 
 
 def prompt_save_changes():
-    """
+    """ ""\"
+    ""\"
     Prompts the user to save changes if the current file is modified.
-    """
+    ""\"
+    ""\" """
     if is_modified:
         response = messagebox.askyesnocancel(
             "Save Changes", "You have unsaved changes. Would you like to save them?"
@@ -244,9 +256,11 @@ def prompt_save_changes():
 
 
 def save():
-    """
+    """ ""\"
+    ""\"
     Saves the current file. If the file doesn't have a name, calls 'save_as' function.
-    """
+    ""\"
+    ""\" """
     global is_modified, file_name
     if not file_name or file_name == "Untitled":
         return save_as()
@@ -263,7 +277,8 @@ def save():
 
 
 def save_as():
-    """
+    """ ""\"
+    ""\"
     save_as
 
     Args:
@@ -271,9 +286,12 @@ def save_as():
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     print("ENTERING SAVE AS")
-    "\n        Opens a 'Save As' dialog to save the current file with a specified name.\n    "
+    """
+        Opens a 'Save As' dialog to save the current file with a specified name.
+    """
     global file_name
     global is_modified
     new_file_name = filedialog.asksaveasfilename(
@@ -289,7 +307,8 @@ def save_as():
 
 
 def close(event=None):
-    """
+    """ ""\"
+    ""\"
     close
 
     Args:
@@ -297,13 +316,15 @@ def close(event=None):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     if save():
         root.quit()
 
 
 def save_file(file_name, content):
-    """
+    """ ""\"
+    ""\"
     save_file
 
     Args:
@@ -312,16 +333,19 @@ def save_file(file_name, content):
 
     Returns:
         None: Description of return value.
-    """
+    ""\"
+    ""\" """
     with open(file_name, "w", encoding="utf-8") as file:
         file.write(content)
     messagebox.showinfo("Save", "Script saved successfully!")
 
 
 def save_script():
-    """
+    """ ""\"
+    ""\"
     Triggered when 'Save' is clicked. Saves the current file or prompts to save as new if it's a new file.
-    """
+    ""\"
+    ""\" """
     global file_name, is_modified
     if not file_name or file_name == "Untitled":
         print("Saving new script...")
@@ -341,9 +365,11 @@ def save_script():
 
 
 def save_as_new_script():
-    """
+    """ ""\"
+    ""\"
     Saves the current content as a new file. Opens a file dialog for the user to choose where to save.
-    """
+    ""\"
+    ""\" """
     global file_name, is_modified
     new_file_name = filedialog.asksaveasfilename(
         defaultextension=".*", filetypes=file_types
@@ -355,18 +381,22 @@ def save_as_new_script():
 
 
 def update_script_name_label(file_path):
-    """
+    """ ""\"
+    ""\"
     Updates the script name label with the base name of the provided file path.
-    """
+    ""\"
+    ""\" """
     base_name = os.path.basename(file_path)
     script_name_label.config(text=f"File Name: {base_name}")
 
 
 def new():
-    """
+    """ ""\"
+    ""\"
     Creates a new file in the editor.
     Prompts the user to save the current file if it is modified, then clears the text editor.
-    """
+    ""\"
+    ""\" """
     global is_modified
     if is_modified:
         response = messagebox.askyesnocancel(
@@ -385,9 +415,11 @@ def new():
 
 
 def clear_editor():
-    """
+    """ ""\"
+    ""\"
     Clears the text editor and resets the title and modified flag.
-    """
+    ""\"
+    ""\" """
     global file_name
     global is_modified
     script_text.delete("1.0", "end")
