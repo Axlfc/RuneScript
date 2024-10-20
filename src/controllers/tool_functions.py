@@ -8,6 +8,7 @@ import subprocess
 import threading
 import math
 import cmath
+import time
 from tkinter import (
     colorchooser,
     END,
@@ -4923,6 +4924,163 @@ def open_ai_assistant_window(session_id=None):
     initialize_ai_assistant_window()
     ai_assistant_window.mainloop()
 
+
+def open_translator_window():
+    translator_win = Toplevel()
+    translator_win.title("Real-time Translator")
+    translator_win.geometry("700x500")  # Adjust the size for better fitting of elements
+
+    # Row 1: Output area for translated text (wider and more emphasized)
+    output_text = scrolledtext.ScrolledText(translator_win, height=15, width=85)  # Widened for translation emphasis
+    output_text.pack(padx=10, pady=10)
+
+    # Row 2: Language selection and swap button
+    lang_frame = Frame(translator_win)
+    lang_frame.pack(fill=X, padx=10, pady=5)
+
+    # Language selection controls
+    languages = [
+        "English", "Spanish", "Chinese (Mandarin)", "German", "French", "Arabic",
+        "Portuguese", "Russian", "Japanese", "Hindi", "Korean", "Turkish",
+        "Italian", "Dutch", "Swedish", "Polish", "Vietnamese", "Thai",
+        "Indonesian", "Czech", "Catalan", "Hebrew", "Greek", "Danish",
+        "Finnish", "Norwegian", "Hungarian", "Romanian", "Bulgarian",
+        "Ukrainian", "Bengali", "Punjabi", "Urdu", "Malay", "Persian (Farsi)",
+        "Swahili", "Serbian", "Croatian", "Slovak", "Lithuanian", "Latvian",
+        "Estonian", "Basque", "Icelandic", "Malayalam", "Tamil", "Telugu",
+        "Gujarati", "Marathi", "Sinhala"
+    ]
+    input_lang_var = StringVar(value='Spanish')
+    output_lang_var = StringVar(value='English')
+
+    input_lang_dropdown = create_dropdown(lang_frame, "From:", input_lang_var, languages)
+    output_lang_dropdown = create_dropdown(lang_frame, "To:", output_lang_var, languages)
+
+    # Add the Swap button to toggle languages
+    swap_button = Button(lang_frame, text="Swap Languages",
+                         command=lambda: swap_languages(input_lang_var, output_lang_var, input_lang_dropdown, output_lang_dropdown))
+    swap_button.pack(side=LEFT, padx=(10, 10))
+
+    # Row 3: Input text field and translate button
+    input_frame = Frame(translator_win)
+    input_frame.pack(fill=X, padx=10, pady=5)
+
+    create_input_section(input_frame, output_text, input_lang_var, output_lang_var)
+
+    translator_win.mainloop()
+
+
+def create_dropdown(frame, label_text, variable, options):
+    """Helper method to create a dropdown for language selection."""
+    label = Label(frame, text=label_text)
+    label.pack(side=LEFT, padx=(0, 5))
+    dropdown = Combobox(frame, textvariable=variable, values=options, state="readonly", width=15)  # Adjusted width
+    dropdown.pack(side=LEFT, padx=(0, 10))
+    return dropdown
+
+
+def create_input_section(frame, output_text, input_lang_var, output_lang_var):
+    """Helper method to create input field and translate button."""
+
+    # Input field (multiline text widget)
+    input_entry = Text(frame, width=70, height=4, wrap="word")  # Wider input area, allows multiple lines
+    input_entry.pack(side=LEFT, padx=(0, 10))
+
+    # Track the last translation input
+    last_translation = {"input": None}
+
+    # Pass last_translation to the translate_text function
+    translate_button = Button(frame, text="Translate",
+                              command=lambda: translate_text(input_entry, output_text, input_lang_var, output_lang_var,
+                                                             last_translation))
+    translate_button.pack(side=LEFT, padx=(10, 10))
+
+    # Bind 'Enter' key to translate and 'Shift+Enter' for new lines in input field
+    input_entry.bind('<Return>', lambda event: handle_enter(input_entry, output_text, input_lang_var, output_lang_var, last_translation, event))
+    input_entry.bind('<Shift-Return>', lambda event: input_entry.insert(END, "\n"))
+
+
+def handle_enter(input_entry, output_text, input_lang_var, output_lang_var, last_translation, event):
+    """Handle the Enter key event to either translate or add a new line."""
+    # Only perform translation on Enter, not Shift+Enter
+    if event.state == 0:  # If no shift key is pressed
+        translate_text(input_entry, output_text, input_lang_var, output_lang_var, last_translation)
+        return 'break'  # Prevent default behavior of the Enter key (new line)
+
+
+def swap_languages(input_lang_var, output_lang_var, input_lang_dropdown, output_lang_dropdown):
+    """Swap the input and output language selections."""
+    current_input_lang = input_lang_var.get()
+    current_output_lang = output_lang_var.get()
+
+    # Swap the values
+    input_lang_var.set(current_output_lang)
+    output_lang_var.set(current_input_lang)
+
+    # Update the dropdowns' display to reflect the new values
+    input_lang_dropdown.set(input_lang_var.get())
+    output_lang_dropdown.set(output_lang_var.get())
+
+
+def translate_text(input_entry, output_text, input_lang_var, output_lang_var, last_translation):
+    """Handles translation logic and updates the output area."""
+    text = input_entry.get("1.0", END).strip()  # Get all text from Text widget
+
+    # Check if the current text is different from the last translated text
+    if text == last_translation.get("input"):
+        # Do nothing if the input has not changed
+        return
+
+    # Update the last_translation dict
+    last_translation["input"] = text
+
+    # Disable the input entry during translation
+    input_entry.config(state="disabled")
+
+    # Append the new translation to the output area (without clearing previous ones)
+    prompt = f"Translate the following text from {input_lang_var.get()} to {output_lang_var.get()}: {text}"
+    ai_script_path = "src/models/ai_assistant.py"
+    command = create_ai_command(ai_script_path, prompt)
+
+    try:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            bufsize=1,
+        )
+
+        translation = ""
+        output_text.insert(END,
+                           f"\n[{datetime.now().strftime('%H:%M:%S')}] From {input_lang_var.get()} to {output_lang_var.get()}:\n")
+        for line in process.stdout:
+            translation += line
+            stream_translation(line, output_text)
+
+        process.wait()
+
+    except Exception as e:
+        output_text.insert(END, f"Error: {e}\n")
+
+    finally:
+        # Re-enable the input entry after translation completes
+        input_entry.config(state="normal")
+
+
+def stream_translation(translation, output_text):
+    """Streams translated text character by character with a slight delay for better UX."""
+    for char in translation:
+        output_text.insert(END, char)
+        output_text.see(END)
+        output_text.update()
+        time.sleep(0.01)
+
+
+def create_ai_command(ai_script_path, prompt):
+    """Mock function for creating AI script commands."""
+    return ["python", ai_script_path, prompt]
 
 def _create_webview_process(title, url):
     """ ""\"

@@ -80,7 +80,7 @@ from src.controllers.tool_functions import (
     open_kanban_window,
     open_winget_window,
     open_system_info_window,
-    open_calculator_window,
+    open_calculator_window, open_translator_window,
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 from src.controllers.tool_functions import open_git_window, git_console_instance
@@ -926,6 +926,9 @@ def create_menu():
     )
     tool_menu.add_command(
         label="Kanban", command=open_kanban_window, accelerator="Alt+K"
+    )
+    tool_menu.add_command(
+        label="Translator", command=open_translator_window, accelerator="Alt+K"
     )
     tool_menu.add_command(
         label="AI Assistant", command=open_ai_assistant_window, accelerator="Alt+G"

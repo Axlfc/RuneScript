@@ -10,7 +10,7 @@ import time
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-import anthropic
+# import anthropic
 from src.controllers.parameters import read_config_parameter
 
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
@@ -301,7 +301,8 @@ def initialize_claude_client():
     ""\" """
     load_dotenv()
     CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-    return anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+    # return anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+    print("Not supported")
 
 
 def process_claude_chat(client, prompt):
