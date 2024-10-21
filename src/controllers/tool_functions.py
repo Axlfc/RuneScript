@@ -50,6 +50,8 @@ from tkinter import (
     SEL_FIRST,
     SEL_LAST, FLAT,
 )
+
+import requests
 import webview
 from datetime import datetime
 from tkinter.ttk import Separator, Treeview, Notebook, Combobox
@@ -3357,26 +3359,13 @@ def open_ai_assistant_window(session_id=None):
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
     def start_llama_cpp_python_server():
-
         file_path = find_gguf_file()
         print("THE PATH TO THE MODEL IS:\t", file_path)
 
     def open_ai_server_settings_window():
-
         json_path = "data/llm_server_providers.json"
 
         def toggle_display(selected_server):
-            """ ""\"
-            ""\"
-                    toggle_display
-
-                            Args:
-                                selected_server (Any): Description of selected_server.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             server_info = server_details.get(selected_server, {})
             server_url = server_info.get("server_url", "")
             api_key = server_info.get("api_key", "")
@@ -3405,17 +3394,6 @@ def open_ai_assistant_window(session_id=None):
                 api_key_label.grid_remove()
 
         def load_server_details():
-            """ ""\"
-            ""\"
-                    load_server_details
-
-                            Args:
-                                None
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             try:
                 with open("data/llm_server_providers.json", "r") as server_file:
                     return json.load(server_file)
@@ -3426,17 +3404,6 @@ def open_ai_assistant_window(session_id=None):
                 return {}
 
         def load_api_key_names():
-            """ ""\"
-            ""\"
-                    load_api_key_names
-
-                            Args:
-                                None
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             with open(json_path, "r") as file:
                 data = json.load(file)
             api_keys = {
@@ -3447,17 +3414,6 @@ def open_ai_assistant_window(session_id=None):
             return api_keys
 
         def get_env_variable(variable_name):
-            """ ""\"
-            ""\"
-                    get_env_variable
-
-                            Args:
-                                variable_name (Any): Description of variable_name.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             env_path = ".env"
             if os.path.exists(env_path):
                 with open(env_path, "r") as file:
@@ -3466,18 +3422,6 @@ def open_ai_assistant_window(session_id=None):
                             return line.split("=", 1)[1].strip()
 
         def update_env_file(api_key_field, new_api_key):
-            """ ""\"
-            ""\"
-                    update_env_file
-
-                            Args:
-                                api_key_field (Any): Description of api_key_field.
-                                new_api_key (Any): Description of new_api_key.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             env_path = ".env"
             updated = False
             if os.path.exists(env_path):
@@ -3498,17 +3442,6 @@ def open_ai_assistant_window(session_id=None):
                     file.write(f"{api_key_field}={new_api_key}\n")
 
         def save_ai_server_settings():
-            """ ""\"
-            ""\"
-                    save_ai_server_settings
-
-                            Args:
-                                None
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             server_url = server_url_entry.get()
             api_keys = load_api_key_names()
             selected = selected_server.get()
@@ -3784,16 +3717,71 @@ def open_ai_assistant_window(session_id=None):
             for url in current_session.links:
                 links_list.insert(END, url)
 
+    def is_raw_file_url(url):
+        """Check if the URL points to a raw file."""
+        raw_file_domains = ['raw.githubusercontent.com', 'gist.githubusercontent.com']
+        return any(domain in url for domain in raw_file_domains)
+
+    def scrape_raw_file_content(url):
+        """Scrape content from a raw file URL."""
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.text
+        except requests.RequestException as e:
+            print(f"Error scraping content from {url}: {e}")
+            return None
+
+    def add_link_to_vault(url, vault_path):
+        """Add scraped content from a raw file URL to the vault."""
+        content = scrape_raw_file_content(url)
+        if content:
+            with open(vault_path, 'a', encoding='utf-8') as vault_file:
+                vault_file.write(f"\n\nLink: {url}\n")
+                vault_file.write("=" * (len(url) + 6) + "\n")
+                vault_file.write(content)
+            print(f"Added content from {url} to vault.")
+        else:
+            print(f"Failed to add content from {url} to vault.")
+
+    def remove_link_from_vault(url, vault_path):
+        """Remove content associated with a link from the vault."""
+        with open(vault_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        start_marker = f"\n\nLink: {url}\n"
+        start_index = content.find(start_marker)
+
+        if start_index != -1:
+            next_link_index = content.find("\n\nLink:", start_index + 1)
+            if next_link_index != -1:
+                updated_content = content[:start_index] + content[next_link_index:]
+            else:
+                updated_content = content[:start_index]
+
+            with open(vault_path, 'w', encoding='utf-8') as file:
+                file.write(updated_content)
+            print(f"Removed content for link {url} from the vault.")
+        else:
+            print(f"Link {url} not found in the vault.")
+
     def add_new_link():
         new_url = simpledialog.askstring("Add New Link", "Enter URL:")
         if new_url and current_session:
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            if is_raw_file_url(new_url):
+                add_link_to_vault(new_url, vault_path)
             current_session.add_link(new_url)
+            current_session.save()
             refresh_links_list()
 
     def delete_selected_link():
         selected_link_index = links_list.curselection()
         if selected_link_index and current_session:
-            current_session.links.pop(selected_link_index[0])
+            url_to_remove = current_session.links.pop(selected_link_index[0])
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            if is_raw_file_url(url_to_remove):
+                remove_link_from_vault(url_to_remove, vault_path)
             current_session.save()
             refresh_links_list()
 
