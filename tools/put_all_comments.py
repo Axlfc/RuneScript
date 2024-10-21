@@ -1,160 +1,145 @@
 import os
 import ast
-from typing import List, Union
-import black
+import re
+from typing import List
 
 
 def read_file_with_fallback_encoding(file_path: str) -> str:
-    """ ""\"
+    """
     Attempt to read a file with UTF-8 encoding, falling back to other encodings if necessary.
 
     Args:
-        file_path (str): The path to the file to be read.
+    file_path (str): The path to the file to be read.
 
     Returns:
-        str: The content of the file.
+    str: The content of the file.
 
     Raises:
-        ValueError: If the file cannot be decoded with any of the attempted encodings.
-    ""\" """
-    encodings = ["utf-8", "latin-1", "ascii", "cp1252"]
+    ValueError: If the file cannot be decoded with any of the attempted encodings.
+    """
+    encodings = ['utf-8', 'latin-1', 'ascii', 'cp1252']
     for encoding in encodings:
         try:
-            with open(file_path, "r", encoding=encoding) as file:
+            with open(file_path, 'r', encoding=encoding) as file:
                 return file.read()
         except UnicodeDecodeError:
             continue
-    raise ValueError(
-        f"Unable to decode the file {file_path} with any of the attempted encodings."
-    )
+    raise ValueError(f'Unable to decode the file {file_path} with any of the attempted encodings.')
 
 
-def generate_comment(node: Union[ast.FunctionDef, ast.ClassDef]) -> str:
-    """ ""\"
-    Generate a docstring for a function or class based on its definition.
+def remove_inline_comments(file_content: str) -> str:
+    """
+    Remove inline comments from Python file content but preserve code on the same line.
 
     Args:
-        node (Union[ast.FunctionDef, ast.ClassDef]): The AST node representing the function or class definition.
+    file_content (str): The content of the Python file.
 
     Returns:
-        str: A formatted docstring string for the function or class.
-    ""\" """
-    base_indent = " " * 4
-    docstring_indent = base_indent
-    content_indent = base_indent + " " * 4
-    docstring_lines = []
-    docstring_lines.append("")
-    if isinstance(node, ast.FunctionDef):
-        docstring_lines.append(f"{docstring_indent}{node.name}")
-        docstring_lines.append("")
-        docstring_lines.append(f"{docstring_indent}Args:")
-        args = [arg.arg for arg in node.args.args]
-        if args:
-            for arg in args:
-                docstring_lines.append(
-                    f"{content_indent}{arg} (Any): Description of {arg}."
-                )
-        else:
-            docstring_lines.append(f"{content_indent}None")
-        docstring_lines.append("")
-        docstring_lines.append(f"{docstring_indent}Returns:")
-        returns = "None" if node.returns is None else "Any"
-        docstring_lines.append(
-            f"{content_indent}{returns}: Description of return value."
-        )
-    elif isinstance(node, ast.ClassDef):
-        docstring_lines.append(f"{docstring_indent}{node.name}")
-        docstring_lines.append("")
-        docstring_lines.append(f"{docstring_indent}Description of the class.")
-    docstring_lines.append("")
-    docstring = "\n".join(docstring_lines)
-    return docstring
+    str: The modified content with comments removed, preserving code.
+    """
+    # Use regular expression to remove inline comments
+    pattern = re.compile(r'(?<!")#.*$', re.MULTILINE)  # Only remove comments that are not inside strings
+    return re.sub(pattern, '', file_content)
 
 
-def add_comments_to_file(file_path: str) -> None:
-    """ ""\"
-    Add comments to all functions and classes in a Python file that don't already have them.
+def remove_docstrings(tree: ast.AST) -> ast.AST:
+    """
+    Remove all docstrings from an AST.
 
     Args:
-        file_path (str): The path to the Python file to be processed.
+    tree (ast.AST): The AST of the parsed Python code.
 
     Returns:
-        None
-    ""\" """
+    ast.AST: The modified AST with docstrings removed.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)):
+            if ast.get_docstring(node) is not None:
+                # Remove the docstring by removing the first statement (which is the docstring)
+                node.body = [n for n in node.body if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Str))]
+    return tree
+
+
+def remove_comments_and_docstrings(file_content: str) -> str:
+    """
+    Remove all comments and docstrings from Python file content.
+
+    Args:
+    file_content (str): The content of the Python file.
+
+    Returns:
+    str: The modified content with docstrings and comments removed.
+    """
+    # Step 1: Remove inline comments while preserving code
+    file_content_no_comments = remove_inline_comments(file_content)
+
+    # Step 2: Parse the AST to remove docstrings
+    try:
+        tree = ast.parse(file_content_no_comments)
+        tree = remove_docstrings(tree)
+        modified_content = ast.unparse(tree)
+    except SyntaxError:
+        return file_content_no_comments  # Return the content as-is if it can't be parsed
+
+    return modified_content
+
+
+def remove_comments_from_file(file_path: str) -> None:
+    """
+    Remove all comments and docstrings from a Python file.
+
+    Args:
+    file_path (str): The path to the Python file to be processed.
+
+    Returns:
+    None
+    """
     try:
         file_content = read_file_with_fallback_encoding(file_path)
-        tree = ast.parse(file_content)
-    except (ValueError, SyntaxError) as e:
-        print(f"Error parsing file {file_path}: {str(e)}")
-        return
-    modified = False
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and not ast.get_docstring(
-            node
-        ):
-            comment = generate_comment(node)
-            docstring_node = ast.Expr(value=ast.Constant(value=comment))
-            node.body.insert(0, docstring_node)
-            modified = True
-    if modified:
-        try:
-            modified_content = ast.unparse(tree)
-        except AttributeError:
-            print("ast.unparse is not available. Please use Python 3.9 or newer.")
-            return
-        modified_content = black.format_str(
-            modified_content, mode=black.FileMode(line_length=88)
-        )
-        with open(file_path, "w", encoding="utf-8") as f:
+        modified_content = remove_comments_and_docstrings(file_content)
+        with open(file_path, 'w', encoding='utf-8') as f:
             f.write(modified_content)
-    else:
-        print(f"No changes needed for file: {file_path}")
+    except (ValueError, SyntaxError) as e:
+        print(f'Error processing file {file_path}: {str(e)}')
 
 
 def process_project(project_root: str, exclude_paths: List[str]) -> None:
-    """ ""\"
-    Process all Python files in the project, adding comments where necessary.
+    """
+    Process all Python files in the project, removing comments and docstrings.
 
     Args:
-        project_root (str): The root directory of the project.
-        exclude_paths (List[str]): List of paths to exclude from processing.
+    project_root (str): The root directory of the project.
+    exclude_paths (List[str]): List of paths to exclude from processing.
 
     Returns:
-        None
-    ""\" """
+    None
+    """
     for root, _, files in os.walk(project_root):
         if any(exclude in root for exclude in exclude_paths):
             continue
         for file in files:
-            if file.endswith(".py"):
+            if file.endswith('.py'):
                 file_path = os.path.join(root, file)
-                print(f"Processing file: {file_path}")
-                add_comments_to_file(file_path)
+                print(f'Processing file: {file_path}')
+                remove_comments_from_file(file_path)
 
 
 def main():
-    """ ""\"
+    """
     Main function to run the script.
 
     Args:
-        None
+    None
 
     Returns:
-        None
-    ""\" """
+    None
+    """
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    exclude_paths = [
-        "ai_docs",
-        "docs",
-        "icons",
-        "images",
-        "vectorstore",
-        "python_dependencies",
-        "venv",
-    ]
+    exclude_paths = ['ai_docs', 'docs', 'icons', 'images', 'vectorstore',
+                     'python_dependencies', 'venv']
     process_project(project_root, exclude_paths)
-    print("Comment addition process completed.")
+    print('Comment removal process completed.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

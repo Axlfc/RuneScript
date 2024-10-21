@@ -3839,6 +3839,26 @@ def open_ai_assistant_window(session_id=None):
 
     links_context_menu = Menu(ai_assistant_window, tearoff=0)
 
+    def ingest_documents():
+        global current_session
+        if current_session:
+            for idx, doc_data in enumerate(current_session.documents):
+                doc_path = doc_data.get('path', '')
+                is_checked = doc_data.get('checked', False)
+                if is_checked and doc_path:
+                    doc_name = os.path.basename(doc_path)
+                    print(f"Ingesting document: {doc_name}")
+                    # Add logic to process the document here
+                    # e.g., extract text, send to AI assistant, etc.
+
+            for url in current_session.links:
+                print(f"Ingesting link: {url}")
+                # Add logic to process the link here
+                # e.g., retrieve content, send to AI assistant, etc.
+
+        else:
+            print("No current session available.")
+
     def show_links_context_menu(event):
         """ ""\"
         ""\"
@@ -3876,14 +3896,38 @@ def open_ai_assistant_window(session_id=None):
     Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(
         fill="x"
     )
+
+
     documents_frame = Frame(session_list_frame)
     documents_frame.pack(fill="both", expand=True)
     document_paths = []
     document_checkbuttons = []
 
+    ingest_frame = Frame(session_list_frame)
+    # Assuming `documents_frame` is the Frame widget holding the documents
+
+    ingest_button = Button(ingest_frame, text="INGEST", command=ingest_documents)
+    ingest_button.pack(side="bottom")
+
     def refresh_documents_list():
+        """
+        Refresh the list of documents displayed, updating their status (checked/unchecked).
+        """
         for widget in documents_frame.winfo_children():
             widget.destroy()
+
+        # Create a canvas inside the documents_frame to allow scrolling
+        documents_canvas = Canvas(documents_frame)
+        documents_scrollbar = Scrollbar(documents_frame, orient="vertical", command=documents_canvas.yview)
+        documents_canvas.configure(yscrollcommand=documents_scrollbar.set)
+
+        documents_container = Frame(documents_canvas)  # Frame inside the canvas to hold the document checkbuttons
+        documents_canvas.create_window((0, 0), window=documents_container, anchor="nw")
+
+        # Pack the canvas and scrollbar
+        documents_canvas.pack(side="left", fill="both", expand=True)
+        documents_scrollbar.pack(side="right", fill="y")
+
         if current_session:
             for idx, doc_data in enumerate(current_session.documents):
                 doc_path = doc_data.get('path', '')
@@ -3891,46 +3935,103 @@ def open_ai_assistant_window(session_id=None):
                 if doc_path:
                     doc_name = os.path.basename(doc_path)
                     var = IntVar(value=int(is_checked))
-                    checkbutton = Checkbutton(documents_frame, text=doc_name, variable=var,
+                    checkbutton = Checkbutton(documents_container, text=doc_name, variable=var,
                                               command=lambda idx=idx, v=var: on_document_checkbox_change(idx, v))
                     checkbutton.pack(anchor="w")
-                    document_checkbuttons.append((doc_path, var))
+                    checkbutton.bind("<Button-3>",
+                                     lambda event, idx=idx, doc_name=doc_name: on_document_right_click(event, idx,
+                                                                                                       doc_name))
+
+        # Update scrollregion after adding all widgets
+        documents_container.update_idletasks()  # Force the system to recalculate layout sizes
+        documents_canvas.config(scrollregion=documents_canvas.bbox("all"))
+
+        # Bind mousewheel scrolling to the canvas
+        documents_canvas.bind_all("<MouseWheel>",
+                                  lambda event: documents_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+
+        # Bind right-click to show context menu when right-clicking on empty space in the document container
+        documents_canvas.bind("<Button-3>", show_documents_context_menu_empty_space)
 
     def on_document_checkbox_change(document_index, var):
+        """
+        Handle the change of the checkbox status of a document.
+        """
         is_checked = bool(var.get())
         current_session.update_document_checkbox(document_index, is_checked)
 
+    def show_documents_context_menu_empty_space(event):
+        """
+        Show a context menu when right-clicking on the documents frame (empty space).
+        """
+        # Configure context menu for empty space (show only 'Add New Document')
+        documents_context_menu.delete(0, END)
+        documents_context_menu.add_command(label="Add New Document", command=add_new_document)
+        documents_context_menu.post(event.x_root, event.y_root)
+
+    def on_document_right_click(event, document_index, doc_name):
+        """
+        Handle right-click on a document item to show a context menu with options to remove or add a document.
+
+        Args:
+            event: The event triggered by right-clicking.
+            document_index: The index of the document in the list.
+            doc_name: The name of the document that was right-clicked.
+        """
+        print(
+            f"Right-clicked on document: {doc_name} (index {document_index})")  # Console print for right-click on a document
+
+        # Configure context menu for document items (show 'Remove Document' and 'Add New Document')
+        documents_context_menu.delete(0, END)
+        documents_context_menu.add_command(label="Remove Document", command=lambda: remove_document(document_index))
+        documents_context_menu.add_command(label="Add New Document", command=add_new_document)
+        documents_context_menu.post(event.x_root, event.y_root)
+
+    def remove_document(document_index):
+        """
+        Remove a document from the session.
+
+        Args:
+            document_index: The index of the document to remove.
+        """
+        if current_session:
+            current_session.documents.pop(document_index)
+            current_session.save()
+            refresh_documents_list()
+
     def add_new_document():
-        file_path = filedialog.askopenfilename(
+        """
+        Open a file dialog to add a new document to the session.
+        """
+        file_paths = filedialog.askopenfilenames(
             initialdir=".",
-            title="Select a PDF document",
+            title="Select PDF documents",
             filetypes=(("PDF files", "*.pdf"), ("all files", "*.*"))
         )
-        if file_path and current_session:
-            current_session.add_document(file_path)
+        if file_paths and current_session:
+            for file_path in file_paths:
+                current_session.add_document(file_path)
             refresh_documents_list()
 
     refresh_documents_list()
+    # Initialize the context menu
     documents_context_menu = Menu(ai_assistant_window, tearoff=0)
     documents_context_menu.add_command(
         label="Add New Document", command=add_new_document
     )
-
     def show_documents_context_menu(event):
-        """ ""\"
-        ""\"
-            show_documents_context_menu
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
+        """
+        Show a context menu when right-clicking on the documents frame (empty space).
+        """
+        # Configure context menu for empty space (show only 'Add New Document')
+        documents_context_menu.delete(0, END)
+        documents_context_menu.add_command(label="Add New Document", command=add_new_document)
         documents_context_menu.post(event.x_root, event.y_root)
 
-    documents_frame.bind("<Button-3>", show_documents_context_menu)
+    documents_frame.bind("<Button-3>", show_documents_context_menu_empty_space)
+    # Initialize the context menu
+    documents_context_menu = Menu(ai_assistant_window, tearoff=0)
+
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill="both", expand=True)
     html_display = HTMLLabel(ai_assistant_window, html="")
