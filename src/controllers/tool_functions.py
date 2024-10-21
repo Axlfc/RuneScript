@@ -4592,12 +4592,6 @@ def open_ai_assistant_window(session_id=None):
                         Tooltip(menu, command["description"])
 
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label="Cut", command=cut)
-        context_menu.add_command(label="Copy", command=copy)
-        context_menu.add_command(label="Paste", command=paste)
-        context_menu.add_command(label="Duplicate", command=duplicate)
-        context_menu.add_command(label="Select All", command=duplicate)
-        context_menu.add_separator()
         custom_commands = load_commands()
         add_commands_to_menu(context_menu, custom_commands)
         context_menu.add_separator()
