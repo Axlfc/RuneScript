@@ -3809,78 +3809,32 @@ def open_ai_assistant_window(session_id=None):
     links_list.pack(fill="both", expand=True)
 
     def refresh_links_list():
-        """ ""\"
-        ""\"
-            refresh_links_list
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        print("Refreshing links list...")
         links_list.delete(0, END)
-        for idx, url in enumerate(url_data):
-            links_list.insert(END, url)
+        if current_session:
+            for url in current_session.links:
+                links_list.insert(END, url)
 
     def add_new_link():
-        """ ""\"
-        ""\"
-            add_new_link
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        print("Adding new link...")
         new_url = simpledialog.askstring("Add New Link", "Enter URL:")
-        if new_url:
-            url_data.append(new_url)
+        if new_url and current_session:
+            current_session.add_link(new_url)
             refresh_links_list()
 
     def delete_selected_link():
-        """ ""\"
-        ""\"
-            delete_selected_link
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        print("Deleting selected link...")
         selected_link_index = links_list.curselection()
-        if selected_link_index:
-            url_data.pop(selected_link_index[0])
+        if selected_link_index and current_session:
+            current_session.links.pop(selected_link_index[0])
+            current_session.save()
             refresh_links_list()
 
     def edit_selected_link():
-        """ ""\"
-        ""\"
-            edit_selected_link
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         selected_link_index = links_list.curselection()
-        if selected_link_index:
+        if selected_link_index and current_session:
             selected_link = links_list.get(selected_link_index)
-            new_url = simpledialog.askstring(
-                "Edit Link", "Enter new URL:", initialvalue=selected_link
-            )
+            new_url = simpledialog.askstring("Edit Link", "Enter new URL:", initialvalue=selected_link)
             if new_url:
-                url_data[selected_link_index[0]] = new_url
+                current_session.links[selected_link_index[0]] = new_url
+                current_session.save()
                 refresh_links_list()
 
     links_context_menu = Menu(ai_assistant_window, tearoff=0)
@@ -3928,47 +3882,24 @@ def open_ai_assistant_window(session_id=None):
     document_checkbuttons = []
 
     def refresh_documents_list():
-        """ ""\"
-        ""\"
-            refresh_documents_list
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        print("Refreshing documents list...")
         for widget in documents_frame.winfo_children():
             widget.destroy()
-        for idx, doc_path in enumerate(document_paths):
-            doc_name = os.path.basename(doc_path)
-            var = IntVar()
-            checkbutton = Checkbutton(documents_frame, text=doc_name, variable=var)
-            checkbutton.pack(anchor="w")
-            document_checkbuttons.append((doc_path, var))
+        if current_session:
+            for idx, doc_path in enumerate(current_session.documents):
+                doc_name = os.path.basename(doc_path)
+                var = IntVar()
+                checkbutton = Checkbutton(documents_frame, text=doc_name, variable=var)
+                checkbutton.pack(anchor="w")
+                document_checkbuttons.append((doc_path, var))
 
     def add_new_document():
-        """ ""\"
-        ""\"
-            add_new_document
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        print("Adding new document...")
         file_path = filedialog.askopenfilename(
             initialdir=".",
             title="Select a PDF document",
-            filetypes=(("PDF files", "*.pdf"), ("all files", "*.*")),
+            filetypes=(("PDF files", "*.pdf"), ("all files", "*.*"))
         )
-        if file_path:
-            document_paths.append(file_path)
+        if file_path and current_session:
+            current_session.add_document(file_path)
             refresh_documents_list()
 
     refresh_documents_list()
@@ -4515,34 +4446,13 @@ def open_ai_assistant_window(session_id=None):
     history_pointer = [0]
 
     class Session:
-        """ ""\"
-        ""\"
-            Session
-
-                Description of the class.
-            ""\"
-        ""\" """
-
         def __init__(self, session_id, load_existing=True):
-            """ ""\"
-            ""\"
-                    __init__
-
-                            Args:
-                                self (Any): Description of self.
-                                session_id (Any): Description of session_id.
-                                load_existing (Any): Description of load_existing.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             self.id = session_id
             self.name = ""
-            self.file_path = os.path.join(
-                "data", "conversations", self.id, f"session_{self.id}.json"
-            )
+            self.file_path = os.path.join("data", "conversations", self.id, f"session_{self.id}.json")
             self.messages = []
+            self.links = []
+            self.documents = []
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
@@ -4550,64 +4460,41 @@ def open_ai_assistant_window(session_id=None):
                 self.save()
 
         def add_message(self, role, content):
-            """ ""\"
-            ""\"
-                    add_message
-
-                            Args:
-                                self (Any): Description of self.
-                                role (Any): Description of role.
-                                content (Any): Description of content.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             message = {
                 "role": role,
                 "content": content,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now().isoformat()
             }
             self.messages.append(message)
             self.save()
 
+        def add_link(self, url):
+            self.links.append(url)
+            self.save()
+
+        def add_document(self, document_path):
+            self.documents.append(document_path)
+            self.save()
+
         def save(self):
-            """ ""\"
-            ""\"
-                    save
-
-                            Args:
-                                self (Any): Description of self.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
             data = {
                 "session_id": self.id,
                 "session_name": self.name,
-                "messages": self.messages,
+                "links": self.links,
+                "documents": self.documents,
+                "messages": self.messages
             }
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
 
         def load(self):
-            """ ""\"
-            ""\"
-                    load
-
-                            Args:
-                                self (Any): Description of self.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             with open(self.file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 self.name = data.get("session_name", f"Session {self.id}")
                 self.messages = data.get("messages", [])
+                self.links = data.get("links", [])
+                self.documents = data.get("documents", [])
 
     def create_session():
         """ ""\"
@@ -4650,17 +4537,6 @@ def open_ai_assistant_window(session_id=None):
         output_text.see(END)
 
     def load_session(session_id):
-        """ ""\"
-        ""\"
-            load_session
-
-                Args:
-                    session_id (Any): Description of session_id.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global current_session
         for session in session_data:
             if session.id == session_id:
@@ -4668,19 +4544,10 @@ def open_ai_assistant_window(session_id=None):
                 current_session.load()
                 break
         update_chat_display()
+        refresh_links_list()
+        refresh_documents_list()
 
     def select_session(index):
-        """ ""\"
-        ""\"
-            select_session
-
-                Args:
-                    index (Any): Description of index.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global current_session
         sessions_list.selection_clear(0, END)
         sessions_list.selection_set(index)
@@ -4689,9 +4556,9 @@ def open_ai_assistant_window(session_id=None):
         current_session = session_data[index]
         current_session.load()
         update_chat_display()
-        write_config_parameter(
-            "options.network_settings.last_selected_session_id", index + 1
-        )
+        refresh_links_list()
+        refresh_documents_list()
+        write_config_parameter("options.network_settings.last_selected_session_id", index + 1)
 
     def update_sessions_list():
         """ ""\"
