@@ -12,7 +12,15 @@ import os
 
 
 def configure_app():
-    
+    """ ""\"
+    configure_app
+
+    Args:
+        None
+
+    Returns:
+        None: Description of return value.
+    ""\" """
     width = 800
     height = 600
     root.title(localization_data["scripts_editor"])
@@ -37,8 +45,8 @@ current_session = None
 file_name = ""
 current_font_family = "Liberation Mono"
 current_font_size = 12
-fontColor = "
-fontBackground = "
+fontColor = "#000000"
+fontBackground = "#FFFFFF"
 server_options = ["llama-cpp-python", "lmstudio", "ollama", "openai", "gemini"]
 ensure_user_config()
 get_scriptsstudio_directory()
