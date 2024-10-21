@@ -3885,12 +3885,20 @@ def open_ai_assistant_window(session_id=None):
         for widget in documents_frame.winfo_children():
             widget.destroy()
         if current_session:
-            for idx, doc_path in enumerate(current_session.documents):
-                doc_name = os.path.basename(doc_path)
-                var = IntVar()
-                checkbutton = Checkbutton(documents_frame, text=doc_name, variable=var)
-                checkbutton.pack(anchor="w")
-                document_checkbuttons.append((doc_path, var))
+            for idx, doc_data in enumerate(current_session.documents):
+                doc_path = doc_data.get('path', '')
+                is_checked = doc_data.get('checked', False)
+                if doc_path:
+                    doc_name = os.path.basename(doc_path)
+                    var = IntVar(value=int(is_checked))
+                    checkbutton = Checkbutton(documents_frame, text=doc_name, variable=var,
+                                              command=lambda idx=idx, v=var: on_document_checkbox_change(idx, v))
+                    checkbutton.pack(anchor="w")
+                    document_checkbuttons.append((doc_path, var))
+
+    def on_document_checkbox_change(document_index, var):
+        is_checked = bool(var.get())
+        current_session.update_document_checkbox(document_index, is_checked)
 
     def add_new_document():
         file_path = filedialog.askopenfilename(
@@ -4473,7 +4481,11 @@ def open_ai_assistant_window(session_id=None):
             self.save()
 
         def add_document(self, document_path):
-            self.documents.append(document_path)
+            self.documents.append({"path": document_path, "checked": False})
+            self.save()
+
+        def update_document_checkbox(self, document_index, checked):
+            self.documents[document_index]["checked"] = checked
             self.save()
 
         def save(self):
