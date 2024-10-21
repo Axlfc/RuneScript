@@ -1,11 +1,9 @@
 import PyPDF2
-import sys
 import os
 
 
 def convert_pdf_to_text(file_path):
-    """ ""\"
-    ""\"
+    """
     Convert a PDF file to text and return the extracted content.
 
     Args:
@@ -13,8 +11,7 @@ def convert_pdf_to_text(file_path):
 
     Returns:
         str: The extracted text from the PDF.
-    ""\"
-    ""\" """
+    """
     text = ""
     if file_path:
         try:
@@ -30,36 +27,31 @@ def convert_pdf_to_text(file_path):
 
 
 def save_text_to_file(text, output_path):
-    """ ""\"
-    ""\"
+    """
     Save the extracted text to a file.
 
     Args:
         text (str): The text to save.
         output_path (str): The path where the text will be saved.
-    ""\"
-    ""\" """
+    """
     with open(output_path, "a", encoding="utf-8") as file:
         file.write(text + "\n")
     print(f"Text saved to {output_path}")
 
 
-def main():
-    """ ""\"
-    ""\"
-    Main function for handling command-line input.
-    Expects a file path as an argument and an optional output path.
-    ""\"
-    ""\" """
-    if len(sys.argv) < 2:
-        print("Please provide the PDF file path as an argument.")
-        sys.exit(1)
-    file_path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) > 2 else "../../data/vault.txt"
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    text = convert_pdf_to_text(file_path)
-    save_text_to_file(text, output_path)
+def process_pdf_to_text(input_pdf, output_txt):
+    """
+    Process the input PDF and save the extracted text to the output path.
 
+    Args:
+        input_pdf (str): Path to the PDF file to convert.
+        output_txt (str): Path where the extracted text will be saved.
+    """
+    # Ensure the output directory exists
+    os.makedirs(os.path.dirname(output_txt), exist_ok=True)
 
-if __name__ == "__main__":
-    main()
+    # Convert the PDF to text
+    text = convert_pdf_to_text(input_pdf)
+
+    # Save the extracted text to the specified output file
+    save_text_to_file(text, output_txt)

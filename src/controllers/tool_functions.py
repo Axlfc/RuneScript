@@ -48,7 +48,7 @@ from tkinter import (
     BOTTOM,
     INSERT,
     SEL_FIRST,
-    SEL_LAST,
+    SEL_LAST, FLAT,
 )
 import webview
 from datetime import datetime
@@ -58,6 +58,7 @@ from PIL import ImageTk
 from PIL.Image import Image
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.models.convert_pdf_to_text import process_pdf_to_text, convert_pdf_to_text
 from src.views.tk_utils import text, script_text, root, style, current_session
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
@@ -3353,49 +3354,15 @@ def add_current_selected_text(include_selected_text):
 
 
 def open_ai_assistant_window(session_id=None):
-    """ ""\"
-    ""\"
-    Opens a window for interacting with an AI assistant.
-
-    This function creates a new window where users can input commands or queries, and the AI assistant
-    processes and displays the results. It also provides options for rendering Markdown to HTML.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
     def start_llama_cpp_python_server():
-        """ ""\"
-        ""\"
-            start_llama_cpp_python_server
 
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         file_path = find_gguf_file()
         print("THE PATH TO THE MODEL IS:\t", file_path)
 
     def open_ai_server_settings_window():
-        """ ""\"
-        ""\"
-            open_ai_server_settings_window
 
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         json_path = "data/llm_server_providers.json"
 
         def toggle_display(selected_server):
@@ -3842,25 +3809,66 @@ def open_ai_assistant_window(session_id=None):
 
     links_context_menu = Menu(ai_assistant_window, tearoff=0)
 
+    def reverse_ingestion_from_vault(doc_path, vault_path):
+        text_content_to_remove = convert_pdf_to_text(doc_path)
+
+        # Load current vault content
+        if os.path.exists(vault_path):
+            with open(vault_path, 'r', encoding='utf-8') as file:
+                current_vault_content = file.readlines()
+
+            # Remove the content of the document from the vault
+            updated_content = [line for line in current_vault_content if line.strip() not in text_content_to_remove]
+
+            # Save the updated vault
+            with open(vault_path, 'w', encoding='utf-8') as file:
+                file.writelines(updated_content)
+            print(f"Removed content from vault for document: {os.path.basename(doc_path)}.")
+
     def ingest_documents():
         global current_session
         if current_session:
+            print(f"Ingesting documents for session {current_session.id}...")
+
+            # Path to the vault file for the current session
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+
+            # Read existing content of the vault
+            existing_content = ""
+            if os.path.exists(vault_path):
+                with open(vault_path, 'r', encoding='utf-8') as vault_file:
+                    existing_content = vault_file.read()
+
             for idx, doc_data in enumerate(current_session.documents):
                 doc_path = doc_data.get('path', '')
                 is_checked = doc_data.get('checked', False)
-                if is_checked and doc_path:
+
+                if doc_path and is_checked:
                     doc_name = os.path.basename(doc_path)
-                    print(f"Ingesting document: {doc_name}")
-                    # Add logic to process the document here
-                    # e.g., extract text, send to AI assistant, etc.
 
-            for url in current_session.links:
-                print(f"Ingesting link: {url}")
-                # Add logic to process the link here
-                # e.g., retrieve content, send to AI assistant, etc.
+                    # Check if the document has already been ingested
+                    if f"Document: {doc_name}" in existing_content:
+                        print(f"Document '{doc_name}' has already been ingested. Skipping.")
+                        continue
 
-        else:
-            print("No current session available.")
+                    # Convert PDF to text and append to the vault
+                    with open(vault_path, 'a', encoding='utf-8') as vault_file:
+                        extracted_text = convert_pdf_to_text(doc_path)
+                        vault_file.write(extracted_text)
+
+                    # Visually indicate ingestion (strike-through or underscore)
+                    # document_checkbuttons[idx].config(fg="gray", font=("Helvetica", 10, "overstrike"))
+                    print(f"Ingested document: {doc_name} and saved to vault.")
+
+                elif doc_path and not is_checked:
+                    # Reverse the ingestion by removing the text from the vault
+                    reverse_ingestion_from_vault(doc_path, vault_path)
+
+                    # Revert the visual effect (remove strike-through)
+                    # document_checkbuttons[idx].config(fg="black", font=("Helvetica", 10, "normal"))
+                    print(f"Reversed ingestion for document: {os.path.basename(doc_path)}.")
+
+            print(f"Vault updated for session {current_session.id}.")
 
     def show_links_context_menu(event):
         """ ""\"
@@ -3904,6 +3912,14 @@ def open_ai_assistant_window(session_id=None):
     document_paths = []
     document_checkbuttons = []
 
+    # Function to change the button's appearance on hover
+    def on_button_enter(e):
+        ingest_button.config(background='#2E86C1', foreground='white', relief=RAISED)
+
+    # Function to revert the button's appearance when the mouse leaves
+    def on_button_leave(e):
+        ingest_button.config(background='SystemButtonFace', foreground='black', relief=FLAT)
+
     # Create a frame for the ingest button at the bottom
     ingest_frame = Frame(session_list_frame)
     ingest_frame.pack(side="bottom", fill="x")
@@ -3911,7 +3927,12 @@ def open_ai_assistant_window(session_id=None):
     # INGEST Button (Restored)
     # Button to ingest documents
     ingest_button = Button(ai_assistant_window, text="INGEST", command=ingest_documents)
-    ingest_button.pack(side="bottom", pady=10)
+
+    # Bind hover events to the button
+    ingest_button.bind("<Enter>", on_button_enter)  # Mouse enters the button area
+    ingest_button.bind("<Leave>", on_button_leave)  # Mouse leaves the button area
+
+    ingest_button.pack(side="top")
 
     def refresh_documents_list():
         """
@@ -4005,7 +4026,8 @@ def open_ai_assistant_window(session_id=None):
 
     def add_new_document():
         """
-        Open a file dialog to add a new document to the session.
+        Open a file dialog to add new documents to the session.
+        Checks for duplicates before adding and displays an error message if a duplicate is found.
         """
         file_paths = filedialog.askopenfilenames(
             initialdir=".",
@@ -4013,16 +4035,25 @@ def open_ai_assistant_window(session_id=None):
             filetypes=(("PDF files", "*.pdf"), ("all files", "*.*"))
         )
         if file_paths and current_session:
+            duplicates = []
+            new_files = []
             for file_path in file_paths:
-                current_session.add_document(file_path)
-            refresh_documents_list()
+                if any(doc['path'] == file_path for doc in current_session.documents):
+                    duplicates.append(os.path.basename(file_path))
+                else:
+                    new_files.append(file_path)
+                    current_session.add_document(file_path)
 
-    refresh_documents_list()
-    # Initialize the context menu
-    documents_context_menu = Menu(ai_assistant_window, tearoff=0)
-    documents_context_menu.add_command(
-        label="Add New Document", command=add_new_document
-    )
+            if duplicates:
+                duplicate_list = "\n".join(duplicates)
+                messagebox.showerror("Duplicate Files",
+                                     f"The following files are already in the document list:\n\n{duplicate_list}")
+
+            if new_files:
+                refresh_documents_list()
+
+            if duplicates and not new_files:
+                messagebox.showinfo("No New Files", "No new files were added to the document list.")
     def show_documents_context_menu(event):
         """
         Show a context menu when right-clicking on the documents frame (empty space).
@@ -4153,17 +4184,15 @@ def open_ai_assistant_window(session_id=None):
             entry.insert(0, command)
 
     def stream_output(process):
-        """ ""\"
-        ""\"
-            stream_output
+        """
+        Stream the output from the AI process.
 
-                Args:
-                    process (Any): Description of process.
+        Args:
+            process (Any): The AI process object.
 
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
+        Returns:
+            None
+        """
         global current_session
         ai_response_buffer = ""
         try:
@@ -4178,12 +4207,53 @@ def open_ai_assistant_window(session_id=None):
                         output_text.see(END)
                 elif process.poll() is not None:
                     break
+
+            # After the AI response is fully received
             if ai_response_buffer:
                 current_session.add_message("ai", ai_response_buffer)
+
+                # Extract content between <output> and </output> tags
+                output_content = extract_output_content(ai_response_buffer)
+
+                # Only append to the vault if valid output is found
+                if output_content:
+                    append_to_vault(f"AI: {output_content}")
+
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n", "error")
         finally:
             on_processing_complete()
+
+    def extract_output_content(ai_response):
+        """
+        Extract content between <output> and </output> tags.
+
+        Args:
+            ai_response (str): The full AI response text.
+
+        Returns:
+            str: The extracted content if found, otherwise an empty string.
+        """
+        import re
+        output_pattern = re.compile(r'<output>(.*?)</output>', re.DOTALL)
+        matches = output_pattern.findall(ai_response)
+        return "\n".join(matches) if matches else ""
+
+    def append_to_vault(content):
+        """
+        Append content to the session's vault.txt file.
+
+        Args:
+            content (str): The content to append to the vault.
+
+        Returns:
+            None
+        """
+        if current_session:
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            with open(vault_path, "a", encoding="utf-8") as vault_file:
+                vault_file.write(content + "\n")
+            print(f"Appended AI output to vault for session {current_session.id}.")
 
     def on_processing_complete():
         """ ""\"
@@ -4236,33 +4306,29 @@ def open_ai_assistant_window(session_id=None):
             pass
 
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
-        """ ""\"
-        ""\"
-            execute_ai_assistant_command
+        """
+        Execute the AI assistant command by sending the user input to the assistant.
 
-                Args:
-                    opened_script_var (Any): Description of opened_script_var.
-                    selected_text_var (Any): Description of selected_text_var.
-                    ai_command (Any): Description of ai_command.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
+        Args:
+            opened_script_var (IntVar): Indicates whether the entire main script should be included.
+            selected_text_var (IntVar): Indicates whether the selected text from the script should be included.
+            ai_command (str): The command or query to send to the AI assistant.
+        """
         global original_md_content, selected_agent_var, current_session
         if not current_session:
             create_session()
+
         if ai_command.strip():
             script_content = ""
             if selected_text_var.get():
                 try:
                     script_content = (
-                        "```\n"
-                        + script_text.get(
-                            script_text.tag_ranges("sel")[0],
-                            script_text.tag_ranges("sel")[1],
-                        )
-                        + "```\n\n"
+                            "```\n"
+                            + script_text.get(
+                        script_text.tag_ranges("sel")[0],
+                        script_text.tag_ranges("sel")[1],
+                    )
+                            + "```\n\n"
                     )
                 except:
                     messagebox.showerror(
@@ -4271,15 +4337,26 @@ def open_ai_assistant_window(session_id=None):
                     return
             elif opened_script_var.get():
                 script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
+
             combined_command = f"{script_content}{ai_command}"
+
+            # Add the user's message to the current session
             current_session.add_message("user", combined_command)
+
+            # Append the user's input to the vault with a prefix "USER:"
+            append_to_vault(f"USER: {combined_command}")
+
+            # Update the original content and display it
             original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"
             output_text.insert("end", f"You: {combined_command}\n", "user")
             output_text.insert("end", "-" * 80 + "\n")
+
             entry.delete(0, END)
             entry.config(state="disabled")
             status_label_var.set("AI is thinking...")
+
+            # Prepare the command for processing by the AI assistant
             ai_script_path = "src/models/ai_assistant.py"
             if persistent_agent_selection_var.get():
                 try:
@@ -4289,15 +4366,13 @@ def open_ai_assistant_window(session_id=None):
                     selected_agent = selected_agent_var
                 store_selected_agent(selected_agent)
             else:
-                print("Non persistant agent")
+                print("Non persistent agent")
                 selected_agent_var = "Assistant"
                 selected_agent = selected_agent_var
-            command = create_ai_command(
-                ai_script_path, combined_command, selected_agent
-            )
-            print("SAVE AI MESSAGE BEFORE")
+
+            command = create_ai_command(ai_script_path, combined_command, selected_agent)
+            print("Executing AI command...")
             process_ai_command(command)
-            print("SAVE AI MESSAGE END")
         else:
             entry.config(state="normal")
 
@@ -4563,9 +4638,11 @@ def open_ai_assistant_window(session_id=None):
             self.id = session_id
             self.name = ""
             self.file_path = os.path.join("data", "conversations", self.id, f"session_{self.id}.json")
+            self.vault_path = os.path.join("data", "conversations", self.id, "vault.txt")
             self.messages = []
             self.links = []
             self.documents = []
+            self.state = "NOT_INGESTED"  # Initial state for vault
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
@@ -4600,7 +4677,8 @@ def open_ai_assistant_window(session_id=None):
                 "session_name": self.name,
                 "links": self.links,
                 "documents": self.documents,
-                "messages": self.messages
+                "messages": self.messages,
+                "vault_state": self.state  # Save vault state in the session metadata
             }
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
@@ -4612,6 +4690,41 @@ def open_ai_assistant_window(session_id=None):
                 self.messages = data.get("messages", [])
                 self.links = data.get("links", [])
                 self.documents = data.get("documents", [])
+                self.state = data.get("vault_state", "NOT_INGESTED")  # Load the vault state
+
+        def update_vault(self, content, increment=True):
+            """
+            Update the vault.txt file for the session.
+            If increment is True, content will be added to the vault.
+            If increment is False, content will be removed from the vault (or the vault will be cleared).
+            """
+            if increment:
+                with open(self.vault_path, "a", encoding="utf-8") as vault_file:
+                    vault_file.write(content + "\n")
+                self.state = "INCREMENTED"  # Update the state to INCREMENTED
+            else:
+                with open(self.vault_path, "w", encoding="utf-8") as vault_file:
+                    vault_file.write("")  # Clear the vault
+                self.state = "DECREMENTED"  # Update the state to DECREMENTED
+            self.save()
+
+    def reset_vault():
+        """
+        Reset the vault (clear the content and set state to DECREMENTED).
+        """
+        global current_session
+        if current_session:
+            current_session.update_vault("", increment=False)
+            print(f"Vault cleared for session {current_session.id}.")
+
+    def read_vault(self):
+        """
+        Read the content of the vault.txt file for the session.
+        """
+        if os.path.exists(self.vault_path):
+            with open(self.vault_path, "r", encoding="utf-8") as vault_file:
+                return vault_file.read()
+        return ""
 
     def create_session():
         """ ""\"
