@@ -39,19 +39,12 @@ def save_text_to_file(text, output_path):
     print(f"Text saved to {output_path}")
 
 
-def process_pdf_to_text(input_pdf, output_txt):
-    """
-    Process the input PDF and save the extracted text to the output path.
-
-    Args:
-        input_pdf (str): Path to the PDF file to convert.
-        output_txt (str): Path where the extracted text will be saved.
-    """
-    # Ensure the output directory exists
-    os.makedirs(os.path.dirname(output_txt), exist_ok=True)
-
-    # Convert the PDF to text
-    text = convert_pdf_to_text(input_pdf)
-
-    # Save the extracted text to the specified output file
-    save_text_to_file(text, output_txt)
+def process_pdf_to_text(pdf_path):
+    # Use a PDF processing library like PyPDF2 or pdfminer to extract text
+    # This is a placeholder implementation
+    with open(pdf_path, 'rb') as file:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+    return text

@@ -3810,20 +3810,33 @@ def open_ai_assistant_window(session_id=None):
     links_context_menu = Menu(ai_assistant_window, tearoff=0)
 
     def reverse_ingestion_from_vault(doc_path, vault_path):
-        text_content_to_remove = convert_pdf_to_text(doc_path)
+        doc_name = os.path.basename(doc_path)
 
-        # Load current vault content
-        if os.path.exists(vault_path):
-            with open(vault_path, 'r', encoding='utf-8') as file:
-                current_vault_content = file.readlines()
+        with open(vault_path, 'r', encoding='utf-8') as file:
+            content = file.read()
 
-            # Remove the content of the document from the vault
-            updated_content = [line for line in current_vault_content if line.strip() not in text_content_to_remove]
+        # Find the start of the document section
+        start_marker = f"\n\nDocument: {doc_name}\n"
+        start_index = content.find(start_marker)
 
-            # Save the updated vault
+        if start_index != -1:
+            # Find the start of the next document section or the end of the file
+            next_doc_index = content.find("\n\nDocument:", start_index + 1)
+
+            if next_doc_index != -1:
+                # Remove the current document section up to the next document
+                updated_content = content[:start_index] + content[next_doc_index:]
+            else:
+                # If it's the last document, remove from the start_index to the end
+                updated_content = content[:start_index]
+
+            # Write the updated content back to the vault file
             with open(vault_path, 'w', encoding='utf-8') as file:
-                file.writelines(updated_content)
-            print(f"Removed content from vault for document: {os.path.basename(doc_path)}.")
+                file.write(updated_content)
+
+            print(f"Removed document '{doc_name}' from the vault.")
+        else:
+            print(f"Document '{doc_name}' not found in the vault.")
 
     def ingest_documents():
         global current_session
@@ -3853,7 +3866,11 @@ def open_ai_assistant_window(session_id=None):
 
                     # Convert PDF to text and append to the vault
                     with open(vault_path, 'a', encoding='utf-8') as vault_file:
-                        extracted_text = convert_pdf_to_text(doc_path)
+                        vault_file.write(f"\n\nDocument: {doc_name}\n")
+                        vault_file.write("=" * (len(doc_name) + 10) + "\n")
+
+                        extracted_text = process_pdf_to_text(doc_path)
+                        print(extracted_text)
                         vault_file.write(extracted_text)
 
                     # Visually indicate ingestion (strike-through or underscore)
