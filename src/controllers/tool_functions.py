@@ -3792,17 +3792,20 @@ def open_ai_assistant_window(session_id=None):
         variable=persistent_agent_selection_var,
         #command=lambda: add_current_selected_text(add_current_selected_text_var.get())
     )"""
+
+    # Left side frame for sessions, links, and documents
     session_list_frame = Frame(ai_assistant_window)
     session_list_frame.pack(side="left", fill="y")
-    Label(session_list_frame, text="SESSIONS", font=("Helvetica", 10, "bold")).pack(
-        fill="x"
-    )
+
+    # Sessions List
+    Label(session_list_frame, text="SESSIONS", font=("Helvetica", 10, "bold")).pack(fill="x")
     sessions_list = Listbox(session_list_frame)
     sessions_list.pack(fill="both", expand=True)
+
     Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
-    Label(session_list_frame, text="LINKS", font=("Helvetica", 10, "bold")).pack(
-        fill="x"
-    )
+
+    # Links List
+    Label(session_list_frame, text="LINKS", font=("Helvetica", 10, "bold")).pack(fill="x")
     links_frame = Frame(session_list_frame)
     links_frame.pack(fill="both", expand=True)
     links_list = Listbox(links_frame)
@@ -3893,21 +3896,22 @@ def open_ai_assistant_window(session_id=None):
     links_list.bind("<Button-3>", show_links_context_menu)
     refresh_links_list()
     Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
-    Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(
-        fill="x"
-    )
 
-
+    # Documents List
+    Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(fill="x")
     documents_frame = Frame(session_list_frame)
     documents_frame.pack(fill="both", expand=True)
     document_paths = []
     document_checkbuttons = []
 
+    # Create a frame for the ingest button at the bottom
     ingest_frame = Frame(session_list_frame)
-    # Assuming `documents_frame` is the Frame widget holding the documents
+    ingest_frame.pack(side="bottom", fill="x")
 
-    ingest_button = Button(ingest_frame, text="INGEST", command=ingest_documents)
-    ingest_button.pack(side="bottom")
+    # INGEST Button (Restored)
+    # Button to ingest documents
+    ingest_button = Button(ai_assistant_window, text="INGEST", command=ingest_documents)
+    ingest_button.pack(side="bottom", pady=10)
 
     def refresh_documents_list():
         """
