@@ -4,6 +4,7 @@ import os
 import platform
 import queue
 import re
+import shutil
 import subprocess
 import threading
 import math
@@ -4609,33 +4610,11 @@ def open_ai_assistant_window(session_id=None):
         write_config_parameter("options.network_settings.last_selected_session_id", index + 1)
 
     def update_sessions_list():
-        """ ""\"
-        ""\"
-            update_sessions_list
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         sessions_list.delete(0, END)
         for session in session_data:
             sessions_list.insert(END, session.name)
 
     def load_sessions(session_listbox):
-        """ ""\"
-        ""\"
-            load_sessions
-
-                Args:
-                    session_listbox (Any): Description of session_listbox.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         sessions_path = "data/conversations"
         session_folders = [
             f
@@ -4648,17 +4627,6 @@ def open_ai_assistant_window(session_id=None):
             session_listbox.insert("end", session.name)
 
     def initialize_ai_assistant_window():
-        """ ""\"
-        ""\"
-            initialize_ai_assistant_window
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global session_data, current_session
         sessions_path = "data/conversations"
         session_data = []
@@ -4673,35 +4641,12 @@ def open_ai_assistant_window(session_id=None):
             create_session()
 
     def on_session_select(event):
-        """ ""\"
-        ""\"
-            on_session_select
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         selected_indices = sessions_list.curselection()
         if selected_indices:
             index = selected_indices[0]
             load_session(session_data[index].id)
 
     def show_session_context_menu(event, session_index):
-        """ ""\"
-        ""\"
-            show_session_context_menu
-
-                Args:
-                    event (Any): Description of event.
-                    session_index (Any): Description of session_index.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         session_context_menu = Menu(ai_assistant_window, tearoff=0)
         session_context_menu.add_command(
             label="Share Chat", command=lambda: save_session(session_index)
@@ -4718,17 +4663,6 @@ def open_ai_assistant_window(session_id=None):
         session_context_menu.post(event.x_root, event.y_root)
 
     def save_session(session_index):
-        """ ""\"
-        ""\"
-            save_session
-
-                Args:
-                    session_index (Any): Description of session_index.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         print(f"Saving session {session_index}...")
         session = session_data[session_index]
         with open(f"session_{session['id']}.txt", "w") as f:
@@ -4738,17 +4672,6 @@ def open_ai_assistant_window(session_id=None):
             )
 
     def rename_session(session_index):
-        """ ""\"
-        ""\"
-            rename_session
-
-                Args:
-                    session_index (Any): Description of session_index.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         session = session_data[session_index]
         new_name = simpledialog.askstring(
             "Rename Session", "Enter new session name:", initialvalue=session.name
@@ -4759,17 +4682,6 @@ def open_ai_assistant_window(session_id=None):
             update_sessions_list()
 
     def archive_session(session_index):
-        """ ""\"
-        ""\"
-            archive_session
-
-                Args:
-                    session_index (Any): Description of session_index.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         print(f"Archiving session {session_index}...")
         messagebox.showinfo(
             "Archive Session",
@@ -4777,36 +4689,50 @@ def open_ai_assistant_window(session_id=None):
         )
 
     def delete_session(session_index):
-        """ ""\"
-        ""\"
-            delete_session
+        """
+        Delete a session by removing it from session_data and deleting its folder.
 
-                Args:
-                    session_index (Any): Description of session_index.
+        Args:
+            session_index (int): Index of the session to delete
+        """
+        global current_session, session_data
 
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        print(f"Deleting session {session_index}...")
-        session = session_data.pop(session_index)
-        update_sessions_list()
-        messagebox.showinfo(
-            "Delete Session", f"Session {session['id']} deleted successfully."
-        )
+        try:
+            # Get the session to delete
+            session = session_data[session_index]
+            session_folder = os.path.join("data", "conversations", session.id)
+
+            # Remove from session_data first
+            session_data.pop(session_index)
+
+            # Delete the folder and its contents
+            if os.path.exists(session_folder):
+                shutil.rmtree(session_folder)
+
+            # Update the UI
+            update_sessions_list()
+
+            # If we deleted the current session, select a new one
+            if current_session and current_session.id == session.id:
+                if session_data:
+                    # Select the last session if available
+                    select_session(len(session_data) - 1)
+                else:
+                    # Create a new session if none left
+                    create_session()
+
+            messagebox.showinfo(
+                "Delete Session",
+                f"Session '{session.name}' deleted successfully."
+            )
+
+        except Exception as e:
+            messagebox.showerror(
+                "Error",
+                f"Failed to delete session: {str(e)}"
+            )
 
     def handle_session_click(event):
-        """ ""\"
-        ""\"
-            handle_session_click
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         session_context_menu = Menu(ai_assistant_window, tearoff=0)
         try:
             session_index = sessions_list.curselection()[0]
