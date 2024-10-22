@@ -1,4 +1,6 @@
 from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModel
+import torch
 import sys
 
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -20,6 +22,16 @@ def get_embeddings(sentences):
         sentences = [sentences]
     embeddings = model.encode(sentences)
     return embeddings
+
+
+def generate_embedding(content):
+    tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-MiniLM-L6-v2')
+    model = AutoModel.from_pretrained('sentence-transformers/all-MiniLM-L6-v2')
+
+    inputs = tokenizer(content, return_tensors='pt', padding=True, truncation=True, max_length=512)
+    outputs = model(**inputs)
+    embeddings = outputs.last_hidden_state.mean(dim=1)
+    return embeddings.detach().numpy().tolist()
 
 
 def main():
