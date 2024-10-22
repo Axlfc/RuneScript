@@ -3513,27 +3513,7 @@ def open_ai_assistant_window(session_id=None):
         settings_window.mainloop()
 
     def open_ai_server_agent_settings_window():
-        """ ""\"
-        ""\"
-            open_ai_server_agent_settings_window
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-
         def load_agents():
-            """ ""\"
-            ""\"
-                    Load agents from the JSON file located at ScriptsEditor/data/agents.json.
-
-                            Returns:
-                            agents (list): A list of agents loaded from the JSON file.
-                    ""\"
-            ""\" """
             current_dir = os.path.dirname(os.path.abspath(__file__))
             json_file_path = os.path.join(
                 current_dir, "..", "..", "data", "agents.json"
@@ -3554,17 +3534,6 @@ def open_ai_assistant_window(session_id=None):
                 return []
 
         def update_instructions(selected_agent):
-            """ ""\"
-            ""\"
-                    update_instructions
-
-                            Args:
-                                selected_agent (Any): Description of selected_agent.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             global selected_agent_var
             selected_agent_var = selected_agent
             for agent in agents:
@@ -3576,17 +3545,6 @@ def open_ai_assistant_window(session_id=None):
                     break
 
         def save_agent_settings():
-            """ ""\"
-            ""\"
-                    save_agent_settings
-
-                            Args:
-                                None
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             global selected_agent_var
             selected_agent = selected_agent_var
             print("SAVE_AGENT_SETTINTS!!!\n", selected_agent, "\n", "* " * 25)
@@ -3717,13 +3675,236 @@ def open_ai_assistant_window(session_id=None):
             for url in current_session.links:
                 links_list.insert(END, url)
 
+    def find_content_boundaries(content, marker, marker_type=None):
+        """
+        Find the precise start and end positions of a specific content block in the vault,
+        ensuring chat messages and other content blocks are preserved.
+
+        Args:
+            content (str): The full vault content
+            marker (str): The specific marker to find (e.g., "Document: doc.pdf")
+            marker_type (str, optional): The type of marker ("Document:" or "Link:")
+
+        Returns:
+            tuple: (start_index, end_index) positions of the content block
+        """
+        # Find the start of our marker
+        marker_start = content.find(f"\n\n{marker}\n")
+        if marker_start == -1:
+            return None, None
+
+        # Find the separator line that follows the marker
+        separator_start = content.find("\n", marker_start + len(marker) + 3)
+        if separator_start == -1:
+            return None, None
+
+        # Find the content start after the separator
+        content_start = content.find("\n", separator_start + 1)
+        if content_start == -1:
+            return None, None
+
+        # Initialize the end position
+        end_index = len(content)
+
+        # Get the current block's type (Document or Link)
+        current_block_type = marker.split(":")[0] if ":" in marker else None
+
+        # Find the next content block or chat message
+        pos = content_start
+        while pos < len(content):
+            next_line_start = content.find("\n", pos + 1)
+            if next_line_start == -1:
+                break
+
+            next_line = content[next_line_start:next_line_start + 100].strip()  # Look at start of next line
+
+            # Check for next content block markers
+            if (next_line.startswith("Document:") or
+                    next_line.startswith("Link:") or
+                    next_line.startswith("===== New Document")):
+                # Found next content block
+                end_index = next_line_start
+                break
+
+            # Check for chat messages
+            elif next_line.startswith("USER:") or next_line.startswith("AI:"):
+                # Found chat message
+                end_index = next_line_start
+                break
+
+            pos = next_line_start
+
+        # Trim any trailing whitespace from our content block
+        while end_index > content_start and content[end_index - 1].isspace():
+            end_index -= 1
+
+        return marker_start, end_index
+
+    def safely_remove_content(vault_path, marker, marker_type=None):
+        """
+        Safely remove specific content block from vault while preserving ALL chat history
+        and other content blocks.
+
+        Args:
+            vault_path (str): Path to the vault file
+            marker (str): The specific marker to find and remove
+            marker_type (str, optional): Type of content being removed ("Document:" or "Link:")
+
+        Returns:
+            bool: True if content was removed, False otherwise
+        """
+        try:
+            with open(vault_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+
+            # Take a snapshot of all content blocks and chat messages
+            original_blocks = [(m.start(), m.group()) for m in re.finditer(r'\n\n(Document:|Link:)[^\n]+\n', content)]
+            original_chats = [(m.start(), m.group()) for m in re.finditer(r'\n\n(User:|Assistant:)[^\n]+', content)]
+
+            # Find the boundaries of the content to remove
+            start_index, end_index = find_content_boundaries(content, marker, marker_type)
+
+            if start_index is None:
+                print(f"Content not found in vault: {marker}")
+                return False
+
+            # Extract the content before and after the section to remove
+            content_before = content[:start_index]
+            content_after = content[end_index:]
+
+            # Combine the content, ensuring proper spacing
+            updated_content = content_before + content_after
+
+            # Clean up any resulting multiple consecutive newlines
+            while "\n\n\n" in updated_content:
+                updated_content = updated_content.replace("\n\n\n", "\n\n")
+
+            # Verify integrity of remaining content blocks and chat messages
+            new_blocks = [(m.start(), m.group()) for m in
+                          re.finditer(r'\n\n(Document:|Link:)[^\n]+\n', updated_content)]
+            new_chats = [(m.start(), m.group()) for m in re.finditer(r'\n\n(User:|Assistant:)[^\n]+', updated_content)]
+
+            # Remove the target block from original_blocks for comparison
+            original_blocks = [block for block in original_blocks if marker not in block[1]]
+
+            if len(new_blocks) != len(original_blocks) or len(new_chats) != len(original_chats):
+                print("Warning: Content integrity check failed - aborting removal to prevent data loss")
+                return False
+
+            # Write back to file
+            with open(vault_path, 'w', encoding='utf-8') as file:
+                file.write(updated_content)
+
+            # Verify the write was successful
+            with open(vault_path, 'r', encoding='utf-8') as file:
+                verification_content = file.read()
+                final_blocks = [(m.start(), m.group()) for m in
+                                re.finditer(r'\n\n(Document:|Link:)[^\n]+\n', verification_content)]
+                final_chats = [(m.start(), m.group()) for m in
+                               re.finditer(r'\n\n(User:|Assistant:)[^\n]+', verification_content)]
+
+                if len(final_blocks) != len(original_blocks) or len(final_chats) != len(original_chats):
+                    print("Warning: Post-write verification failed - content integrity may be compromised")
+                    # Restore original content
+                    with open(vault_path, 'w', encoding='utf-8') as restore_file:
+                        restore_file.write(content)
+                    return False
+
+            return True
+
+        except Exception as e:
+            print(f"Error removing content from vault: {e}")
+            return False
+
+    def safely_add_content(vault_path, marker, content_to_add):
+        """
+        Safely add new content to vault while preserving ALL chat history.
+
+        Args:
+            vault_path (str): Path to the vault file
+            marker (str): The marker for the new content (e.g., "Document: doc.pdf")
+            content_to_add (str): The content to add to the vault
+
+        Returns:
+            bool: True if content was added successfully, False otherwise
+        """
+        try:
+            # Read existing content
+            if os.path.exists(vault_path):
+                with open(vault_path, 'r', encoding='utf-8') as file:
+                    existing_content = file.read()
+            else:
+                existing_content = ""
+
+            # Count existing chat messages for verification
+            original_chat_messages = len(
+                [m for m in existing_content.split('\n') if m.strip().startswith(("User:", "Assistant:"))])
+
+            # Check if content already exists
+            if f"\n\n{marker}\n" in existing_content:
+                print(f"Content already exists in vault: {marker}")
+                return False
+
+            # Find the last content block (Document or Link)
+            last_content_pos = -1
+            for pattern in ["\n\nDocument:", "\n\nLink:"]:
+                pos = existing_content.rfind(pattern)
+                last_content_pos = max(last_content_pos, pos)
+
+            if last_content_pos == -1:
+                # No existing content blocks, find first chat message
+                first_chat = min(
+                    (pos for pos in [
+                        existing_content.find("\n\nUser:"),
+                        existing_content.find("\n\nAssistant:")
+                    ] if pos != -1),
+                    default=len(existing_content)
+                )
+                insert_position = first_chat
+            else:
+                # Find the end of the last content block
+                _, insert_position = find_content_boundaries(
+                    existing_content,
+                    existing_content[last_content_pos:].split('\n')[1].strip()
+                )
+
+            # Prepare the new content block
+            separator = "=" * (len(marker) + 4)
+            new_content_block = f"\n\n{marker}\n{separator}\n{content_to_add}"
+
+            # Insert the new content
+            updated_content = (
+                    existing_content[:insert_position] +
+                    new_content_block +
+                    existing_content[insert_position:]
+            )
+
+            # Clean up any resulting multiple consecutive newlines
+            while "\n\n\n" in updated_content:
+                updated_content = updated_content.replace("\n\n\n", "\n\n")
+
+            # Verify chat message preservation
+            final_chat_messages = len(
+                [m for m in updated_content.split('\n') if m.strip().startswith(("User:", "Assistant:"))])
+            if final_chat_messages != original_chat_messages:
+                print("Warning: Chat message count mismatch - aborting addition to prevent data loss")
+                return False
+
+            # Write back to file
+            with open(vault_path, 'w', encoding='utf-8') as file:
+                file.write(updated_content)
+
+            return True
+
+        except Exception as e:
+            print(f"Error adding content to vault: {e}")
+            return False
+
     def is_raw_file_url(url):
-        """Check if the URL points to a raw file."""
         raw_file_domains = ['raw.githubusercontent.com', 'gist.githubusercontent.com']
         return any(domain in url for domain in raw_file_domains)
 
     def scrape_raw_file_content(url):
-        """Scrape content from a raw file URL."""
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -3733,37 +3914,20 @@ def open_ai_assistant_window(session_id=None):
             return None
 
     def add_link_to_vault(url, vault_path):
-        """Add scraped content from a raw file URL to the vault."""
         content = scrape_raw_file_content(url)
         if content:
-            with open(vault_path, 'a', encoding='utf-8') as vault_file:
-                vault_file.write(f"\n\nLink: {url}\n")
-                vault_file.write("=" * (len(url) + 6) + "\n")
-                vault_file.write(content)
-            print(f"Added content from {url} to vault.")
-        else:
-            print(f"Failed to add content from {url} to vault.")
+            marker = f"Link: {url}"
+            if safely_add_content(vault_path, marker, content):
+                print(f"Successfully added content from {url} to vault.")
+            else:
+                print(f"Failed to add content from {url} to vault.")
 
     def remove_link_from_vault(url, vault_path):
-        """Remove content associated with a link from the vault."""
-        with open(vault_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-
-        start_marker = f"\n\nLink: {url}\n"
-        start_index = content.find(start_marker)
-
-        if start_index != -1:
-            next_link_index = content.find("\n\nLink:", start_index + 1)
-            if next_link_index != -1:
-                updated_content = content[:start_index] + content[next_link_index:]
-            else:
-                updated_content = content[:start_index]
-
-            with open(vault_path, 'w', encoding='utf-8') as file:
-                file.write(updated_content)
-            print(f"Removed content for link {url} from the vault.")
+        marker = f"Link: {url}"
+        if safely_remove_content(vault_path, marker, "Link:"):
+            print(f"Successfully removed content for link '{url}' from the vault.")
         else:
-            print(f"Link {url} not found in the vault.")
+            print(f"Failed to remove content for link '{url}' from the vault.")
 
     def add_new_link():
         new_url = simpledialog.askstring("Add New Link", "Enter URL:")
@@ -3799,46 +3963,17 @@ def open_ai_assistant_window(session_id=None):
 
     def reverse_ingestion_from_vault(doc_path, vault_path):
         doc_name = os.path.basename(doc_path)
-
-        with open(vault_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-
-        # Find the start of the document section
-        start_marker = f"\n\nDocument: {doc_name}\n"
-        start_index = content.find(start_marker)
-
-        if start_index != -1:
-            # Find the start of the next document section or the end of the file
-            next_doc_index = content.find("\n\nDocument:", start_index + 1)
-
-            if next_doc_index != -1:
-                # Remove the current document section up to the next document
-                updated_content = content[:start_index] + content[next_doc_index:]
-            else:
-                # If it's the last document, remove from the start_index to the end
-                updated_content = content[:start_index]
-
-            # Write the updated content back to the vault file
-            with open(vault_path, 'w', encoding='utf-8') as file:
-                file.write(updated_content)
-
-            print(f"Removed document '{doc_name}' from the vault.")
+        marker = f"Document: {doc_name}"
+        if safely_remove_content(vault_path, marker, "Document:"):
+            print(f"Successfully removed document '{doc_name}' from the vault.")
         else:
-            print(f"Document '{doc_name}' not found in the vault.")
+            print(f"Failed to remove document '{doc_name}' from the vault.")
 
     def ingest_documents():
         global current_session
         if current_session:
             print(f"Ingesting documents for session {current_session.id}...")
-
-            # Path to the vault file for the current session
             vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
-
-            # Read existing content of the vault
-            existing_content = ""
-            if os.path.exists(vault_path):
-                with open(vault_path, 'r', encoding='utf-8') as vault_file:
-                    existing_content = vault_file.read()
 
             for idx, doc_data in enumerate(current_session.documents):
                 doc_path = doc_data.get('path', '')
@@ -3846,47 +3981,19 @@ def open_ai_assistant_window(session_id=None):
 
                 if doc_path and is_checked:
                     doc_name = os.path.basename(doc_path)
+                    marker = f"Document: {doc_name}"
 
-                    # Check if the document has already been ingested
-                    if f"Document: {doc_name}" in existing_content:
-                        print(f"Document '{doc_name}' has already been ingested. Skipping.")
-                        continue
-
-                    # Convert PDF to text and append to the vault
-                    with open(vault_path, 'a', encoding='utf-8') as vault_file:
-                        vault_file.write(f"\n\nDocument: {doc_name}\n")
-                        vault_file.write("=" * (len(doc_name) + 10) + "\n")
-
-                        extracted_text = process_pdf_to_text(doc_path)
-                        print(extracted_text)
-                        vault_file.write(extracted_text)
-
-                    # Visually indicate ingestion (strike-through or underscore)
-                    # document_checkbuttons[idx].config(fg="gray", font=("Helvetica", 10, "overstrike"))
-                    print(f"Ingested document: {doc_name} and saved to vault.")
+                    extracted_text = process_pdf_to_text(doc_path)
+                    if extracted_text:
+                        if safely_add_content(vault_path, marker, extracted_text):
+                            print(f"Successfully ingested document: {doc_name}")
+                        else:
+                            print(f"Failed to ingest document: {doc_name}")
 
                 elif doc_path and not is_checked:
-                    # Reverse the ingestion by removing the text from the vault
                     reverse_ingestion_from_vault(doc_path, vault_path)
 
-                    # Revert the visual effect (remove strike-through)
-                    # document_checkbuttons[idx].config(fg="black", font=("Helvetica", 10, "normal"))
-                    print(f"Reversed ingestion for document: {os.path.basename(doc_path)}.")
-
-            print(f"Vault updated for session {current_session.id}.")
-
     def show_links_context_menu(event):
-        """ ""\"
-        ""\"
-            show_links_context_menu
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         if links_list.size() == 0:
             links_context_menu.delete(0, END)
             links_context_menu.add_command(label="Add New Link", command=add_new_link)
@@ -3940,9 +4047,6 @@ def open_ai_assistant_window(session_id=None):
     ingest_button.pack(side="top")
 
     def refresh_documents_list():
-        """
-        Refresh the list of documents displayed, updating their status (checked/unchecked).
-        """
         for widget in documents_frame.winfo_children():
             widget.destroy()
 
@@ -3984,30 +4088,15 @@ def open_ai_assistant_window(session_id=None):
         documents_canvas.bind("<Button-3>", show_documents_context_menu_empty_space)
 
     def on_document_checkbox_change(document_index, var):
-        """
-        Handle the change of the checkbox status of a document.
-        """
         is_checked = bool(var.get())
         current_session.update_document_checkbox(document_index, is_checked)
 
     def show_documents_context_menu_empty_space(event):
-        """
-        Show a context menu when right-clicking on the documents frame (empty space).
-        """
-        # Configure context menu for empty space (show only 'Add New Document')
         documents_context_menu.delete(0, END)
         documents_context_menu.add_command(label="Add New Document", command=add_new_document)
         documents_context_menu.post(event.x_root, event.y_root)
 
     def on_document_right_click(event, document_index, doc_name):
-        """
-        Handle right-click on a document item to show a context menu with options to remove or add a document.
-
-        Args:
-            event: The event triggered by right-clicking.
-            document_index: The index of the document in the list.
-            doc_name: The name of the document that was right-clicked.
-        """
         print(
             f"Right-clicked on document: {doc_name} (index {document_index})")  # Console print for right-click on a document
 
@@ -4018,22 +4107,12 @@ def open_ai_assistant_window(session_id=None):
         documents_context_menu.post(event.x_root, event.y_root)
 
     def remove_document(document_index):
-        """
-        Remove a document from the session.
-
-        Args:
-            document_index: The index of the document to remove.
-        """
         if current_session:
             current_session.documents.pop(document_index)
             current_session.save()
             refresh_documents_list()
 
     def add_new_document():
-        """
-        Open a file dialog to add new documents to the session.
-        Checks for duplicates before adding and displays an error message if a duplicate is found.
-        """
         file_paths = filedialog.askopenfilenames(
             initialdir=".",
             title="Select PDF documents",
@@ -4060,9 +4139,6 @@ def open_ai_assistant_window(session_id=None):
             if duplicates and not new_files:
                 messagebox.showinfo("No New Files", "No new files were added to the document list.")
     def show_documents_context_menu(event):
-        """
-        Show a context menu when right-clicking on the documents frame (empty space).
-        """
         # Configure context menu for empty space (show only 'Add New Document')
         documents_context_menu.delete(0, END)
         documents_context_menu.add_command(label="Add New Document", command=add_new_document)
@@ -4091,66 +4167,22 @@ def open_ai_assistant_window(session_id=None):
     entry.focus()
 
     def on_md_content_change(event=None):
-        """ ""\"
-        ""\"
-            on_md_content_change
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global original_md_content
         original_md_content = script_text.get("1.0", END)
         if markdown_render_enabled:
             update_html_content()
 
     def update_html_content():
-        """ ""\"
-        ""\"
-            update_html_content
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
 
     def update_html_content_thread():
-        """ ""\"
-        ""\"
-            update_html_content_thread
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global rendered_html_content
         rendered_html_content = markdown.markdown(original_md_content)
         html_display.set_html(rendered_html_content)
 
     def toggle_render_markdown(is_checked):
-        """ ""\"
-        ""\"
-            toggle_render_markdown
-
-                Args:
-                    is_checked (Any): Description of is_checked.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global markdown_render_enabled
         markdown_render_enabled = bool(is_checked)
         if markdown_render_enabled:
@@ -4164,17 +4196,6 @@ def open_ai_assistant_window(session_id=None):
             output_text.pack(fill="both", expand=True)
 
     def navigate_history(event):
-        """ ""\"
-        ""\"
-            navigate_history
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         if command_history:
             if event.keysym == "Up":
                 history_pointer[0] = max(0, history_pointer[0] - 1)
@@ -4189,15 +4210,6 @@ def open_ai_assistant_window(session_id=None):
             entry.insert(0, command)
 
     def stream_output(process):
-        """
-        Stream the output from the AI process.
-
-        Args:
-            process (Any): The AI process object.
-
-        Returns:
-            None
-        """
         global current_session
         ai_response_buffer = ""
         try:
@@ -4230,30 +4242,12 @@ def open_ai_assistant_window(session_id=None):
             on_processing_complete()
 
     def extract_output_content(ai_response):
-        """
-        Extract content between <output> and </output> tags.
-
-        Args:
-            ai_response (str): The full AI response text.
-
-        Returns:
-            str: The extracted content if found, otherwise an empty string.
-        """
         import re
         output_pattern = re.compile(r'<output>(.*?)</output>', re.DOTALL)
         matches = output_pattern.findall(ai_response)
         return "\n".join(matches) if matches else ""
 
     def append_to_vault(content):
-        """
-        Append content to the session's vault.txt file.
-
-        Args:
-            content (str): The content to append to the vault.
-
-        Returns:
-            None
-        """
         if current_session:
             vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
             with open(vault_path, "a", encoding="utf-8") as vault_file:
@@ -4261,48 +4255,15 @@ def open_ai_assistant_window(session_id=None):
             print(f"Appended AI output to vault for session {current_session.id}.")
 
     def on_processing_complete():
-        """ ""\"
-        ""\"
-            on_processing_complete
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         load_selected_agent()
         entry.config(state="normal")
         status_label_var.set("READY")
 
     def store_selected_agent(selected_agent):
-        """ ""\"
-        ""\"
-            store_selected_agent
-
-                Args:
-                    selected_agent (Any): Description of selected_agent.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         with open("data/agent_config.json", "w") as config_file:
             json.dump({"selected_agent": selected_agent}, config_file)
 
     def load_selected_agent():
-        """ ""\"
-        ""\"
-            load_selected_agent
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         try:
             with open("data/config.json", "r") as config_file:
                 config_data = json.load(config_file)
@@ -4311,14 +4272,6 @@ def open_ai_assistant_window(session_id=None):
             pass
 
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
-        """
-        Execute the AI assistant command by sending the user input to the assistant.
-
-        Args:
-            opened_script_var (IntVar): Indicates whether the entire main script should be included.
-            selected_text_var (IntVar): Indicates whether the selected text from the script should be included.
-            ai_command (str): The command or query to send to the AI assistant.
-        """
         global original_md_content, selected_agent_var, current_session
         if not current_session:
             create_session()
@@ -4382,19 +4335,6 @@ def open_ai_assistant_window(session_id=None):
             entry.config(state="normal")
 
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
-        """ ""\"
-        ""\"
-            create_ai_command
-
-                Args:
-                    ai_script_path (Any): Description of ai_script_path.
-                    user_prompt (Any): Description of user_prompt.
-                    agent_name (Any): Description of agent_name.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         if platform.system() == "Windows":
             python_executable = os.path.join("venv", "Scripts", "python")
         else:
@@ -4405,17 +4345,6 @@ def open_ai_assistant_window(session_id=None):
             return [python_executable, ai_script_path, user_prompt]
 
     def process_ai_command(command):
-        """ ""\"
-        ""\"
-            process_ai_command
-
-                Args:
-                    command (Any): Description of command.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global process, selected_agent_var
         try:
             if "process" in globals() and process.poll() is None:
@@ -4437,36 +4366,12 @@ def open_ai_assistant_window(session_id=None):
             status_label_var.set(f"{selected_agent_var} is thinking")
 
     def read_ai_command(command_name, user_prompt):
-        """ ""\"
-        ""\"
-            read_ai_command
-
-                Args:
-                    command_name (Any): Description of command_name.
-                    user_prompt (Any): Description of user_prompt.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         commands_file = "data/commands.json"
         try:
             with open(commands_file, "r") as f:
                 commands_data = json.load(f)
 
             def find_command(commands, command_name):
-                """ ""\"
-                ""\"
-                            find_command
-
-                                        Args:
-                                            commands (Any): Description of commands.
-                                            command_name (Any): Description of command_name.
-
-                                        Returns:
-                                            None: Description of return value.
-                            ""\"
-                ""\" """
                 for command in commands:
                     if command["name"] == command_name:
                         return command
@@ -4491,17 +4396,6 @@ def open_ai_assistant_window(session_id=None):
             return f"Error: Failed to decode JSON from '{commands_file}'."
 
     def ai_assistant_rightclick_menu(command):
-        """ ""\"
-        ""\"
-            ai_assistant_rightclick_menu
-
-                Args:
-                    command (Any): Description of command.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
             fix_user_prompt = read_ai_command(command, selected_text)
@@ -4512,47 +4406,14 @@ def open_ai_assistant_window(session_id=None):
             )
 
     def nlp_custom():
-        """ ""\"
-        ""\"
-            nlp_custom
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         selected_text = output_text.get("sel.first", "sel.last")
         if selected_text.strip():
             print(read_ai_command("code-optimize", selected_text))
 
     def show_context_menu(event):
-        """ ""\"
-        ""\"
-            show_context_menu
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         commands_file = "data/commands.json"
 
         def load_commands():
-            """ ""\"
-            ""\"
-                    load_commands
-
-                            Args:
-                                None
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             try:
                 with open(commands_file, "r") as f:
                     commands_data = json.load(f)
@@ -4562,18 +4423,6 @@ def open_ai_assistant_window(session_id=None):
                 return []
 
         def add_commands_to_menu(menu, commands):
-            """ ""\"
-            ""\"
-                    add_commands_to_menu
-
-                            Args:
-                                menu (Any): Description of menu.
-                                commands (Any): Description of commands.
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             for command in commands:
                 if "submenu" in command:
                     submenu = Menu(menu, tearoff=0)
@@ -4698,11 +4547,6 @@ def open_ai_assistant_window(session_id=None):
                 self.state = data.get("vault_state", "NOT_INGESTED")  # Load the vault state
 
         def update_vault(self, content, increment=True):
-            """
-            Update the vault.txt file for the session.
-            If increment is True, content will be added to the vault.
-            If increment is False, content will be removed from the vault (or the vault will be cleared).
-            """
             if increment:
                 with open(self.vault_path, "a", encoding="utf-8") as vault_file:
                     vault_file.write(content + "\n")
@@ -4714,35 +4558,18 @@ def open_ai_assistant_window(session_id=None):
             self.save()
 
     def reset_vault():
-        """
-        Reset the vault (clear the content and set state to DECREMENTED).
-        """
         global current_session
         if current_session:
             current_session.update_vault("", increment=False)
             print(f"Vault cleared for session {current_session.id}.")
 
     def read_vault(self):
-        """
-        Read the content of the vault.txt file for the session.
-        """
         if os.path.exists(self.vault_path):
             with open(self.vault_path, "r", encoding="utf-8") as vault_file:
                 return vault_file.read()
         return ""
 
     def create_session():
-        """ ""\"
-        ""\"
-            create_session
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         global current_session, session_data
         new_session_id = datetime.now().strftime("%Y%m%d%H%M%S")
         current_session = Session(new_session_id, load_existing=False)
@@ -4751,17 +4578,6 @@ def open_ai_assistant_window(session_id=None):
         select_session(len(session_data) - 1)
 
     def update_chat_display():
-        """ ""\"
-        ""\"
-            update_chat_display
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         output_text.delete("1.0", END)
         if current_session:
             for message in current_session.messages:
