@@ -3932,7 +3932,7 @@ def open_ai_assistant_window(session_id=None):
     def add_new_link():
         new_url = simpledialog.askstring("Add New Link", "Enter URL:")
         if new_url and current_session:
-            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
             if is_raw_file_url(new_url):
                 add_link_to_vault(new_url, vault_path)
             current_session.add_link(new_url)
@@ -3943,7 +3943,7 @@ def open_ai_assistant_window(session_id=None):
         selected_link_index = links_list.curselection()
         if selected_link_index and current_session:
             url_to_remove = current_session.links.pop(selected_link_index[0])
-            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
             if is_raw_file_url(url_to_remove):
                 remove_link_from_vault(url_to_remove, vault_path)
             current_session.save()
@@ -3973,7 +3973,7 @@ def open_ai_assistant_window(session_id=None):
         global current_session
         if current_session:
             print(f"Ingesting documents for session {current_session.id}...")
-            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
 
             for idx, doc_data in enumerate(current_session.documents):
                 doc_path = doc_data.get('path', '')
@@ -4249,7 +4249,7 @@ def open_ai_assistant_window(session_id=None):
 
     def append_to_vault(content):
         if current_session:
-            vault_path = os.path.join("data", "conversations", current_session.id, "vault.txt")
+            vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
             with open(vault_path, "a", encoding="utf-8") as vault_file:
                 vault_file.write(content + "\n")
             print(f"Appended AI output to vault for session {current_session.id}.")
@@ -4492,7 +4492,7 @@ def open_ai_assistant_window(session_id=None):
             self.id = session_id
             self.name = ""
             self.file_path = os.path.join("data", "conversations", self.id, f"session_{self.id}.json")
-            self.vault_path = os.path.join("data", "conversations", self.id, "vault.txt")
+            self.vault_path = os.path.join("data", "conversations", self.id, "vault.md")
             self.messages = []
             self.links = []
             self.documents = []
