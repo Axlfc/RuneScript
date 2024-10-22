@@ -3931,13 +3931,18 @@ def open_ai_assistant_window(session_id=None):
 
     def add_new_link():
         new_url = simpledialog.askstring("Add New Link", "Enter URL:")
+
         if new_url and current_session:
-            vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
-            if is_raw_file_url(new_url):
-                add_link_to_vault(new_url, vault_path)
-            current_session.add_link(new_url)
-            current_session.save()
-            refresh_links_list()
+            # Check if the link already exists in the current session's links
+            if new_url in current_session.links:
+                messagebox.showerror("Duplicate Link", "This link has already been added.")
+            else:
+                vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
+                if is_raw_file_url(new_url):
+                    add_link_to_vault(new_url, vault_path)
+                current_session.add_link(new_url)
+                current_session.save()
+                refresh_links_list()
 
     def delete_selected_link():
         selected_link_index = links_list.curselection()
@@ -4006,6 +4011,9 @@ def open_ai_assistant_window(session_id=None):
                 )
                 links_context_menu.add_command(
                     label="Delete Selected Link", command=delete_selected_link
+                )
+                links_context_menu.add_command(
+                    label="Add New Link", command=add_new_link
                 )
             else:
                 links_context_menu.add_command(
@@ -4455,17 +4463,6 @@ def open_ai_assistant_window(session_id=None):
         context_menu.focus_set()
 
         def destroy_menu():
-            """ ""\"
-            ""\"
-                    destroy_menu
-
-                            Args:
-                                None
-
-                            Returns:
-                                None: Description of return value.
-                    ""\"
-            ""\" """
             context_menu.unpost()
 
         context_menu.bind("<Leave>", lambda e: destroy_menu())
