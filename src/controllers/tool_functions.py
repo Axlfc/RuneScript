@@ -3911,17 +3911,23 @@ def open_ai_assistant_window(session_id=None):
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
-            print(f"Error scraping content from {url}: {e}")
+            # print(f"Error scraping content from {url}: {e}")
+            messagebox.showerror("Error scraping", f"Content from {url} not added to vault.\n{e}")
             return None
 
     def add_link_to_vault(url, vault_path):
         content = scrape_raw_file_content(url)
-        if content:
+        if content is None:
+            print(f"Failed to add empty content from {url} to vault.")
+            return False
+        else:
             marker = f"Link: {url}"
             if safely_add_content(vault_path, marker, content):
                 print(f"Successfully added content from {url} to vault.")
+                return True
             else:
                 print(f"Failed to add content from {url} to vault.")
+                return False
 
     def remove_link_from_vault(url, vault_path):
         marker = f"Link: {url}"
@@ -3939,11 +3945,19 @@ def open_ai_assistant_window(session_id=None):
                 messagebox.showerror("Duplicate Link", "This link has already been added.")
             else:
                 vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
+                success = True
+
+                # Only attempt to add to vault if it's a raw file URL
                 if is_raw_file_url(new_url):
-                    add_link_to_vault(new_url, vault_path)
-                current_session.add_link(new_url)
-                current_session.save()
-                refresh_links_list()
+                    success = add_link_to_vault(new_url, vault_path)
+
+                # Only add to session and refresh list if everything succeeded
+                if success:
+                    current_session.add_link(new_url)
+                    current_session.save()
+                    refresh_links_list()
+                else:
+                    messagebox.showerror("Error", f"Failed to process link: {new_url}")
 
     def delete_selected_link():
         selected_link_index = links_list.curselection()
