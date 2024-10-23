@@ -62,6 +62,7 @@ from PIL import ImageTk
 from PIL.Image import Image
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.models.TTSManager import TTSManager
 from src.models.VaultRAG import VaultRAG
 from src.models.convert_pdf_to_text import process_pdf_to_text, convert_pdf_to_text
 from src.models.embeddings import generate_embedding
@@ -3482,6 +3483,8 @@ def add_current_selected_text(include_selected_text):
 def open_ai_assistant_window(session_id=None):
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
+    tts_manager = TTSManager()
+
     def start_llama_cpp_python_server():
         file_path = find_gguf_file()
         print("THE PATH TO THE MODEL IS:\t", file_path)
@@ -3747,6 +3750,13 @@ def open_ai_assistant_window(session_id=None):
         offvalue=0,
         variable=render_markdown_var,
         command=lambda: toggle_render_markdown(render_markdown_var.get()),
+    )
+    tts_enabled_var = IntVar()
+    settings_menu.add_checkbutton(
+        label="Enable Text-to-Speech",
+        onvalue=1,
+        offvalue=0,
+        variable=tts_enabled_var,
     )
     add_current_main_opened_script_var = IntVar()
     settings_menu.add_checkbutton(
@@ -4082,7 +4092,7 @@ def open_ai_assistant_window(session_id=None):
             vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
 
             # Initialize RAG for this session
-            rag = VaultRAG(current_session.id)
+            rag = current_session.rag
 
             for idx, doc_data in enumerate(current_session.documents):
                 doc_path = doc_data.get('path', '')
@@ -4368,11 +4378,7 @@ def open_ai_assistant_window(session_id=None):
                 char = process.stdout.read(1)
                 if char:
                     ai_response_buffer += char
-                    if markdown_render_enabled:
-                        update_html_content()
-                    else:
-                        output_text.insert(END, char, "ai")
-                        output_text.see(END)
+                    # Do not insert char into output_text here
                 elif process.poll() is not None:
                     break
 
@@ -4391,6 +4397,10 @@ def open_ai_assistant_window(session_id=None):
                 output_text.insert(END, f"AI: {output_content}\n", "ai")
                 append_to_vault(f"AI: {output_content}")
                 original_md_content += f"\nAI: {output_content}\n"
+
+                # Add TTS here
+                if tts_enabled_var.get():
+                    tts_manager.say(output_content)
 
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n", "error")
@@ -4595,15 +4605,13 @@ def open_ai_assistant_window(session_id=None):
         original_md_content += "-" * 80 + "\n"
 
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
-        global original_md_content, selected_agent_var, current_session, history_manager
-
-        # Initialize history manager if not already done
-        if not hasattr(execute_ai_assistant_command, 'history_manager'):
-            execute_ai_assistant_command.history_manager = OptimizedHistoryManager()
-        history_manager = execute_ai_assistant_command.history_manager
+        global original_md_content, selected_agent_var, current_session
 
         if not current_session:
             create_session()
+
+        # Ensure current_session is initialized before accessing its history_manager
+        history_manager = current_session.history_manager
 
         if ai_command.strip():
             # Get script content and relevant docs
@@ -4615,31 +4623,27 @@ def open_ai_assistant_window(session_id=None):
                 script_content,
                 ai_command,
                 relevant_docs,
-                execute_ai_assistant_command.history_manager
+                history_manager
             )
 
             # Add user's input to history
-            execute_ai_assistant_command.history_manager.add_message("user", ai_command)
+            history_manager.add_message("user", ai_command)
 
-            # TODO: ADD CONTEXT RIGHT
+            # Add the user's message to the current session
+            current_session.add_message("user", ai_command)
+
+            # Update UI
+            update_ui_display(ai_command)
+
+            # Append relevant context if available
             if relevant_docs:
                 context_text = "\n\nRelevant context:\n" + "\n---\n".join(
                     f"{doc['content']}" for doc in relevant_docs
                 )
                 combined_command += context_text
 
-            # Add the user's message to the current session
-            current_session.add_message("user", ai_command)
-
-            # Update UI
-            update_ui_display(combined_command)
-
-            # Append to vault and update display (we need to append ai response to original_md_content
-            '''append_to_vault(f"USER: {combined_command}")
-            original_md_content += f"\n{combined_command}\n"
-            original_md_content += "-" * 80 + "\n"
-            output_text.insert("end", f"You: {combined_command}\n", "user")
-            output_text.insert("end", "-" * 80 + "\n")'''
+            # Update UI with the combined command (optional)
+            # update_ui_display(combined_command)
 
             entry.delete(0, END)
             entry.config(state="disabled")
@@ -4655,11 +4659,7 @@ def open_ai_assistant_window(session_id=None):
                 selected_agent = selected_agent_var
 
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
-            process_ai_command(create_ai_command(
-                "src/models/ai_assistant.py",
-                combined_command,
-                selected_agent_var
-            ))
+            process_ai_command(command)
         else:
             entry.config(state="normal")
 
@@ -4686,8 +4686,10 @@ def open_ai_assistant_window(session_id=None):
                 encoding="utf-8",
                 bufsize=1,
             )
-            threading.Thread(target=stream_output, args=(process, execute_ai_assistant_command.history_manager)).start()
-
+            threading.Thread(
+                target=stream_output,
+                args=(process, current_session.history_manager)
+            ).start()
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n")
             on_processing_complete()
@@ -4813,6 +4815,7 @@ def open_ai_assistant_window(session_id=None):
             self.rag = VaultRAG(self.id)  # Initialize the RAG system for this session
             self.state = "NOT_INGESTED"  # Initial state for vault
             self.chat_history = []
+            self.history_manager = OptimizedHistoryManager()
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
@@ -5049,15 +5052,6 @@ def open_ai_assistant_window(session_id=None):
             self.save()
 
         def query_rag(self, query_text):
-            """
-            Query the RAG system with a text query to get relevant documents.
-
-            Args:
-                query_text (str): The text query to search for relevant documents
-
-            Returns:
-                list: List of tuples containing (document_id, similarity_score)
-            """
             try:
                 print(f"INFO: Querying with question: {query_text}")
 
@@ -5099,6 +5093,10 @@ def open_ai_assistant_window(session_id=None):
                 self.documents = data.get("documents", [])
                 self.chat_history = data.get("chat_history", [])  # Load chat history
                 self.state = data.get("vault_state", "NOT_INGESTED")
+            # Initialize history manager with existing messages
+            self.history_manager = OptimizedHistoryManager()
+            for msg in self.chat_history:
+                self.history_manager.add_message(msg["role"], msg["content"])
 
         def update_vault(self, content, increment=True):
             if increment:
@@ -5153,13 +5151,14 @@ def open_ai_assistant_window(session_id=None):
         refresh_documents_list()
 
     def select_session(index):
-        global current_session
+        global current_session, history_manager
         sessions_list.selection_clear(0, END)
         sessions_list.selection_set(index)
         sessions_list.activate(index)
         sessions_list.see(index)
         current_session = session_data[index]
         current_session.load()
+        history_manager = current_session.history_manager
         update_chat_display()
         refresh_links_list()
         refresh_documents_list()
@@ -5322,6 +5321,12 @@ def open_ai_assistant_window(session_id=None):
     initialize_ai_assistant_window()
     ai_assistant_window.mainloop()
 
+    def on_ai_assistant_window_close():
+        # Stop the TTS manager thread
+        tts_manager.queue.put(None)  # Send None to signal the thread to exit
+        ai_assistant_window.destroy()
+
+    ai_assistant_window.protocol("WM_DELETE_WINDOW", on_ai_assistant_window_close)
 
 def open_translator_window():
     translator_win = Toplevel()

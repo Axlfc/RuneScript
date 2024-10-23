@@ -235,35 +235,27 @@ class VaultRAG:
 
             # Read vault content
             vault_path = os.path.join("data", "conversations", self.session_id, "vault.md")
-            if os.path.exists(vault_path):
-                with open(vault_path, 'r', encoding='utf-8') as f:
+            if os.path.exists(self.vault_path):
+                with open(self.vault_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-
-                # Split content into chunks
+                # Chunk the content
                 chunks = self.chunk_content(content)
-
-                # Store embeddings for each chunk
-                for i, chunk in enumerate(chunks):
-                    chunk_id = f"vault_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}_chunk_{i}"
-                    print(f"INFO: Storing chunk {i}, chunk_id: {chunk_id}")
-                    self.store_embedding(chunk_id, chunk)
-
-                print(f"INFO: Updated embeddings with {len(chunks)} chunks")
+                # Embed each chunk and store in vector store
+                for idx, chunk in enumerate(chunks):
+                    doc_id = f'vault_content_{idx}'
+                    embedding = self.model.encode([chunk], convert_to_numpy=True)
+                    # Store embedding with doc_id
+                    self.store_embedding(doc_id, embedding)
             else:
                 print(f"WARNING: Vault file not found at {vault_path}")
 
         except Exception as e:
             print(f"ERROR: Failed to update embeddings: {str(e)}")
 
-    def chunk_content(self, content, chunk_size=1000, overlap=100):
-        """Split content into overlapping chunks"""
+    def chunk_content(self, content, chunk_size=500):
+        # Split content into chunks of specified size
         words = content.split()
-        chunks = []
-        for i in range(0, len(words), chunk_size - overlap):
-            chunk = ' '.join(words[i:i + chunk_size])
-            if chunk:
-                chunks.append(chunk)
-        return chunks
+        return [' '.join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
 
     @staticmethod
     def cosine_similarity(embedding_a: np.ndarray, embedding_b: np.ndarray) -> float:
