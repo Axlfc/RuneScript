@@ -187,67 +187,45 @@ class VaultRAG:
         except Exception as e:
             logging.error(f"Error saving pickle data: {e}")
 
-    def query(self, query_embedding):
-        """
-        Query the index with an embedding to find relevant documents.
-
-        Args:
-            query_embedding (numpy.ndarray): The embedding of the query text
-
-        Returns:
-            list: List of tuples containing (document_id, similarity_score)
-        """
-        try:
-            if isinstance(query_embedding, str):
-                print(f"ERROR: Expected embedding array, received string: {query_embedding}")
-                return []
-
-            # Ensure the query embedding is 2D
-            if len(query_embedding.shape) == 1:
-                query_embedding = query_embedding.reshape(1, -1)
-
-            # Search the FAISS index
-            D, I = self.index.search(query_embedding, k=5)  # Get top 5 matches
-
-            # Combine results with document IDs
-            results = []
-            for i, (distances, indices) in enumerate(zip(D, I)):
-                for d, idx in zip(distances, indices):
-                    if idx < len(self.document_ids):
-                        doc_id = self.document_ids[idx]
-                        results.append((doc_id, float(d)))
-
-            return results
-
-        except Exception as e:
-            print(f"ERROR: Error in FAISS query: {str(e)}")
+    def query(self, query_embedding, top_k=3):
+        if self.index is None or self.index.ntotal == 0:
+            print("FAISS index is empty.")
             return []
 
-    def update_embeddings(self):
-        """Rebuild embeddings from vault content"""
+        distances, indices = self.index.search(query_embedding, top_k)
+        print(f"Indices returned by FAISS: {indices}")
+        print(f"Length of self.document_ids: {len(self.document_ids)}")
+        results = []
+        for i, idx_list in enumerate(indices):
+            for j, idx in enumerate(idx_list):
+                if idx < len(self.document_ids):
+                    doc_id = self.document_ids[idx]
+                    results.append((doc_id, distances[i][j]))
+                else:
+                    print(f"Index out of range: {idx}")
+        return results
+
+    def update_embeddings(self, doc_name=None):
+        # Load content from vault
+        with open(self.vault_path, 'r', encoding='utf-8') as f:
+            content = f.read()
         try:
             print("INFO: Updating embeddings...")
 
-            # Clear existing embeddings
-            self.embeddings = []
-            self.document_ids = []
-            self.index = faiss.IndexFlatL2(self.embedding_dim)
+            # Split content into chunks
+            chunks = self.chunk_content(content)
 
-            # Read vault content
-            vault_path = os.path.join("data", "conversations", self.session_id, "vault.md")
-            if os.path.exists(self.vault_path):
-                with open(self.vault_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                # Chunk the content
-                chunks = self.chunk_content(content)
-                # Embed each chunk and store in vector store
-                for idx, chunk in enumerate(chunks):
-                    doc_id = f'vault_content_{idx}'
-                    embedding = self.model.encode([chunk], convert_to_numpy=True)
-                    # Store embedding with doc_id
-                    self.store_embedding(doc_id, embedding)
-            else:
-                print(f"WARNING: Vault file not found at {vault_path}")
+            # Generate embeddings for each chunk
+            self.embeddings = self.model.encode(chunks, convert_to_numpy=True)
+            self.document_ids = [f'vault_content_{i}' for i in range(len(chunks))]
+
+            # Initialize FAISS index
+            embedding_dimension = self.embeddings.shape[1]
+            self.index = faiss.IndexFlatL2(embedding_dimension)
+            self.index.add(self.embeddings)
+
+            print(f"Embeddings updated. Total documents: {len(self.document_ids)}")
+            return True
 
         except Exception as e:
             print(f"ERROR: Failed to update embeddings: {str(e)}")

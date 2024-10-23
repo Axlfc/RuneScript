@@ -4104,6 +4104,7 @@ def open_ai_assistant_window(session_id=None):
 
                     extracted_text = process_pdf_to_text(doc_path)
                     if extracted_text:
+                        print(f"Extracted text for {doc_name}: {extracted_text[:100]}...")
                         if safely_add_content(vault_path, marker, extracted_text):
                             print(f"Successfully ingested document: {doc_name}")
                             # Update embeddings for this document
@@ -4117,7 +4118,7 @@ def open_ai_assistant_window(session_id=None):
                 elif doc_path and not is_checked:
                     reverse_ingestion_from_vault(doc_path, vault_path)
                     # Rebuild all embeddings after removal
-                    if rag.update_embeddings():
+                    if current_session.rag.update_embeddings():
                         print("Successfully updated embeddings after document removal")
                     else:
                         print("Failed to update embeddings after document removal")
@@ -5067,7 +5068,9 @@ def open_ai_assistant_window(session_id=None):
                 return results
 
             except Exception as e:
+                import traceback
                 print(f"ERROR: Error in RAG query: {str(e)}")
+                traceback.print_exc()
                 return []
 
         def save(self):
