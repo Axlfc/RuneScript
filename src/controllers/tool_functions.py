@@ -49,7 +49,8 @@ from tkinter import (
     BOTTOM,
     INSERT,
     SEL_FIRST,
-    SEL_LAST, FLAT,
+    SEL_LAST, FLAT, LabelFrame,
+    N, S, E
 )
 
 import requests
@@ -72,6 +73,11 @@ from src.views.edit_operations import cut, copy, paste, duplicate
 from lib.git import git_icons
 
 git_console_instance = None
+
+import hashlib
+from difflib import SequenceMatcher
+from datetime import datetime
+from typing import List, Dict, Optional
 
 
 def load_themes_from_json(file_path):
@@ -2858,6 +2864,121 @@ def open_terminal_window():
     entry.bind("<Down>", navigate_history)
 
 
+def open_prompt_enhancement_window():
+    """
+    Opens a new window for prompt creation, enhancement, and management.
+    Provides tools for template creation, variable management, and prompt refinement.
+    """
+    enhancement_window = Toplevel()
+    enhancement_window.title("Prompt Enhancement Studio")
+    enhancement_window.geometry("1000x700")
+
+    # Create main frame with grid layout
+    main_frame = Frame(enhancement_window, padding="5")
+    main_frame.grid(row=0, column=0, sticky=(N, W, E, S))
+    enhancement_window.columnconfigure(0, weight=1)
+    enhancement_window.rowconfigure(0, weight=1)
+
+    # Toolbar
+    toolbar = Frame(main_frame)
+    toolbar.grid(row=0, column=0, columnspan=2, sticky=(W, E))
+    Button(toolbar, text="New").pack(side=LEFT, padx=2)
+    Button(toolbar, text="Save").pack(side=LEFT, padx=2)
+    Button(toolbar, text="Load").pack(side=LEFT, padx=2)
+    Button(toolbar, text="Export").pack(side=LEFT, padx=2)
+    Button(toolbar, text="Settings").pack(side=LEFT, padx=2)
+    Button(toolbar, text="Help").pack(side=RIGHT, padx=2)
+
+    # Left sidebar for categories and templates
+    sidebar = Frame(main_frame, width=200)
+    sidebar.grid(row=1, column=0, sticky=(N, S, W, E), padx=5, pady=5)
+
+    # Category tree
+    category_tree = Treeview(sidebar, height=10)
+    category_tree.heading('#0', text='Categories')
+    category_tree.pack(fill=Y, expand=True)
+
+    # Add default categories
+    categories = ['General', 'Code', 'Writing', 'Analysis']
+    for category in categories:
+        category_tree.insert('', 'end', text=category)
+
+    # Main prompt editing area
+    editor_frame = Frame(main_frame)
+    editor_frame.grid(row=1, column=1, sticky=(N, S, W, E), pady=5)
+
+    # Title and tags
+    title_frame = Frame(editor_frame)
+    title_frame.pack(fill=X, pady=5)
+    Label(title_frame, text="Title:").pack(side=LEFT)
+    title_entry = Entry(title_frame)
+    title_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
+
+    tags_frame = Frame(editor_frame)
+    tags_frame.pack(fill=X, pady=5)
+    Label(tags_frame, text="Tags:").pack(side=LEFT)
+    tags_entry = Entry(tags_frame)
+    tags_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
+
+    # Main prompt content
+    prompt_text = scrolledtext.ScrolledText(editor_frame, height=15)
+    prompt_text.pack(fill=BOTH, expand=True, pady=5)
+
+    # Variable management
+    var_frame = LabelFrame(editor_frame, text="Variables")
+    var_frame.pack(fill=X, pady=5)
+
+    # Variable list with columns
+    var_tree = Treeview(var_frame, columns=("name", "description", "type"), height=3)
+    var_tree.heading("name", text="Name")
+    var_tree.heading("description", text="Description")
+    var_tree.heading("type", text="Type")
+    var_tree.pack(fill=X, pady=5)
+
+    # Enhancement options
+    options_frame = LabelFrame(editor_frame, text="Enhancement Options")
+    options_frame.pack(fill=X, pady=5)
+    Checkbutton(options_frame, text="Add context retention").pack(anchor=W)
+    Checkbutton(options_frame, text="Include conversation history").pack(anchor=W)
+    Checkbutton(options_frame, text="Auto-format response").pack(anchor=W)
+
+    # Bottom action buttons
+    button_frame = Frame(editor_frame)
+    button_frame.pack(fill=X, pady=5)
+    Button(button_frame, text="Test Prompt").pack(side=LEFT, padx=5)
+    Button(button_frame, text="Save Version").pack(side=LEFT, padx=5)
+    Button(button_frame, text="Export").pack(side=LEFT, padx=5)
+
+    def save_prompt():
+        """Save the current prompt template"""
+        title = title_entry.get()
+        tags = tags_entry.get()
+        content = prompt_text.get("1.0", END)
+        # TODO: Implement saving logic
+        pass
+
+    def load_prompt():
+        """Load a saved prompt template"""
+        # TODO: Implement loading logic
+        pass
+
+    def test_prompt():
+        """Test the current prompt template"""
+        content = prompt_text.get("1.0", END)
+        # TODO: Implement test logic
+        pass
+
+    def add_variable():
+        """Add a new variable to the template"""
+        # TODO: Implement variable addition logic
+        pass
+
+    # Bind events
+    title_entry.bind('<FocusOut>', lambda e: save_prompt())
+    # prompt_text.bind('<KeyRelease>', lambda e: auto_save_prompt())
+
+    return enhancement_window
+
 def open_audio_generation_window():
     """ ""\"
     ""\"
@@ -4239,8 +4360,8 @@ def open_ai_assistant_window(session_id=None):
             entry.delete(0, END)
             entry.insert(0, command)
 
-    def stream_output(process):
-        global current_session
+    def stream_output(process, history_manager):
+        global current_session, original_md_content
         ai_response_buffer = ""
         try:
             while True:
@@ -4257,25 +4378,34 @@ def open_ai_assistant_window(session_id=None):
 
             # After the AI response is fully received
             if ai_response_buffer:
-                current_session.add_message("ai", ai_response_buffer)
-
-                # Extract content between <output> and </output> tags
+                # Extract content between <output> and </output> tags or use the entire response
                 output_content = extract_output_content(ai_response_buffer)
 
-                # Only append to the vault if valid output is found
-                if output_content:
-                    append_to_vault(f"AI: {output_content}")
+                # Add AI's response to history
+                history_manager.add_message("ai", output_content)
+
+                # Add message to current session
+                current_session.add_message("ai", output_content)
+
+                # Update UI
+                output_text.insert(END, f"AI: {output_content}\n", "ai")
+                append_to_vault(f"AI: {output_content}")
+                original_md_content += f"\nAI: {output_content}\n"
 
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n", "error")
         finally:
             on_processing_complete()
 
-    def extract_output_content(ai_response):
-        import re
-        output_pattern = re.compile(r'<output>(.*?)</output>', re.DOTALL)
-        matches = output_pattern.findall(ai_response)
-        return "\n".join(matches) if matches else ""
+    def extract_output_content(text):
+        """Extract only the content within <output> tags, or return the entire message if tags are absent."""
+        output_pattern = r'<output>(.*?)</output>'
+        matches = re.findall(output_pattern, text, re.DOTALL)
+        if matches:
+            return '\n'.join(matches).strip()
+        else:
+            # If no <output> tags are found, return the entire message
+            return text.strip()
 
     def append_to_vault(content):
         if current_session:
@@ -4301,35 +4431,197 @@ def open_ai_assistant_window(session_id=None):
         except FileNotFoundError:
             pass
 
+    class OptimizedHistoryManager:
+        def __init__(self, max_tokens: int = 4000, similarity_threshold: float = 0.85):
+            self.history: List[Dict] = []
+            self.message_hashes: Dict[str, datetime] = {}
+            self.max_tokens = max_tokens
+            self.similarity_threshold = similarity_threshold
+            self.token_count = 0
+
+        def _calculate_hash(self, content: str) -> str:
+            """Generate a hash for message content"""
+            return hashlib.md5(content.encode()).hexdigest()
+
+        def _estimate_tokens(self, text: str) -> int:
+            """Estimate token count (rough approximation)"""
+            return len(text.split()) * 1.3  # Rough estimate: words * 1.3
+
+        def _is_similar(self, text1: str, text2: str) -> bool:
+            """Check if two texts are similar using sequence matcher"""
+            return SequenceMatcher(None, text1, text2).ratio() > self.similarity_threshold
+
+        def _extract_output_content(self, message: str) -> str:
+            """Extract only the content within <output> tags, or return the entire message if tags are absent."""
+            output_pattern = r'<output>(.*?)</output>'
+            matches = re.findall(output_pattern, message, re.DOTALL)
+            if matches:
+                return '\n'.join(matches).strip()
+            else:
+                # If no <output> tags are found, return the entire message
+                return message.strip()
+        def _compress_similar_messages(self) -> None:
+            """Compress similar consecutive messages"""
+            if len(self.history) < 2:
+                return
+
+            i = 0
+            while i < len(self.history) - 1:
+                current = self.history[i]
+                next_msg = self.history[i + 1]
+
+                if (current['role'] == next_msg['role'] and
+                        self._is_similar(current['content'], next_msg['content'])):
+                    # Keep the more recent message
+                    self.token_count -= self._estimate_tokens(current['content'])
+                    self.history.pop(i)
+                else:
+                    i += 1
+
+        def add_message(self, role: str, content: str) -> None:
+            """Add a message to history with deduplication and compression"""
+            # Extract content from output tags if present
+            processed_content = self._extract_output_content(content)
+
+            # Calculate hash of processed content
+            content_hash = self._calculate_hash(processed_content)
+
+            # Check for exact duplicates
+            if content_hash in self.message_hashes:
+                # Update timestamp only if it's a duplicate
+                self.message_hashes[content_hash] = datetime.now()
+                return
+
+            # Add new message
+            self.message_hashes[content_hash] = datetime.now()
+            estimated_tokens = self._estimate_tokens(processed_content)
+
+            # Add to history
+            self.history.append({
+                'role': role,
+                'content': processed_content,
+                'timestamp': datetime.now(),
+                'token_estimate': estimated_tokens
+            })
+
+            self.token_count += estimated_tokens
+
+            # Compress similar messages
+            self._compress_similar_messages()
+
+            # Trim history if exceeding token limit
+            self._trim_history()
+
+            print(f"Added message to history: Role: {role}, Content: {content}")
+
+        def _trim_history(self) -> None:
+            """Trim history to keep only the last 3 messages."""
+            while len(self.history) > 3:
+                removed_msg = self.history.pop(0)
+                self.token_count -= removed_msg['token_estimate']
+                # Remove from hash tracking
+                content_hash = self._calculate_hash(removed_msg['content'])
+                self.message_hashes.pop(content_hash, None)
+
+        def get_history(self, max_tokens: Optional[int] = None) -> str:
+            """Get optimized conversation history limited to the last 3 messages."""
+            if not self.history:
+                return ""
+
+            # Only consider the last 3 messages
+            last_messages = self.history[-3:]
+            history_messages = [
+                f"{msg['role'].title()}: {msg['content']}" for msg in last_messages
+            ]
+
+            return "\n".join(history_messages)
+
+    def build_command_with_context(script_content: str,
+                                   ai_command: str,
+                                   relevant_docs: List[Dict],
+                                   history_manager: OptimizedHistoryManager) -> str:
+        """Build command with optimized context and history"""
+        parts = []
+
+        if script_content:
+            parts.append(script_content)
+
+        # Add the user's current input
+        parts.append(f"User: {ai_command}")
+
+        # Get optimized history (limited to last 3 messages)
+        history = history_manager.get_history()
+        if history:
+            parts.append("\nPrevious conversation (last 3 messages):\n" + history)
+
+        # Add relevant documents
+        if relevant_docs:
+            context_text = "\nRelevant context:\n" + "\n---\n".join(
+                f"{doc['content']}" for doc in relevant_docs
+            )
+            parts.append(context_text)
+
+        return "\n".join(parts)
+    def get_script_content(opened_script_var, selected_text_var):
+        """Extract script content based on selection or full script"""
+        if selected_text_var.get():
+            try:
+                return (
+                        "```\n"
+                        + script_text.get(
+                    script_text.tag_ranges("sel")[0],
+                    script_text.tag_ranges("sel")[1],
+                )
+                        + "```\n\n"
+                )
+            except:
+                messagebox.showerror(
+                    "Error", "No text selected in main script window."
+                )
+                return ""
+        elif opened_script_var.get():
+            return "```\n" + script_text.get("1.0", END) + "```\n\n"
+        return ""
+
+    def update_ui_display(ai_command):
+        """Update the UI with the user's command"""
+        global original_md_content
+        # Display the user's input in the UI
+        output_text.insert("end", f"You: {ai_command}\n", "user")
+        output_text.insert("end", "-" * 80 + "\n")
+        # Append to vault and update original markdown content
+        append_to_vault(f"USER: {ai_command}")
+        original_md_content += f"\n{ai_command}\n"
+        original_md_content += "-" * 80 + "\n"
+
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
-        global original_md_content, selected_agent_var, current_session
+        global original_md_content, selected_agent_var, current_session, history_manager
+
+        # Initialize history manager if not already done
+        if not hasattr(execute_ai_assistant_command, 'history_manager'):
+            execute_ai_assistant_command.history_manager = OptimizedHistoryManager()
+        history_manager = execute_ai_assistant_command.history_manager
+
         if not current_session:
             create_session()
 
         if ai_command.strip():
+            # Get script content and relevant docs
+            script_content = get_script_content(opened_script_var, selected_text_var)
             relevant_docs = current_session.get_relevant_context(ai_command)
 
-            script_content = ""
-            if selected_text_var.get():
-                try:
-                    script_content = (
-                            "```\n"
-                            + script_text.get(
-                        script_text.tag_ranges("sel")[0],
-                        script_text.tag_ranges("sel")[1],
-                    )
-                            + "```\n\n"
-                    )
-                except:
-                    messagebox.showerror(
-                        "Error", "No text selected in main script window."
-                    )
-                    return
-            elif opened_script_var.get():
-                script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
+            # Combine command with context
+            combined_command = build_command_with_context(
+                script_content,
+                ai_command,
+                relevant_docs,
+                execute_ai_assistant_command.history_manager
+            )
 
-            # Format the command with relevant context in a human-readable way
-            combined_command = f"{script_content}{ai_command}"
+            # Add user's input to history
+            execute_ai_assistant_command.history_manager.add_message("user", ai_command)
+
+            # TODO: ADD CONTEXT RIGHT
             if relevant_docs:
                 context_text = "\n\nRelevant context:\n" + "\n---\n".join(
                     f"{doc['content']}" for doc in relevant_docs
@@ -4337,14 +4629,17 @@ def open_ai_assistant_window(session_id=None):
                 combined_command += context_text
 
             # Add the user's message to the current session
-            current_session.add_message("user", combined_command)
+            current_session.add_message("user", ai_command)
 
-            # Append to vault and update display
-            append_to_vault(f"USER: {combined_command}")
+            # Update UI
+            update_ui_display(ai_command)
+
+            # Append to vault and update display (we need to append ai response to original_md_content
+            '''append_to_vault(f"USER: {combined_command}")
             original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"
             output_text.insert("end", f"You: {combined_command}\n", "user")
-            output_text.insert("end", "-" * 80 + "\n")
+            output_text.insert("end", "-" * 80 + "\n")'''
 
             entry.delete(0, END)
             entry.config(state="disabled")
@@ -4360,7 +4655,11 @@ def open_ai_assistant_window(session_id=None):
                 selected_agent = selected_agent_var
 
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
-            process_ai_command(command)
+            process_ai_command(create_ai_command(
+                "src/models/ai_assistant.py",
+                combined_command,
+                selected_agent_var
+            ))
         else:
             entry.config(state="normal")
 
@@ -4387,7 +4686,8 @@ def open_ai_assistant_window(session_id=None):
                 encoding="utf-8",
                 bufsize=1,
             )
-            threading.Thread(target=stream_output, args=(process,)).start()
+            threading.Thread(target=stream_output, args=(process, execute_ai_assistant_command.history_manager)).start()
+
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n")
             on_processing_complete()
@@ -4500,6 +4800,7 @@ def open_ai_assistant_window(session_id=None):
     command_history = []
     history_pointer = [0]
 
+
     class Session:
         def __init__(self, session_id, load_existing=True):
             self.id = session_id
@@ -4511,6 +4812,7 @@ def open_ai_assistant_window(session_id=None):
             self.documents = []
             self.rag = VaultRAG(self.id)  # Initialize the RAG system for this session
             self.state = "NOT_INGESTED"  # Initial state for vault
+            self.chat_history = []
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
@@ -4629,13 +4931,36 @@ def open_ai_assistant_window(session_id=None):
                 return None
 
         def add_message(self, role, content):
+            # Create message object
             message = {
                 "role": role,
                 "content": content,
                 "timestamp": datetime.now().isoformat()
             }
+
+            # Add to messages list
             self.messages.append(message)
+
+            # Add to chat history in format expected by AI models
+            self.chat_history.append({
+                "role": role,
+                "content": content
+            })
+
+            # Keep chat history at a maximum of the last 3 messages
+            self.chat_history = self.chat_history[-3:]
+
             self.save()
+
+        def get_conversation_context(self):
+            """
+            Get formatted conversation history for AI context
+            """
+            formatted_history = ""
+            for msg in self.chat_history:
+                role = "You" if msg["role"] == "user" else "Assistant"
+                formatted_history += f"{role}: {msg['content']}\n"
+            return formatted_history
 
         def add_link(self, url):
             self.links.append(url)
@@ -4759,7 +5084,8 @@ def open_ai_assistant_window(session_id=None):
                 "links": self.links,
                 "documents": self.documents,
                 "messages": self.messages,
-                "vault_state": self.state  # Save vault state in the session metadata
+                "chat_history": self.chat_history,  # Save chat history
+                "vault_state": self.state
             }
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
@@ -4771,7 +5097,8 @@ def open_ai_assistant_window(session_id=None):
                 self.messages = data.get("messages", [])
                 self.links = data.get("links", [])
                 self.documents = data.get("documents", [])
-                self.state = data.get("vault_state", "NOT_INGESTED")  # Load the vault state
+                self.chat_history = data.get("chat_history", [])  # Load chat history
+                self.state = data.get("vault_state", "NOT_INGESTED")
 
         def update_vault(self, content, increment=True):
             if increment:
