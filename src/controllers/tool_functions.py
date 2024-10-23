@@ -2864,6 +2864,235 @@ def open_terminal_window():
     entry.bind("<Down>", navigate_history)
 
 
+class PromptTemplate:
+    def __init__(self, title: str = "", tags: List[str] = None, content: str = "",
+                 variables: List[Dict] = None, category: str = "General"):
+        self.title = title
+        self.tags = tags or []
+        self.content = content
+        self.variables = variables or []
+        self.category = category
+        self.created_at = datetime.now().isoformat()
+        self.modified_at = self.created_at
+
+    def to_dict(self) -> dict:
+        return {
+            "title": self.title,
+            "tags": self.tags,
+            "content": self.content,
+            "variables": self.variables,
+            "category": self.category,
+            "created_at": self.created_at,
+            "modified_at": self.modified_at
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'PromptTemplate':
+        template = cls(
+            title=data["title"],
+            tags=data["tags"],
+            content=data["content"],
+            variables=data["variables"],
+            category=data["category"]
+        )
+        template.created_at = data["created_at"]
+        template.modified_at = data["modified_at"]
+        return template
+
+
+class VariableDialog(Toplevel):
+    def __init__(self, parent, variable: Dict = None):
+        super().__init__(parent)
+        self.title("Add/Edit Variable")
+        self.variable = variable or {}
+        self.result = None
+
+        # Create and pack widgets
+        frame = ttk.Frame(self, padding="10")
+        frame.grid(row=0, column=0, sticky=(N, W, E, S))
+
+        # Variable name
+        ttk.Label(frame, text="Name:").grid(row=0, column=0, sticky=W)
+        self.name_var = StringVar(value=variable.get("name", ""))
+        self.name_entry = ttk.Entry(frame, textvariable=self.name_var)
+        self.name_entry.grid(row=0, column=1, padx=5, pady=5, sticky=(W, E))
+
+        # Variable description
+        ttk.Label(frame, text="Description:").grid(row=1, column=0, sticky=W)
+        self.desc_var = StringVar(value=variable.get("description", ""))
+        self.desc_entry = ttk.Entry(frame, textvariable=self.desc_var)
+        self.desc_entry.grid(row=1, column=1, padx=5, pady=5, sticky=(W, E))
+
+        # Variable type
+        ttk.Label(frame, text="Type:").grid(row=2, column=0, sticky=W)
+        self.type_var = StringVar(value=variable.get("type", "text"))
+        type_combo = ttk.Combobox(frame, textvariable=self.type_var)
+        type_combo['values'] = ('text', 'number', 'boolean', 'list')
+        type_combo.grid(row=2, column=1, padx=5, pady=5, sticky=(W, E))
+
+        # Buttons
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=3, column=0, columnspan=2, pady=10)
+        ttk.Button(button_frame, text="OK", command=self.ok).pack(side=LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(side=LEFT)
+
+    def ok(self):
+        self.result = {
+            "name": self.name_var.get(),
+            "description": self.desc_var.get(),
+            "type": self.type_var.get()
+        }
+        self.destroy()
+
+    def cancel(self):
+        self.destroy()
+
+
+class PromptEnhancementStudio:
+    def __init__(self, window: Toplevel):
+        self.window = window
+        self.current_template = PromptTemplate()
+        self.api_key = None
+        self.setup_gui()
+
+    def setup_gui(self):
+        pass
+        # ... (Keep existing GUI setup code) ...
+
+    def save_prompt(self):
+        """Save the current prompt template to a file"""
+        if not self.current_template.title:
+            messagebox.showerror("Error", "Please enter a title for the prompt")
+            return
+
+        self.current_template.title = self.title_entry.get()
+        self.current_template.tags = [tag.strip() for tag in self.tags_entry.get().split(',')]
+        self.current_template.content = self.prompt_text.get("1.0", END).strip()
+        self.current_template.modified_at = datetime.now().isoformat()
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json")],
+            initialfile=f"{self.current_template.title}.json"
+        )
+
+        if file_path:
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(self.current_template.to_dict(), f, indent=2)
+                messagebox.showinfo("Success", "Prompt template saved successfully")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save prompt template: {str(e)}")
+
+    def load_prompt(self):
+        """Load a prompt template from a file"""
+        file_path = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json")]
+        )
+
+        if file_path:
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    self.current_template = PromptTemplate.from_dict(data)
+
+                # Update UI
+                self.title_entry.delete(0, END)
+                self.title_entry.insert(0, self.current_template.title)
+
+                self.tags_entry.delete(0, END)
+                self.tags_entry.insert(0, ', '.join(self.current_template.tags))
+
+                self.prompt_text.delete("1.0", END)
+                self.prompt_text.insert("1.0", self.current_template.content)
+
+                self.update_variable_tree()
+
+                messagebox.showinfo("Success", "Prompt template loaded successfully")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load prompt template: {str(e)}")
+
+    def test_prompt(self):
+        """Test the current prompt template with OpenAI API"""
+        if not self.api_key:
+            self.api_key = self.get_api_key()
+            if not self.api_key:
+                return
+
+        prompt_content = self.prompt_text.get("1.0", END).strip()
+
+        # Apply enhancement options
+        if self.context_var.get():
+            prompt_content = f"Context: [Previous conversation context]\n\n{prompt_content}"
+
+        try:
+            openai.api_key = self.api_key
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt_content}]
+            )
+
+            # Show result in new window
+            result_window = Toplevel(self.window)
+            result_window.title("Prompt Test Result")
+            result_text = scrolledtext.ScrolledText(result_window, width=60, height=20)
+            result_text.pack(padx=10, pady=10, fill=BOTH, expand=True)
+            result_text.insert("1.0", response.choices[0].message.content)
+            result_text.config(state=DISABLED)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to test prompt: {str(e)}")
+
+    def add_variable(self):
+        """Add a new variable to the template"""
+        dialog = VariableDialog(self.window)
+        self.window.wait_window(dialog)
+
+        if dialog.result:
+            self.current_template.variables.append(dialog.result)
+            self.update_variable_tree()
+
+            # Insert variable placeholder in prompt text
+            var_name = dialog.result["name"]
+            self.prompt_text.insert(INSERT, f"{{{var_name}}}")
+
+    def update_variable_tree(self):
+        """Update the variable treeview with current variables"""
+        self.var_tree.delete(*self.var_tree.get_children())
+        for var in self.current_template.variables:
+            self.var_tree.insert("", END, values=(
+                var["name"],
+                var["description"],
+                var["type"]
+            ))
+
+    def get_api_key(self) -> Optional[str]:
+        """Prompt user for OpenAI API key"""
+        dialog = Toplevel(self.window)
+        dialog.title("Enter API Key")
+        dialog.geometry("400x120")
+
+        frame = ttk.Frame(dialog, padding="10")
+        frame.pack(fill=BOTH, expand=True)
+
+        ttk.Label(frame, text="Enter your OpenAI API key:").pack(fill=X)
+        api_key_var = StringVar()
+        entry = ttk.Entry(frame, textvariable=api_key_var, show="*")
+        entry.pack(fill=X, pady=5)
+
+        result = None
+
+        def save_key():
+            nonlocal result
+            result = api_key_var.get()
+            dialog.destroy()
+
+        ttk.Button(frame, text="OK", command=save_key).pack(pady=5)
+
+        dialog.wait_window()
+        return result
+
+
 def open_prompt_enhancement_window():
     """
     Opens a new window for prompt creation, enhancement, and management.
@@ -4515,8 +4744,8 @@ def open_ai_assistant_window(session_id=None):
             print(f"Added message to history: Role: {role}, Content: {content}")
 
         def _trim_history(self) -> None:
-            """Trim history to keep only the last 3 messages."""
-            while len(self.history) > 3:
+            """Trim history to keep only the last 7 messages."""
+            while len(self.history) > 7:
                 removed_msg = self.history.pop(0)
                 self.token_count -= removed_msg['token_estimate']
                 # Remove from hash tracking
@@ -4524,12 +4753,12 @@ def open_ai_assistant_window(session_id=None):
                 self.message_hashes.pop(content_hash, None)
 
         def get_history(self, max_tokens: Optional[int] = None) -> str:
-            """Get optimized conversation history limited to the last 3 messages."""
+            """Get optimized conversation history limited to the last 7 messages."""
             if not self.history:
                 return ""
 
-            # Only consider the last 3 messages
-            last_messages = self.history[-3:]
+            # Only consider the last 7 messages
+            last_messages = self.history[-7:]
             history_messages = [
                 f"{msg['role'].title()}: {msg['content']}" for msg in last_messages
             ]
@@ -4947,8 +5176,8 @@ def open_ai_assistant_window(session_id=None):
                 "content": content
             })
 
-            # Keep chat history at a maximum of the last 3 messages
-            self.chat_history = self.chat_history[-3:]
+            # Keep chat history at a maximum of the last 7 messages
+            self.chat_history = self.chat_history[-7:]
 
             self.save()
 
