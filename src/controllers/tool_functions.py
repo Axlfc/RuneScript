@@ -61,7 +61,9 @@ from PIL import ImageTk
 from PIL.Image import Image
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.models.VaultRAG import VaultRAG
 from src.models.convert_pdf_to_text import process_pdf_to_text, convert_pdf_to_text
+from src.models.embeddings import generate_embedding
 from src.views.tk_utils import text, script_text, root, style, current_session
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
@@ -3677,18 +3679,6 @@ def open_ai_assistant_window(session_id=None):
                 links_list.insert(END, url)
 
     def find_content_boundaries(content, marker, marker_type=None):
-        """
-        Find the precise start and end positions of a specific content block in the vault,
-        ensuring chat messages and other content blocks are preserved.
-
-        Args:
-            content (str): The full vault content
-            marker (str): The specific marker to find (e.g., "Document: doc.pdf")
-            marker_type (str, optional): The type of marker ("Document:" or "Link:")
-
-        Returns:
-            tuple: (start_index, end_index) positions of the content block
-        """
         # Find the start of our marker
         marker_start = content.find(f"\n\n{marker}\n")
         if marker_start == -1:
@@ -3742,18 +3732,6 @@ def open_ai_assistant_window(session_id=None):
         return marker_start, end_index
 
     def safely_remove_content(vault_path, marker, marker_type=None):
-        """
-        Safely remove specific content block from vault while preserving ALL chat history
-        and other content blocks.
-
-        Args:
-            vault_path (str): Path to the vault file
-            marker (str): The specific marker to find and remove
-            marker_type (str, optional): Type of content being removed ("Document:" or "Link:")
-
-        Returns:
-            bool: True if content was removed, False otherwise
-        """
         try:
             with open(vault_path, 'r', encoding='utf-8') as file:
                 content = file.read()
@@ -3818,17 +3796,6 @@ def open_ai_assistant_window(session_id=None):
             return False
 
     def safely_add_content(vault_path, marker, content_to_add):
-        """
-        Safely add new content to vault while preserving ALL chat history.
-
-        Args:
-            vault_path (str): Path to the vault file
-            marker (str): The marker for the new content (e.g., "Document: doc.pdf")
-            content_to_add (str): The content to add to the vault
-
-        Returns:
-            bool: True if content was added successfully, False otherwise
-        """
         try:
             # Read existing content
             if os.path.exists(vault_path):
@@ -3917,17 +3884,15 @@ def open_ai_assistant_window(session_id=None):
 
     def add_link_to_vault(url, vault_path):
         content = scrape_raw_file_content(url)
-        if content is None:
-            print(f"Failed to add empty content from {url} to vault.")
-            return False
-        else:
+        if content:
             marker = f"Link: {url}"
             if safely_add_content(vault_path, marker, content):
-                print(f"Successfully added content from {url} to vault.")
+                # Update embeddings for the link
+                embedding = generate_embedding(content)
+                if embedding:
+                    current_session.rag.store_embedding(marker, embedding)
                 return True
-            else:
-                print(f"Failed to add content from {url} to vault.")
-                return False
+        return False
 
     def remove_link_from_vault(url, vault_path):
         marker = f"Link: {url}"
@@ -3995,6 +3960,9 @@ def open_ai_assistant_window(session_id=None):
             print(f"Ingesting documents for session {current_session.id}...")
             vault_path = os.path.join("data", "conversations", current_session.id, "vault.md")
 
+            # Initialize RAG for this session
+            rag = VaultRAG(current_session.id)
+
             for idx, doc_data in enumerate(current_session.documents):
                 doc_path = doc_data.get('path', '')
                 is_checked = doc_data.get('checked', False)
@@ -4007,11 +3975,21 @@ def open_ai_assistant_window(session_id=None):
                     if extracted_text:
                         if safely_add_content(vault_path, marker, extracted_text):
                             print(f"Successfully ingested document: {doc_name}")
+                            # Update embeddings for this document
+                            if rag.update_embeddings(doc_name):
+                                print(f"Successfully updated embeddings for: {doc_name}")
+                            else:
+                                print(f"Failed to update embeddings for: {doc_name}")
                         else:
                             print(f"Failed to ingest document: {doc_name}")
 
                 elif doc_path and not is_checked:
                     reverse_ingestion_from_vault(doc_path, vault_path)
+                    # Rebuild all embeddings after removal
+                    if rag.update_embeddings():
+                        print("Successfully updated embeddings after document removal")
+                    else:
+                        print("Failed to update embeddings after document removal")
 
     def show_links_context_menu(event):
         if links_list.size() == 0:
@@ -4135,21 +4113,50 @@ def open_ai_assistant_window(session_id=None):
             current_session.save()
             refresh_documents_list()
 
+    # Load supported file formats from JSON
+    def load_file_formats(json_file='data/file_formats.json'):
+        with open(json_file, 'r') as file:
+            data = json.load(file)
+        return data['text_file_formats']
+
+    # Check if a format is supported
+    def is_supported_format(file_extension, supported_formats):
+        return file_extension in supported_formats
+
     def add_new_document():
+        # Load supported formats (this can be done once globally if needed)
+        supported_formats = load_file_formats()
+
+        # Open file dialog for selecting files
         file_paths = filedialog.askopenfilenames(
             initialdir=".",
-            title="Select PDF documents",
-            filetypes=(("PDF files", "*.pdf"), ("all files", "*.*"))
+            title="Select documents",
+            filetypes=[("All supported files", "*.*")] + [(ext[1:].upper() + " files", f"*{ext}") for ext in
+                                                          supported_formats]
         )
+
         if file_paths and current_session:
             duplicates = []
+            unsupported = []
             new_files = []
+
             for file_path in file_paths:
+                file_extension = os.path.splitext(file_path)[1]
+
+                if not is_supported_format(file_extension, supported_formats):
+                    unsupported.append(os.path.basename(file_path))
+                    continue
+
                 if any(doc['path'] == file_path for doc in current_session.documents):
                     duplicates.append(os.path.basename(file_path))
                 else:
                     new_files.append(file_path)
                     current_session.add_document(file_path)
+
+            if unsupported:
+                unsupported_list = "\n".join(unsupported)
+                messagebox.showerror("Unsupported File Formats",
+                                     f"The following files are unsupported:\n\n{unsupported_list}")
 
             if duplicates:
                 duplicate_list = "\n".join(duplicates)
@@ -4159,7 +4166,7 @@ def open_ai_assistant_window(session_id=None):
             if new_files:
                 refresh_documents_list()
 
-            if duplicates and not new_files:
+            if duplicates and not new_files and not unsupported:
                 messagebox.showinfo("No New Files", "No new files were added to the document list.")
     def show_documents_context_menu(event):
         # Configure context menu for empty space (show only 'Add New Document')
@@ -4300,6 +4307,8 @@ def open_ai_assistant_window(session_id=None):
             create_session()
 
         if ai_command.strip():
+            relevant_docs = current_session.get_relevant_context(ai_command)
+
             script_content = ""
             if selected_text_var.get():
                 try:
@@ -4319,15 +4328,19 @@ def open_ai_assistant_window(session_id=None):
             elif opened_script_var.get():
                 script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
 
+            # Format the command with relevant context in a human-readable way
             combined_command = f"{script_content}{ai_command}"
+            if relevant_docs:
+                context_text = "\n\nRelevant context:\n" + "\n---\n".join(
+                    f"{doc['content']}" for doc in relevant_docs
+                )
+                combined_command += context_text
 
             # Add the user's message to the current session
             current_session.add_message("user", combined_command)
 
-            # Append the user's input to the vault with a prefix "USER:"
+            # Append to vault and update display
             append_to_vault(f"USER: {combined_command}")
-
-            # Update the original content and display it
             original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"
             output_text.insert("end", f"You: {combined_command}\n", "user")
@@ -4340,19 +4353,13 @@ def open_ai_assistant_window(session_id=None):
             # Prepare the command for processing by the AI assistant
             ai_script_path = "src/models/ai_assistant.py"
             if persistent_agent_selection_var.get():
-                try:
-                    selected_agent = selected_agent_var
-                except Exception as e:
-                    selected_agent_var = "Assistant"
-                    selected_agent = selected_agent_var
+                selected_agent = selected_agent_var
                 store_selected_agent(selected_agent)
             else:
-                print("Non persistent agent")
                 selected_agent_var = "Assistant"
                 selected_agent = selected_agent_var
 
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
-            print("Executing AI command...")
             process_ai_command(command)
         else:
             entry.config(state="normal")
@@ -4464,12 +4471,6 @@ def open_ai_assistant_window(session_id=None):
                         Tooltip(menu, command["description"])
 
         context_menu = Menu(root, tearoff=0)
-        context_menu.add_command(label="Cut", command=cut)
-        context_menu.add_command(label="Copy", command=copy)
-        context_menu.add_command(label="Paste", command=paste)
-        context_menu.add_command(label="Duplicate", command=duplicate)
-        context_menu.add_command(label="Select All", command=duplicate)
-        context_menu.add_separator()
         custom_commands = load_commands()
         add_commands_to_menu(context_menu, custom_commands)
         context_menu.add_separator()
@@ -4508,12 +4509,124 @@ def open_ai_assistant_window(session_id=None):
             self.messages = []
             self.links = []
             self.documents = []
+            self.rag = VaultRAG(self.id)  # Initialize the RAG system for this session
             self.state = "NOT_INGESTED"  # Initial state for vault
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
                 self.name = f"Session {self.id}"
                 self.save()
+
+        def get_relevant_context(self, query_text, max_results=3):
+            """
+            Get relevant context for a query with actual document content.
+
+            Args:
+                query_text (str): The text query
+                max_results (int): Maximum number of results to return
+
+            Returns:
+                list: List of dicts containing relevant document content and metadata
+            """
+            try:
+                # Get similar documents from RAG
+                results = self.query_rag(query_text)
+
+                # Load and format the relevant content
+                relevant_docs = []
+                seen_content = set()  # To avoid duplicate content
+
+                for doc_id, score in results:
+                    if len(relevant_docs) >= max_results:
+                        break
+
+                    content = self.get_document_content(doc_id)
+                    if content and content not in seen_content:
+                        # Format the content to be more readable
+                        formatted_content = self.format_document_content(content)
+                        if formatted_content:
+                            relevant_docs.append({
+                                'doc_id': doc_id,
+                                'content': formatted_content,
+                                'similarity': score
+                            })
+                            seen_content.add(content)
+
+                return relevant_docs
+
+            except Exception as e:
+                print(f"ERROR: Failed to get relevant context: {str(e)}")
+                return []
+
+        def get_document_content(self, doc_id):
+            """
+            Retrieve the actual content for a document ID.
+
+            Args:
+                doc_id (str): The document ID
+
+            Returns:
+                str: The document content
+            """
+            try:
+                # If it's a vault chunk, read from vault file
+                if doc_id.startswith('vault_content_'):
+                    with open(self.vault_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    # Find the specific chunk
+                    chunks = self.rag.chunk_content(content)
+                    chunk_num = int(doc_id.split('_')[-1])
+                    if chunk_num < len(chunks):
+                        return chunks[chunk_num]
+
+                # If it's a regular document
+                elif doc_id.startswith('Document: '):
+                    doc_path = doc_id.replace('Document: ', '')
+                    if os.path.exists(doc_path):
+                        with open(doc_path, 'r', encoding='utf-8') as f:
+                            return f.read()
+
+                # If it's a link
+                elif doc_id.startswith('Link: '):
+                    # Return the stored content for the link
+                    return self.get_link_content(doc_id)
+
+            except Exception as e:
+                print(f"ERROR: Failed to get document content: {str(e)}")
+            return None
+
+        def format_document_content(self, content):
+            """
+            Format document content to be more readable.
+
+            Args:
+                content (str): Raw document content
+
+            Returns:
+                str: Formatted content
+            """
+            try:
+                if not content:
+                    return None
+
+                # Remove excessive whitespace
+                content = ' '.join(content.split())
+
+                # Limit content length if too long
+                max_length = 500
+                if len(content) > max_length:
+                    content = content[:max_length] + "..."
+
+                # Clean up any markdown or code formatting
+                content = content.replace('```', '')
+
+                # Remove any system-specific formatting
+                content = content.replace('\r', '').replace('\n\n\n', '\n\n')
+
+                return content.strip()
+            except Exception as e:
+                print(f"ERROR: Failed to format content: {str(e)}")
+                return None
 
         def add_message(self, role, content):
             message = {
@@ -4527,14 +4640,116 @@ def open_ai_assistant_window(session_id=None):
         def add_link(self, url):
             self.links.append(url)
             self.save()
+            # Update embeddings for the new link
+            current_session.rag.update_embeddings()  # Rebuild the embeddings with the updated content
+
+        def load_file_formats(json_file='file_formats.json'):
+            with open(json_file, 'r') as file:
+                data = json.load(file)
+            return data['text_file_formats']
+
+        def process_txt_to_text(file_path):
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return file.read()
+
+        # You can define other process functions based on file format here
+        def process_txt_to_text(file_path):
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return file.read()
+
+        def process_md_to_text(file_path):
+            return process_txt_to_text(file_path)
+
+        def process_latex_to_text(file_path):
+            return process_txt_to_text(file_path)  # Simplified, LaTeX may need special handling
+
+        def process_other_file_to_text(file_path):
+            return process_txt_to_text(file_path)  # For other plain text files
 
         def add_document(self, document_path):
             self.documents.append({"path": document_path, "checked": False})
             self.save()
 
+            # Load supported file formats from JSON
+            supported_formats = load_file_formats()
+
+            # Get file extension
+            file_extension = os.path.splitext(document_path)[1].lower()
+
+            # Ingest document content based on its format
+            extracted_text = None
+            try:
+                if file_extension == '.pdf':
+                    extracted_text = process_pdf_to_text(document_path)  # Handle PDF separately
+                    try:
+                        extracted_text = process_pdf_to_text(document_path)  # Assume we have this function
+                        embedding = self.rag.model.encode([extracted_text], convert_to_numpy=True)
+                        if embedding is not None:
+                            self.rag.store_embedding(f"Document: {os.path.basename(document_path)}", embedding)
+                    except Exception as e:
+                        print(f"ERROR: Error processing document or updating embeddings: {e}")
+
+                '''elif file_extension == '.txt':
+                    extracted_text = process_txt_to_text(document_path)
+                elif file_extension == '.md':
+                    extracted_text = process_md_to_text(document_path)
+                elif file_extension in ['.tex', '.latex', '.ltx', '.sty']:
+                    extracted_text = process_latex_to_text(document_path)
+                else:
+                    # Handle other text-based formats dynamically from JSON
+                    if file_extension in supported_formats:
+                        extracted_text = process_other_file_to_text(document_path)
+                    else:
+                        raise ValueError(f"Unsupported file type: {file_extension}")'''
+
+            except Exception as e:
+                # Handle error, file format unsupported or processing failed
+                print(f"Error processing file {document_path}: {e}")
+                # return  # Optionally return or handle further
+                raise ValueError(f"Unsupported file type: {file_extension}")
+
+            # If text extraction was successful, proceed
+            if extracted_text:
+                embedding = generate_embedding(extracted_text)
+                if embedding:
+                    self.rag.store_embedding(f"Document: {os.path.basename(document_path)}", embedding)
+                # Add content to the vault safely
+                if safely_add_content(self.vault_path, f"Document: {os.path.basename(document_path)}", extracted_text):
+                    # Update the embeddings with the new document content
+                    self.rag.update_embeddings()
+
+
         def update_document_checkbox(self, document_index, checked):
             self.documents[document_index]["checked"] = checked
             self.save()
+
+        def query_rag(self, query_text):
+            """
+            Query the RAG system with a text query to get relevant documents.
+
+            Args:
+                query_text (str): The text query to search for relevant documents
+
+            Returns:
+                list: List of tuples containing (document_id, similarity_score)
+            """
+            try:
+                print(f"INFO: Querying with question: {query_text}")
+
+                # Generate embedding for the query text
+                query_embedding = self.rag.model.encode([query_text], convert_to_numpy=True)
+
+                # Search for similar documents using the embedding
+                results = self.rag.query(query_embedding)
+
+                print(f"Query: {query_text}")
+                print(f"Relevant Docs: {results}")
+
+                return results
+
+            except Exception as e:
+                print(f"ERROR: Error in RAG query: {str(e)}")
+                return []
 
         def save(self):
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
@@ -4629,7 +4844,8 @@ def open_ai_assistant_window(session_id=None):
             sessions_list.insert(END, session.name)
 
     def load_sessions(session_listbox):
-        sessions_path = "data/conversations"
+        # TODO:
+        sessions_path = os.path.join("data", "conversations")
         session_folders = [
             f
             for f in os.listdir(sessions_path)
@@ -4642,7 +4858,7 @@ def open_ai_assistant_window(session_id=None):
 
     def initialize_ai_assistant_window():
         global session_data, current_session
-        sessions_path = "data/conversations"
+        sessions_path = os.path.join("data", "conversations")
         session_data = []
         if os.path.exists(sessions_path):
             for session_folder in os.listdir(sessions_path):
