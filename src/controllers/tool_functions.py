@@ -4307,18 +4307,7 @@ def open_ai_assistant_window(session_id=None):
             create_session()
 
         if ai_command.strip():
-            query_embedding = current_session.rag.model.encode([ai_command])
-            indices = current_session.rag.query(query_embedding)
-
-            if indices:
-                # Retrieve relevant documents based on the indices
-                relevant_docs = [current_session.documents[idx] for idx in indices[0] if
-                                 idx < len(current_session.documents)]
-                print("Relevant Documents:", relevant_docs)
-
-                # Incorporate the relevant docs into the AI's prompt
-                doc_snippets = "\n\n".join([f"{doc[0]}: {doc[1]}" for doc in relevant_docs])
-                combined_command = f"{doc_snippets}\n\n{ai_command}"
+            relevant_docs = current_session.get_relevant_context(ai_command)
 
             script_content = ""
             if selected_text_var.get():
@@ -4339,19 +4328,19 @@ def open_ai_assistant_window(session_id=None):
             elif opened_script_var.get():
                 script_content = "```\n" + script_text.get("1.0", END) + "```\n\n"
 
-            # Query RAG system to get relevant documents
-            relevant_docs = current_session.query_rag(ai_command)
-
-            # Add relevant documents to the AI prompt
-            combined_command = f"{script_content}{ai_command}\n\n" + "\n\n".join([doc[0] for doc in relevant_docs])
+            # Format the command with relevant context in a human-readable way
+            combined_command = f"{script_content}{ai_command}"
+            if relevant_docs:
+                context_text = "\n\nRelevant context:\n" + "\n---\n".join(
+                    f"{doc['content']}" for doc in relevant_docs
+                )
+                combined_command += context_text
 
             # Add the user's message to the current session
             current_session.add_message("user", combined_command)
 
-            # Append the user's input to the vault with a prefix "USER:"
+            # Append to vault and update display
             append_to_vault(f"USER: {combined_command}")
-
-            # Update the original content and display it
             original_md_content += f"\n{combined_command}\n"
             original_md_content += "-" * 80 + "\n"
             output_text.insert("end", f"You: {combined_command}\n", "user")
@@ -4528,6 +4517,117 @@ def open_ai_assistant_window(session_id=None):
                 self.name = f"Session {self.id}"
                 self.save()
 
+        def get_relevant_context(self, query_text, max_results=3):
+            """
+            Get relevant context for a query with actual document content.
+
+            Args:
+                query_text (str): The text query
+                max_results (int): Maximum number of results to return
+
+            Returns:
+                list: List of dicts containing relevant document content and metadata
+            """
+            try:
+                # Get similar documents from RAG
+                results = self.query_rag(query_text)
+
+                # Load and format the relevant content
+                relevant_docs = []
+                seen_content = set()  # To avoid duplicate content
+
+                for doc_id, score in results:
+                    if len(relevant_docs) >= max_results:
+                        break
+
+                    content = self.get_document_content(doc_id)
+                    if content and content not in seen_content:
+                        # Format the content to be more readable
+                        formatted_content = self.format_document_content(content)
+                        if formatted_content:
+                            relevant_docs.append({
+                                'doc_id': doc_id,
+                                'content': formatted_content,
+                                'similarity': score
+                            })
+                            seen_content.add(content)
+
+                return relevant_docs
+
+            except Exception as e:
+                print(f"ERROR: Failed to get relevant context: {str(e)}")
+                return []
+
+        def get_document_content(self, doc_id):
+            """
+            Retrieve the actual content for a document ID.
+
+            Args:
+                doc_id (str): The document ID
+
+            Returns:
+                str: The document content
+            """
+            try:
+                # If it's a vault chunk, read from vault file
+                if doc_id.startswith('vault_content_'):
+                    with open(self.vault_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    # Find the specific chunk
+                    chunks = self.rag.chunk_content(content)
+                    chunk_num = int(doc_id.split('_')[-1])
+                    if chunk_num < len(chunks):
+                        return chunks[chunk_num]
+
+                # If it's a regular document
+                elif doc_id.startswith('Document: '):
+                    doc_path = doc_id.replace('Document: ', '')
+                    if os.path.exists(doc_path):
+                        with open(doc_path, 'r', encoding='utf-8') as f:
+                            return f.read()
+
+                # If it's a link
+                elif doc_id.startswith('Link: '):
+                    # Return the stored content for the link
+                    return self.get_link_content(doc_id)
+
+            except Exception as e:
+                print(f"ERROR: Failed to get document content: {str(e)}")
+            return None
+
+        def format_document_content(self, content):
+            """
+            Format document content to be more readable.
+
+            Args:
+                content (str): Raw document content
+
+            Returns:
+                str: Formatted content
+            """
+            try:
+                if not content:
+                    return None
+
+                # Remove excessive whitespace
+                content = ' '.join(content.split())
+
+                # Limit content length if too long
+                max_length = 500
+                if len(content) > max_length:
+                    content = content[:max_length] + "..."
+
+                # Clean up any markdown or code formatting
+                content = content.replace('```', '')
+
+                # Remove any system-specific formatting
+                content = content.replace('\r', '').replace('\n\n\n', '\n\n')
+
+                return content.strip()
+            except Exception as e:
+                print(f"ERROR: Failed to format content: {str(e)}")
+                return None
+
         def add_message(self, role, content):
             message = {
                 "role": role,
@@ -4623,12 +4723,33 @@ def open_ai_assistant_window(session_id=None):
             self.documents[document_index]["checked"] = checked
             self.save()
 
-        def query_rag(self, query):
-            """Query the RAG system to get relevant documents."""
-            relevant_docs = self.rag.query(query)  # Use the RAG to retrieve relevant documents
-            print(f"Query: {query}")
-            print(f"Relevant Docs: {relevant_docs}")
-            return relevant_docs
+        def query_rag(self, query_text):
+            """
+            Query the RAG system with a text query to get relevant documents.
+
+            Args:
+                query_text (str): The text query to search for relevant documents
+
+            Returns:
+                list: List of tuples containing (document_id, similarity_score)
+            """
+            try:
+                print(f"INFO: Querying with question: {query_text}")
+
+                # Generate embedding for the query text
+                query_embedding = self.rag.model.encode([query_text], convert_to_numpy=True)
+
+                # Search for similar documents using the embedding
+                results = self.rag.query(query_embedding)
+
+                print(f"Query: {query_text}")
+                print(f"Relevant Docs: {results}")
+
+                return results
+
+            except Exception as e:
+                print(f"ERROR: Error in RAG query: {str(e)}")
+                return []
 
         def save(self):
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
