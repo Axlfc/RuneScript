@@ -80,7 +80,8 @@ from src.controllers.tool_functions import (
     open_kanban_window,
     open_winget_window,
     open_system_info_window,
-    open_calculator_window, open_translator_window,
+    open_calculator_window, open_translator_window, open_python_terminal_window, open_prompt_enhancement_window,
+    open_ipython_notebook_window, open_latex_markdown_editor,
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 from src.controllers.tool_functions import open_git_window, git_console_instance
@@ -919,18 +920,6 @@ def create_menu():
     tool_menu = Menu(menu)
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
     tool_menu.add_command(
-        label="System Shell", command=open_terminal_window, accelerator="Ctrl+T"
-    )
-    tool_menu.add_command(
-        label="Git Console", command=open_git_window, accelerator="Ctrl+Alt+G"
-    )
-    tool_menu.add_command(
-        label="Kanban", command=open_kanban_window, accelerator="Alt+K"
-    )
-    tool_menu.add_command(
-        label="Translator", command=open_translator_window, accelerator="Alt+K"
-    )
-    tool_menu.add_command(
         label="AI Assistant", command=open_ai_assistant_window, accelerator="Alt+G"
     )
     tool_menu.add_command(
@@ -940,6 +929,30 @@ def create_menu():
     )
     tool_menu.add_command(
         label="Calculator", command=open_calculator_window, accelerator="Alt+C"
+    )
+    tool_menu.add_command(
+        label="Translator", command=open_translator_window, accelerator="Alt+K"
+    )
+    tool_menu.add_command(
+        label="Prompt enhancement", command=open_prompt_enhancement_window
+    )
+    tool_menu.add_command(
+        label="Kanban", command=open_kanban_window, accelerator="Alt+K"
+    )
+    tool_menu.add_command(
+        label="LaTexMarkdown Editor", command=open_latex_markdown_editor, accelerator="Alt+L"
+    )
+    tool_menu.add_command(
+        label="Git Console", command=open_git_window, accelerator="Ctrl+Alt+G"
+    )
+    tool_menu.add_command(
+        label="System Shell", command=open_terminal_window, accelerator="Ctrl+T"
+    )
+    tool_menu.add_command(
+        label="Python Shell", command=open_python_terminal_window
+    )
+    tool_menu.add_command(
+        label="Notebooks", command=open_ipython_notebook_window, accelerator="Ctrl+N"
     )
     tool_menu.add_command(
         label="Open ScriptsStudio program folder...",

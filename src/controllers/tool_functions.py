@@ -1,3 +1,4 @@
+import io
 import json
 import multiprocessing
 import os
@@ -6,6 +7,7 @@ import queue
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import math
 import cmath
@@ -62,6 +64,9 @@ from PIL import ImageTk
 from PIL.Image import Image
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.models.IPythonNotebookTerminal import IPythonNotebookTerminal
+from src.models.Kanban import Kanban
+from src.models.LaTeXMarkdownEditor import LaTeXMarkdownEditor
 from src.models.TTSManager import TTSManager
 from src.models.VaultRAG import VaultRAG
 from src.models.convert_pdf_to_text import process_pdf_to_text, convert_pdf_to_text
@@ -79,6 +84,9 @@ import hashlib
 from difflib import SequenceMatcher
 from datetime import datetime
 from typing import List, Dict, Optional
+
+
+from contextlib import redirect_stdout, redirect_stderr
 
 
 def load_themes_from_json(file_path):
@@ -2055,273 +2063,6 @@ def open_git_window(repo_dir=None):
     entry.bind("<Down>", navigate_history)
     execute_command("status --porcelain -u")
 
-
-def open_kanban_window():
-    """ ""\"
-    ""\"
-    open_kanban_window
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
-    global kanban_data, columns_frame, drag_label
-    kanban_data = {
-        "columns": [
-            "To Do",
-            "In Progress",
-            "Testing",
-            "Done",
-            "Continuous Improvement",
-        ],
-        "tasks": [
-            {
-                "title": "Task 1",
-                "description": "Description 1",
-                "priority": "High",
-                "column": "To Do",
-            },
-            {
-                "title": "Task 2",
-                "description": "Description 2",
-                "priority": "Medium",
-                "column": "In Progress",
-            },
-        ],
-        "wip_limits": {
-            "To Do": 10,
-            "In Progress": 5,
-            "Testing": 5,
-            "Done": float("inf"),
-            "Continuous Improvement": 5,
-        },
-    }
-    drag_label = None
-
-    def load_kanban_data():
-        """ ""\"
-        ""\"
-            load_kanban_data
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        global kanban_data
-        try:
-            with open("data/kanban_tasks.json", "r") as f:
-                kanban_data = json.load(f)
-        except FileNotFoundError:
-            save_kanban_data()
-
-    def save_kanban_data():
-        """ ""\"
-        ""\"
-            save_kanban_data
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        with open("data/kanban_tasks.json", "w") as f:
-            json.dump(kanban_data, f, indent=4)
-
-    def on_drag_start(event):
-        """ ""\"
-        ""\"
-            on_drag_start
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        global drag_label
-        widget = event.widget
-        index = widget.nearest(event.y)
-        _, y, _, height = widget.bbox(index)
-        if y <= event.y < y + height:
-            widget.drag_data = widget.get(index)
-            widget.selection_clear(0, END)
-            widget.selection_set(index)
-            widget.itemconfig(index, {"bg": "lightblue"})
-            drag_label = Label(kanban_window, text=widget.drag_data, relief=RAISED)
-            drag_label.place(x=event.x_root, y=event.y_root, anchor="center")
-
-    def on_drag_motion(event):
-        """ ""\"
-        ""\"
-            on_drag_motion
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        global drag_label
-        widget = event.widget
-        if hasattr(widget, "drag_data") and drag_label:
-            x, y = kanban_window.winfo_pointerxy()
-            drag_label.place(x=x, y=y, anchor="center")
-            target = widget.winfo_containing(x, y)
-            if isinstance(target, Listbox):
-                for child in columns_frame.winfo_children():
-                    if isinstance(child, Frame):
-                        child.config(bg="SystemButtonFace")
-                target.master.config(bg="lightgreen")
-
-    def on_drop(event):
-        """ ""\"
-        ""\"
-            on_drop
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        global drag_label
-        widget = event.widget
-        if hasattr(widget, "drag_data"):
-            x, y = widget.winfo_pointerxy()
-            target = widget.winfo_containing(x, y)
-            if isinstance(target, Listbox) and target != widget:
-                item = widget.drag_data
-                origin_column = widget.column
-                target_column = target.column
-                for task in kanban_data["tasks"]:
-                    if task["title"] == item:
-                        task["column"] = target_column
-                        break
-                save_kanban_data()
-                refresh_kanban_board()
-            for child in columns_frame.winfo_children():
-                if isinstance(child, Frame):
-                    child.config(bg="SystemButtonFace")
-            if drag_label:
-                drag_label.destroy()
-                drag_label = None
-            delattr(widget, "drag_data")
-
-    def setup_drag_and_drop(listbox, column):
-        """ ""\"
-        ""\"
-            setup_drag_and_drop
-
-                Args:
-                    listbox (Any): Description of listbox.
-                    column (Any): Description of column.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        listbox.column = column
-        listbox.bind("<ButtonPress-1>", on_drag_start)
-        listbox.bind("<B1-Motion>", on_drag_motion)
-        listbox.bind("<ButtonRelease-1>", on_drop)
-
-    def add_task(event, column):
-        """ ""\"
-        ""\"
-            add_task
-
-                Args:
-                    event (Any): Description of event.
-                    column (Any): Description of column.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        task_title = event.widget.get()
-        if task_title:
-            new_task = {
-                "title": task_title,
-                "description": "",
-                "priority": "Medium",
-                "column": column,
-            }
-            kanban_data["tasks"].append(new_task)
-            save_kanban_data()
-            refresh_kanban_board()
-
-    def create_column(column_name):
-        """ ""\"
-        ""\"
-            create_column
-
-                Args:
-                    column_name (Any): Description of column_name.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        column_frame = Frame(columns_frame, borderwidth=2, relief="raised")
-        column_frame.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
-        label = Label(
-            column_frame,
-            text=f"{column_name} (Limit: {kanban_data['wip_limits'][column_name]})",
-        )
-        label.pack(pady=5)
-        task_list = Listbox(column_frame, selectmode=SINGLE)
-        task_list.pack(fill=BOTH, expand=True, padx=5, pady=5)
-        for task in [t for t in kanban_data["tasks"] if t["column"] == column_name]:
-            task_list.insert(END, task["title"])
-        setup_drag_and_drop(task_list, column_name)
-        entry = Entry(column_frame)
-        entry.pack(fill=X, padx=5, pady=5)
-        entry.bind("<Return>", lambda event, col=column_name: add_task(event, col))
-
-    def refresh_kanban_board():
-        """ ""\"
-        ""\"
-            refresh_kanban_board
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
-        for widget in columns_frame.winfo_children():
-            widget.destroy()
-        for column in kanban_data["columns"]:
-            create_column(column)
-        for column_frame in columns_frame.winfo_children():
-            entry_widget = column_frame.winfo_children()[-1]
-            if isinstance(entry_widget, Entry):
-                entry_widget.delete(0, END)
-
-    kanban_window = Toplevel()
-    kanban_window.title("Kanban Board")
-    kanban_window.geometry("1280x720")
-    columns_frame = Frame(kanban_window)
-    columns_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
-    load_kanban_data()
-    refresh_kanban_board()
-    kanban_window.protocol(
-        "WM_DELETE_WINDOW", lambda: (save_kanban_data(), kanban_window.destroy())
-    )
-
-
 def open_calculator_window():
     """ ""\"
     ""\"
@@ -2779,21 +2520,234 @@ def open_calculator_window():
     calculator_window.mainloop()
 
 
+def open_kanban_window():
+    """Abre una nueva ventana de Kanban"""
+    return Kanban()
+
+
+def open_latex_markdown_editor():
+    """Opens a new LaTeX & Markdown editor window"""
+    return LaTeXMarkdownEditor()
+
+
+def open_ipython_notebook_window():
+    """Abre una nueva ventana de IPython Notebook"""
+    return IPythonNotebookTerminal()
+
+
+def open_ipython_notebook_window():
+    """Abre una nueva ventana de IPython Notebook"""
+    return IPythonNotebookTerminal()
+
+
+def open_python_terminal_window():
+    """
+    Opens a new window functioning as a Python interactive terminal.
+    Simulates the Python REPL (Read-Eval-Print Loop) within the application.
+    Handles proper indentation and multiline code blocks.
+    """
+    terminal_window = Toplevel()
+    terminal_window.title("Python Terminal")
+    terminal_window.geometry("800x600")
+
+    # Frame principal para organizar los widgets
+    main_frame = Frame(terminal_window, bg='black')
+    main_frame.pack(fill="both", expand=True)
+
+    # Crear el widget de texto con scroll para la salida
+    output_text = scrolledtext.ScrolledText(main_frame, height=20, width=80, bg='black', fg='white',
+                                            insertbackground='white', font=('Consolas', 10))
+    output_text.pack(fill="both", expand=True)
+
+    # Crear el widget de texto para la entrada
+    input_text = Text(main_frame, height=4, width=80, bg='black', fg='white',
+                      insertbackground='white', font=('Consolas', 10))
+    input_text.pack(fill="x", expand=False)
+
+    # Mostrar el mensaje de bienvenida de Python
+    python_version = sys.version.split()[0]
+    welcome_message = f"Python {python_version} on Tkinter\nType 'exit()' to exit\nShift+Enter for new line, Enter to execute\n>>> "
+    output_text.insert(END, welcome_message)
+
+    # Variables para mantener el estado
+    command_history = []
+    history_pointer = [0]
+    namespace = {}  # Espacio de nombres para las variables
+    current_block = []  # Para almacenar bloques de código multilínea
+    indent_level = 0  # Para rastrear el nivel de indentación actual
+    input_buffer = []  # Buffer para almacenar líneas de entrada
+
+    def check_complete_block(code):
+        """
+        Verifica si un bloque de código está completo
+        """
+        if not code.strip():
+            return True
+
+        try:
+            compile(code, '<string>', 'exec')
+            return True
+        except SyntaxError as e:
+            if 'unexpected EOF' in str(e) or 'EOF in multi-line' in str(e):
+                return False
+            return True
+        except Exception:
+            return True
+
+    def get_indent_level(line):
+        """
+        Calcula el nivel de indentación de una línea
+        """
+        spaces = len(line) - len(line.lstrip())
+        return spaces // 4
+
+    def execute_python_code(code_to_execute):
+        """
+        Ejecuta el código Python y captura su salida
+        """
+        stdout_buffer = io.StringIO()
+        stderr_buffer = io.StringIO()
+
+        try:
+            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+                try:
+                    # Primero intentamos evaluar como expresión
+                    result = eval(code_to_execute, namespace)
+                    if result is not None:
+                        print(repr(result))
+                except SyntaxError:
+                    # Si falla, ejecutamos como declaración
+                    exec(code_to_execute, namespace)
+                except Exception as e:
+                    raise e
+
+            output = stdout_buffer.getvalue()
+            errors = stderr_buffer.getvalue()
+
+            if output:
+                output_text.insert(END, output)
+            if errors:
+                output_text.insert(END, errors, "error")
+
+        except Exception as e:
+            output_text.insert(END, f"{str(e)}\n", "error")
+
+        prompt = "... " if current_block else ">>> "
+        output_text.insert(END, prompt)
+        output_text.see(END)
+
+    def handle_shift_return(event):
+        """
+        Maneja Shift+Enter para agregar nueva línea sin ejecutar
+        """
+        input_text.insert(INSERT, '\n')
+        if indent_level > 0:
+            input_text.insert(INSERT, "    " * indent_level)
+        return "break"
+
+    def handle_return(event):
+        """
+        Maneja Enter para ejecutar el código
+        """
+        nonlocal indent_level
+
+        # Obtener todo el contenido del widget de entrada
+        command = input_text.get("1.0", END).strip()
+
+        if not command:
+            if current_block:
+                # Ejecutar el bloque actual si existe
+                full_code = '\n'.join(current_block)
+                execute_python_code(full_code)
+                current_block.clear()
+                indent_level = 0
+            output_text.insert(END, ">>> ")
+            output_text.see(END)
+            return "break"
+
+        if command == 'exit()':
+            terminal_window.destroy()
+            return "break"
+
+        # Dividir el comando en líneas
+        lines = command.split('\n')
+        for line in lines:
+            output_text.insert(END, f"{line}\n")
+            if line.strip():
+                current_block.append(line)
+                if line.rstrip().endswith(':'):
+                    indent_level += 1
+                elif get_indent_level(line) < indent_level and line.strip():
+                    indent_level = get_indent_level(line)
+
+        # Agregar al historial
+        if command:
+            command_history.append(command)
+            history_pointer[0] = len(command_history)
+
+        # Verificar si el bloque está completo
+        full_code = '\n'.join(current_block)
+        if check_complete_block(full_code):
+            execute_python_code(full_code)
+            current_block.clear()
+            indent_level = 0
+        else:
+            output_text.insert(END, "... ")
+            output_text.see(END)
+
+        # Limpiar el widget de entrada
+        input_text.delete("1.0", END)
+        if indent_level > 0:
+            input_text.insert("1.0", "    " * indent_level)
+
+        return "break"
+
+    def handle_tab(event):
+        """
+        Maneja la pulsación de la tecla Tab
+        """
+        input_text.insert(INSERT, "    ")
+        return "break"
+
+    def navigate_history(event):
+        """
+        Permite navegar por el historial de comandos usando las flechas
+        """
+        if not command_history:
+            return
+
+        if event.keysym == "Up":
+            history_pointer[0] = max(0, history_pointer[0] - 1)
+        elif event.keysym == "Down":
+            history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+
+        if history_pointer[0] < len(command_history):
+            command = command_history[history_pointer[0]]
+            input_text.delete("1.0", END)
+            input_text.insert("1.0", command)
+
+    # Configurar los bindings de teclas
+    input_text.bind("<Return>", handle_return)
+    input_text.bind("<Shift-Return>", handle_shift_return)
+    input_text.bind("<Tab>", handle_tab)
+    input_text.bind("<Up>", navigate_history)
+    input_text.bind("<Down>", navigate_history)
+
+    # Configurar los tags para el formato de texto
+    output_text.tag_config("error", foreground="red")
+
+    # Hacer que el widget de entrada tenga el foco inicial
+    input_text.focus_set()
+
+    # Configurar el comportamiento de cierre de la ventana
+    def on_closing():
+        """Maneja el cierre de la ventana"""
+        terminal_window.destroy()
+
+    terminal_window.protocol("WM_DELETE_WINDOW", on_closing)
+
+
 def open_terminal_window():
-    """ ""\"
-    ""\"
-    Opens a new window functioning as a terminal within the application.
-
-    This function creates a top-level window that simulates a terminal, allowing users to
-    enter and execute commands with output displayed in the window.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     terminal_window = Toplevel()
     terminal_window.title("Terminal")
     terminal_window.geometry("600x400")
@@ -2803,17 +2757,6 @@ def open_terminal_window():
     history_pointer = [0]
 
     def execute_command(event=None):
-        """ ""\"
-        ""\"
-            execute_command
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         command = entry.get()
         if command.strip():
             command_history.append(command)
@@ -2833,17 +2776,6 @@ def open_terminal_window():
             output_text.see(END)
 
     def navigate_history(event):
-        """ ""\"
-        ""\"
-            navigate_history
-
-                Args:
-                    event (Any): Description of event.
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         if command_history:
             if event.keysym == "Up":
                 history_pointer[0] = max(0, history_pointer[0] - 1)
@@ -2874,7 +2806,7 @@ def open_prompt_enhancement_window():
     enhancement_window.title("Prompt Enhancement Studio")
     enhancement_window.geometry("1000x700")
 
-    # Create main frame with grid layout
+    # Create main frame with grid layout using Frame for padding option
     main_frame = Frame(enhancement_window, padding="5")
     main_frame.grid(row=0, column=0, sticky=(N, W, E, S))
     enhancement_window.columnconfigure(0, weight=1)
@@ -2979,6 +2911,7 @@ def open_prompt_enhancement_window():
     # prompt_text.bind('<KeyRelease>', lambda e: auto_save_prompt())
 
     return enhancement_window
+
 
 def open_audio_generation_window():
     """ ""\"
@@ -4802,7 +4735,6 @@ def open_ai_assistant_window(session_id=None):
     entry.bind("<Down>", navigate_history)
     command_history = []
     history_pointer = [0]
-
 
     class Session:
         def __init__(self, session_id, load_existing=True):
