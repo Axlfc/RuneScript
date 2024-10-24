@@ -8,6 +8,8 @@ import subprocess
 import markdown
 import re
 from pathlib import Path
+from pdf2image import convert_from_path
+from PIL import ImageTk, Image
 
 
 class LaTeXMarkdownEditor:
@@ -166,6 +168,13 @@ class LaTeXMarkdownEditor:
         # Bind editor modifications to update the preview and statistics
         self.editor.bind('<<Modified>>', self.on_editor_change)
 
+        # Bind the Enter key to handle newlines correctly
+        self.editor.bind('<Return>', self.handle_return_key)
+
+    def handle_return_key(self, event=None):
+        """Insert a newline character when the user presses Enter."""
+        self.editor.insert("insert", "\n")
+        return "break"  # Ensure default event handling is stopped
     def setup_menu(self):
         """Create a menu bar with File, Edit, View options"""
         menu_bar = Menu(self.window)
@@ -323,21 +332,14 @@ class LaTeXMarkdownEditor:
         messagebox.showinfo("Recompiled", "Markdown has been recompiled to HTML.")
 
     def compile_latex(self, file_path=None):
-        """Compile LaTeX to PDF with proper error handling"""
+        """Compile LaTeX to PDF and display it in the preview"""
         if not self.check_latex_installed():
             error_msg = """LaTeX compiler (pdflatex) not found. Please ensure that:
-    1. You have a LaTeX distribution installed (e.g., MiKTeX for Windows, TexLive for Linux/Mac)
-    2. The pdflatex executable is in your system's PATH
-    3. You've restarted the application after installing LaTeX
-
-    Installation links:
-    - Windows: https://miktex.org/download
-    - Mac: https://tug.org/mactex/
-    - Linux: Use package manager to install texlive-full"""
-
+        1. You have a LaTeX distribution installed (e.g., MiKTeX for Windows, TexLive for Linux/Mac)
+        2. The pdflatex executable is in your system's PATH
+        3. You've restarted the application after installing LaTeX"""
             self.show_compilation_error(error_msg)
-            messagebox.showerror("LaTeX Not Found",
-                                 "LaTeX compiler not found. Please install a LaTeX distribution.")
+            messagebox.showerror("LaTeX Not Found", "LaTeX compiler not found. Please install a LaTeX distribution.")
             return False
 
         if file_path:
@@ -366,18 +368,8 @@ class LaTeXMarkdownEditor:
             if result.returncode == 0:
                 pdf_path = os.path.splitext(latex_file)[0] + ".pdf"
                 if os.path.exists(pdf_path):
-                    # Update preview panel with success message
-                    self.preview.config(state='normal')
-                    self.preview.delete("1.0", "end")
-                    self.preview.insert("1.0", "PDF compilation successful!\n\n")
-                    self.preview.insert("end", f"PDF saved at: {pdf_path}")
-                    self.preview.config(state='disabled')
-
-                    # Clear any previous error messages
-                    self.errors_text.config(state='normal')
-                    self.errors_text.delete("1.0", "end")
-                    self.errors_text.config(state='disabled')
-
+                    # Render the PDF in the preview panel
+                    self.show_pdf_in_preview(pdf_path)
                     return True
 
             self.show_compilation_error(result.stderr)
@@ -389,6 +381,7 @@ class LaTeXMarkdownEditor:
         except Exception as e:
             self.show_compilation_error(f"Compilation error: {str(e)}")
             return False
+
     def show_pdf_in_preview(self, pdf_path):
         """Convert PDF pages to images and display them in the preview pane"""
         try:
@@ -398,17 +391,26 @@ class LaTeXMarkdownEditor:
             self.preview.config(state='normal')
             self.preview.delete("1.0", "end")  # Clear existing content in the preview
 
+            # Clear any previous images in the preview widget
+            self.preview_image_refs = []  # This is needed to hold image references
+
             # Display each page as an image in the preview
             for i, image in enumerate(images):
+                # Resize the image to fit the preview window (optional)
+                image = image.resize((600, 800), Image.Resampling.LANCZOS)  # Adjust size as needed
+
                 # Convert to Tkinter-compatible image
                 tk_image = ImageTk.PhotoImage(image)
                 self.preview.image_create('end', image=tk_image)
                 self.preview.insert('end', f"\nPage {i + 1}\n")
 
+                # Keep a reference to avoid image being garbage collected
+                self.preview_image_refs.append(tk_image)
+
             self.preview.config(state='disabled')
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load PDF preview: {str(e)}")
-
     def setup_syntax_highlighting(self):
         """Setup syntax highlighting for LaTeX and Markdown files"""
         # Define different tags for different types of syntax
