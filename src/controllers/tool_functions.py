@@ -4634,7 +4634,7 @@ def open_ai_assistant_window(session_id=None):
     def read_ai_command(command_name, user_prompt):
         commands_file = "data/commands.json"
         try:
-            with open(commands_file, "r") as f:
+            with open(commands_file, "r", encoding="utf-8") as f:
                 commands_data = json.load(f)
 
             def find_command(commands, command_name):
@@ -4681,11 +4681,14 @@ def open_ai_assistant_window(session_id=None):
 
         def load_commands():
             try:
-                with open(commands_file, "r") as f:
+                with open(commands_file, "r", encoding="utf-8") as f:  # Specify UTF-8 encoding
                     commands_data = json.load(f)
-                return commands_data["customCommands"]
+                return commands_data.get("customCommands", [])  # Use get to avoid KeyError
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 messagebox.showerror("Error", f"Failed to load commands: {e}")
+                return []
+            except UnicodeDecodeError as e:
+                messagebox.showerror("Error", f"Encoding error: {e}")
                 return []
 
         def add_commands_to_menu(menu, commands):

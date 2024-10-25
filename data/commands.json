@@ -1,6 +1,819 @@
 {
   "customCommands": [
     {
+      "name": "ask",
+      "description": "Ask Related",
+      "submenu": [
+        {
+          "name": "clarify",
+          "description": "Clarify a concept or idea",
+          "prompt": "What is the concept or idea you want clarified?\n\n---\n\nPlease clarify the following concept: {{{ input }}}."
+        },
+        {
+          "name": "compare",
+          "description": "Compare two concepts",
+          "prompt": "What are the two concepts you want to compare?\n\n---\n\nCompare {{{ input }}} with another concept."
+        },
+        {
+          "name": "sum-it-up",
+          "description": "Summarize this document in 3 sentences",
+          "prompt": "Summarize this document in 3 sentences."
+        },
+        {
+          "name": "get-the-gist",
+          "description": "Provide a brief overview",
+          "prompt": "Provide a brief overview of this document."
+        },
+        {
+          "name": "break-it-into-bullets",
+          "description": "Simplify into bullet points",
+          "prompt": "Simplify this document for me into 5 bullet points."
+        },
+        {
+          "name": "find-what-matters-most",
+          "description": "Identify the most important point",
+          "prompt": "What’s the single most important point noted in this document?"
+        },
+        {
+          "name": "make-an-outline",
+          "description": "Outline the main sections",
+          "prompt": "Outline the main sections of this document."
+        },
+        {
+          "name": "identify-key-players",
+          "description": "Create a table of key quotes",
+          "prompt": "Create a table with key quotes in this article and the roles of people being quoted."
+        },
+        {
+          "name": "pull-out-the-stats",
+          "description": "List key stats",
+          "prompt": "List all the key stats in this document."
+        },
+        {
+          "name": "outline-action-items",
+          "description": "Identify main action items",
+          "prompt": "What are the main action items for the attendees of this presentation?"
+        },
+        {
+          "name": "confirm-deadlines",
+          "description": "Identify deadlines",
+          "prompt": "What deadlines are mentioned in this statement of work?"
+        },
+        {
+          "name": "reveal-the-reasoning",
+          "description": "Understand business reasoning",
+          "prompt": "Why did the company in this use case work with [X] business?"
+        },
+        {
+          "name": "find-the-address",
+          "description": "Locate vendor’s office",
+          "prompt": "Where is the vendor’s office located?"
+        },
+        {
+          "name": "discover-top-value-props",
+          "description": "Identify value propositions",
+          "prompt": "What are the value propositions for our customers who want to use this product?"
+        },
+        {
+          "name": "dig-into-the-details",
+          "description": "Check the report’s appendices",
+          "prompt": "What is contained in this report’s appendices?"
+        },
+        {
+          "name": "outline-research-strategy",
+          "description": "Review data and methodology",
+          "prompt": "What data did the researchers analyze, and what was their methodology?"
+        },
+        {
+          "name": "pinpoint-the-perspective",
+          "description": "Identify first-person references",
+          "prompt": "Are there references to the first-person point of view in this paper?"
+        },
+        {
+          "name": "find-the-contact-info",
+          "description": "List contact information",
+          "prompt": "List any contact information in this document."
+        },
+        {
+          "name": "understand-customer-pain-points",
+          "description": "Identify customer pain points",
+          "prompt": "What pain points for customers is the described solution meant to address?"
+        },
+        {
+          "name": "outline-the-orgs",
+          "description": "Identify organizations mentioned",
+          "prompt": "What organizations are mentioned in this document, and what do they do?"
+        },
+        {
+          "name": "note-any-disclaimers",
+          "description": "Check for disclaimers",
+          "prompt": "Did the researchers include any disclaimers in the report?"
+        },
+        {
+          "name": "get-the-low-down",
+          "description": "Understand the research purpose",
+          "prompt": "What was the main purpose of this research?"
+        },
+        {
+          "name": "steer-clear-of-jargon",
+          "description": "Summarize without jargon",
+          "prompt": "Create a 200-word summary of this document. Do not use any industry jargon."
+        },
+        {
+          "name": "recap-the-presentation",
+          "description": "Summarize for manager",
+          "prompt": "Summarize and generate an email summary so my manager can quickly get caught up."
+        },
+        {
+          "name": "scan-for-safety-info",
+          "description": "Check for safety information",
+          "prompt": "Does this user manual include safety information?"
+        },
+        {
+          "name": "prep-your-grocery-list",
+          "description": "Identify perishable ingredients",
+          "prompt": "What perishable ingredients are included in this recipe?"
+        },
+        {
+          "name": "check-in-on-time",
+          "description": "List check-in times",
+          "prompt": "List all the flight and hotel check-in times in this group’s travel itinerary."
+        },
+        {
+          "name": "discover-product-use-cases",
+          "description": "Check for use cases",
+          "prompt": "Are product use cases provided in the user guide?"
+        },
+        {
+          "name": "calculate-recipe-time",
+          "description": "Estimate cooking time",
+          "prompt": "How long will this dinner recipe take to make from start to finish?"
+        },
+        {
+          "name": "create-a-study-guide",
+          "description": "Summarize chapters into a guide",
+          "prompt": "Summarize these chapters into a succinct study guide."
+        },
+        {
+          "name": "sum-up-lecture-notes",
+          "description": "Identify top takeaways",
+          "prompt": "Give me the top 5 takeaways from last week’s lecture."
+        },
+        {
+          "name": "understand-anything",
+          "description": "Simplify complex concepts",
+          "prompt": "Explain {{{ input }}} in more simple terms."
+        },
+        {
+          "name": "compare-and-contrast",
+          "description": "Differentiate two concepts",
+          "prompt": "What is the difference between [concept 1] and [concept 2]?"
+        },
+        {
+          "name": "get-the-tldr",
+          "description": "Summarize first chapters",
+          "prompt": "What are the characters and settings in the first 3 chapters?"
+        },
+        {
+          "name": "get-to-the-point-of-any-paper",
+          "description": "Identify key takeaways",
+          "prompt": "What are 5 key takeaways from this paper?"
+        },
+        {
+          "name": "sum-up-your-syllabus",
+          "description": "Outline course topics",
+          "prompt": "Based on the syllabus, what main topics will be covered in the course this semester?"
+        }
+      ]
+    },
+    {
+  "name": "analyze",
+  "description": "Analyze Related",
+  "submenu": [
+    {
+      "name": "trend",
+      "description": "Analyze trends",
+      "prompt": "Provide the data or text related to the trend.\n\n---\n\nAnalyze the trends in {{{ input }}}."
+    },
+    {
+      "name": "content",
+      "description": "Analyze content",
+      "prompt": "Provide the content you want analyzed.\n\n---\n\nAnalyze the following content: {{{ input }}}."
+    },
+    {
+      "name": "tech_advantages",
+      "description": "Point out tech advantages",
+      "prompt": "What are the key benefits for users of this proposed technology solution?"
+    },
+    {
+      "name": "false_info",
+      "description": "Discover false info fast",
+      "prompt": "Which claims in this document seem to be exaggerated or require further verification?"
+    },
+    {
+      "name": "action_tips",
+      "description": "Take action on tips",
+      "prompt": "How difficult would it be for a business to implement the tips outlined in this guide?"
+    },
+    {
+      "name": "meeting_summary",
+      "description": "Sum up any meeting",
+      "prompt": "According to this transcript, what were the main discussion topics in this meeting?"
+    },
+    {
+      "name": "onboarding_use",
+      "description": "Put your content to work",
+      "prompt": "How can this content be used as an onboarding or educational tool for our employees?"
+    },
+    {
+      "name": "main_point",
+      "description": "Identify the main point",
+      "prompt": "What is the most important thing to know about findings based on the available data?"
+    },
+    {
+      "name": "ideal_audience",
+      "description": "Find your ideal audience",
+      "prompt": "What types of audiences would benefit from reading this content?"
+    },
+    {
+      "name": "cut_repetition",
+      "description": "Cut out repetition",
+      "prompt": "What content seems repetitive and could potentially be cut?"
+    },
+    {
+      "name": "audience_switch",
+      "description": "Switch it up for new audiences",
+      "prompt": "How could I position this presentation for employees instead of managers?"
+    },
+    {
+      "name": "improve_copy",
+      "description": "Make it even better",
+      "prompt": "What are some specific ways to improve the copy in the overview section?"
+    },
+    {
+      "name": "key_challenge",
+      "description": "Identify the key challenge",
+      "prompt": "Of the steps outlined, which one is likely the most challenging to perform?"
+    },
+    {
+      "name": "companion_piece",
+      "description": "Complement your docs",
+      "prompt": "What could be a companion piece to this document?"
+    },
+    {
+      "name": "risks_of_skipping",
+      "description": "Find risks of skipping advice",
+      "prompt": "What are the potential downsides of not following the advice in this handbook?"
+    },
+    {
+      "name": "customer_concerns",
+      "description": "Anticipate customer concerns",
+      "prompt": "What objections might our customers have to the solution offered in this guide?"
+    },
+    {
+      "name": "risks_benefits",
+      "description": "Detect risks and benefits",
+      "prompt": "What are the potential risks and benefits of applying the proposed strategy?"
+    },
+    {
+      "name": "missing_factors",
+      "description": "See what your doc is missing",
+      "prompt": "What are some factors not outlined in this document that could impact buyers’ decisions?"
+    },
+    {
+      "name": "data_outliers",
+      "description": "Discover data outliers",
+      "prompt": "Are there any outliers in the data that could impact the findings?"
+    },
+    {
+      "name": "data_trends",
+      "description": "Identify effects of data trends",
+      "prompt": "What are the impacts of these trends over the long term?"
+    },
+    {
+      "name": "doc_summary",
+      "description": "Sum up any doc",
+      "prompt": "Explain this document in 3 sentences."
+    },
+    {
+      "name": "troubleshooting_tips",
+      "description": "Find tips to solve any problem",
+      "prompt": "What are some troubleshooting tips that I can start doing?"
+    },
+    {
+      "name": "lease_pros_cons",
+      "description": "Sign your lease confidently",
+      "prompt": "Give me the pros and cons of signing this new lease."
+    },
+    {
+      "name": "travel_destinations",
+      "description": "Travel like an expert",
+      "prompt": "Based on this European travel book, which destinations would be best for a family?"
+    },
+    {
+      "name": "credit_card_fine_print",
+      "description": "Understand the fine print",
+      "prompt": "What are the most important things to understand about this credit card?"
+    },
+    {
+      "name": "opposing_views",
+      "description": "Understand opposing views",
+      "prompt": "What is a counterargument to the position this report takes?"
+    },
+    {
+      "name": "main_subject",
+      "description": "Focus on the main subject",
+      "prompt": "Which subject does the author spend the most time discussing?"
+    },
+    {
+      "name": "strengthen_position",
+      "description": "Drive your point home",
+      "prompt": "Where and how can I strengthen my position in this paper?"
+    },
+    {
+      "name": "report_standout",
+      "description": "Make your report stand out",
+      "prompt": "What are some creative ways to use the content for a school report?"
+    },
+    {
+      "name": "test_worthy_topics",
+      "description": "Identify test-worthy topics",
+      "prompt": "What topic in this paper could potentially show up in a test question?"
+    },
+    {
+      "name": "summarize_plot",
+      "description": "Summarize the plot",
+      "prompt": "Describe the themes and character arcs noted in this document."
+    }
+  ]
+}
+,
+    {
+  "name": "modify",
+  "description": "Modify Related",
+  "submenu": [
+    {
+      "name": "rewrite",
+      "description": "Rewrite selected text",
+      "prompt": "```{{{ input }}}```\n\n---\n\nRewrite the selected text to improve clarity and coherence."
+    },
+    {
+      "name": "shorten",
+      "description": "Shorten selected text",
+      "prompt": "```{{{ input }}}```\n\n---\n\nShorten the selected text while retaining its main ideas."
+    },
+    {
+      "name": "shorten_intro",
+      "description": "Shorten up the intro",
+      "prompt": "Rewrite the introduction so it has only 200 words and a Flesch reading score above 50."
+    },
+    {
+      "name": "clarity_first",
+      "description": "Put clarity first",
+      "prompt": "Simplify the definition of [X] that is presented on page [X]."
+    },
+    {
+      "name": "switch_tense",
+      "description": "Switch up the tense",
+      "prompt": "Change this passive sentence into an active one: [sentence]."
+    },
+    {
+      "name": "make_conversational",
+      "description": "Make it conversational",
+      "prompt": "Revise the introduction to make it sound friendlier."
+    },
+    {
+      "name": "sound_expert",
+      "description": "Sound like an expert",
+      "prompt": "Make the project details in this proposal sound more professional."
+    },
+    {
+      "name": "make_scannable",
+      "description": "Make it scannable",
+      "prompt": "Simplify the section on best practices into a numbered list."
+    },
+    {
+      "name": "content_converts",
+      "description": "Create content that converts",
+      "prompt": "Convert the conclusion from a summary to a call to action."
+    },
+    {
+      "name": "make_technical",
+      "description": "Make it technical",
+      "prompt": "Act like a product engineer and rewrite this copy for a technical user."
+    },
+    {
+      "name": "list_it_out",
+      "description": "List it out",
+      "prompt": "Convert this research article into a blog with a listicle format."
+    },
+    {
+      "name": "frame_audience",
+      "description": "Frame it for your audience",
+      "prompt": "Reposition this copy so it will appeal to our target audience."
+    },
+    {
+      "name": "switch_pov",
+      "description": "Switch the POV",
+      "prompt": "Change the perspective of this blog from third person to first person."
+    },
+    {
+      "name": "laymans_terms",
+      "description": "Put it in layman’s terms",
+      "prompt": "Rewrite this product description so a nontechnical reader can understand it."
+    },
+    {
+      "name": "add_personality",
+      "description": "Add some personality",
+      "prompt": "Give our brand description a more upbeat and conversational tone."
+    },
+    {
+      "name": "win_audience",
+      "description": "Win over your audience",
+      "prompt": "Make the conclusion section sound more persuasive for an executive audience."
+    },
+    {
+      "name": "trim_bios",
+      "description": "Trim up bios",
+      "prompt": "Condense each speaker’s bio into 3 sentences or fewer."
+    },
+    {
+      "name": "show_skills",
+      "description": "Show off your skills",
+      "prompt": "Revise my resume “Overview” section to be more focused on my customer service experience."
+    },
+    {
+      "name": "clean_resume",
+      "description": "Clean up your resume",
+      "prompt": "Rewrite this resume bullet point in under 10 words."
+    },
+    {
+      "name": "dream_job",
+      "description": "Land your dream job",
+      "prompt": "Change the introduction of my cover letter to sound more professional."
+    },
+    {
+      "name": "rephrase",
+      "description": "Rephrase it",
+      "prompt": "How can I make this same point differently: [copy]?"
+    },
+    {
+      "name": "crystal_clear",
+      "description": "Make it crystal clear",
+      "prompt": "Offer a simpler way to make this statement: [copy]."
+    },
+    {
+      "name": "cite_sources",
+      "description": "Cite sources in seconds",
+      "prompt": "Organize all the sources cited in this document into an endnotes page."
+    },
+    {
+      "name": "create_checklist",
+      "description": "Create a checklist",
+      "prompt": "Convert the conclusion of the report into a checklist for readers."
+    },
+    {
+      "name": "keep_concise",
+      "description": "Keep it concise",
+      "prompt": "Simplify my introduction to be less wordy."
+    },
+    {
+      "name": "reword",
+      "description": "Reword it",
+      "prompt": "How can I make this same point differently: [copy]?"
+    }
+  ]
+},
+
+    {
+  "name": "generate",
+  "description": "Generate Related",
+  "submenu": [
+    {
+      "name": "ideas",
+      "description": "Generate new ideas",
+      "prompt": "Specify the topic for idea generation.\n\n---\n\nGenerate new ideas for: {{{ input }}}."
+    },
+    {
+      "name": "content",
+      "description": "Generate content",
+      "prompt": "Specify the type of content you want generated.\n\n---\n\nGenerate content related to: {{{ input }}}."
+    },
+    {
+      "name": "attract_top_talent",
+      "description": "Attract top talent",
+      "prompt": "Create a job description for an analyst based on the skills outlined in this report."
+    },
+    {
+      "name": "generate_email",
+      "description": "Generate a helpful email",
+      "prompt": "Write an email to my team members explaining why they should use the tips in this guide."
+    },
+    {
+      "name": "create_video_script",
+      "description": "Create a video script",
+      "prompt": "Develop an outline for a 3-minute video highlighting the main points of this eBook."
+    },
+    {
+      "name": "marketing_messaging",
+      "description": "Make marketing look easy",
+      "prompt": "Create 25-, 50-, and 100-word messaging blocks for marketing to promote this asset."
+    },
+    {
+      "name": "boss_rundown",
+      "description": "Give your boss the rundown",
+      "prompt": "Write a memo to my boss explaining how our HR team could use this document."
+    },
+    {
+      "name": "sum_lab_report",
+      "description": "Sum up a lab report",
+      "prompt": "Write an abstract of this lab report that is fewer than 200 words."
+    },
+    {
+      "name": "turn_docs_keynotes",
+      "description": "Turn docs into keynotes",
+      "prompt": "Create an outline of this document for a keynote address by our CEO."
+    },
+    {
+      "name": "make_script_superfast",
+      "description": "Make a script superfast",
+      "prompt": "Create a script for a 5-slide PowerPoint presentation that explains why our board should care about this subject."
+    },
+    {
+      "name": "create_lesson_plan",
+      "description": "Create a lesson plan",
+      "prompt": "Help me use this content to create a lesson plan for my students."
+    },
+    {
+      "name": "craft_newsletter",
+      "description": "Craft a nifty newsletter",
+      "prompt": "Write a newsletter that promotes this new recipe."
+    },
+    {
+      "name": "outline_instructions",
+      "description": "Outline simple instructions",
+      "prompt": "Develop a set of instructions for my students to create a report on this topic."
+    },
+    {
+      "name": "make_sales_easier",
+      "description": "Make sales easier",
+      "prompt": "Generate a tip sheet for our sales team to discuss this content with our customers."
+    },
+    {
+      "name": "promote_on_social",
+      "description": "Promote it on social",
+      "prompt": "Create 10 social media posts with emojis to help marketing promote this asset."
+    },
+    {
+      "name": "prep_interview",
+      "description": "Prep an insightful interview",
+      "prompt": "Write 5 interview questions for potential hires about the risks described in this handbook."
+    },
+    {
+      "name": "write_web_copy",
+      "description": "Write web copy in a click",
+      "prompt": "Create copy for a website landing page where people can download this information."
+    },
+    {
+      "name": "find_perfect_title",
+      "description": "Find the perfect title",
+      "prompt": "What are some other potential titles for this document?"
+    },
+    {
+      "name": "make_conference_itinerary",
+      "description": "Make a conference itinerary",
+      "prompt": "Create an itinerary that my boss can use while attending this conference."
+    },
+    {
+      "name": "personalize_interview",
+      "description": "Personalize any interview",
+      "prompt": "Write 10 interview questions based on this resume."
+    },
+    {
+      "name": "generate_fresh_titles",
+      "description": "Generate fresh titles",
+      "prompt": "Provide alternative titles for the main sections of this market research report."
+    },
+    {
+      "name": "remember_ingredients",
+      "description": "Remember every ingredient",
+      "prompt": "Create a grocery list based on this recipe."
+    },
+    {
+      "name": "prep_book_club",
+      "description": "Prep for your book club",
+      "prompt": "Generate a discussion guide to use for my book club."
+    },
+    {
+      "name": "create_cover_letter",
+      "description": "Create a cover letter",
+      "prompt": "Draft a cover letter based on my resume."
+    },
+    {
+      "name": "nail_interview",
+      "description": "Nail your interview",
+      "prompt": "Write an elevator pitch that I can use in a job interview."
+    },
+    {
+      "name": "sum_travel_details",
+      "description": "Sum up travel details",
+      "prompt": "Take my travel confirmations and draft an email to my friends with the key information."
+    },
+    {
+      "name": "ace_test",
+      "description": "Ace the test",
+      "prompt": "Provide 10 sample test questions that my professor could ask me."
+    },
+    {
+      "name": "win_debate",
+      "description": "Win the debate",
+      "prompt": "Develop 5 debate topics based on the content in this white paper."
+    },
+    {
+      "name": "know_concepts",
+      "description": "Know your concepts",
+      "prompt": "Create a list of concepts from this semester for me to study."
+    },
+    {
+      "name": "find_essay_topics",
+      "description": "Find essay topics",
+      "prompt": "Suggest a few essay topics based on this reading that can help me get started."
+    },
+    {
+      "name": "build_study_guide",
+      "description": "Build a study guide fast",
+      "prompt": "Create a study guide for my upcoming test on this topic."
+    }
+  ]
+}
+,
+    {
+  "name": "brainstorm",
+  "description": "Brainstorm Related",
+  "submenu": [
+    {
+      "name": "solutions",
+      "description": "Brainstorm solutions to a problem",
+      "prompt": "What problem are you facing?\n\n---\n\nBrainstorm solutions for the following problem: {{{ input }}}."
+    },
+    {
+      "name": "strategies",
+      "description": "Brainstorm strategies for a project",
+      "prompt": "What is the project about?\n\n---\n\nBrainstorm strategies for the project: {{{ input }}}."
+    },
+    {
+      "name": "ceo_pov",
+      "description": "Get your CEO’s POV",
+      "prompt": "If you were the CEO, what are 3 questions you would ask about this report?"
+    },
+    {
+      "name": "mitigate_drawbacks",
+      "description": "Work around any drawback",
+      "prompt": "Give me some ideas to mitigate the drawbacks mentioned in the paper."
+    },
+    {
+      "name": "webinar_ideas",
+      "description": "Spark webinar ideas",
+      "prompt": "Can you provide some potential webinar ideas based on this presentation?"
+    },
+    {
+      "name": "blog_topics",
+      "description": "Brainstorm blog topics",
+      "prompt": "What are 10 blog topic ideas I can use for our website?"
+    },
+    {
+      "name": "seo_keywords",
+      "description": "Identify SEO keywords",
+      "prompt": "What are some potential SEO terms we could use to promote this content?"
+    },
+    {
+      "name": "continue_conversation",
+      "description": "Keep the convo going",
+      "prompt": "Give me 5 blog post ideas that build on the main ideas of this article."
+    },
+    {
+      "name": "taglines",
+      "description": "Create instant taglines",
+      "prompt": "Offer ideas for marketing campaign taglines for the solution described in this document."
+    },
+    {
+      "name": "newsletter_topic",
+      "description": "Get more from your content",
+      "prompt": "Give me ideas for the next newsletter topic that builds on the content from this issue."
+    },
+    {
+      "name": "essay_questions",
+      "description": "Create essay questions in a click",
+      "prompt": "Propose 3 sample essay questions for college students to write about."
+    },
+    {
+      "name": "employee_training",
+      "description": "Train employees effortlessly",
+      "prompt": "Provide suggestions for how I can use this information for employee training."
+    },
+    {
+      "name": "data_applications",
+      "description": "See how data can level up business",
+      "prompt": "What are some applications of this data for a small business owner?"
+    },
+    {
+      "name": "board_questions",
+      "description": "Think like the board",
+      "prompt": "What are 5 questions the board of directors should consider about this topic?"
+    },
+    {
+      "name": "talk_track",
+      "description": "Create the perfect talk track",
+      "prompt": "How can I incorporate these ideas into a talk track for my sales team?"
+    },
+    {
+      "name": "kpi_recommendations",
+      "description": "Get quick KPI recommendations",
+      "prompt": "Suggest KPIs a business might use based on the best practices in this document."
+    },
+    {
+      "name": "workshop_series",
+      "description": "Brainstorm a new workshop series",
+      "prompt": "Provide ideas for a professional workshop series focused on this content."
+    },
+    {
+      "name": "learning_opportunities",
+      "description": "Unlock learning opportunities",
+      "prompt": "Offer ideas for using this information in a professional development program."
+    },
+    {
+      "name": "customer_experience",
+      "description": "Level up customer experiences",
+      "prompt": "Give me suggestions for how to use this content to improve the customer experience."
+    },
+    {
+      "name": "onboarding",
+      "description": "Make onboarding a breeze",
+      "prompt": "Propose ways to include this information into a welcome packet for employees."
+    },
+    {
+      "name": "course_structure",
+      "description": "Craft engaging courses",
+      "prompt": "Suggest how to structure an e-learning course to teach staff about this subject matter."
+    },
+    {
+      "name": "profitability",
+      "description": "Boost your bottom line",
+      "prompt": "Present ideas for how a company could use these findings to improve profitability."
+    },
+    {
+      "name": "product_demo",
+      "description": "Build handy demos",
+      "prompt": "What information in this document could be useful in a product demo?"
+    },
+    {
+      "name": "prove_expertise",
+      "description": "Prove your expertise",
+      "prompt": "Provide some ideas for how I could use this information to impress my boss."
+    },
+    {
+      "name": "ai_collaboration",
+      "description": "Collaborate quickly with AI",
+      "prompt": "Be my teammate and help me develop project ideas based on this content."
+    },
+    {
+      "name": "fun_itinerary",
+      "description": "Create the perfect itinerary",
+      "prompt": "Take a look at this itinerary — what are some additional fun ideas to do with grandparents?"
+    },
+    {
+      "name": "professional_brand",
+      "description": "Stand out from the crowd",
+      "prompt": "Give me some ideas for building my professional brand based on my resume."
+    },
+    {
+      "name": "exam_preparation",
+      "description": "Bring home an A",
+      "prompt": "Act as my professor — what are some test questions I should be prepared to answer?"
+    },
+    {
+      "name": "paper_topics",
+      "description": "Get pointers for any paper",
+      "prompt": "What are some good topics I could write about for my upcoming paper?"
+    },
+    {
+      "name": "case_making",
+      "description": "Make a compelling case",
+      "prompt": "Suggest creative ways to discuss this topic from the opposing viewpoints."
+    },
+    {
+      "name": "main_points",
+      "description": "Find the main points",
+      "prompt": "What are the key conclusions drawn from this thesis?"
+    },
+    {
+      "name": "storytelling",
+      "description": "Channel your inner storyteller",
+      "prompt": "How could I use characters to tell the main story of this report?"
+    }
+  ]
+},
+    {
       "name": "code",
       "description": "Code Related",
       "submenu": [
@@ -117,107 +930,14 @@
           "prompt": "Enter the network-related command you want to simulate on the Linux terminal.\n\n---\n\nSimulate the network-related operation on a Linux terminal and return the output as if it were from a system terminal."
         },
         {
-          "name": "simulate-security",
-          "description": "Simulate security-related operations on a Linux terminal",
-          "prompt": "Enter the security-related command you want to simulate on the Linux terminal.\n\n---\n\nSimulate the security-related operation on a Linux terminal and return the output as if it were from a system terminal."
-        }
-      ]
-    },
-    {
-      "name": "nlp",
-      "description": "Natural Language Processing (NLP)",
-      "submenu": [
-        {
-          "name": "sentiment",
-          "description": "Analyze sentiment of selected text",
-          "prompt": "{{{ input }}}\n\n---\n\nAnalyze the sentiment of the selected text and return a score between -1 (negative sentiment) and 1 (positive sentiment)."
+          "name": "simulate-file",
+          "description": "Simulate file operations on a Linux terminal",
+          "prompt": "Enter the file operation command you want to simulate on the Linux terminal.\n\n---\n\nSimulate the file operation on a Linux terminal and return the output as if it were from a system terminal."
         },
         {
-          "name": "topic",
-          "description": "Identify topic of selected text",
-          "prompt": "{{{ input }}}\n\n---\n\nIdentify the topic or subject matter of the selected text."
-        },
-        {
-          "name": "summary",
-          "description": "Generate summary of selected text",
-          "prompt": "{{{ input }}}\n\n---\n\nGenerate a concise summary of the selected text."
-        },
-        {
-          "name": "entity",
-          "description": "Identify entities within selected text",
-          "prompt": "{{{ input }}}\n\n---\n\nIdentify entities (e.g., names, organizations, locations) within the selected text."
-        },
-        {
-          "name": "keyphrase",
-          "description": "Extract key phrases from selected text",
-          "prompt": "{{{ input }}}\n\n---\n\nExtract key phrases or keywords from the selected text."
-        },
-        {
-          "name": "similarity",
-          "description": "Determine similarity between texts",
-          "prompt": "Provide a reference text or query to compare with the selected text.\n\n---\n\nDetermine the similarity between the selected text and the reference text or query."
-        },
-        {
-          "name": "ner",
-          "description": "Perform Named Entity Recognition (NER)",
-          "prompt": "{{{ input }}}\n\n---\n\nPerform Named Entity Recognition (NER) on the selected text, categorizing entities into predefined classes."
-        }
-      ]
-    },
-    {
-      "name": "writing",
-      "description": "Writing",
-      "submenu": [
-        {
-          "name": "prompt",
-          "description": "Generate writing prompts",
-          "prompt": "Specify the type of writing prompt you need (e.g., creative writing, technical writing).\n\n---\n\nReturn the generated writing prompt."
-        },
-        {
-          "name": "edit",
-          "description": "Provide editing services",
-          "prompt": "```{{{ input }}}```\n\n---\n\nProvide editing services for the written content, improving clarity, coherence, and correctness."
-        },
-        {
-          "name": "format",
-          "description": "Format text according to style guidelines",
-          "prompt": "Specify the style guidelines to be followed (e.g., APA, MLA, Chicago).\n\n---\n\nFormat the text according to the specified style guidelines.\n\n```{{{ input }}}```"
-        },
-        {
-          "name": "research",
-          "description": "Assist in conducting research",
-          "prompt": "Specify the topic you need assistance with for research.\n\n---\n\nAssist in conducting research on the given topic, providing relevant sources and information."
-        }
-      ]
-    },
-    {
-      "name": "other",
-      "description": "Other",
-      "submenu": [
-        {
-          "name": "spell-check",
-          "description": "Check spelling of selected text",
-          "prompt": "```{{{ input }}}```\n\n---\n\nCheck the spelling of the selected text and suggest corrections."
-        },
-        {
-          "name": "improve-text",
-          "description": "Improve readability of text",
-          "prompt": "```{{{ input }}}```\n\n---\n\nImprove the readability of the text by making stylistic enhancements."
-        },
-        {
-          "name": "expand-text",
-          "description": "Expand text with additional details",
-          "prompt": "```{{{ input }}}```\n\n---\n\nExpand the provided text by adding more details and elaboration."
-        },
-        {
-          "name": "critique-text",
-          "description": "Provide constructive criticism",
-          "prompt": "```{{{ input }}}```\n\n---\n\nProvide constructive criticism and feedback on the provided text."
-        },
-        {
-          "name": "translate",
-          "description": "Translate text",
-          "prompt": "```{{{ input }}}```\n\n---\n\nTranslate the provided text to the specified language. Return only the translated text."
+          "name": "simulate-process",
+          "description": "Simulate process-related commands on a Linux terminal",
+          "prompt": "Enter the process-related command you want to simulate on the Linux terminal.\n\n---\n\nSimulate the process-related operation on a Linux terminal and return the output as if it were from a system terminal."
         }
       ]
     }
