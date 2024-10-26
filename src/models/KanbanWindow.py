@@ -2,7 +2,7 @@ import json
 from tkinter import *
 
 
-class Kanban:
+class KanbanWindow:
     def __init__(self):
         """Initializes the Kanban board window and loads tasks"""
         self.kanban_data = {

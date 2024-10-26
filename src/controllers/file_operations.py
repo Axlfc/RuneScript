@@ -306,20 +306,8 @@ def save_as():
     return True
 
 
-def close(event=None):
-    """ ""\"
-    ""\"
-    close
-
-    Args:
-        event (Any): Description of event.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
-    if save():
-        root.quit()
+def close():
+    root.quit()
 
 
 def save_file(file_name, content):

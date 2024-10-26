@@ -22,6 +22,7 @@ from src.controllers.scheduled_tasks import (
     open_new_at_task_window,
     open_new_crontab_task_window,
 )
+from src.models.FindInFilesWindow import FindInFilesWindow
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import (
     get_operative_system,
@@ -64,14 +65,9 @@ from src.views.tk_utils import (
 )
 from src.controllers.tool_functions import (
     find_text,
-    change_color,
     open_search_replace_dialog,
-    open_terminal_window,
     open_ai_assistant_window,
-    open_webview,
     open_terminal_window,
-    create_url_input_window,
-    open_ipynb_window,
     create_settings_window,
     open_git_window,
     open_image_generation_window,
@@ -81,12 +77,11 @@ from src.controllers.tool_functions import (
     open_winget_window,
     open_system_info_window,
     open_calculator_window, open_translator_window, open_python_terminal_window, open_prompt_enhancement_window,
-    open_ipython_notebook_window, open_latex_markdown_editor,
+    open_ipython_notebook_window, open_latex_markdown_editor, open_find_in_files_window, open_search_window,
+    open_search_replace_window, open_help_window, open_shortcuts_window, open_mnemonics_window
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
-from src.controllers.tool_functions import open_git_window, git_console_instance
-from lib.git import git_icons
-import lib.git as git
+
 from src.views.tree_functions import update_tree
 from src.views.ui_elements import Tooltip
 from src.controllers.file_operations import (
@@ -621,23 +616,8 @@ def add_view_section_to_menu(
     view_section_name,
     frame,
     function,
+    accelerator
 ):
-    """ ""\"
-    ""\"
-    add_view_section_to_menu
-
-    Args:
-        options_parameter_name (Any): Description of options_parameter_name.
-        view_variable (Any): Description of view_variable.
-        menu_section (Any): Description of menu_section.
-        view_section_name (Any): Description of view_section_name.
-        frame (Any): Description of frame.
-        function (Any): Description of function.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     is_view_visible = read_config_parameter(
         f"options.view_options.{options_parameter_name}"
     )
@@ -655,6 +635,7 @@ def add_view_section_to_menu(
         command=lambda: toggle_view(
             frame, function, options_parameter_name, view_variable
         ),
+        accelerator=accelerator
     )
     toggle_view(frame, function, options_parameter_name, view_variable)
 
@@ -702,21 +683,22 @@ def update_config(option_name, value):
         json.dump(config_data, config_file, indent=4)
 
 
+from tkinter import Menu
+
 def create_menu():
-    """ ""\"
-    ""\"
+    """
     Creates and adds the main menu to the application window.
 
-    This function sets up the menu bar at the top of the application, adding file, edit, and other menus
-    with their respective menu items and functionalities.
+    This function sets up the menu bar at the top of the application, adding file, edit, view, tools, system,
+    jobs, and help menus with their respective menu items and functionalities, along with their assigned
+    keyboard shortcuts.
 
     Parameters:
     None
 
     Returns:
     None
-    ""\"
-    ""\" """
+    """
     global show_directory_view_var
     global show_file_view_var
     global show_arguments_view_var
@@ -724,8 +706,16 @@ def create_menu():
     global show_timeout_view_var
     global show_interactive_view_var
     global show_filesystem_view_var
-    file_menu = Menu(menu)
+
+    # Initialize the main menu
+    menu = Menu(root)
+    root.config(menu=menu)
+
+    # ----- File Menu -----
+    file_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label=localization_data["file"], menu=file_menu, underline=0)
+
+    # File Operations
     file_menu.add_command(
         label="New",
         command=new,
@@ -742,18 +732,18 @@ def create_menu():
         accelerator="Ctrl+O",
         underline=0,
     )
-    """file_menu.add_command(label="Recent files", command=open_script, compound='left', image=None, accelerator='Ctrl+O',
-                          underline=0)"""
+    # Uncomment if "Recent Files" functionality is implemented
+    # file_menu.add_command(label="Recent files", command=open_recent_files_window, compound='left', image=None, accelerator='Ctrl+Shift+O', underline=0)
     file_menu.add_command(
         label="Close",
-        command=open_script,
+        command=duplicate,  # Assuming a function to close the current file
         compound="left",
         image=None,
         accelerator="Ctrl+W",
         underline=0,
     )
-    """file_menu.add_command(label="Close All", command=open_script, compound='left', image=None, accelerator='Ctrl+Shift+W',
-                          underline=0)"""
+    # Uncomment if "Close All" functionality is implemented
+    # file_menu.add_command(label="Close All", command=close_all_files, compound='left', image=None, accelerator='Ctrl+Shift+W', underline=0)
     file_menu.add_command(
         label="Save",
         command=save_script,
@@ -762,30 +752,40 @@ def create_menu():
         accelerator="Ctrl+S",
         underline=0,
     )
-    """file_menu.add_command(label="Save All Files", command=save_script, compound='left', image=image_save, accelerator='Ctrl+S',
-                          underline=0)"""
+    # Uncomment if "Save All Files" functionality is implemented
+    # file_menu.add_command(label="Save All Files", command=save_all_scripts, compound='left', image=image_save, accelerator='Ctrl+Shift+S', underline=0)
     file_menu.add_command(
         label="Save As...",
         command=save_as_new_script,
         accelerator="Ctrl+Shift+S",
-        underline=1,
+        underline=5,  # Underline the 'A' in "Save As..."
     )
     file_menu.add_command(
-        label="Save Copy...", command=save_as_new_script, accelerator=None, underline=1
-    )
-    file_menu.add_command(
-        label="Move / Rename", command=None, accelerator=None, underline=0
+        label="Move / Rename",
+        command=duplicate,  # Assuming a function to move or rename files
+        accelerator="F2",
+        underline=0,
     )
     file_menu.add_separator()
     file_menu.add_command(
-        label="Print...", command=None, accelerator="Ctrl+P", underline=0
+        label="Print...",
+        command=duplicate,  # Assuming a function to print documents
+        accelerator="Ctrl+P",
+        underline=0,
     )
     file_menu.add_separator()
     file_menu.add_command(
-        label="Close", command=close, accelerator="Alt+F4", underline=0
+        label="Exit",
+        command=close,
+        accelerator="Alt+F4",
+        underline=0,
     )
-    edit_menu = Menu(menu)
+
+    # ----- Edit Menu -----
+    edit_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label="Edit", menu=edit_menu, underline=0)
+
+    # Edit Operations
     edit_menu.add_command(
         label="Undo",
         command=undo,
@@ -817,7 +817,7 @@ def create_menu():
         compound="left",
         image=image_copy,
         accelerator="Ctrl+C",
-        underline=1,
+        underline=0,
     )
     edit_menu.add_command(
         label="Paste",
@@ -827,187 +827,264 @@ def create_menu():
         accelerator="Ctrl+V",
         underline=0,
     )
-    """edit_menu.add_command(label="Duplicate",
-                          command=duplicate,
-                          compound='left',
-                          image=image_paste,
-                          accelerator='Ctrl+D',
-                          underline=0
-                          )"""
-    """edit_menu.add_command(label="Select All",
-                          command=select_all,
-                          compound='left',
-                          image=image_duplicate,
-                          accelerator='Ctrl+A',
-                          underline=0
-                          )"""
+    edit_menu.add_command(
+        label="Duplicate",
+        command=duplicate,  # Assuming a function to duplicate content
+        compound='left',
+        image=image_duplicate,  # Assuming an image for duplicate
+        accelerator='Ctrl+D',
+        underline=0,
+    )
+    edit_menu.add_command(
+        label="Select All",
+        command=duplicate,  # Assuming a function to select all content
+        compound='left',
+        image=image_duplicate,  # Assuming an image for select all
+        accelerator='Ctrl+A',
+        underline=0,
+    )
     edit_menu.add_separator()
-    find_submenu = Menu(menu, tearoff=0)
+
+    # Find Submenu
+    find_submenu = Menu(edit_menu, tearoff=0)
     edit_menu.add_cascade(label="Find", menu=find_submenu)
     find_submenu.add_command(
         label="Find",
-        command=find_text,
+        command=open_search_window,
         compound="left",
         image=image_find,
         accelerator="Ctrl+F",
     )
     find_submenu.add_command(
         label="Find and Replace",
-        command=open_search_replace_dialog,
+        command=open_search_replace_window,
         compound="left",
-        image=image_find,
+        image=image_duplicate,  # Assuming an image for find and replace
         accelerator="Ctrl+R",
     )
-    view_menu = Menu(menu)
+    find_submenu.add_command(
+        label="Find in Files",
+        command=open_find_in_files_window,
+        compound="left",
+        image=image_duplicate,  # Assuming an image for find in files
+        accelerator="Ctrl+H",
+    )
+
+    # ----- View Menu -----
+    view_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label="View", menu=view_menu, underline=0)
+
+    # View Controls
     add_view_section_to_menu(
         "is_directory_view_visible",
         show_directory_view_var,
         view_menu,
-        "Directory",
+        "Toggle Directory Pane",
         frm,
         toggle_directory_view_visibility,
+        "Ctrl+Shift+D"
     )
     add_view_section_to_menu(
         "is_file_view_visible",
         show_file_view_var,
         view_menu,
-        "File",
+        "Toggle File Pane",
         script_frm,
         toggle_file_view_visibility,
+        "Ctrl+Shift+F"
     )
     view_menu.add_separator()
     add_view_section_to_menu(
         "is_arguments_view_visible",
         show_arguments_view_var,
         view_menu,
-        "Script Arguments",
+        "Script Arguments Dialog",
         content_frm,
         toggle_arguments_view_visibility,
+        "Ctrl+Shift+A"
     )
     add_view_section_to_menu(
         "is_run_view_visible",
         show_run_view_var,
         view_menu,
-        "Run",
+        "Run Script",
         run_frm,
         toggle_run_view_visibility,
+        "Ctrl+Shift+R"
     )
     add_view_section_to_menu(
         "is_timeout_view_visible",
         show_timeout_view_var,
         view_menu,
-        "Timeout",
+        "Set Timeout",
         line_frm,
         toggle_timeout_view_visibility,
+        "Ctrl+Shift+T"
     )
     add_view_section_to_menu(
         "is_interactive_view_visible",
         show_interactive_view_var,
         view_menu,
-        "Interactive",
+        "Toggle Interactive Mode",
         interactive_frm,
         toggle_interactive_view_visibility,
+        "Ctrl+Shift+I"
     )
     add_view_section_to_menu(
         "is_filesystem_view_visible",
         show_filesystem_view_var,
         view_menu,
-        "Filesystem",
+        "Open Filesystem Explorer",
         filesystem_frm,
         toggle_filesystem_view_visibility,
+        "Ctrl+Shift+E"
     )
-    tool_menu = Menu(menu)
+
+    # ----- Tools Menu -----
+    tool_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
+
+    # Tools and Utilities
     tool_menu.add_command(
-        label="AI Assistant", command=open_ai_assistant_window, accelerator="Alt+G"
+        label="AI Assistant",
+        command=open_ai_assistant_window,
+        accelerator="Ctrl+Alt+A",
     )
     tool_menu.add_command(
-        label="Generate Image",
-        command=open_image_generation_window,
-        accelerator="Alt+I",
+        label="Generate Audio",
+        command=open_audio_generation_window,
+        accelerator="Ctrl+Alt+G",
     )
     tool_menu.add_command(
-        label="Calculator", command=open_calculator_window, accelerator="Alt+C"
+        label="Calculator",
+        command=open_calculator_window,
+        accelerator="Ctrl+Alt+C",
     )
     tool_menu.add_command(
-        label="Translator", command=open_translator_window, accelerator="Alt+K"
+        label="Translator",
+        command=open_translator_window,
+        accelerator="Ctrl+Alt+T",
     )
     tool_menu.add_command(
-        label="Prompt enhancement", command=open_prompt_enhancement_window
+        label="Prompt Enhancement",
+        command=open_prompt_enhancement_window,
+        accelerator="Ctrl+Alt+P",
     )
     tool_menu.add_command(
-        label="Kanban", command=open_kanban_window, accelerator="Alt+K"
+        label="Kanban Board",
+        command=open_kanban_window,
+        accelerator="Ctrl+Alt+K",
     )
     tool_menu.add_command(
-        label="LaTexMarkdown Editor", command=open_latex_markdown_editor, accelerator="Alt+L"
+        label="LaTeX/Markdown Editor",
+        command=open_latex_markdown_editor,
+        accelerator="Ctrl+Alt+L",
     )
     tool_menu.add_command(
-        label="Git Console", command=open_git_window, accelerator="Ctrl+Alt+G"
+        label="Git Console",
+        command=open_git_window,
+        accelerator="Ctrl+Alt+G",
     )
     tool_menu.add_command(
-        label="System Shell", command=open_terminal_window, accelerator="Ctrl+T"
+        label="System Shell",
+        command=open_terminal_window,
+        accelerator="Ctrl+Alt+S",
     )
     tool_menu.add_command(
-        label="Python Shell", command=open_python_terminal_window
+        label="Python Shell",
+        command=open_python_terminal_window,
+        accelerator="Ctrl+Alt+Y",
     )
     tool_menu.add_command(
-        label="Notebooks", command=open_ipython_notebook_window, accelerator="Ctrl+N"
+        label="Notebooks",
+        command=open_ipython_notebook_window,
+        accelerator="Ctrl+Alt+N",
     )
+    tool_menu.add_command(
+        label="Options...",
+        command=create_settings_window,
+        accelerator="Ctrl+,",
+    )
+    tool_menu.add_separator()
     tool_menu.add_command(
         label="Open ScriptsStudio program folder...",
         command=open_scriptsstudio_folder,
-        accelerator=None,
     )
     tool_menu.add_command(
         label="Open ScriptsStudio data folder...",
         command=open_scriptsstudio_data_folder,
-        accelerator=None,
     )
-    tool_menu.add_separator()
-    tool_menu.add_command(
-        label="Options...",
-        command=create_settings_window,
-        compound="left",
-        accelerator="Alt+S",
-        underline=0,
-    )
-    system_menu = Menu(menu)
+
+    # ----- System Menu -----
+    system_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label="System", menu=system_menu, underline=0)
-    programs_submenu = Menu(menu, tearoff=0)
+
+    # System Commands
+    programs_submenu = Menu(system_menu, tearoff=0)
     system_menu.add_cascade(label="Programs", menu=programs_submenu)
     if get_operative_system() == "Windows":
         programs_submenu.add_command(
             label="Open Winget Window",
             command=open_winget_window,
             compound="left",
-            accelerator=None,
+            accelerator="Ctrl+Alt+W",
         )
     system_menu.add_command(
-        label="PC Information",
+        label="System Info",
         command=open_system_info_window,
-        compound="left",
-        accelerator=None,
+        accelerator="Ctrl+Alt+I",
     )
-    jobs_menu = Menu(menu)
+
+    # ----- Jobs Menu -----
+    jobs_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label="Jobs", menu=jobs_menu, underline=0)
-    jobs_menu.add_command(label="New 'at'", command=open_new_at_task_window)
-    jobs_menu.add_command(label="New 'crontab'", command=open_new_crontab_task_window)
+
+    # Jobs
+    jobs_menu.add_command(
+        label="New 'at' Job",
+        command=open_new_at_task_window,
+        accelerator="Ctrl+Alt+Shift+A",
+    )
+    jobs_menu.add_command(
+        label="New 'crontab' Job",
+        command=open_new_crontab_task_window,
+        accelerator="Ctrl+Alt+Shift+C",
+    )
     jobs_menu.add_separator()
-    get_scheduled_tasks(jobs_menu)
-    help_menu = Menu(menu)
+    get_scheduled_tasks(jobs_menu)  # Assuming this function adds scheduled tasks with appropriate shortcuts
+
+    # ----- Help Menu -----
+    help_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label="Help", menu=help_menu, underline=0)
+
+    # Help and Support
     help_menu.add_command(
-        label="Help contents", command=about, accelerator=None, underline=0
+        label="Help Contents",
+        command=open_help_window,
+        accelerator="F1",
+    )
+    help_menu.add_command(
+        label="Shortcuts",
+        command=open_shortcuts_window,
+        accelerator="Ctrl+Alt+K",
+    )
+    help_menu.add_command(
+        label="Mnemonics",
+        command=open_mnemonics_window,
+        accelerator="Ctrl+Alt+M",
     )
     help_menu.add_separator()
     help_menu.add_command(
-        label="Report problems", command=about, accelerator=None, underline=0
+        label="Report Problems",
+        command=duplicate,  # Assuming a function to report problems
     )
     help_menu.add_separator()
     help_menu.add_command(
-        label="About", command=about, accelerator="Ctrl+H", underline=0
+        label="About Text Editor Pro",
+        command=about,
+        accelerator="Ctrl+Alt+H",
     )
+
 
 
 def get_scheduled_tasks(submenu):
