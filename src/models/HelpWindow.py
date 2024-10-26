@@ -64,14 +64,13 @@ class HelpWindow:
             ],
             "Tools and Utilities": [
                 ("AI Assistant", "Ctrl + Alt + A"),
-                ("Generate Audio", "Ctrl + Alt + G"),
                 ("Calculator", "Ctrl + Alt + C"),
-                ("Translator", "Ctrl + Alt + T"),
+                ("Translator", "F3"),
                 ("Prompt Enhancement", "Ctrl + Alt + P"),
                 ("Kanban Board", "Ctrl + Alt + K"),
                 ("LaTeX/Markdown Editor", "Ctrl + Alt + L"),
                 ("Git Console", "Ctrl + Alt + G"),
-                ("System Shell", "Ctrl + Alt + S"),
+                ("System Shell", "Ctrl + Alt + B"),
                 ("Python Shell", "Ctrl + Alt + Y"),
                 ("Notebooks", "Ctrl + Alt + N"),
                 ("Options/Settings", "Ctrl + ,"),
@@ -80,14 +79,11 @@ class HelpWindow:
                 ("Open Winget Window", "Ctrl + Alt + W"),
                 ("System Info", "Ctrl + Alt + I"),
             ],
-            "Jobs": [
-                ("New 'at' Job", "Ctrl + Alt + Shift + A"),
-                ("New 'crontab' Job", "Ctrl + Alt + Shift + C"),
-                ("Manage Scheduled Tasks", "Ctrl + Alt + Shift + S"),
-            ],
             "Help and Support": [
                 ("Help Contents", "F1"),
-                ("About Text Editor Pro", "Ctrl + Alt + H"),
+                ("Shortcuts", "F4"),
+                ("Mnemonics", "F10"),
+                ("About", "Ctrl + Alt + H"),
             ]
         }
 

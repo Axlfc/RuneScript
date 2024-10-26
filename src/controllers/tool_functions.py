@@ -6,6 +6,8 @@ import re
 import shutil
 import subprocess
 import threading
+import webbrowser
+
 import requests
 import hashlib
 import markdown
@@ -80,108 +82,39 @@ from typing import List, Dict, Optional
 git_console_instance = None
 
 
-def check(value):
-    script_text.tag_remove("found", "1.0", END)
-    if value:
-        script_text.tag_config("found", background="yellow")
-        idx = "1.0"
-        while idx:
-            idx = script_text.search(value, idx, nocase=1, stopindex=END)
-            if idx:
-                lastidx = f"{idx}+{len(value)}c"
-                script_text.tag_add("found", idx, lastidx)
-                idx = lastidx
-
-
-def search_and_replace(search_text, replace_text):
-    if search_text:
-        start_index = "1.0"
-        while True:
-            start_index = script_text.search(
-                search_text, start_index, nocase=1, stopindex=END
-            )
-            if not start_index:
-                break
-            end_index = f"{start_index}+{len(search_text)}c"
-            script_text.delete(start_index, end_index)
-            script_text.insert(start_index, replace_text)
-            start_index = end_index
-
-
-def find_text_cancel_button(search_toplevel):
-    text.tag_remove("found", "1.0", END)
-    search_toplevel.destroy()
-    return "break"
-
-
-def find_text(event=None):
-    search_toplevel = Toplevel(root)
-    search_toplevel.title("Find Text")
-    search_toplevel.transient(root)
-    search_toplevel.resizable(False, False)
-    Label(search_toplevel, text="Find All:").grid(row=0, column=0, sticky="e")
-    search_entry_widget = Entry(search_toplevel, width=25)
-    search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky="we")
-    search_entry_widget.focus_set()
-    Button(
-        search_toplevel,
-        text="Ok",
-        underline=0,
-        command=lambda: check(search_entry_widget.get()),
-    ).grid(row=0, column=2, sticky="e" + "w", padx=2, pady=5)
-    Button(
-        search_toplevel,
-        text="Cancel",
-        underline=0,
-        command=lambda: find_text_cancel_button(search_toplevel),
-    ).grid(row=0, column=4, sticky="e" + "w", padx=2, pady=2)
-
-
-def open_search_replace_dialog():
-    search_replace_toplevel = Toplevel(root)
-    search_replace_toplevel.title("Search and Replace")
-    search_replace_toplevel.transient(root)
-    search_replace_toplevel.resizable(False, False)
-    Label(search_replace_toplevel, text="Find:").grid(row=0, column=0, sticky="e")
-    search_entry_widget = Entry(search_replace_toplevel, width=25)
-    search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky="we")
-    Label(search_replace_toplevel, text="Replace:").grid(row=1, column=0, sticky="e")
-    replace_entry_widget = Entry(search_replace_toplevel, width=25)
-    replace_entry_widget.grid(row=1, column=1, padx=2, pady=2, sticky="we")
-    Button(
-        search_replace_toplevel,
-        text="Replace All",
-        command=lambda: search_and_replace(
-            search_entry_widget.get(), replace_entry_widget.get()
-        ),
-    ).grid(row=2, column=1, sticky="e" + "w", padx=2, pady=5)
-
-
-def open_find_in_files_window():
+def open_find_in_files_window(event=None):
     return FindInFilesWindow()
 
 
-def open_search_replace_window():
+def open_search_replace_window(event=None):
     return SearchAndReplaceWindow()
 
 
-def open_search_window():
+def open_search_window(event=None):
     return SearchWindow()
 
 
-def open_help_window():
+def open_help_window(event=None):
     return HelpWindow()
 
 
-def open_shortcuts_window():
+def open_shortcuts_window(event=None):
     return ShortcutsWindow()
 
 
-def open_mnemonics_window():
+def open_mnemonics_window(event=None):
     return MnemonicsWindow()
 
 
-def create_settings_window():
+def report_problems(event=None):
+    url = "https://github.com/Axlfc/ScriptsEditor/issues/new"
+    try:
+        webbrowser.open(url)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to open web browser: {e}")
+
+
+def create_settings_window(event=None):
     def load_themes_from_json(file_path):
         try:
             with open(file_path, "r") as file:
@@ -342,7 +275,7 @@ def create_settings_window():
     return settings_window
 
 
-def open_system_info_window():
+def open_system_info_window(event=None):
     system_info_window = Toplevel()
     system_info_window.title("System Information Viewer")
     system_info_window.geometry("800x600")
@@ -567,7 +500,7 @@ def open_system_info_window():
     refresh_button.pack(pady=10)
 
 
-def open_winget_window():
+def open_winget_window(event=None):
     return WingetWindow()
 
 
@@ -575,35 +508,35 @@ def open_git_window(repo_dir=None):
     return GitWindow(repo_dir)
 
 
-def open_calculator_window():
+def open_calculator_window(event=None):
     return CalculatorWindow()
 
 
-def open_kanban_window():
+def open_kanban_window(event=None):
     return KanbanWindow()
 
 
-def open_latex_markdown_editor():
+def open_latex_markdown_editor(event=None):
     return LaTeXMarkdownEditor()
 
 
-def open_ipython_notebook_window():
+def open_ipython_notebook_window(event=None):
     return IPythonNotebookTerminal()
 
 
-def open_python_terminal_window():
+def open_python_terminal_window(event=None):
     return PythonTerminalWindow()
 
 
-def open_terminal_window():
+def open_terminal_window(event=None):
     return TerminalWindow()
 
 
-def open_prompt_enhancement_window():
+def open_prompt_enhancement_window(event=None):
     return PromptEnhancementWindow()
 
 
-def open_translator_window():
+def open_translator_window(event=None):
     return TranslatorWindow()
 
 

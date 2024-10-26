@@ -129,7 +129,7 @@ def paste():
     script_text.event_generate("<<Paste>>")
 
 
-def duplicate():
+def duplicate(event=None):
     """ ""\"
     Duplicates the selected text in the script editor.
 

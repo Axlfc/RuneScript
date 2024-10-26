@@ -64,8 +64,6 @@ from src.views.tk_utils import (
     filesystem_frm,
 )
 from src.controllers.tool_functions import (
-    find_text,
-    open_search_replace_dialog,
     open_ai_assistant_window,
     open_terminal_window,
     create_settings_window,
@@ -78,7 +76,7 @@ from src.controllers.tool_functions import (
     open_system_info_window,
     open_calculator_window, open_translator_window, open_python_terminal_window, open_prompt_enhancement_window,
     open_ipython_notebook_window, open_latex_markdown_editor, open_find_in_files_window, open_search_window,
-    open_search_replace_window, open_help_window, open_shortcuts_window, open_mnemonics_window
+    open_search_replace_window, open_help_window, open_shortcuts_window, open_mnemonics_window, report_problems
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 
@@ -95,6 +93,8 @@ from src.controllers.file_operations import (
     save_as_new_script,
     close,
 )
+
+from src.models.AboutWindow import AboutWindow
 
 git_console_instance = None
 house_icon = "🏠"
@@ -123,79 +123,85 @@ def init_git_console():
         git_console_instance = "Something"
 
 
-def open_current_directory(directory=directory_label.cget("text")):
-    """ ""\"
-    ""\"
-    open_current_directory
+def open_current_directory(path):
+    """
+    Opens the specified directory in the system's default file explorer.
 
     Args:
-        directory (Any): Description of directory.
+        path (str): The directory path to open.
 
     Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
-    if sys.platform == "win32":
-        os.startfile(directory)
-    elif sys.platform == "darwin":
-        subprocess.run(["open", directory])
-    else:
-        subprocess.run(["xdg-open", directory])
+        None
+    """
+    if not os.path.isdir(path):
+        print(f"Error: The directory '{path}' does not exist.")
+        return
+
+    try:
+        if sys.platform.startswith('darwin'):
+            # macOS
+            subprocess.Popen(['open', path])
+        elif sys.platform.startswith('win'):
+            # Windows
+            os.startfile(path)
+        elif sys.platform.startswith('linux'):
+            # Linux (uses xdg-open)
+            subprocess.Popen(['xdg-open', path])
+        else:
+            print(f"Unsupported OS: {sys.platform}")
+    except Exception as e:
+        print(f"Failed to open directory '{path}': {e}")
 
 
 def about(event=None):
-    """ ""\"
-    ""\"
-    Displays the 'About' information of the application.
-
-    This function triggers a messagebox that provides details about the ScriptsEditor, including its creation and version.
-
-    Parameters:
-    event (optional): An event object, not directly used in this function.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
-    messagebox.showinfo(
-        localization_data["about_scripts_editor"],
-        localization_data["scripts_editor_info"],
-    )
+   return AboutWindow(root)
 
 
-def open_scriptsstudio_folder():
-    """ ""\"
-    ""\"
-    open_scriptsstudio_folder
+def copy_to_clipboard(address):
+    """
+    Copies the given address to the system clipboard.
 
     Args:
-        None
+        address (str): The cryptocurrency address to copy.
 
     Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
-    open_current_directory(
-        read_config_parameter("options.file_management.scriptsstudio_directory")
-    )
+        None
+    """
+    try:
+        pyperclip.copy(address)
+        messagebox.showinfo("Copied", "Address copied to clipboard!")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to copy address: {e}")
 
 
-def open_scriptsstudio_data_folder():
-    """ ""\"
-    ""\"
-    open_scriptsstudio_data_folder
+def open_scriptsstudio_folder(event=None):
+    """
+    Opens the ScriptsStudio program folder in the system's file explorer.
 
     Args:
-        None
+        event (tkinter.Event, optional): The event object (default is None).
 
     Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
-    open_current_directory(
-        read_config_parameter("options.file_management.scriptsstudio_directory")
-        + "\\data"
+        None
+    """
+    scriptsstudio_dir = read_config_parameter("options.file_management.scriptsstudio_directory")
+    open_current_directory(scriptsstudio_dir)
+
+def open_scriptsstudio_data_folder(event=None):
+    """
+    Opens the ScriptsStudio data folder in the system's file explorer.
+
+    Args:
+        event (tkinter.Event, optional): The event object (default is None).
+
+    Returns:
+        None
+    """
+    scriptsstudio_data_dir = os.path.join(
+        read_config_parameter("options.file_management.scriptsstudio_directory"),
+        "data"
     )
+    open_current_directory(scriptsstudio_data_dir)
 
 
 new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, height=20)
@@ -267,7 +273,7 @@ image_undo = ImageTk.PhotoImage(photo_undo)
 undo_button.config(image=image_undo)
 undo_button.grid(in_=toolbar, row=0, column=8, padx=4, pady=4, sticky="w")
 find_button = Button(
-    name="toolbar_b10", borderwidth=1, command=find_text, width=20, height=20
+    name="toolbar_b10", borderwidth=1, command=open_search_window, width=20, height=20
 )
 photo_find = Image.open("icons/find.png")
 photo_find = photo_find.resize((18, 18), Image.LANCZOS)
@@ -350,24 +356,13 @@ def get_text_files(directory):
     return text_files
 
 
-def toggle_directory_view_visibility(frame):
-    """ ""\"
-    ""\"
-    toggle_directory_view_visibility
-
-    Args:
-        frame (Any): Description of frame.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
+def toggle_directory_view_visibility(event=None):
     global current_directory
     global directory_label
     if show_directory_view_var.get() == 1:
         write_config_parameter("options.view_options.is_directory_view_visible", "true")
-        frame.grid(row=0, column=0, pady=0, sticky="ew")
-        directory_button = Button(frame, text=house_icon, command=select_directory)
+        frm.grid(row=0, column=0, pady=0, sticky="ew")
+        directory_button = Button(frm, text=house_icon, command=select_directory)
         directory_button.grid(column=0, row=0, sticky="w")
         Tooltip(directory_button, localization_data["choose_working_directory"])
         directory_label.grid(column=1, row=0, padx=5, sticky="ew")
@@ -384,21 +379,10 @@ def toggle_directory_view_visibility(frame):
         write_config_parameter(
             "options.view_options.is_directory_view_visible", "false"
         )
-        frame.grid_forget()
+        frm.grid_forget()
 
 
 def toggle_file_view_visibility(frame):
-    """ ""\"
-    ""\"
-    toggle_file_view_visibility
-
-    Args:
-        frame (Any): Description of frame.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     if show_file_view_var.get() == 1:
         write_config_parameter("options.view_options.is_file_view_visible", "true")
         frame.grid(row=1, column=0, pady=0, sticky="ew")
@@ -615,8 +599,7 @@ def add_view_section_to_menu(
     menu_section,
     view_section_name,
     frame,
-    function,
-    accelerator
+    function
 ):
     is_view_visible = read_config_parameter(
         f"options.view_options.{options_parameter_name}"
@@ -634,8 +617,7 @@ def add_view_section_to_menu(
         variable=view_variable,
         command=lambda: toggle_view(
             frame, function, options_parameter_name, view_variable
-        ),
-        accelerator=accelerator
+        )
     )
     toggle_view(frame, function, options_parameter_name, view_variable)
 
@@ -724,6 +706,7 @@ def create_menu():
         accelerator="Ctrl+N",
         underline=0,
     )
+    root.bind('<Control-n>', new)
     file_menu.add_command(
         label="Open",
         command=open_script,
@@ -732,6 +715,8 @@ def create_menu():
         accelerator="Ctrl+O",
         underline=0,
     )
+    root.bind('<Control-o>', open_script)
+
     # Uncomment if "Recent Files" functionality is implemented
     # file_menu.add_command(label="Recent files", command=open_recent_files_window, compound='left', image=None, accelerator='Ctrl+Shift+O', underline=0)
     file_menu.add_command(
@@ -742,6 +727,7 @@ def create_menu():
         accelerator="Ctrl+W",
         underline=0,
     )
+    root.bind('<Control-w>', duplicate)
     # Uncomment if "Close All" functionality is implemented
     # file_menu.add_command(label="Close All", command=close_all_files, compound='left', image=None, accelerator='Ctrl+Shift+W', underline=0)
     file_menu.add_command(
@@ -752,6 +738,7 @@ def create_menu():
         accelerator="Ctrl+S",
         underline=0,
     )
+    root.bind('<Control-s>', save_script)
     # Uncomment if "Save All Files" functionality is implemented
     # file_menu.add_command(label="Save All Files", command=save_all_scripts, compound='left', image=image_save, accelerator='Ctrl+Shift+S', underline=0)
     file_menu.add_command(
@@ -760,12 +747,14 @@ def create_menu():
         accelerator="Ctrl+Shift+S",
         underline=5,  # Underline the 'A' in "Save As..."
     )
+    root.bind('<Control-Shift-s>', save_as_new_script)
     file_menu.add_command(
         label="Move / Rename",
         command=duplicate,  # Assuming a function to move or rename files
         accelerator="F2",
         underline=0,
     )
+    root.bind('<F2>', duplicate)
     file_menu.add_separator()
     file_menu.add_command(
         label="Print...",
@@ -773,6 +762,7 @@ def create_menu():
         accelerator="Ctrl+P",
         underline=0,
     )
+    root.bind('<Control-p>', duplicate)
     file_menu.add_separator()
     file_menu.add_command(
         label="Exit",
@@ -853,8 +843,9 @@ def create_menu():
         command=open_search_window,
         compound="left",
         image=image_find,
-        accelerator="Ctrl+F",
+        accelerator="Ctrl+F"
     )
+    root.bind('<Control-f>', open_search_window)
     find_submenu.add_command(
         label="Find and Replace",
         command=open_search_replace_window,
@@ -862,6 +853,7 @@ def create_menu():
         image=image_duplicate,  # Assuming an image for find and replace
         accelerator="Ctrl+R",
     )
+    root.bind('<Control-r>', open_search_replace_window)
     find_submenu.add_command(
         label="Find in Files",
         command=open_find_in_files_window,
@@ -869,6 +861,7 @@ def create_menu():
         image=image_duplicate,  # Assuming an image for find in files
         accelerator="Ctrl+H",
     )
+    root.bind('<Control-h>', open_find_in_files_window)
 
     # ----- View Menu -----
     view_menu = Menu(menu, tearoff=0)
@@ -881,17 +874,16 @@ def create_menu():
         view_menu,
         "Toggle Directory Pane",
         frm,
-        toggle_directory_view_visibility,
-        "Ctrl+Shift+D"
+        toggle_directory_view_visibility
     )
+
     add_view_section_to_menu(
         "is_file_view_visible",
         show_file_view_var,
         view_menu,
         "Toggle File Pane",
         script_frm,
-        toggle_file_view_visibility,
-        "Ctrl+Shift+F"
+        toggle_file_view_visibility
     )
     view_menu.add_separator()
     add_view_section_to_menu(
@@ -900,8 +892,7 @@ def create_menu():
         view_menu,
         "Script Arguments Dialog",
         content_frm,
-        toggle_arguments_view_visibility,
-        "Ctrl+Shift+A"
+        toggle_arguments_view_visibility
     )
     add_view_section_to_menu(
         "is_run_view_visible",
@@ -909,8 +900,7 @@ def create_menu():
         view_menu,
         "Run Script",
         run_frm,
-        toggle_run_view_visibility,
-        "Ctrl+Shift+R"
+        toggle_run_view_visibility
     )
     add_view_section_to_menu(
         "is_timeout_view_visible",
@@ -918,8 +908,7 @@ def create_menu():
         view_menu,
         "Set Timeout",
         line_frm,
-        toggle_timeout_view_visibility,
-        "Ctrl+Shift+T"
+        toggle_timeout_view_visibility
     )
     add_view_section_to_menu(
         "is_interactive_view_visible",
@@ -927,8 +916,7 @@ def create_menu():
         view_menu,
         "Toggle Interactive Mode",
         interactive_frm,
-        toggle_interactive_view_visibility,
-        "Ctrl+Shift+I"
+        toggle_interactive_view_visibility
     )
     add_view_section_to_menu(
         "is_filesystem_view_visible",
@@ -936,8 +924,7 @@ def create_menu():
         view_menu,
         "Open Filesystem Explorer",
         filesystem_frm,
-        toggle_filesystem_view_visibility,
-        "Ctrl+Shift+E"
+        toggle_filesystem_view_visibility
     )
 
     # ----- Tools Menu -----
@@ -950,61 +937,91 @@ def create_menu():
         command=open_ai_assistant_window,
         accelerator="Ctrl+Alt+A",
     )
-    tool_menu.add_command(
+    root.bind("<Control-Alt-a>", open_ai_assistant_window)
+
+    #TODO: Convert to GENERATE_WINDOW: Text, Images, Audio, Music, Video, 3D Models, Personalized Avatars,
+    # Interactive Content, Interactive Content, Application, Web...
+    '''tool_menu.add_command(
         label="Generate Audio",
         command=open_audio_generation_window,
         accelerator="Ctrl+Alt+G",
     )
     tool_menu.add_command(
+            label="Generate Image",
+            command=open_image_generation_window,
+            accelerator="Ctrl+Alt+G",
+        )'''
+
+    tool_menu.add_command(
         label="Calculator",
         command=open_calculator_window,
         accelerator="Ctrl+Alt+C",
     )
+    root.bind("<Control-Alt-c>", open_calculator_window)
+
     tool_menu.add_command(
         label="Translator",
         command=open_translator_window,
-        accelerator="Ctrl+Alt+T",
+        accelerator="F3",
     )
+    root.bind("<F3>", open_translator_window)
+
     tool_menu.add_command(
         label="Prompt Enhancement",
         command=open_prompt_enhancement_window,
         accelerator="Ctrl+Alt+P",
     )
+    root.bind("<Control-Alt-p>", open_prompt_enhancement_window)
+
     tool_menu.add_command(
         label="Kanban Board",
         command=open_kanban_window,
         accelerator="Ctrl+Alt+K",
     )
+    root.bind("<Control-Alt-k>", open_kanban_window)
+
     tool_menu.add_command(
         label="LaTeX/Markdown Editor",
         command=open_latex_markdown_editor,
         accelerator="Ctrl+Alt+L",
     )
+    root.bind("<Control-Alt-l>", open_latex_markdown_editor)
+
     tool_menu.add_command(
         label="Git Console",
         command=open_git_window,
         accelerator="Ctrl+Alt+G",
     )
+    root.bind("<Control-Alt-g>", open_git_window)
+
     tool_menu.add_command(
         label="System Shell",
         command=open_terminal_window,
-        accelerator="Ctrl+Alt+S",
+        accelerator="Ctrl+Alt+B",
     )
+    root.bind("<Control-Alt-b>", open_terminal_window)
+
     tool_menu.add_command(
         label="Python Shell",
         command=open_python_terminal_window,
         accelerator="Ctrl+Alt+Y",
     )
+    root.bind("<Control-Alt-y>", open_python_terminal_window)
+
     tool_menu.add_command(
         label="Notebooks",
         command=open_ipython_notebook_window,
         accelerator="Ctrl+Alt+N",
     )
+    root.bind("<Control-Alt-n>", open_ipython_notebook_window)
+
     tool_menu.add_command(
         label="Options...",
         command=create_settings_window,
         accelerator="Ctrl+,",
     )
+    root.bind("<Control-,>", create_settings_window)
+
     tool_menu.add_separator()
     tool_menu.add_command(
         label="Open ScriptsStudio program folder...",
@@ -1029,11 +1046,14 @@ def create_menu():
             compound="left",
             accelerator="Ctrl+Alt+W",
         )
+    root.bind("<Control-Alt-w>", open_winget_window)
+
     system_menu.add_command(
         label="System Info",
         command=open_system_info_window,
         accelerator="Ctrl+Alt+I",
     )
+    root.bind("<Control-Alt-i>", open_system_info_window)
 
     # ----- Jobs Menu -----
     jobs_menu = Menu(menu, tearoff=0)
@@ -1043,13 +1063,17 @@ def create_menu():
     jobs_menu.add_command(
         label="New 'at' Job",
         command=open_new_at_task_window,
-        accelerator="Ctrl+Alt+Shift+A",
+        # accelerator="Ctrl+Alt+Shift+A",
     )
+    # root.bind("<Control-Alt-Shift-a>", open_new_at_task_window)
+
     jobs_menu.add_command(
         label="New 'crontab' Job",
         command=open_new_crontab_task_window,
-        accelerator="Ctrl+Alt+Shift+C",
+        # accelerator="Ctrl+Alt+Shift+C",
     )
+    # root.bind("<Control-Alt-Shift-c>", open_new_crontab_task_window)
+
     jobs_menu.add_separator()
     get_scheduled_tasks(jobs_menu)  # Assuming this function adds scheduled tasks with appropriate shortcuts
 
@@ -1063,28 +1087,33 @@ def create_menu():
         command=open_help_window,
         accelerator="F1",
     )
+    root.bind("<F1>", open_help_window)
     help_menu.add_command(
         label="Shortcuts",
         command=open_shortcuts_window,
-        accelerator="Ctrl+Alt+K",
+        accelerator="F4",
     )
+    root.bind("<F4>", open_shortcuts_window)
     help_menu.add_command(
         label="Mnemonics",
         command=open_mnemonics_window,
-        accelerator="Ctrl+Alt+M",
+        accelerator="F10",
     )
+    root.bind("<F10>", open_mnemonics_window)
     help_menu.add_separator()
     help_menu.add_command(
         label="Report Problems",
-        command=duplicate,  # Assuming a function to report problems
+        command=report_problems,
+        accelerator="F9",
     )
+    root.bind("<F9>", report_problems)
     help_menu.add_separator()
     help_menu.add_command(
-        label="About Text Editor Pro",
+        label="About ScriptsEditor",
         command=about,
-        accelerator="Ctrl+Alt+H",
+        accelerator="Ctrl+G",
     )
-
+    root.bind("<Control-g>", about)
 
 
 def get_scheduled_tasks(submenu):

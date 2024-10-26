@@ -3,41 +3,7 @@ from src.views.tk_utils import root
 
 
 def main():
-    """ ""\"
-    ""\"
-    ""\"
-    ""\"
-    Initializes and runs the main application window.
-
-    This function sets up the main window for the Scripts Editor application. It defines window properties,
-    initializes the user interface components, and enters the main event loop to start the application.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\"
-    ""\"
-    ""\" """
-
     def run_app():
-        """ ""\"
-        ""\"
-            ""\"
-                ""\"
-                    run_app
-
-                        Args:
-                            None
-
-                        Returns:
-                            None: Description of return value.
-                    ""\"
-                ""\"
-            ""\"
-        ""\" """
         create_app()
         root.mainloop()
 

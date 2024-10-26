@@ -97,7 +97,7 @@ def open_file(file_path):
     update_title()
 
 
-def open_script():
+def open_script(event=None):
     """ ""\"
     ""\"
     Opens an existing file into the script editor.
@@ -170,10 +170,12 @@ def update_menu_based_on_extension(ext):
         ".cpp": "C++",
         ".tex": "LaTeX",
         ".sh": "Bash",
+        "": "Bash",
         ".ps1": "PowerShell",
     }
     jobs_menu_index = None
-    for index in range(menu.index("end") + 1):
+    my_index = menu.index("end") + 1
+    for index in range(my_index):
         if "Jobs" in menu.entrycget(index, "label"):
             jobs_menu_index = index
             break
@@ -328,7 +330,7 @@ def save_file(file_name, content):
     messagebox.showinfo("Save", "Script saved successfully!")
 
 
-def save_script():
+def save_script(event=None):
     """ ""\"
     ""\"
     Triggered when 'Save' is clicked. Saves the current file or prompts to save as new if it's a new file.
@@ -352,7 +354,7 @@ def save_script():
             messagebox.showerror("Save Error", f"An error occurred while saving: {e}")
 
 
-def save_as_new_script():
+def save_as_new_script(event=None):
     """ ""\"
     ""\"
     Saves the current content as a new file. Opens a file dialog for the user to choose where to save.
@@ -378,13 +380,7 @@ def update_script_name_label(file_path):
     script_name_label.config(text=f"File Name: {base_name}")
 
 
-def new():
-    """ ""\"
-    ""\"
-    Creates a new file in the editor.
-    Prompts the user to save the current file if it is modified, then clears the text editor.
-    ""\"
-    ""\" """
+def new(event=None):
     global is_modified
     if is_modified:
         response = messagebox.askyesnocancel(

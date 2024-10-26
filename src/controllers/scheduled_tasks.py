@@ -322,7 +322,7 @@ def open_scheduled_tasks_window():
     window.mainloop()
 
 
-def open_new_at_task_window():
+def open_new_at_task_window(event=None):
     """ ""\"
     ""\"
     Opens a window for creating a new 'at' task.
@@ -380,7 +380,7 @@ def open_new_at_task_window():
     new_task_window.mainloop()
 
 
-def open_new_crontab_task_window():
+def open_new_crontab_task_window(event=None):
     """ ""\"
     ""\"
     Opens a window for creating a new 'crontab' task.

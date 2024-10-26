@@ -4,7 +4,6 @@ from src.views.tk_utils import script_text
 
 class SearchWindow:
     def __init__(self):
-        """Initialize the Find Text window."""
         self.script_text = script_text
 
         # Create the Toplevel window

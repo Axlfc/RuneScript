@@ -13,7 +13,7 @@ from tkinter import (
 )
 from tkinter.ttk import Treeview
 from src.controllers.parameters import read_config_parameter
-from src.controllers.tool_functions import find_text, open_search_replace_dialog
+from src.controllers.tool_functions import open_search_window, open_search_replace_window
 from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import (
     create_menu,
@@ -230,11 +230,11 @@ def create_content_file_window():
         find_submenu = Menu(menu, tearoff=0)
         context_menu.add_cascade(label="Find", menu=find_submenu)
         find_submenu.add_command(
-            label="Find", command=find_text, compound="left", accelerator="Ctrl+F"
+            label="Find", command=open_search_window, compound="left", accelerator="Ctrl+F"
         )
         find_submenu.add_command(
             label="Find and Replace",
-            command=open_search_replace_dialog,
+            command=open_search_replace_window,
             compound="left",
             accelerator="Ctrl+R",
         )

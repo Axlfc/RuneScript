@@ -64,6 +64,7 @@ root.iconbitmap("src/views/icon.ico")
 toolbar = Frame(root, pady=2)
 menu = Menu(root)
 root.config(menu=menu)
+
 frm = Frame(root)
 directory_label = Label(frm, text=os.getcwd(), anchor="center")
 script_frm = Frame(root)
