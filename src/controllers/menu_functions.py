@@ -1075,7 +1075,7 @@ def create_menu():
     # root.bind("<Control-Alt-Shift-c>", open_new_crontab_task_window)
 
     jobs_menu.add_separator()
-    get_scheduled_tasks(jobs_menu)  # Assuming this function adds scheduled tasks with appropriate shortcuts
+    get_scheduled_tasks(jobs_menu)
 
     # ----- Help Menu -----
     help_menu = Menu(menu, tearoff=0)
@@ -1117,19 +1117,6 @@ def create_menu():
 
 
 def get_scheduled_tasks(submenu):
-    """ ""\"
-    ""\"
-    Populates the 'Jobs' submenu with options based on the operating system.
-
-    For Windows, it adds an option to view scheduled tasks. For other systems, it adds options for 'at' and 'crontab' jobs.
-
-    Parameters:
-    submenu (Menu): The submenu to which the job options will be added.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     if get_operative_system() == "Windows":
         submenu.add_command(
             label="Scheduled Tasks", command=open_scheduled_tasks_window

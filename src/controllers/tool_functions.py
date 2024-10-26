@@ -64,6 +64,7 @@ from src.models.CalculatorWindow import CalculatorWindow
 from src.models.SearchAndReplaceWindow import SearchAndReplaceWindow
 from src.models.SearchWindow import SearchWindow
 from src.models.ShortcutsWindow import ShortcutsWindow
+from src.models.SettingsWindow import SettingsWindow
 from src.models.TTSManager import TTSManager
 from src.models.TerminalWindow import TerminalWindow
 from src.models.TranslatorWindow import TranslatorWindow
@@ -71,7 +72,7 @@ from src.models.VaultRAG import VaultRAG
 from src.models.WingetWindow import WingetWindow
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
-from src.views.tk_utils import text, script_text, root, current_session
+from src.views.tk_utils import text, script_text, root, current_session, menu
 from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
 from src.models.ai_assistant import find_gguf_file
@@ -273,6 +274,10 @@ def create_settings_window(event=None):
     reset_button = Button(bottom_frame, text="Reset Settings", command=reset_settings)
     reset_button.pack(side=LEFT, padx=5)
     return settings_window
+
+
+'''def create_settings_window(event=None):
+    return SettingsWindow()'''
 
 
 def open_system_info_window(event=None):

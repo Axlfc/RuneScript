@@ -211,17 +211,7 @@ def create_latex_menu(parent_menu):
 
 
 def create_python_menu(parent_menu):
-    """ ""\"
-    ""\"
-    create_python_menu
 
-    Args:
-        parent_menu (Any): Description of parent_menu.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     entries = {
         "Create Virtual Environment": change_interpreter,
         "Manage pip packages": change_interpreter,

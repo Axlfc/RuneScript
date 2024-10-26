@@ -1,5 +1,5 @@
 import os
-from tkinter import messagebox, END, filedialog, Menu
+from tkinter import messagebox, END, filedialog, Menu, TclError
 from src.controllers.menu_creators import (
     create_python_menu,
     create_csv_menu,
@@ -96,22 +96,7 @@ def open_file(file_path):
     is_modified = False
     update_title()
 
-
 def open_script(event=None):
-    """ ""\"
-    ""\"
-    Opens an existing file into the script editor.
-
-    This function displays a file dialog for the user to choose a file. Once a file is selected, it is opened
-    and its contents are displayed in the script editor.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     print("OPEN SCRIPT IS CALLED!")
     if is_modified:
         response = messagebox.askyesnocancel(
@@ -133,8 +118,7 @@ def open_script(event=None):
 
 
 def update_menu_based_on_extension(ext):
-    """ ""\"
-    ""\"
+    """
     Updates the application menu based on the file extension of the currently open file.
 
     Parameters:
@@ -142,8 +126,9 @@ def update_menu_based_on_extension(ext):
 
     Returns:
     None
-    ""\"
-    ""\" """
+    """
+
+    # Menu creators for different file extensions
     menu_creators = {
         ".py": create_python_menu,
         ".csv": create_csv_menu,
@@ -156,8 +141,10 @@ def update_menu_based_on_extension(ext):
         ".cpp": create_cpp_menu,
         ".tex": create_latex_menu,
         ".sh": create_bash_menu,
-        ".ps1": create_powershell_menu,
+        ".ps1": create_powershell_menu
     }
+
+    # File type labels
     file_type_labels = {
         ".py": "Python",
         ".csv": "CSV",
@@ -170,45 +157,43 @@ def update_menu_based_on_extension(ext):
         ".cpp": "C++",
         ".tex": "LaTeX",
         ".sh": "Bash",
-        "": "Bash",
-        ".ps1": "PowerShell",
+        ".ps1": "PowerShell"
     }
+
+    # Find the index of the 'Jobs' menu
     jobs_menu_index = None
-    my_index = menu.index("end") + 1
-    for index in range(my_index):
-        if "Jobs" in menu.entrycget(index, "label"):
+    for index in range(menu.index('end') + 1):
+        if 'Jobs' in menu.entrycget(index, 'label'):
             jobs_menu_index = index
             break
+
     if jobs_menu_index is None:
         return
+
+    # Check if a dynamic menu already exists and delete it if found
     dynamic_menu_index = None
-    for index in range(menu.index("end") + 1):
+    for index in range(menu.index('end') + 1):
         try:
-            if (
-                menu.entrycget(index, "label") in file_type_labels.values()
-                or menu.entrycget(index, "label") == "Other"
-            ):
+            if menu.entrycget(index, 'label') in file_type_labels.values() or menu.entrycget(index, 'label') == "Other":
                 dynamic_menu_index = index
                 menu.delete(dynamic_menu_index)
                 break
         except Exception as e:
             continue
-    dynamic_menu = Menu(menu, tearoff=0, name="dynamic")
+
+    # Create and insert the new dynamic menu
+    dynamic_menu = Menu(menu, tearoff=0, name='dynamic')
     if ext in menu_creators:
         menu_creators[ext](dynamic_menu)
         label = file_type_labels.get(ext, "Other")
     else:
         create_generic_text_menu(dynamic_menu)
         label = "Other"
+
+    # Insert the dynamic menu after the Jobs menu
     menu.insert_cascade(jobs_menu_index + 1, label=label, menu=dynamic_menu)
 
-
 def update_title():
-    """ ""\"
-    ""\"
-    Updates the application window's title based on the file's modified status and the current file name.
-    ""\"
-    ""\" """
     global is_modified
     print("RENAME MAIN WINDOW TRIGGERED, IS MODIFIED?", is_modified)
     title = os.path.basename(file_name) if file_name else localization_data["untitled"]
@@ -220,11 +205,6 @@ def update_title():
 
 
 def on_text_change(event=None):
-    """ ""\"
-    ""\"
-    Updates the modified flag when text in the editor changes.
-    ""\"
-    ""\" """
     global is_modified, last_saved_content
     print("on_text_change triggered")
     current_content = script_text.get("1.0", END)
@@ -241,11 +221,6 @@ def on_text_change(event=None):
 
 
 def prompt_save_changes():
-    """ ""\"
-    ""\"
-    Prompts the user to save changes if the current file is modified.
-    ""\"
-    ""\" """
     if is_modified:
         response = messagebox.askyesnocancel(
             "Save Changes", "You have unsaved changes. Would you like to save them?"
@@ -258,11 +233,6 @@ def prompt_save_changes():
 
 
 def save():
-    """ ""\"
-    ""\"
-    Saves the current file. If the file doesn't have a name, calls 'save_as' function.
-    ""\"
-    ""\" """
     global is_modified, file_name
     if not file_name or file_name == "Untitled":
         return save_as()
@@ -279,17 +249,6 @@ def save():
 
 
 def save_as():
-    """ ""\"
-    ""\"
-    save_as
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     print("ENTERING SAVE AS")
     """
         Opens a 'Save As' dialog to save the current file with a specified name.
@@ -313,29 +272,12 @@ def close():
 
 
 def save_file(file_name, content):
-    """ ""\"
-    ""\"
-    save_file
-
-    Args:
-        file_name (Any): Description of file_name.
-        content (Any): Description of content.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     with open(file_name, "w", encoding="utf-8") as file:
         file.write(content)
     messagebox.showinfo("Save", "Script saved successfully!")
 
 
 def save_script(event=None):
-    """ ""\"
-    ""\"
-    Triggered when 'Save' is clicked. Saves the current file or prompts to save as new if it's a new file.
-    ""\"
-    ""\" """
     global file_name, is_modified
     if not file_name or file_name == "Untitled":
         print("Saving new script...")
@@ -355,11 +297,6 @@ def save_script(event=None):
 
 
 def save_as_new_script(event=None):
-    """ ""\"
-    ""\"
-    Saves the current content as a new file. Opens a file dialog for the user to choose where to save.
-    ""\"
-    ""\" """
     global file_name, is_modified
     new_file_name = filedialog.asksaveasfilename(
         defaultextension=".*", filetypes=file_types
@@ -371,11 +308,6 @@ def save_as_new_script(event=None):
 
 
 def update_script_name_label(file_path):
-    """ ""\"
-    ""\"
-    Updates the script name label with the base name of the provided file path.
-    ""\"
-    ""\" """
     base_name = os.path.basename(file_path)
     script_name_label.config(text=f"File Name: {base_name}")
 
@@ -399,11 +331,6 @@ def new(event=None):
 
 
 def clear_editor():
-    """ ""\"
-    ""\"
-    Clears the text editor and resets the title and modified flag.
-    ""\"
-    ""\" """
     global file_name
     global is_modified
     script_text.delete("1.0", "end")

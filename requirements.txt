@@ -9,8 +9,6 @@ markdown2
 requests
 python-dotenv
 anthropic
-webrowser
-webview
 pyperclip
 pdflatex
 pdf2image
