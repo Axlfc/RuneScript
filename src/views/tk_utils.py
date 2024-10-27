@@ -31,6 +31,8 @@ def configure_app():
     root.columnconfigure(0, weight=1)
 
 
+SIMILARITY_THRESHOLD = 0.8
+
 new_name = ""
 last_saved_content = None
 context_menu = None

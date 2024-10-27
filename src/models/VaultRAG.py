@@ -148,24 +148,36 @@ class VaultRAG:
             print(f"INFO: Storing embedding for document_id: {document_id}")
             print(f"INFO: Content type: {type(content)}, Content length: {len(content)}")
 
-            # Convert content to text if it's a list
+            # Ensure content is in text form
             if isinstance(content, list):
                 content = ' '.join(map(str, content))
 
-            # Generate embedding
+            # Generate embedding as numpy array
             embedding = self.model.encode([content], convert_to_numpy=True)[0]
 
-            # Add to FAISS index
+            # Reshape embedding for FAISS compatibility and add to index
             self.index.add(embedding.reshape(1, -1))
 
-            # Store metadata
+            # Prepare metadata with embedding as a list to ensure compatibility
             embedding_data = {
                 'document_id': document_id,
-                'vector': embedding.tolist(),
+                'vector': embedding.tolist(),  # Convert to list for JSON compatibility
                 'timestamp': datetime.now().isoformat()
             }
-            self.embeddings.append(embedding_data)
-            self.document_ids.append(document_id)
+
+            # Append metadata to the embeddings list (must be a list of dicts)
+            if isinstance(self.embeddings, list):  # Ensure embeddings is a list
+                self.embeddings.append(embedding_data)
+            else:
+                print("ERROR: 'self.embeddings' should be a list.")
+                return  # Exit if embeddings is not in the correct format
+
+            # Ensure document IDs are tracked in list form
+            if isinstance(self.document_ids, list):
+                self.document_ids.append(document_id)
+            else:
+                print("ERROR: 'self.document_ids' should be a list.")
+                return  # Exit if document_ids is not in the correct format
 
             # Save updated metadata
             self.save_metadata()
