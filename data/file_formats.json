@@ -1,0 +1,11 @@
+{
+    "text_file_formats": [
+        ".txt", ".csv", ".md", ".tex", ".latex", ".ltx", ".sty", ".cls", ".bib",
+        ".pdf", ".rtf", ".html", ".xml", ".json", ".yaml", ".log", ".ini",
+        ".rst", ".toml", ".xhtml", ".conf", ".properties", ".plist", ".srt",
+        ".vtt", ".man", ".info", ".asc", ".tsv", ".bat", ".sh", ".env",
+        ".cfg", ".xsl", ".mdx", ".sql", ".ps1", ".dot", ".nfo", ".rdf",
+        ".tcl", ".awk", ".patch", ".diff", ".org", ".adoc", ".haml", ".scss",
+        ".sass", ".less", ".yml", ".gpx", ".lisp"
+    ]
+}
