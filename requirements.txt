@@ -9,7 +9,6 @@ markdown2
 requests
 python-dotenv
 anthropic
-pyperclip
 pdflatex
 pdf2image
 pyttsx3

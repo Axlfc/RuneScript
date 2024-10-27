@@ -42,7 +42,7 @@ from src.views.tree_functions import (
     item_opened,
     update_tree,
     on_item_select,
-    on_double_click,
+    on_double_click, show_context_menu,
 )
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
@@ -173,6 +173,7 @@ def create_filesystem_window():
     tree.bind("<<TreeviewOpen>>", item_opened)
     tree.bind("<<TreeviewSelect>>", on_item_select)
     tree.bind("<Double-1>", on_double_click)
+    tree.bind("<Button-3>", show_context_menu)
     print("CREATING FILESYSTEM VIEW")
     current_directory = read_config_parameter(
         "options.file_management.current_working_directory"

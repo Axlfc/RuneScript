@@ -16,7 +16,6 @@ from tkinter import (
     BooleanVar,
 )
 
-import pyperclip
 from PIL import Image, ImageTk
 from src.controllers.scheduled_tasks import (
     open_cron_window,
@@ -238,22 +237,6 @@ def open_music_generation_window():
 def open_image_generation_window():
     return ImageGenerationWindow()
 
-
-def copy_to_clipboard(address):
-    """
-    Copies the given address to the system clipboard.
-
-    Args:
-        address (str): The cryptocurrency address to copy.
-
-    Returns:
-        None
-    """
-    try:
-        pyperclip.copy(address)
-        messagebox.showinfo("Copied", "Address copied to clipboard!")
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to copy address: {e}")
 
 
 def open_scriptsstudio_folder(event=None):
