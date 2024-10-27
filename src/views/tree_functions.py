@@ -1,7 +1,7 @@
 import os
 from src.controllers.file_operations import open_file
 from src.controllers.parameters import write_config_parameter
-from src.views.tk_utils import tree
+from src.views.tk_utils import tree, menu
 
 
 def update_tree(path):
@@ -71,17 +71,8 @@ def on_item_select(event):
     print(f"Selected: {tree.item(item, 'text')}")
     print(f"Full path: {tree.item(item, 'values')[0]}")
 
-
+# TODO: Implement on right click over filesystem
 def on_double_click(event):
-    """ ""\"
-    on_double_click
-
-    Args:
-        event (Any): Description of event.
-
-    Returns:
-        None: Description of return value.
-    ""\" """
     item = tree.identify("item", event.x, event.y)
     filepath = tree.item(item, "values")[0]
     if os.path.isfile(filepath):

@@ -13,7 +13,6 @@ import hashlib
 import markdown
 
 from tkinter import (
-    colorchooser,
     END,
     Toplevel,
     Label,
@@ -73,7 +72,6 @@ from src.models.WingetWindow import WingetWindow
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
 from src.views.tk_utils import text, script_text, root, current_session, menu
-from src.controllers.utility_functions import make_tag
 from src.views.ui_elements import Tooltip, ScrollableFrame
 from src.models.ai_assistant import find_gguf_file
 from difflib import SequenceMatcher

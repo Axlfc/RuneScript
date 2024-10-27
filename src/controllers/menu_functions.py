@@ -283,20 +283,6 @@ find_button.grid(in_=toolbar, row=0, column=9, padx=4, pady=4, sticky="w")
 
 
 def select_directory():
-    """ ""\"
-    ""\"
-    Opens a dialog for the user to select a directory, and changes the current working directory to the selected one.
-
-    After the directory is selected, the function updates the directory label in the UI and opens the first text file
-    (if any) in the selected directory.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     directory = filedialog.askdirectory()
     if directory:
         os.chdir(directory)
@@ -315,20 +301,6 @@ def select_directory():
 
 
 def open_first_text_file(directory):
-    """ ""\"
-    ""\"
-    Opens the first text file in the given directory.
-
-    This function scans the specified directory for text files and, if found, opens the first one. It is typically
-    used after changing the working directory to automatically open a text file from that directory.
-
-    Parameters:
-    directory (str): The directory path in which to search for text files.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     text_files = get_text_files(directory)
     if text_files:
         file_path = os.path.join(directory, text_files[0])
@@ -667,20 +639,8 @@ def update_config(option_name, value):
 
 from tkinter import Menu
 
+
 def create_menu():
-    """
-    Creates and adds the main menu to the application window.
-
-    This function sets up the menu bar at the top of the application, adding file, edit, view, tools, system,
-    jobs, and help menus with their respective menu items and functionalities, along with their assigned
-    keyboard shortcuts.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    """
     global show_directory_view_var
     global show_file_view_var
     global show_arguments_view_var
@@ -688,9 +648,9 @@ def create_menu():
     global show_timeout_view_var
     global show_interactive_view_var
     global show_filesystem_view_var
-
+    global menu
     # Initialize the main menu
-    menu = Menu(root)
+    # menu = Menu(root)
     root.config(menu=menu)
 
     # ----- File Menu -----
