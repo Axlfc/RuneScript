@@ -96,17 +96,23 @@ def item_opened(event):
 
 def on_item_select(event):
     """
-    on_item_select
+    Handle item selection in the tree view.
 
     Args:
-        event (Any): Description of event.
+        event (Any): The event triggering the selection.
 
     Returns:
-        None: Description of return value.
+        None: Prints item information or error message.
     """
     item = tree.focus()
-    print(f"Selected: {tree.item(item, 'text')}")
-    print(f"Full path: {tree.item(item, 'values')[0]}")
+    item_text = tree.item(item, 'text')
+    item_values = tree.item(item, 'values')
+
+    if item_values:  # Check if values are present to avoid IndexError
+        print(f"Selected: {item_text}")
+        print(f"Full path: {item_values[0]}")
+    else:
+        print(f"Selected: {item_text} (No path available)")
 
 
 def on_double_click(event):
@@ -122,18 +128,22 @@ def on_double_click(event):
 
 def show_context_menu(event):
     """
-    Show context menu for file system items
+    Show context menu for file system items.
 
     Args:
-        event: Right click event
+        event: Right-click event
     """
     # Identify clicked item
     item = tree.identify("item", event.x, event.y)
     if not item:
         return
 
-    # Select the clicked item
+    # Clear previous selection and select the clicked item
     tree.selection_set(item)
+    tree.focus(item)  # Set the focused item to the clicked item
+
+    # Trigger the on_item_select event handler manually to update the selected item display
+    on_item_select(event)
 
     # Get item path
     item_path = tree.item(item, "values")[0]
@@ -141,6 +151,7 @@ def show_context_menu(event):
     # Create context menu
     context_menu = tk.Menu(tree, tearoff=0)
 
+    # Build the appropriate menu based on whether the item is a file or directory
     if os.path.isfile(item_path):
         _build_file_menu(context_menu, item_path)
     elif os.path.isdir(item_path):
