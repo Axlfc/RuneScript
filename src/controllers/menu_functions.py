@@ -15,6 +15,8 @@ from tkinter import (
     Text,
     BooleanVar,
 )
+
+import pyperclip
 from PIL import Image, ImageTk
 from src.controllers.scheduled_tasks import (
     open_cron_window,
@@ -24,6 +26,7 @@ from src.controllers.scheduled_tasks import (
     open_new_crontab_task_window,
 )
 from src.models.FindInFilesWindow import FindInFilesWindow
+from src.models.SystemInfoWindow import SystemInfoWindow
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import (
     get_operative_system,
@@ -66,7 +69,6 @@ from src.views.tk_utils import (
 )
 from src.controllers.tool_functions import (
     open_ai_assistant_window,
-    open_system_info_window
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 
@@ -152,6 +154,10 @@ def report_url(event=None, url="https://github.com/Axlfc/ScriptsEditor/issues/ne
 
 def create_settings_window(event=None):
     return SettingsWindow()
+
+
+def open_system_info_window(event=None):
+    return SystemInfoWindow()
 
 def open_find_in_files_window(event=None):
     return FindInFilesWindow()
