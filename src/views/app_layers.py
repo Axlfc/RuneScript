@@ -13,7 +13,7 @@ from tkinter import (
 )
 from tkinter.ttk import Treeview
 from src.controllers.parameters import read_config_parameter
-from src.controllers.tool_functions import open_search_window, open_search_replace_window
+from src.controllers.menu_functions import open_search_window, open_search_replace_window
 from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import (
     create_menu,

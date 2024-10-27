@@ -6,8 +6,6 @@ import re
 import shutil
 import subprocess
 import threading
-import webbrowser
-
 import requests
 import hashlib
 import markdown
@@ -48,27 +46,10 @@ from tkinter.ttk import (
 )
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
-from src.models.AudioGenerationWindow import AudioGenerationWindow
-from src.models.FindInFilesWindow import FindInFilesWindow
-from src.models.GitWindow import GitWindow
-from src.models.HelpWindow import HelpWindow
-from src.models.IPythonNotebookTerminal import IPythonNotebookTerminal
-from src.models.ImageGenerationWindow import ImageGenerationWindow
-from src.models.KanbanWindow import KanbanWindow
-from src.models.LaTeXMarkdownEditor import LaTeXMarkdownEditor
-from src.models.MnemonicsWindow import MnemonicsWindow
-from src.models.PromptEnhancementWindow import PromptEnhancementWindow
-from src.models.PythonTerminalWindow import PythonTerminalWindow
-from src.models.CalculatorWindow import CalculatorWindow
-from src.models.SearchAndReplaceWindow import SearchAndReplaceWindow
-from src.models.SearchWindow import SearchWindow
-from src.models.ShortcutsWindow import ShortcutsWindow
-from src.models.SettingsWindow import SettingsWindow
+
 from src.models.TTSManager import TTSManager
-from src.models.TerminalWindow import TerminalWindow
-from src.models.TranslatorWindow import TranslatorWindow
 from src.models.VaultRAG import VaultRAG
-from src.models.WingetWindow import WingetWindow
+
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
 from src.views.tk_utils import text, script_text, root, current_session, menu
@@ -78,42 +59,8 @@ from difflib import SequenceMatcher
 from datetime import datetime
 from typing import List, Dict, Optional
 
-git_console_instance = None
 
-
-def open_find_in_files_window(event=None):
-    return FindInFilesWindow()
-
-
-def open_search_replace_window(event=None):
-    return SearchAndReplaceWindow()
-
-
-def open_search_window(event=None):
-    return SearchWindow()
-
-
-def open_help_window(event=None):
-    return HelpWindow()
-
-
-def open_shortcuts_window(event=None):
-    return ShortcutsWindow()
-
-
-def open_mnemonics_window(event=None):
-    return MnemonicsWindow()
-
-
-def report_problems(event=None):
-    url = "https://github.com/Axlfc/ScriptsEditor/issues/new"
-    try:
-        webbrowser.open(url)
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to open web browser: {e}")
-
-
-def create_settings_window(event=None):
+'''def create_settings_window(event=None):
     def load_themes_from_json(file_path):
         try:
             with open(file_path, "r") as file:
@@ -272,11 +219,7 @@ def create_settings_window(event=None):
     reset_button = Button(bottom_frame, text="Reset Settings", command=reset_settings)
     reset_button.pack(side=LEFT, padx=5)
     return settings_window
-
-
-'''def create_settings_window(event=None):
-    return SettingsWindow()'''
-
+'''
 
 def open_system_info_window(event=None):
     system_info_window = Toplevel()
@@ -501,58 +444,6 @@ def open_system_info_window(event=None):
 
     refresh_button = Button(system_info_window, text="Refresh All", command=refresh_all)
     refresh_button.pack(pady=10)
-
-
-def open_winget_window(event=None):
-    return WingetWindow()
-
-
-def open_git_window(repo_dir=None):
-    return GitWindow(repo_dir)
-
-
-def open_calculator_window(event=None):
-    return CalculatorWindow()
-
-
-def open_kanban_window(event=None):
-    return KanbanWindow()
-
-
-def open_latex_markdown_editor(event=None):
-    return LaTeXMarkdownEditor()
-
-
-def open_ipython_notebook_window(event=None):
-    return IPythonNotebookTerminal()
-
-
-def open_python_terminal_window(event=None):
-    return PythonTerminalWindow()
-
-
-def open_terminal_window(event=None):
-    return TerminalWindow()
-
-
-def open_prompt_enhancement_window(event=None):
-    return PromptEnhancementWindow()
-
-
-def open_translator_window(event=None):
-    return TranslatorWindow()
-
-
-def open_audio_generation_window():
-    return AudioGenerationWindow()
-
-
-def open_music_generation_window():
-    pass
-
-
-def open_image_generation_window():
-    return ImageGenerationWindow()
 
 
 def open_ai_assistant_window(session_id=None):

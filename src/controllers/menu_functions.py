@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import subprocess
+import webbrowser
 from tkinter import (
     Menu,
     Button,
@@ -65,18 +66,7 @@ from src.views.tk_utils import (
 )
 from src.controllers.tool_functions import (
     open_ai_assistant_window,
-    open_terminal_window,
-    create_settings_window,
-    open_git_window,
-    open_image_generation_window,
-    open_music_generation_window,
-    open_audio_generation_window,
-    open_kanban_window,
-    open_winget_window,
-    open_system_info_window,
-    open_calculator_window, open_translator_window, open_python_terminal_window, open_prompt_enhancement_window,
-    open_ipython_notebook_window, open_latex_markdown_editor, open_find_in_files_window, open_search_window,
-    open_search_replace_window, open_help_window, open_shortcuts_window, open_mnemonics_window, report_problems
+    open_system_info_window
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 
@@ -95,6 +85,26 @@ from src.controllers.file_operations import (
 )
 
 from src.models.AboutWindow import AboutWindow
+from src.models.AudioGenerationWindow import AudioGenerationWindow
+from src.models.FindInFilesWindow import FindInFilesWindow
+from src.models.GitWindow import GitWindow
+from src.models.HelpWindow import HelpWindow
+from src.models.IPythonNotebookTerminal import IPythonNotebookTerminal
+from src.models.ImageGenerationWindow import ImageGenerationWindow
+from src.models.KanbanWindow import KanbanWindow
+from src.models.LaTeXMarkdownEditor import LaTeXMarkdownEditor
+from src.models.MnemonicsWindow import MnemonicsWindow
+from src.models.PromptEnhancementWindow import PromptEnhancementWindow
+from src.models.PythonTerminalWindow import PythonTerminalWindow
+from src.models.CalculatorWindow import CalculatorWindow
+from src.models.SearchAndReplaceWindow import SearchAndReplaceWindow
+from src.models.SearchWindow import SearchWindow
+from src.models.ShortcutsWindow import ShortcutsWindow
+from src.models.SettingsWindow import SettingsWindow
+from src.models.TerminalWindow import TerminalWindow
+from src.models.TranslatorWindow import TranslatorWindow
+from src.models.WingetWindow import WingetWindow
+
 
 git_console_instance = None
 house_icon = "🏠"
@@ -107,32 +117,12 @@ run_icon = "▶"
 
 
 def init_git_console():
-    """ ""\"
-    ""\"
-    init_git_console
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     global git_console_instance
     if git_console_instance is None:
         git_console_instance = "Something"
 
 
 def open_current_directory(path):
-    """
-    Opens the specified directory in the system's default file explorer.
-
-    Args:
-        path (str): The directory path to open.
-
-    Returns:
-        None
-    """
     if not os.path.isdir(path):
         print(f"Error: The directory '{path}' does not exist.")
         return
@@ -153,8 +143,94 @@ def open_current_directory(path):
         print(f"Failed to open directory '{path}': {e}")
 
 
+def report_url(event=None, url="https://github.com/Axlfc/ScriptsEditor/issues/new"):
+    try:
+        webbrowser.open(url)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to open web browser: {e}")
+
+
+def create_settings_window(event=None):
+    return SettingsWindow()
+
+def open_find_in_files_window(event=None):
+    return FindInFilesWindow()
+
+
+def open_search_replace_window(event=None):
+    return SearchAndReplaceWindow()
+
+
+def open_search_window(event=None):
+    return SearchWindow()
+
+
+def open_help_window(event=None):
+    return HelpWindow()
+
+
+def open_shortcuts_window(event=None):
+    return ShortcutsWindow()
+
+
+def open_mnemonics_window(event=None):
+    return MnemonicsWindow()
+
+
 def about(event=None):
    return AboutWindow(root)
+
+
+def open_winget_window(event=None):
+    return WingetWindow()
+
+
+def open_git_window(repo_dir=None):
+    return GitWindow(repo_dir)
+
+
+def open_calculator_window(event=None):
+    return CalculatorWindow()
+
+
+def open_kanban_window(event=None):
+    return KanbanWindow()
+
+
+def open_latex_markdown_editor(event=None):
+    return LaTeXMarkdownEditor()
+
+
+def open_ipython_notebook_window(event=None):
+    return IPythonNotebookTerminal()
+
+
+def open_python_terminal_window(event=None):
+    return PythonTerminalWindow()
+
+
+def open_terminal_window(event=None):
+    return TerminalWindow()
+
+
+def open_prompt_enhancement_window(event=None):
+    return PromptEnhancementWindow()
+
+
+def open_translator_window(event=None):
+    return TranslatorWindow()
+
+
+def open_audio_generation_window():
+    return AudioGenerationWindow()
+
+
+def open_music_generation_window():
+    pass
+
+
+def open_image_generation_window():
+    return ImageGenerationWindow()
 
 
 def copy_to_clipboard(address):
@@ -1063,10 +1139,10 @@ def create_menu():
     help_menu.add_separator()
     help_menu.add_command(
         label="Report Problems",
-        command=report_problems,
+        command=report_url,
         accelerator="F9",
     )
-    root.bind("<F9>", report_problems)
+    root.bind("<F9>", report_url)
     help_menu.add_separator()
     help_menu.add_command(
         label="About ScriptsEditor",
