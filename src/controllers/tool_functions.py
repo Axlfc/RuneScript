@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 import platform
@@ -44,6 +45,10 @@ from tkinter.ttk import (
     Notebook,
     Combobox
 )
+
+import yaml
+from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 
@@ -1539,80 +1544,99 @@ def open_ai_assistant_window(session_id=None):
             # Update embeddings for the new link
             current_session.rag.update_embeddings()  # Rebuild the embeddings with the updated content
 
-        def load_file_formats(json_file='file_formats.json'):
-            with open(json_file, 'r') as file:
+        def load_file_formats(self, json_file='data/file_formats.json'):
+            with open(json_file, 'r', encoding='utf-8') as file:
                 data = json.load(file)
             return data['text_file_formats']
 
-        def process_txt_to_text(file_path):
+        def process_csv_to_text(self, file_path):
+            """Converts a CSV file to plain text."""
+            with open(file_path, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                return "\n".join([", ".join(row) for row in reader])
+
+        def process_txt_to_text(self, file_path):
+            """Reads plain text from a .txt file."""
             with open(file_path, 'r', encoding='utf-8') as file:
                 return file.read()
 
-        # You can define other process functions based on file format here
-        def process_txt_to_text(file_path):
+        def process_md_to_text(self, file_path):
+            """Reads content from a Markdown file."""
+            return self.process_txt_to_text(file_path)
+
+        def process_latex_to_text(self, file_path):
+            """Reads content from a LaTeX file."""
+            return self.process_txt_to_text(file_path)
+
+        def process_json_to_text(self, file_path):
+            """Converts a JSON file to plain text."""
             with open(file_path, 'r', encoding='utf-8') as file:
-                return file.read()
+                data = json.load(file)
+                return json.dumps(data, indent=2)
 
-        def process_md_to_text(file_path):
-            return process_txt_to_text(file_path)
+        def process_yaml_to_text(self, file_path):
+            """Converts a YAML file to plain text."""
+            with open(file_path, 'r', encoding='utf-8') as file:
+                data = yaml.safe_load(file)
+                return yaml.dump(data, indent=2)
 
-        def process_latex_to_text(file_path):
-            return process_txt_to_text(file_path)  # Simplified, LaTeX may need special handling
+        def process_xml_to_text(self, file_path):
+            """Converts an XML file to plain text."""
+            tree = ET.parse(file_path)
+            root = tree.getroot()
+            return ET.tostring(root, encoding='utf-8').decode('utf-8')
 
-        def process_other_file_to_text(file_path):
-            return process_txt_to_text(file_path)  # For other plain text files
+        def process_html_to_text(self, file_path):
+            """Converts an HTML file to plain text."""
+            with open(file_path, 'r', encoding='utf-8') as file:
+                soup = BeautifulSoup(file, 'html.parser')
+                return soup.get_text()
+
+        def process_other_file_to_text(self, file_path):
+            """Generic text reader for unknown or unsupported structured formats."""
+            return self.process_txt_to_text(file_path)
+        '''def process_other_file_to_text(file_path):
+            return process_txt_to_text(file_path)  # For other plain text files'''
 
         def add_document(self, document_path):
+            """Handles document ingestion and content extraction based on file extension."""
             self.documents.append({"path": document_path, "checked": False})
             self.save()
 
-            # Load supported file formats from JSON
-            supported_formats = load_file_formats()
-
-            # Get file extension
             file_extension = os.path.splitext(document_path)[1].lower()
-
-            # Ingest document content based on its format
             extracted_text = None
+
             try:
                 if file_extension == '.pdf':
-                    extracted_text = process_pdf_to_text(document_path)  # Handle PDF separately
-                    try:
-                        extracted_text = process_pdf_to_text(document_path)  # Assume we have this function
-                        embedding = self.rag.model.encode([extracted_text], convert_to_numpy=True)
-                        if embedding is not None:
-                            self.rag.store_embedding(f"Document: {os.path.basename(document_path)}", embedding)
-                    except Exception as e:
-                        print(f"ERROR: Error processing document or updating embeddings: {e}")
-
-                '''elif file_extension == '.txt':
-                    extracted_text = process_txt_to_text(document_path)
+                    extracted_text = process_pdf_to_text(document_path)
+                elif file_extension == '.csv':
+                    extracted_text = self.process_csv_to_text(document_path)
+                elif file_extension == '.txt':
+                    extracted_text = self.process_txt_to_text(document_path)
                 elif file_extension == '.md':
-                    extracted_text = process_md_to_text(document_path)
-                elif file_extension in ['.tex', '.latex', '.ltx', '.sty']:
-                    extracted_text = process_latex_to_text(document_path)
+                    extracted_text = self.process_md_to_text(document_path)
+                elif file_extension in ['.tex', '.latex', '.ltx', '.sty', '.cls', '.bib']:
+                    extracted_text = self.process_tex_to_text(document_path)
+                elif file_extension == '.json':
+                    extracted_text = self.process_json_to_text(document_path)
+                elif file_extension in ['.yaml', '.yml']:
+                    extracted_text = self.process_yaml_to_text(document_path)
+                elif file_extension in ['.xml', '.html', '.xhtml']:
+                    extracted_text = self.process_xml_to_text(
+                        document_path) if file_extension == '.xml' else self.process_html_to_text(document_path)
                 else:
-                    # Handle other text-based formats dynamically from JSON
-                    if file_extension in supported_formats:
-                        extracted_text = process_other_file_to_text(document_path)
-                    else:
-                        raise ValueError(f"Unsupported file type: {file_extension}")'''
+                    extracted_text = self.process_other_file_to_text(document_path)
+
+                if extracted_text:
+                    embedding = generate_embedding(extracted_text)
+                    if embedding:
+                        self.rag.store_embedding(f"Document: {os.path.basename(document_path)}", embedding)
+                    if safely_add_content(self.vault_path, f"Document: {os.path.basename(document_path)}",
+                                          extracted_text):
+                        self.rag.update_embeddings()
 
             except Exception as e:
-                # Handle error, file format unsupported or processing failed
                 print(f"Error processing file {document_path}: {e}")
-                # return  # Optionally return or handle further
-                raise ValueError(f"Unsupported file type: {file_extension}")
-
-            # If text extraction was successful, proceed
-            if extracted_text:
-                embedding = generate_embedding(extracted_text)
-                if embedding:
-                    self.rag.store_embedding(f"Document: {os.path.basename(document_path)}", embedding)
-                # Add content to the vault safely
-                if safely_add_content(self.vault_path, f"Document: {os.path.basename(document_path)}", extracted_text):
-                    # Update the embeddings with the new document content
-                    self.rag.update_embeddings()
 
         def update_document_checkbox(self, document_index, checked):
             self.documents[document_index]["checked"] = checked
