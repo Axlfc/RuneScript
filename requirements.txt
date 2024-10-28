@@ -12,3 +12,5 @@ anthropic
 pdflatex
 pdf2image
 pyttsx3
+bs4
+pyperclip
