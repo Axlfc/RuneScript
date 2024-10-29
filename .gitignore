@@ -180,3 +180,5 @@ data/agent_config.json
 data/vault.txt
 
 data/prompts/
+
+data/documents/
