@@ -1,5 +1,7 @@
 import tempfile
 import webbrowser
+from tkhtmlview import HTMLLabel
+
 from tkinter import *
 from tkinter import ttk, filedialog, messagebox
 from tkinter.font import Font
@@ -50,6 +52,9 @@ class LaTeXMarkdownEditor:
         except FileNotFoundError:
             return False
 
+
+
+
     def new_project(self):
         """Create a new project by clearing current files and starting fresh"""
         # Confirm if the user wants to save changes before creating a new project
@@ -68,9 +73,9 @@ class LaTeXMarkdownEditor:
         self.update_project_tree()
 
         # Clear the preview and details
-        self.preview.config(state="normal")
-        self.preview.delete("1.0", END)
-        self.preview.config(state="disabled")
+        #self.preview.config(state="normal")
+        #self.preview.delete("1.0", END)
+        #self.preview.config(state="disabled")
 
         self.current_file_label.config(text="None")
         self.stats_text.config(state="normal")
@@ -175,22 +180,42 @@ class LaTeXMarkdownEditor:
         """Insert a newline character when the user presses Enter."""
         self.editor.insert("insert", "\n")
         return "break"  # Ensure default event handling is stopped
+
     def setup_menu(self):
         """Create a menu bar with File, Edit, View options"""
         menu_bar = Menu(self.window)
 
         # File Menu
         file_menu = Menu(menu_bar, tearoff=0)
+
+        # Project options
         file_menu.add_command(label="New Project", command=self.new_project)
         file_menu.add_command(label="Add LaTeX File", command=self.create_latex_file)
         file_menu.add_command(label="Add Markdown File", command=self.create_markdown_file)
+
+        # C Project options
+        file_menu.add_command(label="Add C Source File (.c)", command=self.create_c_file)
+        file_menu.add_command(label="Add Header File (.h)", command=self.create_header_file)
+        file_menu.add_command(label="Add Makefile", command=self.create_makefile)
+
+        # Python Project options
+        file_menu.add_command(label="Add Python Script (.py)", command=self.create_python_file)
+
+        # Web Project options
+        file_menu.add_command(label="Add HTML File", command=self.create_html_file)
+        file_menu.add_command(label="Add CSS File", command=self.create_css_file)
+        file_menu.add_command(label="Add JavaScript File (.js)", command=self.create_js_file)
+        file_menu.add_command(label="Add Markdown Index (index.md)", command=self.create_web_index)
+
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.window.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
         # View Menu (for additional viewing options, if needed)
         view_menu = Menu(menu_bar, tearoff=0)
-        view_menu.add_command(label="Toggle Sidebar", command=self.toggle_sidebar)
+        #view_menu.add_command(label="Project Files", command=self.toggle_project_files)
+        #view_menu.add_command(label="Preview", command=self.toggle_preview)
+        #view_menu.add_command(label="File Info", command=self.toggle_file_info)
         menu_bar.add_cascade(label="View", menu=view_menu)
 
         self.window.config(menu=menu_bar)
@@ -204,53 +229,101 @@ class LaTeXMarkdownEditor:
 
     def setup_ui(self):
         # Main container
-        self.main_container = ttk.PanedWindow(self.window, orient=HORIZONTAL)
+        self.main_container = PanedWindow(self.window, orient=HORIZONTAL)
         self.main_container.pack(fill=BOTH, expand=True, padx=5, pady=5)
 
         # Left panel (Project Files)
         self.setup_project_panel()
 
         # Right panel (Editor, Preview, Details)
-        self.right_paned = ttk.PanedWindow(self.main_container, orient=HORIZONTAL)
-        self.main_container.add(self.right_paned, weight=3)
+        self.right_paned = PanedWindow(self.main_container, orient=HORIZONTAL)
+        self.main_container.add(self.right_paned)  # eliminamos weight
 
         self.setup_editor_panel()
         self.setup_preview_panel()
         self.setup_details_panel()
 
     def setup_preview_panel(self):
-        preview_frame = ttk.Frame(self.right_paned)
-        self.right_paned.add(preview_frame, weight=2)
+        preview_frame = Frame(self.right_paned)
+        self.right_paned.add(preview_frame, stretch="always")
 
         # Preview header
-        header_frame = ttk.Frame(preview_frame)
+        header_frame = Frame(preview_frame)
         header_frame.pack(fill=X, pady=(0, 5))
 
-        ttk.Label(header_frame, text="Preview", font=self.tree_font).pack(side=LEFT)
-        self.preview_type_label = ttk.Label(header_frame, text="")
+        Label(header_frame, text="Preview", font=self.tree_font).pack(side=LEFT)
+        self.preview_type_label = Label(header_frame, text="")
         self.preview_type_label.pack(side=RIGHT)
 
         # Preview area
-        self.preview = Text(preview_frame, wrap=WORD, font=self.preview_font)
+        self.preview = Frame(preview_frame)
         self.preview.pack(fill=BOTH, expand=True)
 
-        # Configure preview for read-only
-        self.preview.config(state='disabled')
-
-        # Preview scrollbar
-        preview_scroll = ttk.Scrollbar(preview_frame, orient=VERTICAL, command=self.preview.yview)
-        preview_scroll.pack(side=RIGHT, fill=Y)
-        self.preview['yscrollcommand'] = preview_scroll.set
-
         # Control buttons
-        btn_frame = ttk.Frame(preview_frame)
+        btn_frame = Frame(preview_frame)
         btn_frame.pack(fill=X, pady=5)
 
-        self.recompile_btn = ttk.Button(btn_frame, text="RECOMPILE (F5)", command=self.recompile_document)
+        self.recompile_btn = Button(btn_frame, text="RECOMPILE (F5)", command=self.recompile_document)
         self.recompile_btn.pack(side=LEFT, padx=5)
 
-        self.export_btn = ttk.Button(btn_frame, text="Export", command=self.export_preview)
+        self.export_btn = Button(btn_frame, text="Export", command=self.export_preview)
         self.export_btn.pack(side=RIGHT, padx=5)
+
+        # Add Run Python button (initially hidden) and output display for Python files
+        self.run_python_btn = Button(btn_frame, text="Run Python", command=self.run_python_script)
+        self.run_python_btn.pack(side=LEFT, padx=5)
+        self.run_python_btn.pack_forget()  # Hide initially, only shown for Python files
+
+        # Python output display area
+        self.output_display = Text(preview_frame, height=10, wrap=WORD, state=DISABLED)
+        self.output_display.pack(fill=BOTH, expand=True, padx=5, pady=(5, 0))
+
+    def run_python_script(self):
+        """Run the current Python script and display output in the output_display widget."""
+        if not self.current_file or not self.current_file.endswith('.py'):
+            messagebox.showwarning("Warning", "No Python file is open to run.")
+            return
+
+        try:
+            # Clear previous output
+            self.output_display.config(state=NORMAL)
+            self.output_display.delete("1.0", END)
+            self.output_display.insert("1.0", "Running Python script...\n")
+            self.output_display.config(state=DISABLED)
+
+            # Run the Python file and capture output
+            result = subprocess.run(
+                ['python', self.current_file],
+                capture_output=True,
+                text=True,
+                cwd=os.path.dirname(self.current_file)
+            )
+
+            # Display the output in the output_display widget
+            self.output_display.config(state=NORMAL)
+            self.output_display.insert("end", result.stdout if result.stdout else "No output\n")
+            if result.stderr:
+                self.output_display.insert("end", f"\nErrors:\n{result.stderr}")
+            self.output_display.config(state=DISABLED)
+
+        except Exception as e:
+            self.output_display.config(state=NORMAL)
+            self.output_display.insert("end", f"Failed to run script:\n{e}")
+            self.output_display.config(state=DISABLED)
+
+    def launch_server(self):
+        """Launch a Python web server or Flask server on the specified port."""
+        try:
+            port = int(self.port_entry.get())
+            if self.current_file and self.current_file.endswith('.py'):
+                # Launch a Python server with Flask or SimpleHTTPServer for web files
+                command = ['python', '-m', 'http.server', str(port)]
+                subprocess.Popen(command, cwd=os.path.dirname(self.current_file))
+                messagebox.showinfo("Server Launched", f"Server is running at http://localhost:{port}")
+            else:
+                messagebox.showwarning("Warning", "Select a valid Python file to run the server.")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid port number.")
 
     def export_preview(self):
         if not self.current_file:
@@ -383,34 +456,35 @@ class LaTeXMarkdownEditor:
             return False
 
     def show_pdf_in_preview(self, pdf_path):
-        """Convert PDF pages to images and display them in the preview pane"""
+        """Convert PDF pages to images and display them in the preview pane."""
         try:
-            # Convert the PDF to images using pdf2image
+            # Convertir PDF a imágenes usando pdf2image
             images = convert_from_path(pdf_path)
 
+            # Limpiar el área de vista previa y mostrar las páginas como imágenes
             self.preview.config(state='normal')
-            self.preview.delete("1.0", "end")  # Clear existing content in the preview
+            self.preview.delete("1.0", "end")  # Limpiar el contenido anterior en la vista previa
 
-            # Clear any previous images in the preview widget
-            self.preview_image_refs = []  # This is needed to hold image references
+            # Mantener referencias a imágenes para evitar que sean recolectadas
+            self.preview_image_refs = []
 
-            # Display each page as an image in the preview
             for i, image in enumerate(images):
-                # Resize the image to fit the preview window (optional)
-                image = image.resize((600, 800), Image.Resampling.LANCZOS)  # Adjust size as needed
+                # Redimensionar imagen para que encaje en la ventana de vista previa
+                image = image.resize((600, 800), Image.Resampling.LANCZOS)
 
-                # Convert to Tkinter-compatible image
+                # Convertir imagen a formato compatible con Tkinter
                 tk_image = ImageTk.PhotoImage(image)
                 self.preview.image_create('end', image=tk_image)
                 self.preview.insert('end', f"\nPage {i + 1}\n")
 
-                # Keep a reference to avoid image being garbage collected
+                # Mantener referencia para evitar eliminación por recolección de basura
                 self.preview_image_refs.append(tk_image)
 
             self.preview.config(state='disabled')
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load PDF preview: {str(e)}")
+
     def setup_syntax_highlighting(self):
         """Setup syntax highlighting for LaTeX and Markdown files"""
         # Define different tags for different types of syntax
@@ -493,18 +567,18 @@ class LaTeXMarkdownEditor:
         find_window.protocol("WM_DELETE_WINDOW", close_find_window)
 
     def setup_editor_panel(self):
-        editor_frame = ttk.Frame(self.right_paned)
-        self.right_paned.add(editor_frame, weight=2)
+        editor_frame = Frame(self.right_paned)
+        self.right_paned.add(editor_frame, stretch="always")
 
         # Editor toolbar
-        toolbar = ttk.Frame(editor_frame)
+        toolbar = Frame(editor_frame)
         toolbar.pack(fill=X)
 
-        ttk.Button(toolbar, text="Save", command=self.save_current_file).pack(side=LEFT, padx=2)
-        ttk.Button(toolbar, text="Find", command=self.show_find_dialog).pack(side=LEFT, padx=2)
+        Button(toolbar, text="Save", command=self.save_current_file).pack(side=LEFT, padx=2)
+        Button(toolbar, text="Find", command=self.show_find_dialog).pack(side=LEFT, padx=2)
 
         # Source editor with line numbers
-        editor_container = ttk.Frame(editor_frame)
+        editor_container = Frame(editor_frame)
         editor_container.pack(fill=BOTH, expand=True)
 
         # Line numbers
@@ -520,7 +594,7 @@ class LaTeXMarkdownEditor:
         self.editor.config(state='normal')
 
         # Scrollbar that controls both editor and line numbers
-        editor_scroll = ttk.Scrollbar(editor_container, orient=VERTICAL)
+        editor_scroll = Scrollbar(editor_container, orient=VERTICAL)
         editor_scroll.pack(side=RIGHT, fill=Y)
 
         # Configure scrollbar
@@ -569,12 +643,12 @@ class LaTeXMarkdownEditor:
         return "break"
 
     def setup_project_panel(self):
-        project_frame = ttk.Frame(self.main_container, width=250)
+        project_frame = Frame(self.main_container, width=250)
         project_frame.pack_propagate(False)
-        self.main_container.add(project_frame, weight=1)
+        self.main_container.add(project_frame)  # eliminamos weight
 
         # Project tree
-        tree_frame = ttk.Frame(project_frame)
+        tree_frame = Frame(project_frame)
         tree_frame.pack(fill=BOTH, expand=True)
 
         self.project_tree = ttk.Treeview(tree_frame, selectmode='browse')
@@ -582,10 +656,9 @@ class LaTeXMarkdownEditor:
         self.project_tree.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Scrollbar
-        tree_scroll = ttk.Scrollbar(tree_frame, orient=VERTICAL, command=self.project_tree.yview)
+        tree_scroll = Scrollbar(tree_frame, orient=VERTICAL, command=self.project_tree.yview)
         tree_scroll.pack(side=RIGHT, fill=Y)
         self.project_tree.configure(yscrollcommand=tree_scroll.set)
-
 
     def setup_context_menu(self):
         """Setup right-click context menu for project tree"""
@@ -654,6 +727,79 @@ class LaTeXMarkdownEditor:
             self.project_files.append(file_path)
             self.update_project_tree()
 
+    def create_c_file(self):
+        """Create a new C source file."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".c", filetypes=[("C Source Files", "*.c")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write("// New C Source File\n#include <stdio.h>\n\nint main() {\n    return 0;\n}")
+            self.project_files.append(file_path)
+            self.update_project_tree()
+
+    def create_header_file(self):
+        """Create a new header file for C projects."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".h", filetypes=[("Header Files", "*.h")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write("// New Header File\n")
+            self.project_files.append(file_path)
+            self.update_project_tree()
+
+    def create_makefile(self):
+        """Create a Makefile for C projects."""
+        file_path = os.path.join(self.current_project_path, "Makefile")
+        with open(file_path, 'w') as f:
+            f.write(
+                "CC = gcc\nCFLAGS = -Wall\n\nall: main\n\nmain: main.o\n\t$(CC) $(CFLAGS) -o main main.o\n\nclean:\n\trm -f *.o main")
+        self.project_files.append(file_path)
+        self.update_project_tree()
+
+    def create_python_file(self):
+        """Create a new Python file."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python Files", "*.py")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write("# New Python Script\n\nif __name__ == '__main__':\n    print('Hello, World!')")
+            self.project_files.append(file_path)
+            self.update_project_tree()
+
+    def create_html_file(self):
+        """Create a new HTML file for web projects."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".html", filetypes=[("HTML Files", "*.html")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write(
+                    "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<title>New HTML File</title>\n<link rel=\"stylesheet\" href=\"styles.css\">\n</head>\n<body>\n<h1>Hello World!</h1>\n</body>\n</html>")
+            self.project_files.append(file_path)
+            self.update_project_tree()
+
+    def create_css_file(self):
+        """Create a new CSS file for styling web projects."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".css", filetypes=[("CSS Files", "*.css")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write("/* New CSS File */\nbody { font-family: Arial, sans-serif; }")
+            self.project_files.append(file_path)
+            self.update_project_tree()
+
+    def create_js_file(self):
+        """Create a new JavaScript file for web projects."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".js", filetypes=[("JavaScript Files", "*.js")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write("// New JavaScript File\nconsole.log('Hello World');")
+            self.project_files.append(file_path)
+            self.update_project_tree()
+
+    def create_web_index(self):
+        """Create a new Markdown index file for web projects."""
+        file_path = filedialog.asksaveasfilename(defaultextension=".md", initialfile="index.md",
+                                                 filetypes=[("Markdown Files", "*.md")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write("# Home Page\n\nWelcome to your website!")
+            self.project_files.append(file_path)
+            self.update_project_tree()
     def compile_document(self, file_path):
         """Compile the document and show the result"""
         file_ext = Path(file_path).suffix.lower()
@@ -719,23 +865,24 @@ class LaTeXMarkdownEditor:
         self.preview.delete("1.0", "end")
         self.preview.insert("1.0", "Compilation failed. Check the Errors/Warnings panel below.")
         self.preview.config(state='disabled')
+
     def setup_details_panel(self):
-        """Setup the details panel (fourth column) to show file information and errors"""
-        details_frame = ttk.Frame(self.right_paned)
-        self.right_paned.add(details_frame, weight=1)
+        """Setup the details panel (third column) to show file information and errors"""
+        details_frame = Frame(self.right_paned)
+        self.right_paned.add(details_frame, stretch="always")
 
         # Current file label
-        ttk.Label(details_frame, text="Current File:").pack(anchor=W, pady=5)
-        self.current_file_label = ttk.Label(details_frame, text="None")
+        Label(details_frame, text="Current File:").pack(anchor=W, pady=5)
+        self.current_file_label = Label(details_frame, text="None")
         self.current_file_label.pack(anchor=W)
 
         # Statistics section (lines, words, characters)
-        ttk.Label(details_frame, text="Statistics:", font=self.tree_font).pack(anchor=W, pady=5)
+        Label(details_frame, text="Statistics:", font=self.tree_font).pack(anchor=W, pady=5)
         self.stats_text = Text(details_frame, height=5, width=30, state='disabled')
         self.stats_text.pack(fill=X)
 
         # Errors/Warnings section
-        ttk.Label(details_frame, text="Errors/Warnings:", font=self.tree_font).pack(anchor=W, pady=5)
+        Label(details_frame, text="Errors/Warnings:", font=self.tree_font).pack(anchor=W, pady=5)
         self.errors_text = Text(details_frame, height=10, width=30, state='disabled')
         self.errors_text.pack(fill=X)
 
@@ -774,6 +921,12 @@ class LaTeXMarkdownEditor:
             self.current_file_label.config(text=os.path.basename(file_path))
             self.modified = False
 
+            # Show "Run Python" button if it is a Python file, otherwise hide it
+            if self.current_file.endswith('.py'):
+                self.run_python_btn.pack(side=LEFT, padx=5)
+            else:
+                self.run_python_btn.pack_forget()
+
             # Update the preview and statistics based on file type
             self.update_preview()
             self.update_statistics()
@@ -790,28 +943,28 @@ class LaTeXMarkdownEditor:
         content = self.editor.get("1.0", "end-1c")
         file_ext = Path(self.current_file).suffix.lower()
 
-        # Ensure the editor is editable when updating the preview
-        self.editor.config(state='normal')  # Re-enable editing each time the preview is updated
-
-        # Enable preview for updating
-        self.preview.config(state='normal')
-        self.preview.delete("1.0", "end")
-
         try:
             if file_ext in ['.md', '.markdown']:
                 self.preview_type_label.config(text="Markdown Preview")
                 html_content = markdown.markdown(content, extensions=['fenced_code'])
-                self.preview.insert("1.0", html_content)
+                self.render_html_in_preview(html_content)
 
             elif file_ext in ['.tex', '.latex']:
                 self.preview_type_label.config(text="LaTeX Preview")
-                self.preview.insert("1.0", "LaTeX preview available after compilation (F5)")
+                self.render_html_in_preview("LaTeX preview available after compilation (F5)")
 
         except Exception as e:
-            self.preview.insert("1.0", f"Preview Error: {str(e)}")
+            self.render_html_in_preview(f"Preview Error: {str(e)}")
 
-        # Disable preview after updating
-        self.preview.config(state='disabled')
+    def render_html_in_preview(self, html_content):
+        """Render the HTML content in the preview panel."""
+        # Clear any existing content in the preview
+        for widget in self.preview.winfo_children():
+            widget.destroy()
+
+        # Create a new HTMLLabel widget to display the HTML content
+        html_label = HTMLLabel(self.preview, html=html_content)
+        html_label.pack(fill=BOTH, expand=True)
 
     def update_statistics(self):
         """Update the statistics in the details panel based on the editor content"""
