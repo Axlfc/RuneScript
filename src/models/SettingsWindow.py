@@ -72,8 +72,9 @@ class LanguageManager:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return json.load(file)
         except FileNotFoundError:
-            print(f"Language file not found: {file_path}")
-            return {}
+            file_path = os.path.join(self.locales_dir, "en.json")
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
 
 
 class SettingsWindow(Toplevel):
