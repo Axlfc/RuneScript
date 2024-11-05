@@ -6,6 +6,8 @@ from tkinter import Toplevel, Frame, Text, END, INSERT
 from tkinter import scrolledtext
 from contextlib import redirect_stdout, redirect_stderr
 
+from src.views.tk_utils import my_font
+
 
 class PythonTerminalWindow:
     def __init__(self):
@@ -25,7 +27,7 @@ class PythonTerminalWindow:
 
         # Create input text widget
         self.input_text = Text(main_frame, height=4, width=80, bg='black', fg='white',
-                               insertbackground='white', font=('Consolas', 10))
+                               insertbackground='white', font=my_font)
         self.input_text.pack(fill="x", expand=False)
 
         # Show the Python welcome message

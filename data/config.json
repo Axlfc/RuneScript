@@ -13,6 +13,7 @@
             "scrollbar_visibility": "auto"
         },
         "editor_settings": {
+            "language": "ca",
             "font_family": "Liberation Mono",
             "font_size": 12,
             "line_numbers_visible": true,

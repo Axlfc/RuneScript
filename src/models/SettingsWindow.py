@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Dict, List, Tuple
 from tkinter import (
     Toplevel,
     Label,
@@ -17,9 +18,62 @@ from tkinter import (
 )
 from tkinter.ttk import Notebook, Combobox
 
-from src.controllers.parameters import read_config_parameter
+from src.controllers.parameters import read_config_parameter, write_config_parameter
 from src.views.tk_utils import style
 from src.views.ui_elements import ScrollableFrame
+
+
+class LanguageManager:
+    def __init__(self, locales_dir: str = "data/locales"):
+        self.locales_dir = locales_dir
+
+    def get_available_languages(self) -> List[Tuple[str, str]]:
+        """
+        Scans the locales directory and returns a list of tuples containing
+        (language_code, language_name)
+        """
+        available_languages = []
+
+        # Dictionary of language codes to their full names in English
+        language_names = {
+            "en": "English",
+            "es": "Español (Spanish)",
+            "ca": "Català (Catalan)",
+            "fr": "Français (French)",
+            "de": "Deutsch (German)",
+            "it": "Italiano (Italian)",
+            "pt": "Português (Portuguese)",
+            # Add more languages as needed
+        }
+
+        try:
+            # List all JSON files in the locales directory
+            for file_name in os.listdir(self.locales_dir):
+                if file_name.endswith('.json'):
+                    lang_code = file_name[:-5]  # Remove .json extension
+                    # Get the language name, fallback to code if not in our dictionary
+                    lang_name = language_names.get(lang_code, lang_code)
+                    available_languages.append((lang_code, lang_name))
+
+            # Sort by language name
+            available_languages.sort(key=lambda x: x[1])
+            return available_languages
+
+        except FileNotFoundError:
+            print(f"Locales directory not found: {self.locales_dir}")
+            return [("en", "English")]  # Default fallback
+
+    def load_language_file(self, lang_code: str) -> Dict:
+        """
+        Loads the language file for the given language code
+        """
+        try:
+            file_path = os.path.join(self.locales_dir, f"{lang_code}.json")
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except FileNotFoundError:
+            print(f"Language file not found: {file_path}")
+            return {}
 
 
 class SettingsWindow(Toplevel):
@@ -120,7 +174,37 @@ class SettingsWindow(Toplevel):
 
     def create_appropriate_widget(self, parent, option_name, default_value):
         """Create appropriate widget based on option type."""
-        if option_name.lower() == "font_family":
+        if option_name.lower() == "language":
+            lang_manager = LanguageManager()
+            available_languages = lang_manager.get_available_languages()
+
+            # Create list of language names for display
+            language_display_list = [lang[1] for lang in available_languages]
+
+            # Create mapping of display names to language codes
+            self.language_code_map = {lang[1]: lang[0] for lang in available_languages}
+
+            # Get the current language name from code
+            current_lang_name = next(
+                (lang[1] for lang in available_languages if lang[0] == default_value),
+                language_display_list[0]
+            )
+
+            var = StringVar(value=current_lang_name)
+            widget = Combobox(parent, textvariable=var, values=language_display_list)
+
+            # Store the reverse mapping for saving
+            self._orig_language_var = var
+            var = StringVar()
+
+            def on_language_select(*args):
+                selected_name = self._orig_language_var.get()
+                var.set(self.language_code_map.get(selected_name, "en"))
+
+            self._orig_language_var.trace('w', on_language_select)
+            return widget, var
+
+        elif option_name.lower() == "font_family":
             font_families = font.families()
             default_font = default_value if default_value in font_families else "Courier New"
             var = StringVar(value=default_font)
@@ -166,12 +250,19 @@ class SettingsWindow(Toplevel):
         with open(self.user_config_file, "w") as user_config:
             json.dump(updated_config_data, user_config, indent=4)
 
+        # Apply theme if available
         theme = updated_config_data["options"].get("theme_appearance", {}).get("theme", None)
         if theme:
             try:
                 self.style.theme_use(theme)
             except Exception as e:
                 messagebox.showerror("Theme Error", f"The theme '{theme}' is not available. ({e})")
+
+        # Save language and font settings
+        write_config_parameter("options.editor_settings.language",
+                               updated_config_data["options"]["editor_settings"]["language"])
+        write_config_parameter("options.editor_settings.font_family",
+                               updated_config_data["options"]["editor_settings"]["font_family"])
 
         messagebox.showinfo("Settings Saved", "Settings saved successfully!")
 

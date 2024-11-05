@@ -35,9 +35,9 @@ from src.models.script_operations import (
     run_script_windows,
     run_script_with_timeout,
 )
-from src.localization import localization_data
 from src.views.edit_operations import undo, redo, duplicate, copy, cut, paste
 from src.views.tk_utils import (
+    localization_data,
     toolbar,
     menu,
     root,
@@ -64,7 +64,7 @@ from src.views.tk_utils import (
     show_interactive_view_var,
     interactive_frm,
     show_filesystem_view_var,
-    filesystem_frm,
+    filesystem_frm, my_font,
 )
 from src.controllers.tool_functions import (
     open_ai_assistant_window,
@@ -115,6 +115,17 @@ save_new_icon = "🆕"
 undo_icon = "⮪"
 redo_icon = "⮬"
 run_icon = "▶"
+
+
+config_option_to_row_mapping = {
+    "is_directory_view_visible": 0,
+    "is_file_view_visible": 1,
+    "is_arguments_view_visible": 5,
+    "is_run_view_visible": 8,
+    "is_timeout_view_visible": 9,
+    "is_interactive_view_visible": 4,
+    "is_filesystem_view_visible": 2,
+}
 
 
 def init_git_console():
@@ -373,19 +384,6 @@ def open_first_text_file(directory):
 
 
 def get_text_files(directory):
-    """ ""\"
-    ""\"
-    Retrieves a list of text files in the specified directory.
-
-    This function scans the provided directory and creates a list of all files ending with a '.txt' extension.
-
-    Parameters:
-    directory (str): The directory path in which to search for text files.
-
-    Returns:
-    list: A list of text file names found in the directory.
-    ""\"
-    ""\" """
     text_files = []
     for file in os.listdir(directory):
         if file.endswith(".txt"):
@@ -584,23 +582,12 @@ def toggle_timeout_view_visibility(frame):
 
 
 def toggle_interactive_view_visibility(frame):
-    """ ""\"
-    ""\"
-    toggle_interactive_view_visibility
-
-    Args:
-        frame (Any): Description of frame.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     if show_interactive_view_var.get() == 1:
         write_config_parameter(
             "options.view_options.is_interactive_view_visible", "true"
         )
         frame.grid(row=4, column=0, pady=0, sticky="ew")
-        input_field = Text(frame, height=1)
+        input_field = Text(frame, height=1, font=my_font)
         input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
         frame.grid_columnconfigure(0, weight=1)
     else:
@@ -611,23 +598,23 @@ def toggle_interactive_view_visibility(frame):
 
 
 def toggle_filesystem_view_visibility(frame):
-    """ ""\"
-    ""\"
-    toggle_filesystem_view_visibility
-
-    Args:
-        frame (Any): Description of frame.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     if show_filesystem_view_var.get() == 1:
         frame.grid(row=2, column=2, sticky="nsew")
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_rowconfigure(0, weight=1)
     else:
         frame.grid_remove()
+
+
+def toggle_view_visibility(frame, view_var, config_option, elements_setup_callback=None):
+    if view_var.get() == 1:
+        write_config_parameter(f"options.view_options.{config_option}", "true")
+        frame.grid(row=config_option_to_row_mapping[config_option], column=0, pady=0, sticky="ew")
+        if elements_setup_callback:
+            elements_setup_callback()
+    else:
+        write_config_parameter(f"options.view_options.{config_option}", "false")
+        frame.grid_forget()
 
 
 def add_view_section_to_menu(
@@ -720,11 +707,13 @@ def create_menu():
 
     # ----- File Menu -----
     file_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label=localization_data["file"], menu=file_menu, underline=0)
+    menu.add_cascade(label=localization_data["file"],
+                     menu=file_menu,
+                     underline=0)
 
     # File Operations
     file_menu.add_command(
-        label="New",
+        label=localization_data["new"],
         command=new,
         compound="left",
         image=image_new,
@@ -733,7 +722,7 @@ def create_menu():
     )
     root.bind('<Control-n>', new)
     file_menu.add_command(
-        label="Open",
+        label=localization_data["open"],
         command=open_script,
         compound="left",
         image=image_open,
@@ -744,7 +733,7 @@ def create_menu():
 
     # Uncomment if "Recent Files" functionality is implemented
     # file_menu.add_command(label="Recent files", command=open_recent_files_window, compound='left', image=None, accelerator='Ctrl+Shift+O', underline=0)
-    file_menu.add_command(
+    '''file_menu.add_command(
         label="Close",
         command=duplicate,  # Assuming a function to close the current file
         compound="left",
@@ -752,11 +741,11 @@ def create_menu():
         accelerator="Ctrl+W",
         underline=0,
     )
-    root.bind('<Control-w>', duplicate)
+    root.bind('<Control-w>', duplicate)'''
     # Uncomment if "Close All" functionality is implemented
     # file_menu.add_command(label="Close All", command=close_all_files, compound='left', image=None, accelerator='Ctrl+Shift+W', underline=0)
     file_menu.add_command(
-        label="Save",
+        label=localization_data["save"],
         command=save_script,
         compound="left",
         image=image_save,
@@ -767,30 +756,30 @@ def create_menu():
     # Uncomment if "Save All Files" functionality is implemented
     # file_menu.add_command(label="Save All Files", command=save_all_scripts, compound='left', image=image_save, accelerator='Ctrl+Shift+S', underline=0)
     file_menu.add_command(
-        label="Save As...",
+        label=localization_data["save_as"],
         command=save_as_new_script,
         accelerator="Ctrl+Shift+S",
         underline=5,  # Underline the 'A' in "Save As..."
     )
     root.bind('<Control-Shift-s>', save_as_new_script)
     file_menu.add_command(
-        label="Move / Rename",
-        command=duplicate,  # Assuming a function to move or rename files
+        label=localization_data["move_rename"],
+        command=prompt_rename_file,  # TODO: Test
         accelerator="F2",
         underline=0,
     )
-    root.bind('<F2>', duplicate)
-    file_menu.add_separator()
+    root.bind('<F2>', prompt_rename_file)
+    '''file_menu.add_separator()
     file_menu.add_command(
         label="Print...",
         command=duplicate,  # Assuming a function to print documents
         accelerator="Ctrl+P",
         underline=0,
     )
-    root.bind('<Control-p>', duplicate)
+    root.bind('<Control-p>', duplicate)'''
     file_menu.add_separator()
     file_menu.add_command(
-        label="Exit",
+        label=localization_data["exit"],
         command=close,
         accelerator="Alt+F4",
         underline=0,
@@ -798,11 +787,11 @@ def create_menu():
 
     # ----- Edit Menu -----
     edit_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label="Edit", menu=edit_menu, underline=0)
+    menu.add_cascade(label=localization_data["edit"], menu=edit_menu, underline=0)
 
     # Edit Operations
     edit_menu.add_command(
-        label="Undo",
+        label=localization_data["undo"],
         command=undo,
         compound="left",
         image=image_undo,
@@ -810,7 +799,7 @@ def create_menu():
         underline=0,
     )
     edit_menu.add_command(
-        label="Redo",
+        label=localization_data["redo"],
         command=redo,
         compound="left",
         image=image_redo,
@@ -819,7 +808,7 @@ def create_menu():
     )
     edit_menu.add_separator()
     edit_menu.add_command(
-        label="Cut",
+        label=localization_data["cut"],
         command=cut,
         compound="left",
         image=image_cut,
@@ -827,7 +816,7 @@ def create_menu():
         underline=0,
     )
     edit_menu.add_command(
-        label="Copy",
+        label=localization_data["copy"],
         command=copy,
         compound="left",
         image=image_copy,
@@ -835,14 +824,14 @@ def create_menu():
         underline=0,
     )
     edit_menu.add_command(
-        label="Paste",
+        label=localization_data["paste"],
         command=paste,
         compound="left",
         image=image_paste,
         accelerator="Ctrl+V",
         underline=0,
     )
-    edit_menu.add_command(
+    '''edit_menu.add_command(
         label="Duplicate",
         command=duplicate,  # Assuming a function to duplicate content
         compound='left',
@@ -857,14 +846,14 @@ def create_menu():
         image=image_duplicate,  # Assuming an image for select all
         accelerator='Ctrl+A',
         underline=0,
-    )
+    )'''
     edit_menu.add_separator()
 
     # Find Submenu
     find_submenu = Menu(edit_menu, tearoff=0)
-    edit_menu.add_cascade(label="Find", menu=find_submenu)
+    edit_menu.add_cascade(label=localization_data["find"], menu=find_submenu)
     find_submenu.add_command(
-        label="Find",
+        label=localization_data["find"],
         command=open_search_window,
         compound="left",
         image=image_find,
@@ -872,7 +861,7 @@ def create_menu():
     )
     root.bind('<Control-f>', open_search_window)
     find_submenu.add_command(
-        label="Find and Replace",
+        label=localization_data["find_and_replace"],
         command=open_search_replace_window,
         compound="left",
         image=image_duplicate,  # Assuming an image for find and replace
@@ -880,7 +869,7 @@ def create_menu():
     )
     root.bind('<Control-r>', open_search_replace_window)
     find_submenu.add_command(
-        label="Find in Files",
+        label=localization_data["find_in_files"],
         command=open_find_in_files_window,
         compound="left",
         image=image_duplicate,  # Assuming an image for find in files
@@ -890,14 +879,14 @@ def create_menu():
 
     # ----- View Menu -----
     view_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label="View", menu=view_menu, underline=0)
+    menu.add_cascade(label=localization_data["view"], menu=view_menu, underline=0)
 
     # View Controls
     add_view_section_to_menu(
         "is_directory_view_visible",
         show_directory_view_var,
         view_menu,
-        "Toggle Directory Pane",
+        localization_data["is_directory_view_visible"],
         frm,
         toggle_directory_view_visibility
     )
@@ -906,7 +895,7 @@ def create_menu():
         "is_file_view_visible",
         show_file_view_var,
         view_menu,
-        "Toggle File Pane",
+        localization_data["is_file_view_visible"],
         script_frm,
         toggle_file_view_visibility
     )
@@ -915,7 +904,7 @@ def create_menu():
         "is_arguments_view_visible",
         show_arguments_view_var,
         view_menu,
-        "Script Arguments Dialog",
+        localization_data["is_arguments_view_visible"],
         content_frm,
         toggle_arguments_view_visibility
     )
@@ -923,7 +912,7 @@ def create_menu():
         "is_run_view_visible",
         show_run_view_var,
         view_menu,
-        "Run Script",
+        localization_data["is_run_view_visible"],
         run_frm,
         toggle_run_view_visibility
     )
@@ -931,7 +920,7 @@ def create_menu():
         "is_timeout_view_visible",
         show_timeout_view_var,
         view_menu,
-        "Set Timeout",
+        localization_data["is_timeout_view_visible"],
         line_frm,
         toggle_timeout_view_visibility
     )
@@ -939,7 +928,7 @@ def create_menu():
         "is_interactive_view_visible",
         show_interactive_view_var,
         view_menu,
-        "Toggle Interactive Mode",
+        localization_data["is_interactive_view_visible"],
         interactive_frm,
         toggle_interactive_view_visibility
     )
@@ -947,18 +936,18 @@ def create_menu():
         "is_filesystem_view_visible",
         show_filesystem_view_var,
         view_menu,
-        "Open Filesystem Explorer",
+        localization_data["is_filesystem_view_visible"],
         filesystem_frm,
         toggle_filesystem_view_visibility
     )
 
     # ----- Tools Menu -----
     tool_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label="Tools", menu=tool_menu, underline=0)
+    menu.add_cascade(label=localization_data["tools"], menu=tool_menu, underline=0)
 
     # Tools and Utilities
     tool_menu.add_command(
-        label="AI Assistant",
+        label=localization_data["ai_assistant"],
         command=open_ai_assistant_window,
         accelerator="Ctrl+Alt+A",
     )
@@ -978,70 +967,70 @@ def create_menu():
         )'''
 
     tool_menu.add_command(
-        label="Calculator",
+        label=localization_data["calculator"],
         command=open_calculator_window,
         accelerator="Ctrl+Alt+C",
     )
     root.bind("<Control-Alt-c>", open_calculator_window)
 
     tool_menu.add_command(
-        label="Translator",
+        label=localization_data["translator"],
         command=open_translator_window,
         accelerator="F3",
     )
     root.bind("<F3>", open_translator_window)
 
     tool_menu.add_command(
-        label="Prompt Enhancement",
+        label=localization_data["prompt_enhancement"],
         command=open_prompt_enhancement_window,
         accelerator="Ctrl+Alt+P",
     )
     root.bind("<Control-Alt-p>", open_prompt_enhancement_window)
 
     tool_menu.add_command(
-        label="Kanban Board",
+        label=localization_data["kanban_board"],
         command=open_kanban_window,
         accelerator="Ctrl+Alt+K",
     )
     root.bind("<Control-Alt-k>", open_kanban_window)
 
     tool_menu.add_command(
-        label="LaTeX/Markdown Editor",
+        label=localization_data["latex_markdown_editor"],
         command=open_latex_markdown_editor,
         accelerator="Ctrl+Alt+L",
     )
     root.bind("<Control-Alt-l>", open_latex_markdown_editor)
 
     tool_menu.add_command(
-        label="Git Console",
+        label=localization_data["git_console"],
         command=open_git_window,
         accelerator="Ctrl+Alt+G",
     )
     root.bind("<Control-Alt-g>", open_git_window)
 
     tool_menu.add_command(
-        label="System Shell",
+        label=localization_data["system_shell"],
         command=open_terminal_window,
         accelerator="Ctrl+Alt+B",
     )
     root.bind("<Control-Alt-b>", open_terminal_window)
 
     tool_menu.add_command(
-        label="Python Shell",
+        label=localization_data["python_shell"],
         command=open_python_terminal_window,
         accelerator="Ctrl+Alt+Y",
     )
     root.bind("<Control-Alt-y>", open_python_terminal_window)
 
     tool_menu.add_command(
-        label="Notebooks",
+        label=localization_data["notebooks"],
         command=open_ipython_notebook_window,
         accelerator="Ctrl+Alt+N",
     )
     root.bind("<Control-Alt-n>", open_ipython_notebook_window)
 
     tool_menu.add_command(
-        label="Options...",
+        label=localization_data["options"],
         command=create_settings_window,
         accelerator="Ctrl+,",
     )
@@ -1049,32 +1038,32 @@ def create_menu():
 
     tool_menu.add_separator()
     tool_menu.add_command(
-        label="Open ScriptsStudio program folder...",
+        label=localization_data["open_scripts_studio_program_folder"],
         command=open_scriptsstudio_folder,
     )
     tool_menu.add_command(
-        label="Open ScriptsStudio data folder...",
+        label=localization_data["open_scripts_studio_data_folder"],
         command=open_scriptsstudio_data_folder,
     )
 
     # ----- System Menu -----
     system_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label="System", menu=system_menu, underline=0)
+    menu.add_cascade(label=localization_data["system"], menu=system_menu, underline=0)
 
     # System Commands
     programs_submenu = Menu(system_menu, tearoff=0)
-    system_menu.add_cascade(label="Programs", menu=programs_submenu)
+    system_menu.add_cascade(label=localization_data["programs"], menu=programs_submenu)
     if get_operative_system() == "Windows":
         programs_submenu.add_command(
-            label="Open Winget Window",
+            label=localization_data["open_winget_window"],
             command=open_winget_window,
             compound="left",
             accelerator="Ctrl+Alt+W",
         )
-    root.bind("<Control-Alt-w>", open_winget_window)
+        root.bind("<Control-Alt-w>", open_winget_window)
 
     system_menu.add_command(
-        label="System Info",
+        label=localization_data["system_info"],
         command=open_system_info_window,
         accelerator="Ctrl+Alt+I",
     )
@@ -1082,18 +1071,18 @@ def create_menu():
 
     # ----- Jobs Menu -----
     jobs_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label="Jobs", menu=jobs_menu, underline=0)
+    menu.add_cascade(label=localization_data["jobs"], menu=jobs_menu, underline=0)
 
     # Jobs
     jobs_menu.add_command(
-        label="New 'at' Job",
+        label=localization_data["new_at"],
         command=open_new_at_task_window,
         # accelerator="Ctrl+Alt+Shift+A",
     )
     # root.bind("<Control-Alt-Shift-a>", open_new_at_task_window)
 
     jobs_menu.add_command(
-        label="New 'crontab' Job",
+        label=localization_data["new_crontab"],
         command=open_new_crontab_task_window,
         # accelerator="Ctrl+Alt+Shift+C",
     )
@@ -1104,37 +1093,37 @@ def create_menu():
 
     # ----- Help Menu -----
     help_menu = Menu(menu, tearoff=0)
-    menu.add_cascade(label="Help", menu=help_menu, underline=0)
+    menu.add_cascade(label=localization_data["help"], menu=help_menu, underline=0)
 
     # Help and Support
     help_menu.add_command(
-        label="Help Contents",
+        label=localization_data["help_contents"],
         command=open_help_window,
         accelerator="F1",
     )
     root.bind("<F1>", open_help_window)
     help_menu.add_command(
-        label="Shortcuts",
+        label=localization_data["shortcuts"],
         command=open_shortcuts_window,
         accelerator="F4",
     )
     root.bind("<F4>", open_shortcuts_window)
     help_menu.add_command(
-        label="Mnemonics",
+        label=localization_data["mnemonics"],
         command=open_mnemonics_window,
         accelerator="F10",
     )
     root.bind("<F10>", open_mnemonics_window)
     help_menu.add_separator()
     help_menu.add_command(
-        label="Report Problems",
+        label=localization_data["report_problems"],
         command=report_url,
         accelerator="F9",
     )
     root.bind("<F9>", report_url)
     help_menu.add_separator()
     help_menu.add_command(
-        label="About ScriptsEditor",
+        label=localization_data["about_scripts_editor_about"],
         command=about,
         accelerator="Ctrl+G",
     )

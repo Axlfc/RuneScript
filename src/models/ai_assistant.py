@@ -10,7 +10,7 @@ import time
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-# import anthropic
+import anthropic
 from src.controllers.parameters import read_config_parameter
 
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")

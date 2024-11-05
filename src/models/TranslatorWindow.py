@@ -7,6 +7,8 @@ import platform
 import os
 import time
 
+from src.views.tk_utils import my_font
+
 
 class TranslatorWindow:
     def __init__(self):
@@ -64,7 +66,7 @@ class TranslatorWindow:
         input_frame.pack(fill=X, padx=10, pady=5)
 
         # Input field
-        self.input_entry = Text(input_frame, width=70, height=4, wrap="word")
+        self.input_entry = Text(input_frame, width=70, height=4, wrap="word", font=my_font)
         self.input_entry.pack(side=LEFT, padx=(0, 10))
 
         # Translate button

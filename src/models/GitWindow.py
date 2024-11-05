@@ -4,6 +4,8 @@ import os
 from tkinter import *
 from tkinter import scrolledtext, Menu, Frame, Button, Entry, Label, Toplevel, Listbox, Text, SUNKEN, END, W
 
+from src.views.tk_utils import my_font
+
 
 class GitWindow:
     def __init__(self, repo_dir=None):
@@ -458,7 +460,7 @@ class GitWindow:
             diff_window = Toplevel(self.terminal_window)
             diff_window.title("Git Diff")
             diff_window.geometry("800x600")
-            diff_text = Text(diff_window, height=20, width=80)
+            diff_text = Text(diff_window, height=20, width=80, font=my_font)
             diff_text.pack(fill="both", expand=True)
             self.define_ansi_tags(diff_text)
             ansi_escape = re.compile("\\x1B\\[[0-?]*[ -/]*[@-~]")

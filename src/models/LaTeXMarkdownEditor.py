@@ -13,6 +13,8 @@ from pathlib import Path
 from pdf2image import convert_from_path
 from PIL import ImageTk, Image
 
+from src.views.tk_utils import my_font
+
 
 class LaTeXMarkdownEditor:
     def __init__(self):
@@ -275,7 +277,7 @@ class LaTeXMarkdownEditor:
         self.run_python_btn.pack_forget()  # Hide initially, only shown for Python files
 
         # Python output display area
-        self.output_display = Text(preview_frame, height=10, wrap=WORD, state=DISABLED)
+        self.output_display = Text(preview_frame, height=10, wrap=WORD, state=DISABLED, font=my_font)
         self.output_display.pack(fill=BOTH, expand=True, padx=5, pady=(5, 0))
 
     def run_python_script(self):
@@ -583,7 +585,7 @@ class LaTeXMarkdownEditor:
 
         # Line numbers
         self.line_numbers = Text(editor_container, width=4, padx=3, takefocus=0, border=0,
-                                 background='lightgray', state='disabled')
+                                 background='lightgray', state='disabled', font=my_font)
         self.line_numbers.pack(side=LEFT, fill=Y)
 
         # Main editor
@@ -878,12 +880,12 @@ class LaTeXMarkdownEditor:
 
         # Statistics section (lines, words, characters)
         Label(details_frame, text="Statistics:", font=self.tree_font).pack(anchor=W, pady=5)
-        self.stats_text = Text(details_frame, height=5, width=30, state='disabled')
+        self.stats_text = Text(details_frame, height=5, width=30, state='disabled', font=my_font)
         self.stats_text.pack(fill=X)
 
         # Errors/Warnings section
         Label(details_frame, text="Errors/Warnings:", font=self.tree_font).pack(anchor=W, pady=5)
-        self.errors_text = Text(details_frame, height=10, width=30, state='disabled')
+        self.errors_text = Text(details_frame, height=10, width=30, state='disabled', font=my_font)
         self.errors_text.pack(fill=X)
 
     def open_selected_file(self):

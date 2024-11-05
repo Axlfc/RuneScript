@@ -5,7 +5,6 @@ import subprocess
 from time import sleep
 from tkinter import messagebox, Toplevel, Text
 from src.controllers.utility_functions import validate_time
-from src.localization import localization_data
 from src.views.tk_utils import (
     script_text,
     generate_stdin,
@@ -13,7 +12,7 @@ from src.views.tk_utils import (
     script_name_label,
     entry_arguments_entry,
     directory_label,
-    root,
+    root, my_font, localization_data
 )
 
 
@@ -341,7 +340,7 @@ def see_stdout():
     ""\" """
     stdout_window = Toplevel(root)
     stdout_window.title("Standard Output (stdout)")
-    stdout_text = Text(stdout_window)
+    stdout_text = Text(stdout_window, font=my_font)
     stdout_text.pack()
     script_out_name = script_name_label.cget("text") + ".out"
     try:
@@ -366,7 +365,7 @@ def see_stderr():
     ""\" """
     stderr_window = Toplevel(root)
     stderr_window.title("Standard Error (stderr)")
-    stderr_text = Text(stderr_window)
+    stderr_text = Text(stderr_window, font=my_font)
     stderr_text.pack()
     script_err_name = script_name_label.cget("text") + ".err"
     try:

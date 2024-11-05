@@ -51,13 +51,14 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.models.LlamaCppServerManager import LlamaCppServerManager
 
 from src.models.TTSManager import TTSManager
 from src.models.VaultRAG import VaultRAG
 
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
-from src.views.tk_utils import text, script_text, root, current_session, menu, SIMILARITY_THRESHOLD
+from src.views.tk_utils import text, script_text, root, current_session, menu, SIMILARITY_THRESHOLD, status_label_var
 from src.views.ui_elements import Tooltip, ScrollableFrame
 from src.models.ai_assistant import find_gguf_file
 from difflib import SequenceMatcher
@@ -310,6 +311,9 @@ def open_ai_assistant_window(session_id=None):
         )
         update_instructions(selected_agent_var.get())
 
+    def open_llama_cpp_python_settings_window():
+        return LlamaCppServerManager()
+
     def add_current_main_opened_script(include_main_script):
         global include_main_script_in_command
         include_main_script_in_command = include_main_script
@@ -332,6 +336,10 @@ def open_ai_assistant_window(session_id=None):
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
     menu_bar.add_command(
         label="AI Server Settings", command=open_ai_server_settings_window
+    )
+    # TO-DO: Only toggle this menu section when the read_config("ai-server-model") is llama-cpp-python
+    menu_bar.add_command(
+        label="llama-cpp-python Settings", command=open_llama_cpp_python_settings_window
     )
     menu_bar.add_command(
         label="Agent Options", command=open_ai_server_agent_settings_window
@@ -912,7 +920,6 @@ def open_ai_assistant_window(session_id=None):
     entry = Entry(ai_assistant_window, width=30)
     entry.pack(side="bottom", fill="x")
     Tooltip(entry, "Input text prompt")
-    status_label_var = StringVar()
     status_label = Label(ai_assistant_window, textvariable=status_label_var)
     status_label.pack(side="bottom")
     status_label_var.set("READY")

@@ -1,0 +1,73 @@
+{
+  "session_id": "20241023221702",
+  "session_name": "Session 20241023221702",
+  "links": [],
+  "documents": [],
+  "messages": [
+    {
+      "role": "user",
+      "content": "My name is Batman",
+      "timestamp": "2024-10-23T22:17:13.197767"
+    },
+    {
+      "role": "ai",
+      "content": "Wow, that's a cool name! What's your favorite thing about being Batman?",
+      "timestamp": "2024-10-23T22:17:15.582097"
+    },
+    {
+      "role": "user",
+      "content": "Do you know what I'm capable of?",
+      "timestamp": "2024-10-23T22:17:41.081777"
+    },
+    {
+      "role": "ai",
+      "content": "That's a great question! Humans are capable of amazing things, from creativity and innovation to compassion and empathy. What are some things you're particularly good at? I'd love to hear about your talents!",
+      "timestamp": "2024-10-23T22:17:43.793661"
+    },
+    {
+      "role": "user",
+      "content": "Tell me who am I",
+      "timestamp": "2024-10-23T22:17:56.834172"
+    },
+    {
+      "role": "ai",
+      "content": "You are the Dark Knight, the protector of Gotham, the symbol of hope in a world filled with shadows. You are the one who fights for justice, who stands against the darkness, and who inspires others to be better.  You are Batman.",
+      "timestamp": "2024-10-23T22:17:59.559940"
+    },
+    {
+      "role": "user",
+      "content": "Say my name",
+      "timestamp": "2024-10-23T22:18:58.959455"
+    },
+    {
+      "role": "ai",
+      "content": "You are Batman. The world needs you, and I know you'll rise to the challenge.",
+      "timestamp": "2024-10-23T22:19:01.618090"
+    },
+    {
+      "role": "user",
+      "content": "What can I do?",
+      "timestamp": "2024-10-23T22:20:35.494105"
+    },
+    {
+      "role": "ai",
+      "content": "You are Batman.  The city of Gotham is in need of your protection.  Criminals lurk in the shadows, and the innocent need a champion.  What will you do?",
+      "timestamp": "2024-10-23T22:20:38.274140"
+    }
+  ],
+  "chat_history": [
+    {
+      "role": "ai",
+      "content": "You are Batman. The world needs you, and I know you'll rise to the challenge."
+    },
+    {
+      "role": "user",
+      "content": "What can I do?"
+    },
+    {
+      "role": "ai",
+      "content": "You are Batman.  The city of Gotham is in need of your protection.  Criminals lurk in the shadows, and the innocent need a champion.  What will you do?"
+    }
+  ],
+  "vault_state": "NOT_INGESTED"
+}

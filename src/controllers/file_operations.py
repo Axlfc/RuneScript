@@ -15,8 +15,8 @@ from src.controllers.menu_creators import (
     create_powershell_menu,
 )
 from src.controllers.parameters import write_config_parameter
-from src.localization import localization_data
 from src.views.tk_utils import (
+    localization_data,
     directory_label,
     script_name_label,
     script_text,

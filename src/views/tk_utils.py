@@ -3,12 +3,16 @@ from ttkbootstrap import Style
 from src.controllers.parameters import (
     ensure_user_config,
     load_theme_setting,
-    get_scriptsstudio_directory,
+    get_scriptsstudio_directory, read_config_parameter,
 )
-from src.localization import localization_data
-from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox
+from src.localization import load_localization
+
+from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox, font
 from tkinter import scrolledtext, Text, Entry, Menu
 import os
+
+language_selected_option = read_config_parameter("options.editor_settings.language")
+localization_data = load_localization(f"data/locales/{language_selected_option}.json")
 
 
 def configure_app():
@@ -64,6 +68,12 @@ except Exception as e:
 root = style.master
 root.iconbitmap("src/views/icon.ico")
 toolbar = Frame(root, pady=2)
+
+# Create a new Font object with the desired font family and size
+my_font_size = read_config_parameter("options.editor_settings.font_size")
+my_font_family = read_config_parameter("options.editor_settings.font_family")
+my_font = font.Font(family=my_font_family, size=my_font_size)
+
 menu = Menu(root)
 root.config(menu=menu)
 
@@ -76,12 +86,13 @@ script_text = scrolledtext.ScrolledText(
 )
 text = Text(
     wrap="word",
-    font=(current_font_family, 12),
+    font=my_font,
     background="white",
     borderwidth=0,
     highlightthickness=0,
     undo=True,
 )
+status_label_var = StringVar()
 all_fonts = StringVar()
 all_size = StringVar()
 local_python_var = BooleanVar()
