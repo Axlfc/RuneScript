@@ -2,38 +2,12 @@ import os
 import subprocess
 import tempfile
 from tkinter import END, Toplevel, Listbox, Button, messagebox, Label, Entry
-from src.views.tk_utils import root
+from src.views.tk_utils import root, localization_data
 from lib.winTaskScheduler import list_tasks, delete_task, at_function, crontab_function
 
 
 def open_at_window():
-    """ ""\"
-    ""\"
-    Opens a window displaying the list of scheduled 'at' jobs.
-
-    This function creates a new window that lists all currently scheduled 'at' jobs. It provides
-    an interface for viewing and removing these jobs. The list is updated periodically.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
-
     def update_at_jobs():
-        """ ""\"
-        ""\"
-            update_at_jobs
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         listbox.delete(0, END)
         populate_at_jobs(listbox)
         at_window.after(5000, update_at_jobs)
@@ -47,7 +21,7 @@ def open_at_window():
     populate_at_jobs(listbox)
     remove_button = Button(
         at_window,
-        text="Remove Selected",
+        text=localization_data["remove_selected"],
         command=lambda: remove_selected_at_job(listbox),
     )
     remove_button.pack(side="bottom")
@@ -56,53 +30,27 @@ def open_at_window():
 
 
 def populate_at_jobs(listbox):
-    """ ""\"
-    ""\"
-    Populates the given listbox with the current 'at' jobs.
-
-    Retrieves the list of scheduled 'at' jobs and displays them in the provided listbox widget.
-    If there are no jobs or an error occurs, an appropriate message is displayed.
-
-    Parameters:
-    listbox (Listbox): The Listbox widget to populate with 'at' jobs.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     try:
         at_output = subprocess.check_output(["atq"], text=True).splitlines()
         if not at_output:
             username = subprocess.check_output(["whoami"], text=True).strip()
-            listbox.insert(END, f"No AT jobs found for user {username}.")
+            message = localization_data["no_at_jobs_found"] + " " + username + "."
+            listbox.insert(END, message)
         else:
             for line in at_output:
                 listbox.insert(END, line)
     except subprocess.CalledProcessError:
-        messagebox.showerror("Error", "Failed to retrieve AT jobs")
+        messagebox.showerror(localization_data["error"],
+                             localization_data["failed_to_remove_at_job"])
 
 
 def remove_selected_at_job(listbox):
-    """ ""\"
-    ""\"
-    Removes the selected 'at' job from the schedule.
-
-    This function deletes the 'at' job that is currently selected in the listbox. It also handles
-    exceptions if the job cannot be removed.
-
-    Parameters:
-    listbox (Listbox): The Listbox widget containing the list of 'at' jobs.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     selected_indices = listbox.curselection()
     if not selected_indices:
         return
     selected_index = selected_indices[0]
     selected_item = listbox.get(selected_index)
-    if "No AT jobs found for user" in selected_item:
+    if localization_data["no_at_jobs_found"] in selected_item:
         listbox.delete(selected_index)
     else:
         job_id = selected_item.split()[0]
@@ -110,37 +58,12 @@ def remove_selected_at_job(listbox):
             subprocess.run(["atrm", job_id], check=True)
             listbox.delete(selected_index)
         except subprocess.CalledProcessError:
-            messagebox.showerror("Error", f"Failed to remove AT job {job_id}")
+            messagebox.showerror(localization_data["error"],
+                                 f"Failed to remove AT job {job_id}")
 
 
 def open_cron_window():
-    """ ""\"
-    ""\"
-    Opens a window displaying the list of scheduled 'cron' jobs.
-
-    This function creates a new window that lists all currently scheduled 'cron' jobs. It provides
-    an interface for viewing and removing these jobs. The list is updated periodically.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
-
     def update_cron_jobs():
-        """ ""\"
-        ""\"
-            update_cron_jobs
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         listbox.delete(0, END)
         populate_cron_jobs(listbox)
         crontab_window.after(5000, update_cron_jobs)
@@ -155,7 +78,7 @@ def open_cron_window():
     populate_cron_jobs(listbox)
     remove_button = Button(
         crontab_window,
-        text="Remove Selected",
+        text=localization_data["remove_selected"],
         command=lambda: remove_selected_cron_job(listbox),
     )
     remove_button.pack(side="bottom")
@@ -164,48 +87,22 @@ def open_cron_window():
 
 
 def populate_cron_jobs(listbox):
-    """ ""\"
-    ""\"
-    Populates the given listbox with the current 'cron' jobs.
-
-    Retrieves the list of scheduled 'cron' jobs and displays them in the provided listbox widget.
-    If there are no jobs or an error occurs, an appropriate message is displayed.
-
-    Parameters:
-    listbox (Listbox): The Listbox widget to populate with 'cron' jobs.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     try:
         cron_output = subprocess.check_output(["crontab", "-l"], text=True).splitlines()
         if not cron_output:
             username = subprocess.check_output(["whoami"], text=True).strip()
-            listbox.insert(END, f"No cron jobs found for user {username}.")
+            message = localization_data["no_crontab_jobs_found"] + " " + username + "."
+            listbox.insert(END, message)
         else:
             for line in cron_output:
                 listbox.insert(END, line)
     except subprocess.CalledProcessError:
         username = subprocess.check_output(["whoami"], text=True).strip()
-        listbox.insert(END, f"No cron jobs found for user {username}.")
+        message = localization_data["no_crontab_jobs_found"] + " " + username + "."
+        listbox.insert(END, message)
 
 
 def remove_selected_cron_job(listbox):
-    """ ""\"
-    ""\"
-    Removes the selected 'cron' job from the schedule.
-
-    This function deletes the 'cron' job that is currently selected in the listbox. It handles
-    exceptions if the job cannot be removed and updates the crontab accordingly.
-
-    Parameters:
-    listbox (Listbox): The Listbox widget containing the list of 'cron' jobs.
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     selected_indices = listbox.curselection()
     if not selected_indices:
         return
@@ -224,43 +121,19 @@ def remove_selected_cron_job(listbox):
         os.remove(temp_file.name)
         listbox.delete(selected_index)
     except subprocess.CalledProcessError:
-        messagebox.showerror("Error", "Failed to remove cron job")
+        messagebox.showerror(localization_data["error"],
+                             localization_data["failed_to_remove_crontab_job"])
 
 
 def open_scheduled_tasks_window():
-    """ ""\"
-    ""\"
-    Opens a window for managing scheduled tasks.
-
-    This function creates a new window displaying all scheduled tasks, allowing the user to view and
-    delete them. It supports both 'at' and 'cron' jobs based on the operating system.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     window = Toplevel()
-    window.title("Scheduled Tasks")
+    window.title(localization_data["scheduled_tasks_title"])
     window.geometry("600x400")
     listbox = Listbox(window, width=80)
     listbox.pack(fill="both", expand=True)
     last_selected_index = [None]
 
     def populate_tasks():
-        """ ""\"
-        ""\"
-            populate_tasks
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         if listbox.curselection():
             last_selected_index[0] = listbox.curselection()[0]
         listbox.delete(0, END)
@@ -275,163 +148,96 @@ def open_scheduled_tasks_window():
             listbox.see(last_selected_index[0])
 
     def delete_selected_task():
-        """ ""\"
-        ""\"
-            delete_selected_task
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         selection = listbox.curselection()
         if not selection:
-            messagebox.showerror("Error", "No task selected")
+            messagebox.showerror(localization_data["error"],
+                                 localization_data["scheduled_tasks_no_task_selected"])
             return
         selected_task_info = listbox.get(selection[0])
-        print("THE SELECTED_TASK_INFO IS:\n", selected_task_info)
         task_name = selected_task_info.split('"')[1]
         try:
             delete_task(task_name)
             populate_tasks()
             last_selected_index[0] = None
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to delete task: {e}")
+            message = localization_data["scheduled_tasks_failed_to_delete"] + " " + e
+            messagebox.showerror(localization_data["error"],
+                                 message)
 
     def update_tasks():
-        """ ""\"
-        ""\"
-            update_tasks
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         populate_tasks()
         window.after(5000, update_tasks)
 
     populate_tasks()
     update_tasks()
-    delete_button = Button(window, text="Delete Selected", command=delete_selected_task)
+    delete_button = Button(window, text=localization_data["delete_selected"], command=delete_selected_task)
     delete_button.pack()
     window.mainloop()
 
 
 def open_new_at_task_window(event=None):
-    """ ""\"
-    ""\"
-    Opens a window for creating a new 'at' task.
-
-    Provides an interface for the user to schedule a new 'at' job by specifying the task name, time,
-    and program path. Includes error handling for task creation.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     new_task_window = Toplevel(root)
-    new_task_window.title("New 'at' Task")
+    new_task_window.title(localization_data["new_at_task_title"])
     new_task_window.geometry("400x150")
-    Label(new_task_window, text="Task Name:").grid(row=0, column=0)
+    Label(new_task_window, text=localization_data["at_task_name"]).grid(row=0, column=0)
     task_name_entry = Entry(new_task_window)
     task_name_entry.grid(row=0, column=1)
-    Label(new_task_window, text="Time (HH:MM):").grid(row=1, column=0)
+    Label(new_task_window, text=localization_data["at_task_time"]).grid(row=1, column=0)
     time_entry = Entry(new_task_window)
     time_entry.grid(row=1, column=1)
-    Label(new_task_window, text="Program Path:").grid(row=2, column=0)
+    Label(new_task_window, text=localization_data["at_program_path"]).grid(row=2, column=0)
     program_path_entry = Entry(new_task_window)
     program_path_entry.grid(row=2, column=1)
 
     def create_at_job():
-        """ ""\"
-        ""\"
-            create_at_job
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         task_name = task_name_entry.get()
         time = time_entry.get()
         program_path = program_path_entry.get()
         try:
             at_function(task_name, time, program_path)
+            message = localization_data["task"] + " '" + task_name + "' " + localization_data["scheduled_at"] + " " + time + " " + localization_data[""] + " " + program_path
+
             messagebox.showinfo(
-                "Scheduled",
-                f"Task '{task_name}' scheduled at {time} to run {program_path}",
+                localization_data["task_scheduled"],
+                message,
             )
         except Exception as e:
-            messagebox.showerror("Task Execution", f"Error creating at task:\n{str(e)}")
+            message = localization_data["at_error_creation"] + f"\n{str(e)}"
+            messagebox.showerror("Task Execution", message)
 
-    Button(new_task_window, text="Create 'at' Job", command=create_at_job).grid(
+    Button(new_task_window, text=localization_data["create_at_job"], command=create_at_job).grid(
         row=3, column=0
     )
     new_task_window.mainloop()
 
 
 def open_new_crontab_task_window(event=None):
-    """ ""\"
-    ""\"
-    Opens a window for creating a new 'crontab' task.
-
-    Offers an interface for scheduling a new 'cron' job with detailed time settings and script path.
-    It validates the input fields and handles the job creation process.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\"
-    ""\" """
     new_cron_task_window = Toplevel(root)
-    new_cron_task_window.title("New 'crontab' Task")
+    new_cron_task_window.title(localization_data["new_crontab_task_title"])
     new_cron_task_window.geometry("500x300")
-    Label(new_cron_task_window, text="Name:").grid(row=0, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_task_name_label"]).grid(row=0, column=0)
     name_entry = Entry(new_cron_task_window)
     name_entry.grid(row=0, column=1)
-    Label(new_cron_task_window, text="Minute:").grid(row=1, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_minute_label"]).grid(row=1, column=0)
     minute_entry = Entry(new_cron_task_window)
     minute_entry.grid(row=1, column=1)
-    Label(new_cron_task_window, text="Hour:").grid(row=2, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_hour_label"]).grid(row=2, column=0)
     hour_entry = Entry(new_cron_task_window)
     hour_entry.grid(row=2, column=1)
-    Label(new_cron_task_window, text="Day (Month):").grid(row=3, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_day_month_label"]).grid(row=3, column=0)
     day_month_entry = Entry(new_cron_task_window)
     day_month_entry.grid(row=3, column=1)
-    Label(new_cron_task_window, text="Month:").grid(row=4, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_month_label"]).grid(row=4, column=0)
     month_entry = Entry(new_cron_task_window)
     month_entry.grid(row=4, column=1)
-    Label(new_cron_task_window, text="Day (Week):").grid(row=5, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_day_week_label"]).grid(row=5, column=0)
     day_week_entry = Entry(new_cron_task_window)
     day_week_entry.grid(row=5, column=1)
-    Label(new_cron_task_window, text="Script Path:").grid(row=6, column=0)
+    Label(new_cron_task_window, text=localization_data["crontab_script_path_label"]).grid(row=6, column=0)
     script_path_entry = Entry(new_cron_task_window)
     script_path_entry.grid(row=6, column=1)
 
     def create_crontab_job():
-        """ ""\"
-        ""\"
-            create_crontab_job
-
-                Args:
-                    None
-
-                Returns:
-                    None: Description of return value.
-            ""\"
-        ""\" """
         name = name_entry.get()
         minute = minute_entry.get()
         hour = hour_entry.get()
@@ -440,15 +246,17 @@ def open_new_crontab_task_window(event=None):
         day_week = day_week_entry.get()
         script_path = script_path_entry.get()
         if not all([name, minute, hour, day_month, month, day_week, script_path]):
-            messagebox.showerror("Error", "All fields must be filled.")
+            messagebox.showerror(localization_data["crontab_error_all_fields_required"],
+                                 localization_data["crontab_all_fields_required"])
             return
         crontab_function(name, minute, hour, day_month, month, day_week, script_path)
+        message = localization_data["cron_task_scheduled"] + " " + minute + " " + hour + " " + day_month + " " + month + " " + day_week
         messagebox.showinfo(
-            "Scheduled",
-            f"Crontab task scheduled to run script at {minute} {hour} {day_month} {month} {day_week}.",
+            localization_data["task_scheduled"],
+            message,
         )
 
     Button(
-        new_cron_task_window, text="Create 'crontab' Job", command=create_crontab_job
+        new_cron_task_window, text=localization_data["create_crontab_job_button"], command=create_crontab_job
     ).grid(row=7, column=0, columnspan=2)
     new_cron_task_window.mainloop()
