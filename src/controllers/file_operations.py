@@ -288,7 +288,8 @@ def save_as_new_script(event=None):
 
 def update_script_name_label(file_path):
     base_name = os.path.basename(file_path)
-    script_name_label.config(text=f"File Name: {base_name}")
+    message = localization_data["file_name"] + ": " + base_name
+    script_name_label.config(text=message)
 
 
 def new(event=None):

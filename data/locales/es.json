@@ -3,6 +3,7 @@
     "scripts_editor_info": "Editor de Scripts\nCreado en Python usando Tkinter\nAxlfc, 2023-2024",
     "untitled": "Sin título",
     "script_name_label": "Nombre del Script: ",
+    "cancel": "Cancelar",
     "file": "Archivo",
     "new": "Nuevo",
     "open": "Abrir",
@@ -189,5 +190,21 @@
     "to_run": "ejecutando",
 
     "remove_selected": "Borrar Selección",
-    "delete_selected": "Suprimir Selección"
+    "delete_selected": "Suprimir Selección",
+
+    "ai_server_settings_title": "Configuración del Servidor de IA",
+    "ai_server_select_server_label": "Seleccionar Servidor:",
+    "ai_server_url_label": "URL del Servidor:",
+    "ai_server_api_key_label": "Clave de API del Servidor:",
+
+    "ai_server_agent_settings_title": "Configuración del Agente del Servidor de IA",
+    "ai_server_select_agent_label": "Seleccionar Agente:",
+    "ai_server_agent_instructions_label": "Instrucciones:",
+
+    "ai_server_agent_temperature_label": "Temperatura:",
+    "ai_server_agent_persistent_checkbutton": "Selección de Agente Persistente",
+    "ai_server_agent_sessions_label": "SESIONES",
+    "ai_server_agent_links_label": "ENLACES",
+    "ai_server_agent_documents_label": "DOCUMENTOS",
+    "ai_server_agent_ingest_button": "INGESTAR"
 }

@@ -58,7 +58,8 @@ from src.models.VaultRAG import VaultRAG
 
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
-from src.views.tk_utils import text, script_text, root, current_session, menu, SIMILARITY_THRESHOLD, status_label_var
+from src.views.tk_utils import text, script_text, root, current_session, menu, SIMILARITY_THRESHOLD, status_label_var, \
+    localization_data
 from src.views.ui_elements import Tooltip, ScrollableFrame
 from src.models.ai_assistant import find_gguf_file
 from difflib import SequenceMatcher
@@ -192,9 +193,9 @@ def open_ai_assistant_window(session_id=None):
 
         server_details = load_server_details()
         settings_window = Toplevel()
-        settings_window.title("AI Server Settings")
+        settings_window.title(localization_data["ai_server_settings_title"])
         settings_window.geometry("400x300")
-        Label(settings_window, text="Select Server:").grid(
+        Label(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
             row=0, column=0, sticky="w", padx=5, pady=5
         )
         selected_server = StringVar(settings_window)
@@ -209,15 +210,15 @@ def open_ai_assistant_window(session_id=None):
         server_options = list(server_details.keys())
         server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
         server_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
-        server_url_label = Label(settings_window, text="Server URL:")
+        server_url_label = Label(settings_window, text=localization_data["ai_server_url_label"])
         server_url_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
         server_url_entry = Entry(settings_window, width=25)
         server_url_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-        api_key_label = Label(settings_window, text="API Key:")
+        api_key_label = Label(settings_window, text=localization_data["ai_server_api_key_label"])
         api_key_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
         api_key_entry = Entry(settings_window, width=25, show="*")
         api_key_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
-        Button(settings_window, text="Save", command=save_ai_server_settings).grid(
+        Button(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
             row=3, column=0, columnspan=2, pady=10
         )
         selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
@@ -276,8 +277,8 @@ def open_ai_assistant_window(session_id=None):
         if not agents:
             return
         settings_window = Toplevel()
-        settings_window.title("AI Server Agent Settings")
-        Label(settings_window, text="Select Agent:").grid(row=0, column=0)
+        settings_window.title(localization_data["ai_server_agent_settings_title"])
+        Label(settings_window, text=localization_data["ai_server_select_agent_label"]).grid(row=0, column=0)
         selected_agent_var = StringVar(settings_window)
         selected_agent_var.set(agents[0]["name"])
         agent_options = [agent["name"] for agent in agents]
@@ -288,25 +289,25 @@ def open_ai_assistant_window(session_id=None):
             command=update_instructions,
         )
         agent_dropdown.grid(row=0, column=1)
-        Label(settings_window, text="Instructions:").grid(row=1, column=0)
+        Label(settings_window, text=localization_data["ai_server_agent_instructions_label"]).grid(row=1, column=0)
         instructions_text = scrolledtext.ScrolledText(
             settings_window, height=7, width=50
         )
         instructions_text.grid(row=1, column=1, columnspan=2)
         agent_temperature = [agent["temperature"] for agent in agents]
-        Label(settings_window, text="Temperature:").grid(row=2, column=0)
+        Label(settings_window, text=localization_data["ai_server_agent_temperature_label"]).grid(row=2, column=0)
         temperature_entry = Entry(settings_window)
         temperature_entry.grid(row=2, column=1)
         persistent_agent_selection_checkbox = Checkbutton(
             settings_window,
-            text="Persistent Agent Selection",
+            text=localization_data["ai_server_agent_persistent_checkbutton"],
             variable=persistent_agent_selection_var,
         )
         persistent_agent_selection_checkbox.grid(row=3, columnspan=2)
         Button(
-            settings_window, text="Save", command=lambda: save_agent_settings()
+            settings_window, text=localization_data["save"], command=lambda: save_agent_settings()
         ).grid(row=4, column=0)
-        Button(settings_window, text="Cancel", command=settings_window.destroy).grid(
+        Button(settings_window, text=localization_data["cancel"], command=settings_window.destroy).grid(
             row=4, column=1
         )
         update_instructions(selected_agent_var.get())
@@ -391,14 +392,14 @@ def open_ai_assistant_window(session_id=None):
     session_list_frame.pack(side="left", fill="y")
 
     # Sessions List
-    Label(session_list_frame, text="SESSIONS", font=("Helvetica", 10, "bold")).pack(fill="x")
+    Label(session_list_frame, text=localization_data["ai_server_agent_sessions_label"], font=("Helvetica", 10, "bold")).pack(fill="x")
     sessions_list = Listbox(session_list_frame)
     sessions_list.pack(fill="both", expand=True)
 
     Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
 
     # Links List
-    Label(session_list_frame, text="LINKS", font=("Helvetica", 10, "bold")).pack(fill="x")
+    Label(session_list_frame, text=localization_data["ai_server_agent_links_label"], font=("Helvetica", 10, "bold")).pack(fill="x")
     links_frame = Frame(session_list_frame)
     links_frame.pack(fill="both", expand=True)
     links_list = Listbox(links_frame)
@@ -752,7 +753,7 @@ def open_ai_assistant_window(session_id=None):
     Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
 
     # Documents List
-    Label(session_list_frame, text="DOCUMENTS", font=("Helvetica", 10, "bold")).pack(fill="x")
+    Label(session_list_frame, text=localization_data["ai_server_agent_documents_label"], font=("Helvetica", 10, "bold")).pack(fill="x")
     documents_frame = Frame(session_list_frame)
     documents_frame.pack(fill="both", expand=True)
     document_paths = []
@@ -772,7 +773,7 @@ def open_ai_assistant_window(session_id=None):
 
     # INGEST Button (Restored)
     # Button to ingest documents
-    ingest_button = Button(ai_assistant_window, text="INGEST", command=ingest_documents)
+    ingest_button = Button(ai_assistant_window, text=localization_data["ai_server_agent_ingest_button"], command=ingest_documents)
 
     # Bind hover events to the button
     ingest_button.bind("<Enter>", on_button_enter)  # Mouse enters the button area
