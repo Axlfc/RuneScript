@@ -15,6 +15,7 @@ class PromptEnhancementWindow:
         # Initialize data storage
         self.prompt_data = {}
         self.categories = {}  # Category to prompt mapping: {category_name: [prompt_title1, prompt_title2]}
+        self.variables = []  # Store variables as a list of dictionaries
         self.prompt_folder = "data/prompts"  # Directory to save/load prompts
 
         # Ensure prompt directory exists
@@ -67,12 +68,29 @@ class PromptEnhancementWindow:
         tags_frame = Frame(editor_frame)
         tags_frame.pack(fill=X, pady=5)
         Label(tags_frame, text="Category:").pack(side=LEFT)
-        self.category_entry = Entry(tags_frame)  # Entry for the category name
+        self.category_entry = Entry(tags_frame)
         self.category_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
 
         # Main prompt content
         self.prompt_text = scrolledtext.ScrolledText(editor_frame, height=15)
         self.prompt_text.pack(fill=BOTH, expand=True, pady=5)
+
+        # Variable management
+        var_frame = LabelFrame(editor_frame, text="Variables")
+        var_frame.pack(fill=X, pady=5)
+
+        self.var_tree = Treeview(var_frame, columns=("name", "description", "type", "default"), height=5, show="headings")
+        self.var_tree.heading("name", text="Name")
+        self.var_tree.heading("description", text="Description")
+        self.var_tree.heading("type", text="Type")
+        self.var_tree.heading("default", text="Default Value")
+        self.var_tree.pack(fill=X, pady=5)
+
+        var_button_frame = Frame(var_frame)
+        var_button_frame.pack(fill=X, pady=5)
+        Button(var_button_frame, text="Add Variable", command=self.add_variable).pack(side=LEFT, padx=5)
+        Button(var_button_frame, text="Edit Variable", command=self.edit_variable).pack(side=LEFT, padx=5)
+        Button(var_button_frame, text="Delete Variable", command=self.delete_variable).pack(side=LEFT, padx=5)
 
         # Enhancement options
         options_frame = LabelFrame(editor_frame, text="Enhancement Options")
@@ -87,6 +105,20 @@ class PromptEnhancementWindow:
         Button(button_frame, text="Test Prompt", command=self.test_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Save Version", command=self.save_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Export", command=self.export_prompt).pack(side=LEFT, padx=5)
+
+    def on_treeview_select(self, event):
+        """Handle selection in the category tree."""
+        selected_item = self.category_tree.selection()
+        if not selected_item:
+            return
+
+        item_text = self.category_tree.item(selected_item, 'text')
+        item_type = self.category_tree.item(selected_item, 'values')
+
+        if item_type and item_type[0] == "prompt":
+            self.load_prompt_by_title(item_text)
+        elif item_type and item_type[0] == "category":
+            print(f"Category '{item_text}' selected. No action for categories.")
 
     def save_categories(self):
         """Save categories and associated prompts."""
@@ -107,38 +139,42 @@ class PromptEnhancementWindow:
             for prompt in prompts:
                 self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
 
-    def on_treeview_select(self, event):
-        """Load a prompt when selected from the tree."""
-        selected_item = self.category_tree.selection()
+    def load_variables_into_tree(self):
+        """Load all variables into the Treeview."""
+        self.var_tree.delete(*self.var_tree.get_children())
+        for var in self.variables:
+            self.var_tree.insert("", "end", values=(var["name"], var["description"], var["type"], var.get("default", "")))
+
+    def add_variable(self):
+        """Add a new variable."""
+        new_var = {"name": "Variable" + str(len(self.variables) + 1), "description": "", "type": "text", "default": ""}
+        self.variables.append(new_var)
+        self.load_variables_into_tree()
+
+    def edit_variable(self):
+        """Edit the selected variable."""
+        selected_item = self.var_tree.selection()
         if not selected_item:
+            messagebox.showinfo("Info", "Please select a variable to edit.")
             return
 
-        item_text = self.category_tree.item(selected_item, 'text')
-        item_type = self.category_tree.item(selected_item, 'values')
+        item_values = self.var_tree.item(selected_item, "values")
+        for var in self.variables:
+            if var["name"] == item_values[0]:
+                var["description"] = "Updated Description"  # Example edit
+                var["default"] = "Default Value"
+        self.load_variables_into_tree()
 
-        if item_type and item_type[0] == "prompt":
-            self.load_prompt_by_title(item_text)
+    def delete_variable(self):
+        """Delete the selected variable."""
+        selected_item = self.var_tree.selection()
+        if not selected_item:
+            messagebox.showinfo("Info", "Please select a variable to delete.")
+            return
 
-    def load_prompt_by_title(self, title):
-        """Load a prompt by its title."""
-        prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
-        try:
-            with open(prompt_filename, 'r') as f:
-                self.prompt_data = json.load(f)
-
-            # Populate the UI with the loaded data
-            self.title_entry.delete(0, END)
-            self.title_entry.insert(0, self.prompt_data['title'])
-
-            self.category_entry.delete(0, END)
-            self.category_entry.insert(0, self.prompt_data.get('category', ''))
-
-            self.prompt_text.delete("1.0", END)
-            self.prompt_text.insert("1.0", self.prompt_data['content'])
-
-            print(f"Prompt '{title}' loaded successfully.")
-        except FileNotFoundError:
-            print(f"No saved prompt found with the title '{title}'.")
+        item_values = self.var_tree.item(selected_item, "values")
+        self.variables = [var for var in self.variables if var["name"] != item_values[0]]
+        self.load_variables_into_tree()
 
     def save_prompt(self):
         """Save the current prompt template to file."""
@@ -147,18 +183,17 @@ class PromptEnhancementWindow:
         content = self.prompt_text.get("1.0", END).strip()
 
         if title and content and category:
-            # Create or update the prompt data
             self.prompt_data = {
-                'title': title,
-                'category': category,
-                'content': content
+                "title": title,
+                "category": category,
+                "content": content,
+                "variables": self.variables,
             }
 
             prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
-            with open(prompt_filename, 'w') as f:
+            with open(prompt_filename, "w") as f:
                 json.dump(self.prompt_data, f, indent=4)
 
-            # Add the prompt to the appropriate category
             if category not in self.categories:
                 self.categories[category] = []
                 category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
@@ -186,13 +221,28 @@ class PromptEnhancementWindow:
         else:
             messagebox.showinfo("Info", "No prompt selected.")
 
-    def test_prompt(self):
-        """Test the current prompt template."""
-        content = self.prompt_text.get("1.0", END).strip()
-        if content:
-            print("Testing prompt:", content)
-        else:
-            print("Prompt content is empty.")
+    def load_prompt_by_title(self, title):
+        """Load a prompt by its title."""
+        prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
+        try:
+            with open(prompt_filename, "r") as f:
+                self.prompt_data = json.load(f)
+
+            self.title_entry.delete(0, END)
+            self.title_entry.insert(0, self.prompt_data['title'])
+
+            self.category_entry.delete(0, END)
+            self.category_entry.insert(0, self.prompt_data.get('category', ''))
+
+            self.prompt_text.delete("1.0", END)
+            self.prompt_text.insert("1.0", self.prompt_data['content'])
+
+            self.variables = self.prompt_data.get("variables", [])
+            self.load_variables_into_tree()
+
+            print(f"Prompt '{title}' loaded successfully.")
+        except FileNotFoundError:
+            print(f"No saved prompt found with the title '{title}'.")
 
     def export_prompt(self):
         """Export the current prompt to a file."""
@@ -201,15 +251,32 @@ class PromptEnhancementWindow:
 
         if title and content:
             export_filename = os.path.join(self.prompt_folder, f"{title}.txt")
-            with open(export_filename, 'w') as f:
+            with open(export_filename, "w") as f:
                 f.write(content)
             print(f"Prompt exported as {export_filename}")
         else:
             print("Title and content cannot be empty.")
+
+    def test_prompt(self):
+        """Test the current prompt template with variables replaced."""
+        content = self.prompt_text.get("1.0", END).strip()
+        if content:
+            # Replace variables in the content with their default values
+            for var in self.variables:
+                placeholder = f"{{{{{var['name']}}}}}"  # Example: "{{variable_name}}"
+                default_value = var.get("default", "")
+                content = content.replace(placeholder, default_value)
+
+            print("Testing prompt with variables interpreted:")
+            print(content)
+        else:
+            print("Prompt content is empty.")
 
     def new_prompt(self):
         """Clear fields to create a new prompt."""
         self.title_entry.delete(0, END)
         self.category_entry.delete(0, END)
         self.prompt_text.delete("1.0", END)
+        self.variables = []  # Clear variables
+        self.var_tree.delete(*self.var_tree.get_children())  # Clear the variable treeview
         self.prompt_data = {}
