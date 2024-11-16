@@ -80,7 +80,7 @@ class PromptEnhancementWindow:
 
         # Initialize data storage
         self.prompt_data = {}
-        self.categories = {}  # {category_name: [prompt_title1, prompt_title2]}
+        self.categories = {}  # {category_name: {"prompts": [prompt_title1, prompt_title2]}}
         self.default_categories = self.load_default_categories()
         self.variables = []  # Store variables as a list of dictionaries
         self.prompt_folder = "data/prompts"  # Directory to save/load prompts
@@ -357,17 +357,29 @@ class PromptEnhancementWindow:
 
     def on_treeview_select(self, event):
         """Handle selection in the category tree."""
-        selected_item = self.category_tree.selection()
-        if not selected_item:
-            return
+        try:
+            selected_items = self.category_tree.selection()
+            if not selected_items:
+                return
 
-        item_text = self.category_tree.item(selected_item, 'text')
-        item_type = self.category_tree.item(selected_item, 'values')
+            selected_item = selected_items[0]  # Get the first selected item
+            item_text = self.category_tree.item(selected_item, 'text')
+            item_type = self.category_tree.item(selected_item, 'values')
 
-        if item_type and item_type[0] == "prompt":
-            self.load_prompt_by_title(item_text)
-        elif item_type and item_type[0] == "category":
-            print(f"Category '{item_text}' selected. No action for categories.")
+            # Only load prompts, not categories
+            if item_type and item_type[0] == "prompt":
+                # Prevent recursive loading by unbinding the event temporarily
+                self.category_tree.unbind('<<TreeviewSelect>>')
+
+                # Load the prompt
+                self.load_prompt_by_title(item_text)
+
+                # Rebind the event after a short delay
+                self.enhancement_window.after(100,
+                                              lambda: self.category_tree.bind('<<TreeviewSelect>>',
+                                                                              self.on_treeview_select))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error selecting item: {str(e)}")
 
     def save_categories(self):
         """Save categories and associated prompts."""
@@ -375,39 +387,86 @@ class PromptEnhancementWindow:
             json.dump(self.categories, f, indent=4)
 
     def load_saved_categories(self):
-        """Load categories, merging default and custom categories."""
+        """Load categories and prompts from the categories file."""
         categories_file = os.path.join(self.prompt_folder, "categories.json")
+
+        # If no custom categories file exists, use the default
         if os.path.exists(categories_file):
             with open(categories_file, "r") as f:
                 self.categories = json.load(f)
+        else:
+            self.categories = self.default_categories
 
-        # Combine default categories with custom categories
-        combined_categories = self.default_categories.copy()
-        for custom_category, prompts in self.categories.items():
-            if custom_category in combined_categories:
-                combined_categories[custom_category]['subcategories'] = {
-                    **combined_categories[custom_category].get('subcategories', {}),
-                    **prompts
-                }
-            else:
-                combined_categories[custom_category] = {'subcategories': prompts}
+        # Populate treeview with existing categories and prompts
+        self.populate_treeview()
 
-        self.categories = combined_categories
+    def sync_prompts_with_categories(self):
+        """Sync prompt files with categories and update the treeview."""
+        for filename in os.listdir(self.prompt_folder):
+            if filename.endswith('.json') and filename != "categories.json":
+                prompt_path = os.path.join(self.prompt_folder, filename)
+                try:
+                    with open(prompt_path, 'r') as f:
+                        prompt_data = json.load(f)
 
-        # Populate treeview
+                    title = prompt_data.get('title')
+                    category = prompt_data.get('category')
+
+                    if title and category:
+                        # Ensure category exists and has the correct structure
+                        if category not in self.categories or not isinstance(self.categories[category], dict):
+                            self.categories[category] = {"prompts": []}
+
+                        # Add prompt to category if not already present
+                        if title not in self.categories[category]["prompts"]:
+                            self.categories[category]["prompts"].append(title)
+
+                except Exception as e:
+                    print(f"Error loading prompt file {filename}: {str(e)}")
+
+        # Save updated categories and refresh the treeview
+        self.save_categories()
         self.populate_treeview()
 
     def populate_treeview(self):
-        """Populate the category tree with combined categories."""
-        self.category_tree.delete(*self.category_tree.get_children())
-        for category, data in self.categories.items():
-            category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
-            for subcategory, prompts in data.get("subcategories", {}).items():
-                subcategory_id = self.category_tree.insert(category_id, 'end', text=subcategory,
-                                                           values=("subcategory",))
-                for prompt in prompts:
-                    self.category_tree.insert(subcategory_id, 'end', text=prompt, values=("prompt",))
+        """Populate the treeview with categories, subcategories, and prompts."""
+        self.category_tree.delete(*self.category_tree.get_children())  # Clear existing entries
 
+        def add_subcategories(parent, data):
+            if isinstance(data, dict):
+                for subcat_name, subcat_data in data.items():
+                    subcat_id = self.category_tree.insert(parent, 'end', text=subcat_name, values=("category",))
+                    # If it's a dictionary with prompts
+                    if isinstance(subcat_data, dict) and "prompts" in subcat_data:
+                        for prompt in subcat_data["prompts"]:
+                            self.category_tree.insert(subcat_id, 'end', text=prompt, values=("prompt",))
+                        # Handle nested subcategories if they exist
+                        if "subcategories" in subcat_data:
+                            add_subcategories(subcat_id, subcat_data["subcategories"])
+                    # If it's just a list of prompts
+                    elif isinstance(subcat_data, list):
+                        for prompt in subcat_data:
+                            self.category_tree.insert(subcat_id, 'end', text=prompt, values=("prompt",))
+
+        # Process each top-level category
+        for category, data in self.categories.items():
+            # Add category to tree
+            category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
+
+            # Handle category data
+            if isinstance(data, dict):
+                # Add prompts if they exist at the category level
+                if "prompts" in data:
+                    for prompt in data["prompts"]:
+                        self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
+
+                # Add subcategories if they exist
+                if "subcategories" in data:
+                    add_subcategories(category_id, data["subcategories"])
+            elif isinstance(data, list):
+                # If data is just a list of prompts
+                for prompt in data:
+                    self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
     def load_variables_into_tree(self):
         """Load all variables into the Treeview."""
         self.var_tree.delete(*self.var_tree.get_children())
@@ -463,22 +522,65 @@ class PromptEnhancementWindow:
                 "variables": self.variables,
             }
 
+            # Save prompt file
             prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
             with open(prompt_filename, "w") as f:
                 json.dump(self.prompt_data, f, indent=4)
 
-            if category not in self.categories:
-                self.categories[category] = []
-                category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
-            else:
-                category_id = [item for item in self.category_tree.get_children() if self.category_tree.item(item, 'text') == category][0]
+            # Update categories
+            if category not in self.categories or not isinstance(self.categories[category], dict):
+                # Initialize or repair the category structure
+                self.categories[category] = {"prompts": []}
 
-            if title not in self.categories[category]:
-                self.categories[category].append(title)
-                self.category_tree.insert(category_id, 'end', text=title, values=("prompt",))
-                self.save_categories()
+            # Ensure the "prompts" key exists in the category dictionary
+            if "prompts" not in self.categories[category]:
+                self.categories[category]["prompts"] = []
+
+            # Add the title to the category's prompts if it's not already there
+            if title not in self.categories[category]["prompts"]:
+                self.categories[category]["prompts"].append(title)
+
+            # Save categories and refresh treeview
+            self.save_categories()
+            self.populate_treeview()
+
+            # Select the saved prompt in the treeview
+            self.select_prompt_in_tree(title)
+
+            messagebox.showinfo("Success", f"Prompt '{title}' saved successfully.")
         else:
             messagebox.showerror("Error", "Title, category, and content cannot be empty.")
+
+    def select_prompt_in_tree(self, title):
+        """Select a prompt in the treeview without triggering reload."""
+        def find_prompt(node):
+            item_text = self.category_tree.item(node, "text")
+            item_type = self.category_tree.item(node, "values")
+
+            if item_type and item_type[0] == "prompt" and item_text == title:
+                return node
+
+            for child in self.category_tree.get_children(node):
+                result = find_prompt(child)
+                if result:
+                    return result
+            return None
+
+        # Temporarily unbind the selection event
+        self.category_tree.unbind('<<TreeviewSelect>>')
+
+        # Search through all items
+        for item in self.category_tree.get_children():
+            prompt_item = find_prompt(item)
+            if prompt_item:
+                # Select and show the prompt
+                self.category_tree.selection_set(prompt_item)
+                self.category_tree.see(prompt_item)
+                break
+
+        # Rebind the selection event after a short delay
+        self.enhancement_window.after(100,
+            lambda: self.category_tree.bind('<<TreeviewSelect>>', self.on_treeview_select))
 
     def load_prompt(self):
         """Load a prompt selected from the Treeview."""
@@ -496,27 +598,32 @@ class PromptEnhancementWindow:
 
     def load_prompt_by_title(self, title):
         """Load a prompt by its title."""
+        if not title:
+            return
+
         prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
         try:
             with open(prompt_filename, "r") as f:
                 self.prompt_data = json.load(f)
 
+            # Update UI elements with a guard against recursive events
             self.title_entry.delete(0, END)
-            self.title_entry.insert(0, self.prompt_data['title'])
+            self.title_entry.insert(0, self.prompt_data.get('title', ''))
 
             self.category_entry.delete(0, END)
             self.category_entry.insert(0, self.prompt_data.get('category', ''))
 
             self.prompt_text.delete("1.0", END)
-            self.prompt_text.insert("1.0", self.prompt_data['content'])
+            self.prompt_text.insert("1.0", self.prompt_data.get('content', ''))
 
+            # Load variables
             self.variables = self.prompt_data.get("variables", [])
             self.load_variables_into_tree()
 
-            print(f"Prompt '{title}' loaded successfully.")
         except FileNotFoundError:
-            print(f"No saved prompt found with the title '{title}'.")
-
+            messagebox.showerror("Error", f"No saved prompt found with the title '{title}'.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error loading prompt: {str(e)}")
     def export_prompt(self):
         """Export the current prompt to a file."""
         title = self.title_entry.get().strip()
