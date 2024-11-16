@@ -1,7 +1,7 @@
 import json
 import os
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
-    scrolledtext, LabelFrame
+    scrolledtext, LabelFrame, messagebox
 from tkinter.ttk import Treeview
 
 
@@ -14,6 +14,7 @@ class PromptEnhancementWindow:
 
         # Initialize data storage
         self.prompt_data = {}
+        self.categories = {}  # Category to prompt mapping: {category_name: [prompt_title1, prompt_title2]}
         self.prompt_folder = "data/prompts"  # Directory to save/load prompts
 
         # Ensure prompt directory exists
@@ -21,6 +22,9 @@ class PromptEnhancementWindow:
 
         # Setup UI
         self.setup_ui()
+
+        # Load saved categories and prompts
+        self.load_saved_categories()
 
     def setup_ui(self):
         """Setup the UI layout."""
@@ -47,11 +51,7 @@ class PromptEnhancementWindow:
         self.category_tree = Treeview(sidebar, height=10)
         self.category_tree.heading('#0', text='Categories')
         self.category_tree.pack(fill=Y, expand=True)
-
-        # Add default categories
-        categories = ['General', 'Code', 'Writing', 'Analysis']
-        for category in categories:
-            self.category_tree.insert('', 'end', text=category)
+        self.category_tree.bind('<<TreeviewSelect>>', self.on_treeview_select)
 
         # Main prompt editing area
         editor_frame = Frame(main_frame)
@@ -66,24 +66,13 @@ class PromptEnhancementWindow:
 
         tags_frame = Frame(editor_frame)
         tags_frame.pack(fill=X, pady=5)
-        Label(tags_frame, text="Tags:").pack(side=LEFT)
-        self.tags_entry = Entry(tags_frame)
-        self.tags_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
+        Label(tags_frame, text="Category:").pack(side=LEFT)
+        self.category_entry = Entry(tags_frame)  # Entry for the category name
+        self.category_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
 
         # Main prompt content
         self.prompt_text = scrolledtext.ScrolledText(editor_frame, height=15)
         self.prompt_text.pack(fill=BOTH, expand=True, pady=5)
-
-        # Variable management
-        var_frame = LabelFrame(editor_frame, text="Variables")
-        var_frame.pack(fill=X, pady=5)
-
-        # Variable list with columns
-        self.var_tree = Treeview(var_frame, columns=("name", "description", "type"), height=3)
-        self.var_tree.heading("name", text="Name")
-        self.var_tree.heading("description", text="Description")
-        self.var_tree.heading("type", text="Type")
-        self.var_tree.pack(fill=X, pady=5)
 
         # Enhancement options
         options_frame = LabelFrame(editor_frame, text="Enhancement Options")
@@ -99,45 +88,40 @@ class PromptEnhancementWindow:
         Button(button_frame, text="Save Version", command=self.save_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Export", command=self.export_prompt).pack(side=LEFT, padx=5)
 
-    def new_prompt(self):
-        """Clear fields to create a new prompt."""
-        self.title_entry.delete(0, END)
-        self.tags_entry.delete(0, END)
-        self.prompt_text.delete("1.0", END)
-        self.var_tree.delete(*self.var_tree.get_children())
-        self.prompt_data = {}
+    def save_categories(self):
+        """Save categories and associated prompts."""
+        with open(os.path.join(self.prompt_folder, "categories.json"), "w") as f:
+            json.dump(self.categories, f, indent=4)
 
-    def save_prompt(self):
-        """Save the current prompt template to file."""
-        title = self.title_entry.get().strip()
-        tags = self.tags_entry.get().strip()
-        content = self.prompt_text.get("1.0", END).strip()
+    def load_saved_categories(self):
+        """Load saved categories and prompts."""
+        categories_file = os.path.join(self.prompt_folder, "categories.json")
+        if os.path.exists(categories_file):
+            with open(categories_file, "r") as f:
+                self.categories = json.load(f)
 
-        if title and content:
-            self.prompt_data = {
-                'title': title,
-                'tags': tags,
-                'content': content
-            }
+        # Populate the treeview with categories and prompts
+        self.category_tree.delete(*self.category_tree.get_children())
+        for category, prompts in self.categories.items():
+            category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
+            for prompt in prompts:
+                self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
 
-            # Save prompt to a JSON file named after the title in data/prompts
-            prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
-
-            with open(prompt_filename, 'w') as f:
-                json.dump(self.prompt_data, f, indent=4)
-            print(f"Prompt saved successfully to {prompt_filename}.")
-        else:
-            print("Title and content cannot be empty.")
-
-    def load_prompt(self):
-        """Load a saved prompt template."""
-        title = self.title_entry.get().strip()
-        if not title:
-            print("Please enter the title of the prompt you want to load.")
+    def on_treeview_select(self, event):
+        """Load a prompt when selected from the tree."""
+        selected_item = self.category_tree.selection()
+        if not selected_item:
             return
 
-        prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
+        item_text = self.category_tree.item(selected_item, 'text')
+        item_type = self.category_tree.item(selected_item, 'values')
 
+        if item_type and item_type[0] == "prompt":
+            self.load_prompt_by_title(item_text)
+
+    def load_prompt_by_title(self, title):
+        """Load a prompt by its title."""
+        prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
         try:
             with open(prompt_filename, 'r') as f:
                 self.prompt_data = json.load(f)
@@ -146,8 +130,8 @@ class PromptEnhancementWindow:
             self.title_entry.delete(0, END)
             self.title_entry.insert(0, self.prompt_data['title'])
 
-            self.tags_entry.delete(0, END)
-            self.tags_entry.insert(0, self.prompt_data.get('tags', ''))
+            self.category_entry.delete(0, END)
+            self.category_entry.insert(0, self.prompt_data.get('category', ''))
 
             self.prompt_text.delete("1.0", END)
             self.prompt_text.insert("1.0", self.prompt_data['content'])
@@ -156,11 +140,56 @@ class PromptEnhancementWindow:
         except FileNotFoundError:
             print(f"No saved prompt found with the title '{title}'.")
 
+    def save_prompt(self):
+        """Save the current prompt template to file."""
+        title = self.title_entry.get().strip()
+        category = self.category_entry.get().strip()
+        content = self.prompt_text.get("1.0", END).strip()
+
+        if title and content and category:
+            # Create or update the prompt data
+            self.prompt_data = {
+                'title': title,
+                'category': category,
+                'content': content
+            }
+
+            prompt_filename = os.path.join(self.prompt_folder, f"{title}.json")
+            with open(prompt_filename, 'w') as f:
+                json.dump(self.prompt_data, f, indent=4)
+
+            # Add the prompt to the appropriate category
+            if category not in self.categories:
+                self.categories[category] = []
+                category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
+            else:
+                category_id = [item for item in self.category_tree.get_children() if self.category_tree.item(item, 'text') == category][0]
+
+            if title not in self.categories[category]:
+                self.categories[category].append(title)
+                self.category_tree.insert(category_id, 'end', text=title, values=("prompt",))
+                self.save_categories()
+        else:
+            messagebox.showerror("Error", "Title, category, and content cannot be empty.")
+
+    def load_prompt(self):
+        """Load a prompt selected from the Treeview."""
+        selected_item = self.category_tree.selection()
+        if selected_item:
+            item_text = self.category_tree.item(selected_item, 'text')
+            item_type = self.category_tree.item(selected_item, 'values')
+
+            if item_type and item_type[0] == "prompt":
+                self.load_prompt_by_title(item_text)
+            else:
+                messagebox.showinfo("Info", "Please select a valid prompt to load.")
+        else:
+            messagebox.showinfo("Info", "No prompt selected.")
+
     def test_prompt(self):
         """Test the current prompt template."""
         content = self.prompt_text.get("1.0", END).strip()
         if content:
-            # Placeholder for testing logic
             print("Testing prompt:", content)
         else:
             print("Prompt content is empty.")
@@ -177,3 +206,10 @@ class PromptEnhancementWindow:
             print(f"Prompt exported as {export_filename}")
         else:
             print("Title and content cannot be empty.")
+
+    def new_prompt(self):
+        """Clear fields to create a new prompt."""
+        self.title_entry.delete(0, END)
+        self.category_entry.delete(0, END)
+        self.prompt_text.delete("1.0", END)
+        self.prompt_data = {}
