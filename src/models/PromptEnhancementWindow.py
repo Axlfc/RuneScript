@@ -4,6 +4,8 @@ from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH
     scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog
 from tkinter.ttk import Treeview
 
+DEFAULT_CATEGORY_FILE = "data/prompt_categories.json"  # File for default categories
+
 
 class VariableEditDialog(Toplevel):
     def __init__(self, parent, variable=None):
@@ -74,11 +76,12 @@ class PromptEnhancementWindow:
         """Initialize the Prompt Enhancement Studio window."""
         self.enhancement_window = Toplevel()
         self.enhancement_window.title("Prompt Enhancement Studio")
-        self.enhancement_window.geometry("1000x700")
+        self.enhancement_window.geometry("1200x800")
 
         # Initialize data storage
         self.prompt_data = {}
-        self.categories = {}  # Category to prompt mapping: {category_name: [prompt_title1, prompt_title2]}
+        self.categories = {}  # {category_name: [prompt_title1, prompt_title2]}
+        self.default_categories = self.load_default_categories()
         self.variables = []  # Store variables as a list of dictionaries
         self.prompt_folder = "data/prompts"  # Directory to save/load prompts
 
@@ -88,28 +91,29 @@ class PromptEnhancementWindow:
         # Setup UI
         self.setup_ui()
 
-        # Create context menus
-        self.create_context_menus()
-
         # Load saved categories and prompts
         self.load_saved_categories()
 
+    def load_default_categories(self):
+        """Load default categories from a file."""
+        if os.path.exists(DEFAULT_CATEGORY_FILE):
+            with open(DEFAULT_CATEGORY_FILE, "r") as f:
+                return json.load(f)
+        else:
+            return {}
+
     def create_context_menus(self):
-        """Create right-click context menus for the treeview."""
-        # Category context menu
+        """Create context menus for the category tree."""
         self.category_menu = Menu(self.enhancement_window, tearoff=0)
         self.category_menu.add_command(label="New Category", command=self.new_category)
         self.category_menu.add_command(label="Rename Category", command=self.rename_category)
         self.category_menu.add_command(label="Delete Category", command=self.delete_category)
 
-        # Prompt context menu
         self.prompt_menu = Menu(self.enhancement_window, tearoff=0)
         self.prompt_menu.add_command(label="Rename Prompt", command=self.rename_prompt)
         self.prompt_menu.add_command(label="Delete Prompt", command=self.delete_prompt)
 
-        # Bind right-click event
         self.category_tree.bind("<Button-3>", self.show_context_menu)
-
     def show_context_menu(self, event):
         """Show the appropriate context menu based on the selected item."""
         item = self.category_tree.identify_row(event.y)
@@ -122,11 +126,11 @@ class PromptEnhancementWindow:
                 self.prompt_menu.post(event.x_root, event.y_root)
 
     def new_category(self):
-        """Create a new empty category."""
+        """Add a new category."""
         name = simpledialog.askstring("New Category", "Enter category name:")
         if name and name.strip():
             if name not in self.categories:
-                self.categories[name] = []
+                self.categories[name] = {"description": "", "subcategories": {}}
                 self.category_tree.insert('', 'end', text=name, values=("category",))
                 self.save_categories()
             else:
@@ -237,6 +241,37 @@ class PromptEnhancementWindow:
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete prompt: {str(e)}")
 
+    def search_prompt(self):
+        """Search for a category or prompt in the tree."""
+        query = simpledialog.askstring("Search", "Enter search term:")
+        if not query:
+            return
+
+        query = query.lower()
+        results = []
+
+        # Recursive function to search through the tree
+        def search_tree(item, path=""):
+            text = self.category_tree.item(item, "text").lower()
+            if query in text:
+                results.append((item, path + text))
+            for child in self.category_tree.get_children(item):
+                search_tree(child, path + text + " > ")
+
+        # Start searching from the root items
+        for top_level_item in self.category_tree.get_children():
+            search_tree(top_level_item)
+
+        # Display results
+        if results:
+            result_text = "\n".join(f"{path}" for _, path in results)
+            messagebox.showinfo("Search Results", f"Found the following matches:\n\n{result_text}")
+            # Highlight the first result in the tree
+            self.category_tree.selection_set(results[0][0])
+            self.category_tree.focus(results[0][0])
+        else:
+            messagebox.showinfo("Search Results", "No matches found.")
+
     def setup_ui(self):
         """Setup the UI layout."""
         main_frame = Frame(self.enhancement_window)
@@ -251,34 +286,37 @@ class PromptEnhancementWindow:
         Button(toolbar, text="Save", command=self.save_prompt).pack(side=LEFT, padx=2)
         Button(toolbar, text="Load", command=self.load_prompt).pack(side=LEFT, padx=2)
         Button(toolbar, text="Export", command=self.export_prompt).pack(side=LEFT, padx=2)
-        Button(toolbar, text="Settings").pack(side=LEFT, padx=2)
+        Button(toolbar, text="Search", command=self.search_prompt).pack(side=LEFT, padx=2)
         Button(toolbar, text="Help").pack(side=RIGHT, padx=2)
 
         # Sidebar for categories and templates
-        sidebar = Frame(main_frame, width=200)
+        sidebar = Frame(main_frame, width=300)
         sidebar.grid(row=1, column=0, sticky=(N, S, W, E), padx=5, pady=5)
 
         # Category tree
-        self.category_tree = Treeview(sidebar, height=10)
+        self.category_tree = Treeview(sidebar, height=20)
         self.category_tree.heading('#0', text='Categories')
         self.category_tree.pack(fill=Y, expand=True)
         self.category_tree.bind('<<TreeviewSelect>>', self.on_treeview_select)
+
+        # Right-click context menus
+        self.create_context_menus()
 
         # Main prompt editing area
         editor_frame = Frame(main_frame)
         editor_frame.grid(row=1, column=1, sticky=(N, S, W, E), pady=5)
 
-        # Title and tags
+        # Title and category
         title_frame = Frame(editor_frame)
         title_frame.pack(fill=X, pady=5)
         Label(title_frame, text="Title:").pack(side=LEFT)
         self.title_entry = Entry(title_frame)
         self.title_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
 
-        tags_frame = Frame(editor_frame)
-        tags_frame.pack(fill=X, pady=5)
-        Label(tags_frame, text="Category:").pack(side=LEFT)
-        self.category_entry = Entry(tags_frame)
+        category_frame = Frame(editor_frame)
+        category_frame.pack(fill=X, pady=5)
+        Label(category_frame, text="Category:").pack(side=LEFT)
+        self.category_entry = Entry(category_frame)
         self.category_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
 
         # Main prompt content
@@ -289,7 +327,8 @@ class PromptEnhancementWindow:
         var_frame = LabelFrame(editor_frame, text="Variables")
         var_frame.pack(fill=X, pady=5)
 
-        self.var_tree = Treeview(var_frame, columns=("name", "description", "type", "default"), height=5, show="headings")
+        self.var_tree = Treeview(var_frame, columns=("name", "description", "type", "default"), height=5,
+                                 show="headings")
         self.var_tree.heading("name", text="Name")
         self.var_tree.heading("description", text="Description")
         self.var_tree.heading("type", text="Type")
@@ -336,18 +375,38 @@ class PromptEnhancementWindow:
             json.dump(self.categories, f, indent=4)
 
     def load_saved_categories(self):
-        """Load saved categories and prompts."""
+        """Load categories, merging default and custom categories."""
         categories_file = os.path.join(self.prompt_folder, "categories.json")
         if os.path.exists(categories_file):
             with open(categories_file, "r") as f:
                 self.categories = json.load(f)
 
-        # Populate the treeview with categories and prompts
+        # Combine default categories with custom categories
+        combined_categories = self.default_categories.copy()
+        for custom_category, prompts in self.categories.items():
+            if custom_category in combined_categories:
+                combined_categories[custom_category]['subcategories'] = {
+                    **combined_categories[custom_category].get('subcategories', {}),
+                    **prompts
+                }
+            else:
+                combined_categories[custom_category] = {'subcategories': prompts}
+
+        self.categories = combined_categories
+
+        # Populate treeview
+        self.populate_treeview()
+
+    def populate_treeview(self):
+        """Populate the category tree with combined categories."""
         self.category_tree.delete(*self.category_tree.get_children())
-        for category, prompts in self.categories.items():
+        for category, data in self.categories.items():
             category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
-            for prompt in prompts:
-                self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
+            for subcategory, prompts in data.get("subcategories", {}).items():
+                subcategory_id = self.category_tree.insert(category_id, 'end', text=subcategory,
+                                                           values=("subcategory",))
+                for prompt in prompts:
+                    self.category_tree.insert(subcategory_id, 'end', text=prompt, values=("prompt",))
 
     def load_variables_into_tree(self):
         """Load all variables into the Treeview."""
@@ -472,16 +531,12 @@ class PromptEnhancementWindow:
             print("Title and content cannot be empty.")
 
     def test_prompt(self):
-        """Test the current prompt template with variables replaced."""
+        """Test the current prompt with variables replaced."""
         content = self.prompt_text.get("1.0", END).strip()
         if content:
-            # Replace variables in the content with their default values
             for var in self.variables:
-                placeholder = f"{{{{{var['name']}}}}}"  # Example: "{{variable_name}}"
-                default_value = var.get("default", "")
-                content = content.replace(placeholder, default_value)
-
-            print("Testing prompt with variables interpreted:")
+                content = content.replace(f"{{{{{var['name']}}}}}", var.get("default", ""))
+            print("Processed Prompt:")
             print(content)
         else:
             print("Prompt content is empty.")
