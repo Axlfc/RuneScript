@@ -1,8 +1,72 @@
-import json
 import os
+import json
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
-    scrolledtext, LabelFrame, messagebox
+    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog
 from tkinter.ttk import Treeview
+
+
+class VariableEditDialog(Toplevel):
+    def __init__(self, parent, variable=None):
+        super().__init__(parent)
+        self.title("Edit Variable")
+        self.variable = variable or {}
+        self.result = None
+
+        # Make dialog modal
+        self.transient(parent)
+        self.grab_set()
+
+        # Create and pack the form
+        form = Frame(self)
+        form.pack(padx=10, pady=5, fill=BOTH, expand=True)
+
+        # Name field
+        Label(form, text="Name:").grid(row=0, column=0, sticky=W, pady=2)
+        self.name_var = StringVar(value=variable.get("name", ""))
+        self.name_entry = Entry(form, textvariable=self.name_var)
+        self.name_entry.grid(row=0, column=1, sticky=W + E, pady=2)
+
+        # Description field
+        Label(form, text="Description:").grid(row=1, column=0, sticky=W, pady=2)
+        self.desc_var = StringVar(value=variable.get("description", ""))
+        self.desc_entry = Entry(form, textvariable=self.desc_var)
+        self.desc_entry.grid(row=1, column=1, sticky=W + E, pady=2)
+
+        # Type field
+        Label(form, text="Type:").grid(row=2, column=0, sticky=W, pady=2)
+        self.type_var = StringVar(value=variable.get("type", "text"))
+        self.type_entry = Entry(form, textvariable=self.type_var)
+        self.type_entry.grid(row=2, column=1, sticky=W + E, pady=2)
+
+        # Default value field
+        Label(form, text="Default Value:").grid(row=3, column=0, sticky=W, pady=2)
+        self.default_var = StringVar(value=variable.get("default", ""))
+        self.default_entry = Entry(form, textvariable=self.default_var)
+        self.default_entry.grid(row=3, column=1, sticky=W + E, pady=2)
+
+        # Buttons
+        button_frame = Frame(form)
+        button_frame.grid(row=4, column=0, columnspan=2, pady=10)
+        Button(button_frame, text="OK", command=self.ok).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Cancel", command=self.cancel).pack(side=LEFT, padx=5)
+
+        # Center the dialog
+        self.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 50))
+
+        self.wait_window(self)
+
+    def ok(self):
+        self.result = {
+            "name": self.name_var.get(),
+            "description": self.desc_var.get(),
+            "type": self.type_var.get(),
+            "default": self.default_var.get()
+        }
+        self.destroy()
+
+    def cancel(self):
+        self.result = None
+        self.destroy()
 
 
 class PromptEnhancementWindow:
@@ -24,8 +88,154 @@ class PromptEnhancementWindow:
         # Setup UI
         self.setup_ui()
 
+        # Create context menus
+        self.create_context_menus()
+
         # Load saved categories and prompts
         self.load_saved_categories()
+
+    def create_context_menus(self):
+        """Create right-click context menus for the treeview."""
+        # Category context menu
+        self.category_menu = Menu(self.enhancement_window, tearoff=0)
+        self.category_menu.add_command(label="New Category", command=self.new_category)
+        self.category_menu.add_command(label="Rename Category", command=self.rename_category)
+        self.category_menu.add_command(label="Delete Category", command=self.delete_category)
+
+        # Prompt context menu
+        self.prompt_menu = Menu(self.enhancement_window, tearoff=0)
+        self.prompt_menu.add_command(label="Rename Prompt", command=self.rename_prompt)
+        self.prompt_menu.add_command(label="Delete Prompt", command=self.delete_prompt)
+
+        # Bind right-click event
+        self.category_tree.bind("<Button-3>", self.show_context_menu)
+
+    def show_context_menu(self, event):
+        """Show the appropriate context menu based on the selected item."""
+        item = self.category_tree.identify_row(event.y)
+        if item:
+            self.category_tree.selection_set(item)
+            item_type = self.category_tree.item(item, "values")
+            if item_type and item_type[0] == "category":
+                self.category_menu.post(event.x_root, event.y_root)
+            elif item_type and item_type[0] == "prompt":
+                self.prompt_menu.post(event.x_root, event.y_root)
+
+    def new_category(self):
+        """Create a new empty category."""
+        name = simpledialog.askstring("New Category", "Enter category name:")
+        if name and name.strip():
+            if name not in self.categories:
+                self.categories[name] = []
+                self.category_tree.insert('', 'end', text=name, values=("category",))
+                self.save_categories()
+            else:
+                messagebox.showerror("Error", "Category already exists!")
+
+    def rename_category(self):
+        """Rename selected category."""
+        selected = self.category_tree.selection()
+        if not selected:
+            return
+
+        item = selected[0]
+        if self.category_tree.item(item)["values"][0] != "category":
+            return
+
+        old_name = self.category_tree.item(item)["text"]
+        new_name = messagebox.askstring("Rename Category", "Enter new name:", initialvalue=old_name)
+
+        if new_name and new_name.strip() and new_name != old_name:
+            if new_name not in self.categories:
+                self.categories[new_name] = self.categories.pop(old_name)
+                self.category_tree.item(item, text=new_name)
+                self.save_categories()
+            else:
+                messagebox.showerror("Error", "Category already exists!")
+
+    def delete_category(self):
+        """Delete selected category and all its prompts."""
+        selected = self.category_tree.selection()
+        if not selected:
+            return
+
+        item = selected[0]
+        if self.category_tree.item(item)["values"][0] != "category":
+            return
+
+        category = self.category_tree.item(item)["text"]
+        if messagebox.askyesno("Confirm Delete", f"Delete category '{category}' and all its prompts?"):
+            # Delete prompt files
+            for prompt in self.categories[category]:
+                try:
+                    os.remove(os.path.join(self.prompt_folder, f"{prompt}.json"))
+                except OSError:
+                    pass
+
+            # Delete category
+            del self.categories[category]
+            self.category_tree.delete(item)
+            self.save_categories()
+
+    def rename_prompt(self):
+        """Rename selected prompt."""
+        selected = self.category_tree.selection()
+        if not selected:
+            return
+
+        item = selected[0]
+        if self.category_tree.item(item)["values"][0] != "prompt":
+            return
+
+        old_name = self.category_tree.item(item)["text"]
+        new_name = messagebox.askstring("Rename Prompt", "Enter new name:", initialvalue=old_name)
+
+        if new_name and new_name.strip() and new_name != old_name:
+            # Update prompt file
+            old_file = os.path.join(self.prompt_folder, f"{old_name}.json")
+            new_file = os.path.join(self.prompt_folder, f"{new_name}.json")
+
+            try:
+                with open(old_file, 'r') as f:
+                    prompt_data = json.load(f)
+
+                prompt_data['title'] = new_name
+
+                with open(new_file, 'w') as f:
+                    json.dump(prompt_data, f, indent=4)
+
+                os.remove(old_file)
+
+                # Update category listing
+                category = self.category_tree.item(self.category_tree.parent(item))["text"]
+                self.categories[category].remove(old_name)
+                self.categories[category].append(new_name)
+
+                self.category_tree.item(item, text=new_name)
+                self.save_categories()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to rename prompt: {str(e)}")
+
+    def delete_prompt(self):
+        """Delete selected prompt."""
+        selected = self.category_tree.selection()
+        if not selected:
+            return
+
+        item = selected[0]
+        if self.category_tree.item(item)["values"][0] != "prompt":
+            return
+
+        prompt = self.category_tree.item(item)["text"]
+        if messagebox.askyesno("Confirm Delete", f"Delete prompt '{prompt}'?"):
+            try:
+                os.remove(os.path.join(self.prompt_folder, f"{prompt}.json"))
+                category = self.category_tree.item(self.category_tree.parent(item))["text"]
+                self.categories[category].remove(prompt)
+                self.category_tree.delete(item)
+                self.save_categories()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete prompt: {str(e)}")
 
     def setup_ui(self):
         """Setup the UI layout."""
@@ -146,24 +356,28 @@ class PromptEnhancementWindow:
             self.var_tree.insert("", "end", values=(var["name"], var["description"], var["type"], var.get("default", "")))
 
     def add_variable(self):
-        """Add a new variable."""
-        new_var = {"name": "Variable" + str(len(self.variables) + 1), "description": "", "type": "text", "default": ""}
-        self.variables.append(new_var)
-        self.load_variables_into_tree()
+        """Add a new variable using the edit dialog."""
+        dialog = VariableEditDialog(self.enhancement_window)
+        if dialog.result:
+            self.variables.append(dialog.result)
+            self.load_variables_into_tree()
 
     def edit_variable(self):
-        """Edit the selected variable."""
+        """Edit the selected variable using a dialog."""
         selected_item = self.var_tree.selection()
         if not selected_item:
             messagebox.showinfo("Info", "Please select a variable to edit.")
             return
 
-        item_values = self.var_tree.item(selected_item, "values")
-        for var in self.variables:
-            if var["name"] == item_values[0]:
-                var["description"] = "Updated Description"  # Example edit
-                var["default"] = "Default Value"
-        self.load_variables_into_tree()
+        item_values = self.var_tree.item(selected_item[0], "values")
+        var_index = next((i for i, var in enumerate(self.variables)
+                          if var["name"] == item_values[0]), None)
+
+        if var_index is not None:
+            dialog = VariableEditDialog(self.enhancement_window, self.variables[var_index])
+            if dialog.result:
+                self.variables[var_index] = dialog.result
+                self.load_variables_into_tree()
 
     def delete_variable(self):
         """Delete the selected variable."""
