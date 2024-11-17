@@ -170,6 +170,7 @@ def create_settings_window(event=None):
 def open_system_info_window(event=None):
     return SystemInfoWindow()
 
+
 def open_find_in_files_window(event=None):
     return FindInFilesWindow()
 
@@ -250,7 +251,6 @@ def open_image_generation_window():
     return ImageGenerationWindow()
 
 
-
 def open_scriptsstudio_folder(event=None):
     """
     Opens the ScriptsStudio program folder in the system's file explorer.
@@ -263,6 +263,7 @@ def open_scriptsstudio_folder(event=None):
     """
     scriptsstudio_dir = read_config_parameter("options.file_management.scriptsstudio_directory")
     open_current_directory(scriptsstudio_dir)
+
 
 def open_scriptsstudio_data_folder(event=None):
     """
@@ -457,12 +458,14 @@ def toggle_interactive_view_visibility(frame):
         prompt_lookup = PromptLookup(prompt_folder="data/prompts")
         prompt_interpreter = PromptInterpreter(prompt_lookup)
 
-        # Create and configure the input field
-        input_field = Text(frame, height=1, font=my_font)
-        input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
+        # Command history and pointer for navigation
+        command_history = []
+        history_pointer = [0]
 
-        # Set up tab completion
-        setup_prompt_completion(input_field, prompt_interpreter)
+        # Create and configure the input field
+        input_field = Entry(frame, width=80, font=my_font)
+        input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
+        input_field.focus()
 
         def parse_variables(text):
             """Extract variables in the format {{var_name=value}} from text."""
@@ -500,11 +503,11 @@ def toggle_interactive_view_visibility(frame):
 
             # Process variables
             for var_name, var_info in required_vars.items():
-                placeholder = f"{{{var_name}}}"
                 value = str(provided_vars.get(var_name, var_info.get('default', '')))
-                # Replace the placeholder both with and without curly braces
-                content = content.replace(placeholder, value)  # Replace {var_name}
-                content = content.replace(f"{{{value}}}", value)  # Replace {value}
+                # Replace {var_name} with value
+                content = content.replace(f"{{{var_name}}}", value)
+                # Also replace {value} with value
+                content = content.replace(f"{{{value}}}", value)
 
             return content
 
@@ -537,11 +540,19 @@ def toggle_interactive_view_visibility(frame):
                             try:
                                 processed_content = process_prompt_content(prompt_data, provided_vars)
                                 if processed_content:
+                                    # Append additional text before the current command's result
+                                    if additional_text:
+                                        results.append(" ".join(additional_text).strip())
+                                        additional_text = []
+
                                     results.append(processed_content)
+
+                                # Add any remaining text to additional_text
+                                if remaining_text.strip():
+                                    additional_text.append(remaining_text.strip())
 
                                 # Skip past the command and its variables
                                 i = next_idx
-
                             except ValueError as e:
                                 print(f"Error processing command: {str(e)}")
                                 return None
@@ -556,42 +567,69 @@ def toggle_interactive_view_visibility(frame):
                     additional_text.append(part)
                     i += 1
 
-                # If we have accumulated additional text and we're either at a command or the end
-                if additional_text and (i >= len(parts) or (i < len(parts) and parts[i].startswith('/'))):
-                    # Add the accumulated additional text as a separate result
-                    text = " ".join(additional_text).strip()
-                    if text:
-                        results.append(f"ADDITIONAL_TEXT:{text}")
-                    additional_text = []
+            # Append any remaining additional text
+            if additional_text:
+                results.append(" ".join(additional_text).strip())
 
             return results
 
         def handle_input(event=None):
-            text = input_field.get("1.0", "end-1c").strip()
+            text = input_field.get().strip()
 
-            try:
-                results = interpret_command_string(text)
+            if text:
+                # Add the command to history
+                command_history.append(text)
+                history_pointer[0] = len(command_history)
 
-                if results:
-                    for result in results:
-                        if result.startswith("ADDITIONAL_TEXT:"):
-                            print(result[16:])  # Print just the additional text
-                        else:
-                            print(f"Prompt Content: {result}")
-                else:
-                    print(f"Regular input: {text}")
+                try:
+                    # Get the current context from the main editor (script_text)
+                    editor_context = script_text.get("1.0", "end-1c").strip()
+                    if not editor_context:
+                        editor_context = "<No Context>"  # Placeholder for empty context
 
-                input_field.delete("1.0", "end")
-                return "break"
+                    results = interpret_command_string(text)
 
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                return "break"
+                    if results:
+                        # Print just the context without any prefix
+                        print(editor_context)
 
-            return None
+                        for result in results:
+                            if result.startswith("ADDITIONAL_TEXT:"):
+                                # Print additional text without any prefix
+                                print(result[15:].strip())
+                            else:
+                                # Print prompt content without any prefix
+                                print(result)
+                    else:
+                        print(text)
 
-        # Bind the Return key to handle input
+                    input_field.delete(0, END)
+                except Exception as e:
+                    print(f"Error: {str(e)}")
+
+            return "break"
+        
+        def navigate_history(event):
+            """Navigate through the command history using arrow keys."""
+            if command_history:
+                if event.keysym == "Up":
+                    history_pointer[0] = max(0, history_pointer[0] - 1)
+                elif event.keysym == "Down":
+                    history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+
+                # Retrieve command from history or clear entry if at the end
+                command = (
+                    command_history[history_pointer[0]]
+                    if history_pointer[0] < len(command_history)
+                    else ""
+                )
+                input_field.delete(0, END)
+                input_field.insert(0, command)
+
+        # Bind keys for input handling and history navigation
         input_field.bind("<Return>", handle_input)
+        input_field.bind("<Up>", navigate_history)
+        input_field.bind("<Down>", navigate_history)
 
         frame.grid_columnconfigure(0, weight=1)
     else:

@@ -182,18 +182,6 @@ def create_filesystem_window():
 
 
 def create_content_file_window():
-    """ ""\"
-    Sets up the main text area for file content display and editing.
-
-    This function is responsible for initializing and configuring the main text area where the content of opened files
-    is displayed and can be edited by the user.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\" """
     global is_modified
     original_text = script_text.get("1.0", "end-1c")
     line_numbers = LineNumberCanvas(script_text, width=0)
