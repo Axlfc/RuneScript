@@ -10,25 +10,13 @@ import time
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-import anthropic
+# import anthropic
 from src.controllers.parameters import read_config_parameter
 
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
 
 
 def add_message(session_id, message):
-    """ ""\"
-    ""\"
-    add_message
-
-    Args:
-        session_id (Any): Description of session_id.
-        message (Any): Description of message.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     session_dir = os.path.join("data", "conversations", f"session_{session_id}")
     file_path = os.path.join(session_dir, f"{session_id}.json")
     if not os.path.exists(session_dir):
@@ -46,21 +34,6 @@ def add_message(session_id, message):
 
 
 def find_gguf_file():
-    """ ""\"
-    ""\"
-    Find a single .gguf file in the specified directory.
-
-    Parameters:
-    model_dir (str): The directory to search for .gguf files.
-
-    Returns:
-    str: The path to the .gguf file if exactly one is found.
-
-    Raises:
-    FileNotFoundError: If no .gguf files are found.
-    ValueError: If more than one .gguf file is found.
-    ""\"
-    ""\" """
     MODEL_DIR = "src/models/model/text"
     files = os.listdir(MODEL_DIR)
     gguf_files = [file for file in files if file.endswith(".gguf")]
@@ -74,51 +47,16 @@ def find_gguf_file():
 
 
 def initialize_client():
-    """ ""\"
-    ""\"
-    initialize_client
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     client = openai.OpenAI(base_url="http://localhost:8004/v1/", api_key="not-needed")
     return client
 
 
 def initialize_client_with_parameters(url, api_key):
-    """ ""\"
-    ""\"
-    initialize_client_with_parameters
-
-    Args:
-        url (Any): Description of url.
-        api_key (Any): Description of api_key.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     client = openai.OpenAI(base_url=url, api_key=api_key)
     return client
 
 
 def process_chat_completions(client, history):
-    """ ""\"
-    ""\"
-    process_chat_completions
-
-    Args:
-        client (Any): Description of client.
-        history (Any): Description of history.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     response = client.chat.completions.create(
         model="local-model",
         messages=history,
@@ -141,21 +79,6 @@ def chat_loop(
     system_prompt="You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful.",
     session_id=0,
 ):
-    """ ""\"
-    ""\"
-    chat_loop
-
-    Args:
-        prompt (Any): Description of prompt.
-        client (Any): Description of client.
-        model_path (Any): Description of model_path.
-        system_prompt (Any): Description of system_prompt.
-        session_id (Any): Description of session_id.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     history = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt},
@@ -175,17 +98,6 @@ def chat_loop(
 
 
 def load_agent_from_json(agent_name):
-    """ ""\"
-    ""\"
-    load_agent_from_json
-
-    Args:
-        agent_name (Any): Description of agent_name.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     with open("data/agents.json", "r") as file:
         agents = json.load(file)
     for agent in agents:
@@ -195,17 +107,6 @@ def load_agent_from_json(agent_name):
 
 
 def initialize_gemini_client():
-    """ ""\"
-    ""\"
-    initialize_gemini_client
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     load_dotenv()
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     return {
@@ -215,18 +116,6 @@ def initialize_gemini_client():
 
 
 def process_gemini_chat(client, prompt):
-    """ ""\"
-    ""\"
-    process_gemini_chat
-
-    Args:
-        client (Any): Description of client.
-        prompt (Any): Description of prompt.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     headers = {"Content-Type": "application/json"}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     try:
@@ -256,20 +145,6 @@ def process_gemini_chat(client, prompt):
 
 
 def chat_loop_gemini(prompt, client, system_prompt, session_id):
-    """ ""\"
-    ""\"
-    chat_loop_gemini
-
-    Args:
-        prompt (Any): Description of prompt.
-        client (Any): Description of client.
-        system_prompt (Any): Description of system_prompt.
-        session_id (Any): Description of session_id.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     conversation = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt},
@@ -288,17 +163,6 @@ def chat_loop_gemini(prompt, client, system_prompt, session_id):
 
 
 def initialize_claude_client():
-    """ ""\"
-    ""\"
-    initialize_claude_client
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     load_dotenv()
     CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY")
     # return anthropic.Anthropic(api_key=CLAUDE_API_KEY)
@@ -306,18 +170,6 @@ def initialize_claude_client():
 
 
 def process_claude_chat(client, prompt):
-    """ ""\"
-    ""\"
-    process_claude_chat
-
-    Args:
-        client (Any): Description of client.
-        prompt (Any): Description of prompt.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     try:
         response = client.completions.create(
             model="claude-3-opus-20240229",
@@ -337,20 +189,6 @@ Assistant:""",
 
 
 def chat_loop_claude(prompt, client, system_prompt, session_id):
-    """ ""\"
-    ""\"
-    chat_loop_claude
-
-    Args:
-        prompt (Any): Description of prompt.
-        client (Any): Description of client.
-        system_prompt (Any): Description of system_prompt.
-        session_id (Any): Description of session_id.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     full_prompt = f"{system_prompt}\n\nHuman: {prompt}\n\nAssistant:"
     response = process_claude_chat(client, full_prompt)
     if response.startswith("Error:"):
@@ -363,17 +201,6 @@ def chat_loop_claude(prompt, client, system_prompt, session_id):
 
 
 def main():
-    """ ""\"
-    ""\"
-    main
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     if len(sys.argv) < 2:
         print('Usage: python ai_assistant.py "<user_input>" [<agent_name>]')
         sys.exit(1)

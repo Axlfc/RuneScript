@@ -67,164 +67,170 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 
+def open_llama_cpp_python_settings_window():
+    return LlamaCppServerManager()
+
+
+def start_llama_cpp_python_server():
+    file_path = find_gguf_file()
+    print("THE PATH TO THE MODEL IS:\t", file_path)
+
+
+def open_ai_server_settings_window():
+    json_path = "data/llm_server_providers.json"
+
+    def toggle_display(selected_server):
+        server_info = server_details.get(selected_server, {})
+        server_url = server_info.get("server_url", "")
+        api_key = server_info.get("api_key", "")
+        server_url_entry.delete(0, END)
+        server_url_entry.insert(0, server_url)
+        api_key_entry.delete(0, END)
+        api_key_entry.insert(0, api_key)
+        if selected_server in [
+            "lmstudio",
+            "ollama",
+            "openai",
+            "llama-cpp-python",
+            "claude",
+            "gemini",
+        ]:
+            server_url_entry.grid()
+            server_url_label.grid()
+        else:
+            server_url_entry.grid_remove()
+            server_url_label.grid_remove()
+        if selected_server in ["openai", "claude", "gemini"]:
+            api_key_entry.grid()
+            api_key_label.grid()
+        else:
+            api_key_entry.grid_remove()
+            api_key_label.grid_remove()
+
+    def load_server_details():
+        try:
+            with open("data/llm_server_providers.json", "r") as server_file:
+                return json.load(server_file)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            messagebox.showerror(
+                "Error", f"Failed to load server details: {str(e)}"
+            )
+            return {}
+
+    def load_api_key_names():
+        with open(json_path, "r") as file:
+            data = json.load(file)
+        api_keys = {
+            provider: details["api_key"]
+            for provider, details in data.items()
+            if details["api_key"] != "not-needed"
+        }
+        return api_keys
+
+    def get_env_variable(variable_name):
+        env_path = ".env"
+        if os.path.exists(env_path):
+            with open(env_path, "r") as file:
+                for line in file:
+                    if line.startswith(f"{variable_name}="):
+                        return line.split("=", 1)[1].strip()
+
+    def update_env_file(api_key_field, new_api_key):
+        env_path = ".env"
+        updated = False
+        if os.path.exists(env_path):
+            with open(env_path, "r") as file:
+                lines = file.readlines()
+            with open(env_path, "w") as file:
+                for line in lines:
+                    if line.startswith(api_key_field + "="):
+                        file.write(f"{api_key_field}={new_api_key}\n")
+                        updated = True
+                    else:
+                        file.write(line)
+            if not updated:
+                with open(env_path, "a") as file:
+                    file.write(f"{api_key_field}={new_api_key}\n")
+        else:
+            with open(env_path, "w") as file:
+                file.write(f"{api_key_field}={new_api_key}\n")
+
+    def save_ai_server_settings():
+        server_url = server_url_entry.get()
+        api_keys = load_api_key_names()
+        selected = selected_server.get()
+        new_api_key = api_key_entry.get()
+        api_key_field = api_keys.get(selected)
+        if not new_api_key:
+            env_api_key = get_env_variable(api_key_field)
+            if env_api_key:
+                new_api_key = env_api_key
+            else:
+                messagebox.showerror(
+                    "Error",
+                    f"No API key found for {selected}. Please enter a valid API key.",
+                )
+                return
+        if new_api_key not in api_keys.values():
+            if selected in ["openai", "claude", "gemini"]:
+                update_env_file(api_key_field, new_api_key)
+                messagebox.showinfo(
+                    "AI Server Settings", "API Key updated successfully!"
+                )
+            else:
+                api_key_field = "not-needed"
+        else:
+            messagebox.showinfo(
+                "AI Server Settings",
+                "No changes made. The API Key entered is a placeholder.",
+            )
+        write_config_parameter(
+            "options.network_settings.last_selected_llm_server_provider", selected
+        )
+        write_config_parameter("options.network_settings.server_url", server_url)
+        write_config_parameter("options.network_settings.api_key", api_key_field)
+        settings_window.destroy()
+
+    server_details = load_server_details()
+    settings_window = Toplevel()
+    settings_window.title(localization_data["ai_server_settings_title"])
+    settings_window.geometry("400x300")
+    Label(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
+        row=0, column=0, sticky="w", padx=5, pady=5
+    )
+    selected_server = StringVar(settings_window)
+    last_selected = read_config_parameter(
+        "options.network_settings.last_selected_llm_server_provider"
+    )
+    selected_server.set(
+        last_selected
+        if last_selected in server_details
+        else next(iter(server_details), "")
+    )
+    server_options = list(server_details.keys())
+    server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
+    server_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+    server_url_label = Label(settings_window, text=localization_data["ai_server_url_label"])
+    server_url_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+    server_url_entry = Entry(settings_window, width=25)
+    server_url_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+    api_key_label = Label(settings_window, text=localization_data["ai_server_api_key_label"])
+    api_key_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
+    api_key_entry = Entry(settings_window, width=25, show="*")
+    api_key_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+    Button(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
+        row=3, column=0, columnspan=2, pady=10
+    )
+    selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
+    toggle_display(selected_server.get())
+    settings_window.columnconfigure(1, weight=1)
+    settings_window.mainloop()
+
+
 def open_ai_assistant_window(session_id=None):
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
     tts_manager = TTSManager()
-
-    def start_llama_cpp_python_server():
-        file_path = find_gguf_file()
-        print("THE PATH TO THE MODEL IS:\t", file_path)
-
-    def open_ai_server_settings_window():
-        json_path = "data/llm_server_providers.json"
-
-        def toggle_display(selected_server):
-            server_info = server_details.get(selected_server, {})
-            server_url = server_info.get("server_url", "")
-            api_key = server_info.get("api_key", "")
-            server_url_entry.delete(0, END)
-            server_url_entry.insert(0, server_url)
-            api_key_entry.delete(0, END)
-            api_key_entry.insert(0, api_key)
-            if selected_server in [
-                "lmstudio",
-                "ollama",
-                "openai",
-                "llama-cpp-python",
-                "claude",
-                "gemini",
-            ]:
-                server_url_entry.grid()
-                server_url_label.grid()
-            else:
-                server_url_entry.grid_remove()
-                server_url_label.grid_remove()
-            if selected_server in ["openai", "claude", "gemini"]:
-                api_key_entry.grid()
-                api_key_label.grid()
-            else:
-                api_key_entry.grid_remove()
-                api_key_label.grid_remove()
-
-        def load_server_details():
-            try:
-                with open("data/llm_server_providers.json", "r") as server_file:
-                    return json.load(server_file)
-            except (FileNotFoundError, json.JSONDecodeError) as e:
-                messagebox.showerror(
-                    "Error", f"Failed to load server details: {str(e)}"
-                )
-                return {}
-
-        def load_api_key_names():
-            with open(json_path, "r") as file:
-                data = json.load(file)
-            api_keys = {
-                provider: details["api_key"]
-                for provider, details in data.items()
-                if details["api_key"] != "not-needed"
-            }
-            return api_keys
-
-        def get_env_variable(variable_name):
-            env_path = ".env"
-            if os.path.exists(env_path):
-                with open(env_path, "r") as file:
-                    for line in file:
-                        if line.startswith(f"{variable_name}="):
-                            return line.split("=", 1)[1].strip()
-
-        def update_env_file(api_key_field, new_api_key):
-            env_path = ".env"
-            updated = False
-            if os.path.exists(env_path):
-                with open(env_path, "r") as file:
-                    lines = file.readlines()
-                with open(env_path, "w") as file:
-                    for line in lines:
-                        if line.startswith(api_key_field + "="):
-                            file.write(f"{api_key_field}={new_api_key}\n")
-                            updated = True
-                        else:
-                            file.write(line)
-                if not updated:
-                    with open(env_path, "a") as file:
-                        file.write(f"{api_key_field}={new_api_key}\n")
-            else:
-                with open(env_path, "w") as file:
-                    file.write(f"{api_key_field}={new_api_key}\n")
-
-        def save_ai_server_settings():
-            server_url = server_url_entry.get()
-            api_keys = load_api_key_names()
-            selected = selected_server.get()
-            new_api_key = api_key_entry.get()
-            api_key_field = api_keys.get(selected)
-            if not new_api_key:
-                env_api_key = get_env_variable(api_key_field)
-                if env_api_key:
-                    new_api_key = env_api_key
-                else:
-                    messagebox.showerror(
-                        "Error",
-                        f"No API key found for {selected}. Please enter a valid API key.",
-                    )
-                    return
-            if new_api_key not in api_keys.values():
-                if selected in ["openai", "claude", "gemini"]:
-                    update_env_file(api_key_field, new_api_key)
-                    messagebox.showinfo(
-                        "AI Server Settings", "API Key updated successfully!"
-                    )
-                else:
-                    api_key_field = "not-needed"
-            else:
-                messagebox.showinfo(
-                    "AI Server Settings",
-                    "No changes made. The API Key entered is a placeholder.",
-                )
-            write_config_parameter(
-                "options.network_settings.last_selected_llm_server_provider", selected
-            )
-            write_config_parameter("options.network_settings.server_url", server_url)
-            write_config_parameter("options.network_settings.api_key", api_key_field)
-            settings_window.destroy()
-
-        server_details = load_server_details()
-        settings_window = Toplevel()
-        settings_window.title(localization_data["ai_server_settings_title"])
-        settings_window.geometry("400x300")
-        Label(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
-            row=0, column=0, sticky="w", padx=5, pady=5
-        )
-        selected_server = StringVar(settings_window)
-        last_selected = read_config_parameter(
-            "options.network_settings.last_selected_llm_server_provider"
-        )
-        selected_server.set(
-            last_selected
-            if last_selected in server_details
-            else next(iter(server_details), "")
-        )
-        server_options = list(server_details.keys())
-        server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
-        server_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
-        server_url_label = Label(settings_window, text=localization_data["ai_server_url_label"])
-        server_url_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        server_url_entry = Entry(settings_window, width=25)
-        server_url_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-        api_key_label = Label(settings_window, text=localization_data["ai_server_api_key_label"])
-        api_key_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-        api_key_entry = Entry(settings_window, width=25, show="*")
-        api_key_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
-        Button(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
-            row=3, column=0, columnspan=2, pady=10
-        )
-        selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
-        toggle_display(selected_server.get())
-        settings_window.columnconfigure(1, weight=1)
-        settings_window.mainloop()
 
     def open_ai_server_agent_settings_window():
         def load_agents():
@@ -311,9 +317,6 @@ def open_ai_assistant_window(session_id=None):
             row=4, column=1
         )
         update_instructions(selected_agent_var.get())
-
-    def open_llama_cpp_python_settings_window():
-        return LlamaCppServerManager()
 
     def add_current_main_opened_script(include_main_script):
         global include_main_script_in_command

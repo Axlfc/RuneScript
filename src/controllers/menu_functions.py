@@ -1,7 +1,9 @@
+import difflib
 import json
 import os
 import sys
 import subprocess
+import threading
 import webbrowser
 from tkinter import (
     Menu,
@@ -13,7 +15,7 @@ from tkinter import (
     Checkbutton,
     Entry,
     Text,
-    BooleanVar,
+    BooleanVar, INSERT, TclError,
 )
 
 from PIL import Image, ImageTk
@@ -24,6 +26,7 @@ from src.controllers.scheduled_tasks import (
     open_new_at_task_window,
     open_new_crontab_task_window,
 )
+from src.models.AIAssistantWindow import AIAssistantWindow
 from src.models.FindInFilesWindow import FindInFilesWindow
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
@@ -205,6 +208,10 @@ def open_winget_window(event=None):
 
 def open_git_window(repo_dir=None):
     return GitWindow(repo_dir)
+
+
+'''def open_ai_assistant_window(event=None):
+    return AIAssistantWindow()'''
 
 
 def open_calculator_window(event=None):
@@ -583,23 +590,35 @@ def toggle_interactive_view_visibility(frame):
 
                 try:
                     # Get the current context from the main editor (script_text)
-                    editor_context = script_text.get("1.0", "end-1c").strip()
+                    editor_context = script_text.get("1.0", "end-1c")
                     if not editor_context:
                         editor_context = "<No Context>"  # Placeholder for empty context
+
+                    # Get the selected text from the editor
+                    try:
+                        selected_text = script_text.get("sel.first", "sel.last")
+                    except TclError:
+                        selected_text = None
 
                     results = interpret_command_string(text)
 
                     if results:
-                        # Print just the context without any prefix
-                        print(editor_context)
+                        # Disable input field
+                        input_field.config(state="disabled")
 
+                        # Process each result
                         for result in results:
                             if result.startswith("ADDITIONAL_TEXT:"):
-                                # Print additional text without any prefix
-                                print(result[15:].strip())
+                                # Handle additional text
+                                additional_text = result[15:].strip()
+                                print(additional_text)
                             else:
-                                # Print prompt content without any prefix
-                                print(result)
+                                # This is the prompt content
+                                prompt_text = result
+
+                                # Send prompt to AI assistant, along with selected text (if any)
+                                threading.Thread(target=process_prompt_and_apply_changes, args=(prompt_text, editor_context, selected_text)).start()
+
                     else:
                         print(text)
 
@@ -608,6 +627,106 @@ def toggle_interactive_view_visibility(frame):
                     print(f"Error: {str(e)}")
 
             return "break"
+
+        def process_prompt_and_apply_changes(prompt_text, editor_context, selected_text):
+            # Build the input for the AI assistant
+            if selected_text:
+                # If there is selected text, we send that as context
+                combined_input = f"{prompt_text}\n\nSelected Text:\n{selected_text}"
+                # Store the original selected text
+                original_text = selected_text
+                start_idx = script_text.index("sel.first")
+                end_idx = script_text.index("sel.last")
+            else:
+                combined_input = f"{prompt_text}\n\nContext:\n{editor_context}"
+                # Store the original editor content
+                original_text = editor_context
+                start_idx = "1.0"
+                end_idx = script_text.index("end-1c")
+
+            # Send the prompt and context to the AI assistant
+            ai_response = process_prompt_with_ai(combined_input)
+
+            if ai_response:
+                # Compute the diff between original_text and ai_response
+                sm = difflib.SequenceMatcher(None, original_text, ai_response)
+                # Apply the changes to the editor with animation
+                root.after(0, lambda: apply_changes_with_animation(start_idx, end_idx, sm.get_opcodes(), original_text, ai_response))
+            else:
+                # Re-enable the input field if there was no response
+                root.after(0, lambda: input_field.config(state="normal"))
+
+        def process_prompt_with_ai(combined_input):
+            ai_script_path = "src/models/ai_assistant.py"
+            python_executable = 'python'  # Adjust this path if necessary
+
+            command = [python_executable, ai_script_path, combined_input]
+
+            try:
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding='utf-8'
+                )
+
+                ai_response, error = process.communicate()
+
+                if error:
+                    print(f"AI Assistant Error: {error}")
+
+                return ai_response.strip()
+            except Exception as e:
+                print(f"Error processing prompt with AI: {e}")
+                return None
+
+        def apply_changes_with_animation(start_idx, end_idx, opcodes, original_text, ai_response):
+            # Delete the original text (we need to store it before deletion)
+            script_text.delete(start_idx, end_idx)
+
+            # Initialize positions
+            insert_idx = start_idx
+
+            # Function to apply changes recursively
+            def process_opcode(index):
+                nonlocal insert_idx  # Declare nonlocal at the beginning
+                if index < len(opcodes):
+                    tag, i1, i2, j1, j2 = opcodes[index]
+                    if tag == 'equal':
+                        text_to_insert = ai_response[j1:j2]
+                        script_text.insert(insert_idx, text_to_insert)
+                        insert_idx = script_text.index(f"{insert_idx}+{len(text_to_insert)}c")
+                        root.after(0, lambda: process_opcode(index + 1))
+                    elif tag == 'delete':
+                        # Deletion is already handled by deleting the original text
+                        root.after(0, lambda: process_opcode(index + 1))
+                    elif tag == 'insert' or tag == 'replace':
+                        text_to_insert = ai_response[j1:j2]
+                        text_chars = list(text_to_insert)
+                        total_chars = len(text_chars)
+                        current_char_index = [0]
+
+                        def type_next_char():
+                            nonlocal insert_idx  # Declare nonlocal at the beginning
+                            if current_char_index[0] < total_chars:
+                                script_text.insert(insert_idx, text_chars[current_char_index[0]])
+                                insert_idx = script_text.index(f"{insert_idx}+1c")
+                                current_char_index[0] += 1
+                                root.after(10, type_next_char)  # Adjust speed as needed
+                            else:
+                                root.after(0, lambda: process_opcode(index + 1))
+
+                        type_next_char()
+                    else:
+                        root.after(0, lambda: process_opcode(index + 1))
+                else:
+                    # All opcodes processed
+                    # Re-enable the input field
+                    input_field.config(state="normal")
+
+            # Start processing opcodes
+            process_opcode(0)
 
         def navigate_history(event):
             """Navigate through the command history using arrow keys."""
