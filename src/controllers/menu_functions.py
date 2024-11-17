@@ -454,7 +454,7 @@ def toggle_interactive_view_visibility(frame):
         frame.grid(row=4, column=0, pady=0, sticky="ew")
 
         # Initialize the prompt lookup system
-        prompt_lookup = PromptLookup(prompt_folder="data/prompts")  # Adjust path as needed
+        prompt_lookup = PromptLookup(prompt_folder="data/prompts")
         prompt_interpreter = PromptInterpreter(prompt_lookup)
 
         # Create and configure the input field
@@ -464,51 +464,128 @@ def toggle_interactive_view_visibility(frame):
         # Set up tab completion
         setup_prompt_completion(input_field, prompt_interpreter)
 
-        def process_prompt_content(prompt_data, context=None):
-            """Process prompt content with variables and context."""
+        def parse_variables(text):
+            """Extract variables in the format {{var_name=value}} from text."""
+            import re
+            var_pattern = r'\{\{(\w+)=(.*?)\}\}'
+            matches = re.finditer(var_pattern, text)
+            variables = {}
+            remaining_text = text
+
+            for match in matches:
+                var_name = match.group(1)
+                var_value = match.group(2)
+                variables[var_name] = var_value
+                remaining_text = remaining_text.replace(match.group(0), '')
+
+            return variables, remaining_text.strip()
+
+        def process_prompt_content(prompt_data, provided_vars):
+            """Process prompt content with provided variables."""
             if not prompt_data:
                 return None
 
             content = prompt_data['content']
-            variables = prompt_data.get('variables', [])
+            required_vars = {var['name']: var for var in prompt_data.get('variables', [])}
 
-            # Process variables if they exist
-            for var in variables:
-                placeholder = f"{{{var['name']}}}"
-                value = var.get('default', '')
-                content = content.replace(placeholder, value)
+            # Validate all required variables are provided
+            missing_vars = []
+            for var_name, var_info in required_vars.items():
+                if var_name not in provided_vars:
+                    if not var_info.get('default'):
+                        missing_vars.append(var_name)
 
-            # Process context if provided
-            if context:
-                # Add context processing logic here
-                # For example: content = content.replace("{CONTEXT}", context)
-                pass
+            if missing_vars:
+                raise ValueError(f"Missing required variables: {', '.join(missing_vars)}")
+
+            # Process variables
+            for var_name, var_info in required_vars.items():
+                placeholder = f"{{{var_name}}}"
+                value = str(provided_vars.get(var_name, var_info.get('default', '')))
+                # Replace the placeholder both with and without curly braces
+                content = content.replace(placeholder, value)  # Replace {var_name}
+                content = content.replace(f"{{{value}}}", value)  # Replace {value}
 
             return content
 
+        def interpret_command_string(text):
+            """Interpret a string that may contain multiple commands and additional text."""
+            parts = text.split()
+            results = []
+            additional_text = []
+            i = 0
+
+            while i < len(parts):
+                part = parts[i]
+
+                if part.startswith('/'):  # This is a command
+                    try:
+                        # Try to interpret as a command
+                        prompt_data = prompt_interpreter.interpret_input(part)
+
+                        if prompt_data:
+                            # Look ahead for variables
+                            vars_text = ""
+                            next_idx = i + 1
+                            while next_idx < len(parts) and '{{' in parts[next_idx]:
+                                vars_text += " " + parts[next_idx]
+                                next_idx += 1
+
+                            # Parse variables
+                            provided_vars, remaining_text = parse_variables(vars_text)
+
+                            try:
+                                processed_content = process_prompt_content(prompt_data, provided_vars)
+                                if processed_content:
+                                    results.append(processed_content)
+
+                                # Skip past the command and its variables
+                                i = next_idx
+
+                            except ValueError as e:
+                                print(f"Error processing command: {str(e)}")
+                                return None
+                        else:
+                            additional_text.append(part)
+                            i += 1
+                    except Exception as e:
+                        additional_text.append(part)
+                        i += 1
+                else:
+                    # If it's not a command, add to additional text
+                    additional_text.append(part)
+                    i += 1
+
+                # If we have accumulated additional text and we're either at a command or the end
+                if additional_text and (i >= len(parts) or (i < len(parts) and parts[i].startswith('/'))):
+                    # Add the accumulated additional text as a separate result
+                    text = " ".join(additional_text).strip()
+                    if text:
+                        results.append(f"ADDITIONAL_TEXT:{text}")
+                    additional_text = []
+
+            return results
+
         def handle_input(event=None):
             text = input_field.get("1.0", "end-1c").strip()
-            prompt_data = prompt_interpreter.interpret_input(text)
 
-            if prompt_data:
-                # Get the main script window content (assuming it's available)
-                # main_content = get_main_script_content()  # Implement this function
+            try:
+                results = interpret_command_string(text)
 
-                # Process the prompt with variables and context
-                processed_content = process_prompt_content(
-                    prompt_data,
-                    # context=main_content  # Uncomment when implemented
-                )
-
-                if processed_content:
-                    print(f"Prompt Content: {processed_content}")
+                if results:
+                    for result in results:
+                        if result.startswith("ADDITIONAL_TEXT:"):
+                            print(result[16:])  # Print just the additional text
+                        else:
+                            print(f"Prompt Content: {result}")
+                else:
+                    print(f"Regular input: {text}")
 
                 input_field.delete("1.0", "end")
                 return "break"
 
-            if event and event.keysym == "Return":
-                print(f"Regular input: {text}")
-                input_field.delete("1.0", "end")
+            except Exception as e:
+                print(f"Error: {str(e)}")
                 return "break"
 
             return None
@@ -522,7 +599,7 @@ def toggle_interactive_view_visibility(frame):
             "options.view_options.is_interactive_view_visible", "false"
         )
         frame.grid_forget()
-        
+
 
 def toggle_arguments_view_visibility(frame):
     if show_arguments_view_var.get() == 1:
