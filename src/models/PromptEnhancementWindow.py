@@ -2,7 +2,7 @@ import os
 import json
 import re
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
-    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog
+    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog, INSERT
 from tkinter.ttk import Treeview
 
 # Add these constants at the top of the file
@@ -13,12 +13,22 @@ ALIAS_MAX_LENGTH = 50
 DEFAULT_CATEGORY_FILE = "data/prompt_categories.json"  # File for default categories
 
 
-def generate_prompt_alias(title):
-    """Generate a prompt alias from the title by removing symbols and numbers, replacing spaces with underscores."""
-    # Remove symbols and numbers, keep only letters and spaces
-    cleaned = ''.join(char for char in title if char.isalpha() or char.isspace())
-    # Replace spaces with underscores and convert to lowercase
-    return cleaned.replace(' ', '_').lower().strip('_')
+def generate_prompt_alias(self, title):
+    """Generate a valid prompt alias from the title."""
+    # Remove all characters except letters, numbers, and spaces
+    cleaned = ''.join(char.lower() for char in title if char.isalnum() or char.isspace())
+    # Replace spaces with underscores and remove leading/trailing underscores
+    alias = cleaned.replace(' ', '_').strip('_')
+    # Ensure it starts with a letter
+    if alias and not alias[0].isalpha():
+        alias = 'p_' + alias
+    # Ensure minimum length
+    if len(alias) < ALIAS_MIN_LENGTH:
+        alias = alias + '_prompt'
+    # Truncate if too long
+    if len(alias) > ALIAS_MAX_LENGTH:
+        alias = alias[:ALIAS_MAX_LENGTH].rstrip('_')
+    return alias
 
 
 class VariableEditDialog(Toplevel):
@@ -111,6 +121,8 @@ class PromptEnhancementWindow:
 
         self.alias_valid = False
         self.alias_error = None
+
+        self.title_entry.bind('<KeyRelease>', self.update_alias)
 
     def load_default_categories(self):
         """Load default categories from a file."""
@@ -336,18 +348,18 @@ class PromptEnhancementWindow:
         self.title_entry = Entry(title_subframe)
         self.title_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
 
-        # Alias subframe
+        # Alias subframe with validation feedback
         alias_subframe = Frame(title_frame)
         alias_subframe.pack(fill=X, expand=True, pady=(5, 0))
         Label(alias_subframe, text="Alias:").pack(side=LEFT)
         self.alias_entry = Entry(alias_subframe)
         self.alias_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
-        self.alias_status_label = Label(alias_subframe, text="", fg="red")
+        self.alias_status_label = Label(alias_subframe, text="", fg="black")
         self.alias_status_label.pack(side=LEFT, padx=5)
 
-        # Add validation bindings
-        self.alias_entry.bind('<FocusOut>', self.validate_alias)
+        # Add binding for alias changes
         self.alias_entry.bind('<KeyRelease>', self.on_alias_change)
+        self.alias_entry.bind('<FocusOut>', self.validate_alias)
 
         category_frame = Frame(editor_frame)
         category_frame.pack(fill=X, pady=5)
@@ -408,48 +420,66 @@ class PromptEnhancementWindow:
         return self.alias_valid
 
     def on_alias_change(self, event=None):
-        """Handle alias changes in real-time."""
+        """Handle changes to the alias field in real-time."""
         alias = self.alias_entry.get().strip()
-        validation_result = self.check_alias_validity(alias, check_exists=False)  # Skip existence check during typing
+        validation_result = self.check_alias_validity(alias, check_exists=True)
 
         if not validation_result['valid']:
-            self.alias_status_label.config(text="⚠", fg="orange")
+            self.alias_status_label.config(text="⚠ " + validation_result['error'], fg="orange")
+            self.alias_valid = False
+            self.alias_error = validation_result['error']
         else:
-            self.alias_status_label.config(text="", fg="black")
+            self.alias_status_label.config(text="✓", fg="green")
+            self.alias_valid = True
+            self.alias_error = None
 
     def check_alias_validity(self, alias, check_exists=True):
-        """Check if an alias is valid according to all rules.
-
-        Returns:
-            dict: Contains 'valid' boolean and 'error' message if invalid
-        """
+        """Check if an alias is valid according to all rules."""
         if not alias:
             return {'valid': False, 'error': "Alias cannot be empty"}
 
         if len(alias) < ALIAS_MIN_LENGTH:
-            return {'valid': False, 'error': f"Alias must be at least {ALIAS_MIN_LENGTH} characters"}
+            return {'valid': False, 'error': f"Min {ALIAS_MIN_LENGTH} chars"}
 
         if len(alias) > ALIAS_MAX_LENGTH:
-            return {'valid': False, 'error': f"Alias cannot exceed {ALIAS_MAX_LENGTH} characters"}
+            return {'valid': False, 'error': f"Max {ALIAS_MAX_LENGTH} chars"}
 
         if not re.match(ALIAS_PATTERN, alias):
-            return {'valid': False,
-                    'error': "Alias must start with a letter and contain only lowercase letters, numbers, and underscores"}
+            return {'valid': False, 'error': "Invalid format"}
 
         if check_exists and self.check_alias_exists(alias, self.title_entry.get().strip()):
-            return {'valid': False, 'error': "This alias is already in use"}
+            return {'valid': False, 'error': "Already exists"}
 
         return {'valid': True, 'error': None}
 
+    def generate_prompt_alias(self, title):
+        """Generate a valid prompt alias from the title."""
+        # Remove all characters except letters, numbers, and spaces
+        cleaned = ''.join(char.lower() for char in title if char.isalnum() or char.isspace())
+        # Replace spaces with underscores and remove leading/trailing underscores
+        alias = cleaned.replace(' ', '_').strip('_')
+        # Ensure it starts with a letter
+        if alias and not alias[0].isalpha():
+            alias = 'p_' + alias
+        # Ensure minimum length
+        if len(alias) < ALIAS_MIN_LENGTH:
+            alias = alias + '_prompt'
+        # Truncate if too long
+        if len(alias) > ALIAS_MAX_LENGTH:
+            alias = alias[:ALIAS_MAX_LENGTH].rstrip('_')
+        return alias
+
     def update_alias(self, event=None):
-        """Update the alias field based on the title."""
+        """Update the alias field based on the title in real-time."""
         title = self.title_entry.get().strip()
         if title:
-            alias = generate_prompt_alias(title)
+            alias = self.generate_prompt_alias(title)
+            current_cursor = self.alias_entry.index(INSERT)  # Save cursor position
             self.alias_entry.delete(0, END)
             self.alias_entry.insert(0, alias)
-            # Validate the generated alias
-            self.validate_alias()
+            self.alias_entry.icursor(current_cursor)  # Restore cursor position
+            # Trigger validation
+            self.on_alias_change()
 
     def check_alias_exists(self, alias, current_title=None):
         """Check if an alias already exists in any prompt file.
@@ -631,7 +661,7 @@ class PromptEnhancementWindow:
             return
 
         # Validate alias format
-        if not self.validate_alias():
+        if not self.alias_valid:
             messagebox.showerror("Error", f"Invalid alias: {self.alias_error}")
             return
 
@@ -655,7 +685,6 @@ class PromptEnhancementWindow:
             with open(prompt_filename, "w") as f:
                 json.dump(self.prompt_data, f, indent=4)
 
-            # Update categories and UI
             self._update_categories(title, category)
             self.populate_treeview()
             self.select_prompt_in_tree(title)

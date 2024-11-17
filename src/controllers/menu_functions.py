@@ -608,7 +608,7 @@ def toggle_interactive_view_visibility(frame):
                     print(f"Error: {str(e)}")
 
             return "break"
-        
+
         def navigate_history(event):
             """Navigate through the command history using arrow keys."""
             if command_history:
