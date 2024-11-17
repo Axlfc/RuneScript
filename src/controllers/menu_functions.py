@@ -25,6 +25,7 @@ from src.controllers.scheduled_tasks import (
     open_new_crontab_task_window,
 )
 from src.models.FindInFilesWindow import FindInFilesWindow
+from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import (
@@ -445,18 +446,85 @@ def toggle_file_view_visibility(frame):
         frame.grid_forget()
 
 
+def toggle_interactive_view_visibility(frame):
+    if show_interactive_view_var.get() == 1:
+        write_config_parameter(
+            "options.view_options.is_interactive_view_visible", "true"
+        )
+        frame.grid(row=4, column=0, pady=0, sticky="ew")
+
+        # Initialize the prompt lookup system
+        prompt_lookup = PromptLookup(prompt_folder="data/prompts")  # Adjust path as needed
+        prompt_interpreter = PromptInterpreter(prompt_lookup)
+
+        # Create and configure the input field
+        input_field = Text(frame, height=1, font=my_font)
+        input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
+
+        # Set up tab completion
+        setup_prompt_completion(input_field, prompt_interpreter)
+
+        def process_prompt_content(prompt_data, context=None):
+            """Process prompt content with variables and context."""
+            if not prompt_data:
+                return None
+
+            content = prompt_data['content']
+            variables = prompt_data.get('variables', [])
+
+            # Process variables if they exist
+            for var in variables:
+                placeholder = f"{{{var['name']}}}"
+                value = var.get('default', '')
+                content = content.replace(placeholder, value)
+
+            # Process context if provided
+            if context:
+                # Add context processing logic here
+                # For example: content = content.replace("{CONTEXT}", context)
+                pass
+
+            return content
+
+        def handle_input(event=None):
+            text = input_field.get("1.0", "end-1c").strip()
+            prompt_data = prompt_interpreter.interpret_input(text)
+
+            if prompt_data:
+                # Get the main script window content (assuming it's available)
+                # main_content = get_main_script_content()  # Implement this function
+
+                # Process the prompt with variables and context
+                processed_content = process_prompt_content(
+                    prompt_data,
+                    # context=main_content  # Uncomment when implemented
+                )
+
+                if processed_content:
+                    print(f"Prompt Content: {processed_content}")
+
+                input_field.delete("1.0", "end")
+                return "break"
+
+            if event and event.keysym == "Return":
+                print(f"Regular input: {text}")
+                input_field.delete("1.0", "end")
+                return "break"
+
+            return None
+
+        # Bind the Return key to handle input
+        input_field.bind("<Return>", handle_input)
+
+        frame.grid_columnconfigure(0, weight=1)
+    else:
+        write_config_parameter(
+            "options.view_options.is_interactive_view_visible", "false"
+        )
+        frame.grid_forget()
+        
+
 def toggle_arguments_view_visibility(frame):
-    """ ""\"
-    ""\"
-    toggle_arguments_view_visibility
-
-    Args:
-        frame (Any): Description of frame.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     if show_arguments_view_var.get() == 1:
         write_config_parameter("options.view_options.is_arguments_view_visible", "true")
         frame.grid(row=5, column=0, pady=0, sticky="ew")
@@ -578,22 +646,6 @@ def toggle_timeout_view_visibility(frame):
             Tooltip(run_button, localization_data["set_duration_for_script_execution"])
     else:
         write_config_parameter("options.view_options.is_timeout_view_visible", "false")
-        frame.grid_forget()
-
-
-def toggle_interactive_view_visibility(frame):
-    if show_interactive_view_var.get() == 1:
-        write_config_parameter(
-            "options.view_options.is_interactive_view_visible", "true"
-        )
-        frame.grid(row=4, column=0, pady=0, sticky="ew")
-        input_field = Text(frame, height=1, font=my_font)
-        input_field.grid(row=7, column=0, padx=8, pady=(0, 8), sticky="ew")
-        frame.grid_columnconfigure(0, weight=1)
-    else:
-        write_config_parameter(
-            "options.view_options.is_interactive_view_visible", "false"
-        )
         frame.grid_forget()
 
 
