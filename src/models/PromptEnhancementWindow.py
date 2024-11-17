@@ -1,16 +1,31 @@
 import os
 import json
+import re
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
     scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog
 from tkinter.ttk import Treeview
 
+# Add these constants at the top of the file
+ALIAS_PATTERN = r'^[a-z][a-z0-9_]*[a-z0-9]$'
+ALIAS_MIN_LENGTH = 3
+ALIAS_MAX_LENGTH = 50
+
 DEFAULT_CATEGORY_FILE = "data/prompt_categories.json"  # File for default categories
+
+
+def generate_prompt_alias(title):
+    """Generate a prompt alias from the title by removing symbols and numbers, replacing spaces with underscores."""
+    # Remove symbols and numbers, keep only letters and spaces
+    cleaned = ''.join(char for char in title if char.isalpha() or char.isspace())
+    # Replace spaces with underscores and convert to lowercase
+    return cleaned.replace(' ', '_').lower().strip('_')
 
 
 class VariableEditDialog(Toplevel):
     def __init__(self, parent, variable=None):
         super().__init__(parent)
         self.title("Edit Variable")
+        # Ensure `variable` is a dictionary, even if None is passed
         self.variable = variable or {}
         self.result = None
 
@@ -24,25 +39,25 @@ class VariableEditDialog(Toplevel):
 
         # Name field
         Label(form, text="Name:").grid(row=0, column=0, sticky=W, pady=2)
-        self.name_var = StringVar(value=variable.get("name", ""))
+        self.name_var = StringVar(value=self.variable.get("name", ""))
         self.name_entry = Entry(form, textvariable=self.name_var)
         self.name_entry.grid(row=0, column=1, sticky=W + E, pady=2)
 
         # Description field
         Label(form, text="Description:").grid(row=1, column=0, sticky=W, pady=2)
-        self.desc_var = StringVar(value=variable.get("description", ""))
+        self.desc_var = StringVar(value=self.variable.get("description", ""))
         self.desc_entry = Entry(form, textvariable=self.desc_var)
         self.desc_entry.grid(row=1, column=1, sticky=W + E, pady=2)
 
         # Type field
         Label(form, text="Type:").grid(row=2, column=0, sticky=W, pady=2)
-        self.type_var = StringVar(value=variable.get("type", "text"))
+        self.type_var = StringVar(value=self.variable.get("type", "text"))
         self.type_entry = Entry(form, textvariable=self.type_var)
         self.type_entry.grid(row=2, column=1, sticky=W + E, pady=2)
 
         # Default value field
         Label(form, text="Default Value:").grid(row=3, column=0, sticky=W, pady=2)
-        self.default_var = StringVar(value=variable.get("default", ""))
+        self.default_var = StringVar(value=self.variable.get("default", ""))
         self.default_entry = Entry(form, textvariable=self.default_var)
         self.default_entry.grid(row=3, column=1, sticky=W + E, pady=2)
 
@@ -80,10 +95,10 @@ class PromptEnhancementWindow:
 
         # Initialize data storage
         self.prompt_data = {}
-        self.categories = {}  # {category_name: {"prompts": [prompt_title1, prompt_title2]}}
+        self.categories = {}
         self.default_categories = self.load_default_categories()
-        self.variables = []  # Store variables as a list of dictionaries
-        self.prompt_folder = "data/prompts"  # Directory to save/load prompts
+        self.variables = []
+        self.prompt_folder = "data/prompts"
 
         # Ensure prompt directory exists
         os.makedirs(self.prompt_folder, exist_ok=True)
@@ -93,6 +108,9 @@ class PromptEnhancementWindow:
 
         # Load saved categories and prompts
         self.load_saved_categories()
+
+        self.alias_valid = False
+        self.alias_error = None
 
     def load_default_categories(self):
         """Load default categories from a file."""
@@ -114,6 +132,7 @@ class PromptEnhancementWindow:
         self.prompt_menu.add_command(label="Delete Prompt", command=self.delete_prompt)
 
         self.category_tree.bind("<Button-3>", self.show_context_menu)
+
     def show_context_menu(self, event):
         """Show the appropriate context menu based on the selected item."""
         item = self.category_tree.identify_row(event.y)
@@ -306,12 +325,29 @@ class PromptEnhancementWindow:
         editor_frame = Frame(main_frame)
         editor_frame.grid(row=1, column=1, sticky=(N, S, W, E), pady=5)
 
-        # Title and category
+        # Title and alias frame
         title_frame = Frame(editor_frame)
         title_frame.pack(fill=X, pady=5)
-        Label(title_frame, text="Title:").pack(side=LEFT)
-        self.title_entry = Entry(title_frame)
+
+        # Title subframe
+        title_subframe = Frame(title_frame)
+        title_subframe.pack(fill=X, expand=True)
+        Label(title_subframe, text="Title:").pack(side=LEFT)
+        self.title_entry = Entry(title_subframe)
         self.title_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
+
+        # Alias subframe
+        alias_subframe = Frame(title_frame)
+        alias_subframe.pack(fill=X, expand=True, pady=(5, 0))
+        Label(alias_subframe, text="Alias:").pack(side=LEFT)
+        self.alias_entry = Entry(alias_subframe)
+        self.alias_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
+        self.alias_status_label = Label(alias_subframe, text="", fg="red")
+        self.alias_status_label.pack(side=LEFT, padx=5)
+
+        # Add validation bindings
+        self.alias_entry.bind('<FocusOut>', self.validate_alias)
+        self.alias_entry.bind('<KeyRelease>', self.on_alias_change)
 
         category_frame = Frame(editor_frame)
         category_frame.pack(fill=X, pady=5)
@@ -354,6 +390,80 @@ class PromptEnhancementWindow:
         Button(button_frame, text="Test Prompt", command=self.test_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Save Version", command=self.save_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Export", command=self.export_prompt).pack(side=LEFT, padx=5)
+
+    def validate_alias(self, event=None):
+        """Validate the alias when focus leaves the entry field."""
+        alias = self.alias_entry.get().strip()
+        validation_result = self.check_alias_validity(alias)
+
+        if not validation_result['valid']:
+            self.alias_status_label.config(text=validation_result['error'], fg="red")
+            self.alias_valid = False
+            self.alias_error = validation_result['error']
+        else:
+            self.alias_status_label.config(text="✓", fg="green")
+            self.alias_valid = True
+            self.alias_error = None
+
+        return self.alias_valid
+
+    def on_alias_change(self, event=None):
+        """Handle alias changes in real-time."""
+        alias = self.alias_entry.get().strip()
+        validation_result = self.check_alias_validity(alias, check_exists=False)  # Skip existence check during typing
+
+        if not validation_result['valid']:
+            self.alias_status_label.config(text="⚠", fg="orange")
+        else:
+            self.alias_status_label.config(text="", fg="black")
+
+    def check_alias_validity(self, alias, check_exists=True):
+        """Check if an alias is valid according to all rules.
+
+        Returns:
+            dict: Contains 'valid' boolean and 'error' message if invalid
+        """
+        if not alias:
+            return {'valid': False, 'error': "Alias cannot be empty"}
+
+        if len(alias) < ALIAS_MIN_LENGTH:
+            return {'valid': False, 'error': f"Alias must be at least {ALIAS_MIN_LENGTH} characters"}
+
+        if len(alias) > ALIAS_MAX_LENGTH:
+            return {'valid': False, 'error': f"Alias cannot exceed {ALIAS_MAX_LENGTH} characters"}
+
+        if not re.match(ALIAS_PATTERN, alias):
+            return {'valid': False,
+                    'error': "Alias must start with a letter and contain only lowercase letters, numbers, and underscores"}
+
+        if check_exists and self.check_alias_exists(alias, self.title_entry.get().strip()):
+            return {'valid': False, 'error': "This alias is already in use"}
+
+        return {'valid': True, 'error': None}
+
+    def update_alias(self, event=None):
+        """Update the alias field based on the title."""
+        title = self.title_entry.get().strip()
+        if title:
+            alias = generate_prompt_alias(title)
+            self.alias_entry.delete(0, END)
+            self.alias_entry.insert(0, alias)
+            # Validate the generated alias
+            self.validate_alias()
+
+    def check_alias_exists(self, alias, current_title=None):
+        """Check if an alias already exists in any prompt file.
+        Returns True if the alias exists in another prompt, False otherwise."""
+        for filename in os.listdir(self.prompt_folder):
+            if filename.endswith('.json') and filename != "categories.json":
+                try:
+                    with open(os.path.join(self.prompt_folder, filename), 'r') as f:
+                        prompt_data = json.load(f)
+                        if prompt_data.get('alias') == alias and prompt_data.get('title') != current_title:
+                            return True
+                except Exception:
+                    continue
+        return False
 
     def on_treeview_select(self, event):
         """Handle selection in the category tree."""
@@ -509,14 +619,32 @@ class PromptEnhancementWindow:
         self.load_variables_into_tree()
 
     def save_prompt(self):
-        """Save the current prompt template to file."""
+        """Save the current prompt template to file with validation."""
         title = self.title_entry.get().strip()
         category = self.category_entry.get().strip()
         content = self.prompt_text.get("1.0", END).strip()
+        alias = self.alias_entry.get().strip()
 
-        if title and content and category:
+        # Validate all required fields
+        if not all([title, content, category, alias]):
+            messagebox.showerror("Error", "Title, category, content, and alias cannot be empty.")
+            return
+
+        # Validate alias format
+        if not self.validate_alias():
+            messagebox.showerror("Error", f"Invalid alias: {self.alias_error}")
+            return
+
+        # Check for existing prompt with same title
+        if os.path.exists(os.path.join(self.prompt_folder, f"{title}.json")) and \
+                title != self.prompt_data.get('title'):
+            messagebox.showerror("Error", f"A prompt with the title '{title}' already exists.")
+            return
+
+        try:
             self.prompt_data = {
                 "title": title,
+                "alias": alias,
                 "category": category,
                 "content": content,
                 "variables": self.variables,
@@ -527,29 +655,28 @@ class PromptEnhancementWindow:
             with open(prompt_filename, "w") as f:
                 json.dump(self.prompt_data, f, indent=4)
 
-            # Update categories
-            if category not in self.categories or not isinstance(self.categories[category], dict):
-                # Initialize or repair the category structure
-                self.categories[category] = {"prompts": []}
-
-            # Ensure the "prompts" key exists in the category dictionary
-            if "prompts" not in self.categories[category]:
-                self.categories[category]["prompts"] = []
-
-            # Add the title to the category's prompts if it's not already there
-            if title not in self.categories[category]["prompts"]:
-                self.categories[category]["prompts"].append(title)
-
-            # Save categories and refresh treeview
-            self.save_categories()
+            # Update categories and UI
+            self._update_categories(title, category)
             self.populate_treeview()
-
-            # Select the saved prompt in the treeview
             self.select_prompt_in_tree(title)
 
             messagebox.showinfo("Success", f"Prompt '{title}' saved successfully.")
-        else:
-            messagebox.showerror("Error", "Title, category, and content cannot be empty.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save prompt: {str(e)}")
+
+    def _update_categories(self, title, category):
+        """Helper method to update categories when saving prompt."""
+        if category not in self.categories or not isinstance(self.categories[category], dict):
+            self.categories[category] = {"prompts": []}
+
+        if "prompts" not in self.categories[category]:
+            self.categories[category]["prompts"] = []
+
+        if title not in self.categories[category]["prompts"]:
+            self.categories[category]["prompts"].append(title)
+
+        self.save_categories()
 
     def select_prompt_in_tree(self, title):
         """Select a prompt in the treeview without triggering reload."""
@@ -606,9 +733,14 @@ class PromptEnhancementWindow:
             with open(prompt_filename, "r") as f:
                 self.prompt_data = json.load(f)
 
-            # Update UI elements with a guard against recursive events
+            # Update UI elements
             self.title_entry.delete(0, END)
             self.title_entry.insert(0, self.prompt_data.get('title', ''))
+
+            # Set alias from saved data or generate from title if not present
+            alias = self.prompt_data.get('alias') or generate_prompt_alias(self.prompt_data.get('title', ''))
+            self.alias_entry.delete(0, END)
+            self.alias_entry.insert(0, alias)
 
             self.category_entry.delete(0, END)
             self.category_entry.insert(0, self.prompt_data.get('category', ''))
@@ -624,6 +756,7 @@ class PromptEnhancementWindow:
             messagebox.showerror("Error", f"No saved prompt found with the title '{title}'.")
         except Exception as e:
             messagebox.showerror("Error", f"Error loading prompt: {str(e)}")
+
     def export_prompt(self):
         """Export the current prompt to a file."""
         title = self.title_entry.get().strip()
@@ -651,8 +784,9 @@ class PromptEnhancementWindow:
     def new_prompt(self):
         """Clear fields to create a new prompt."""
         self.title_entry.delete(0, END)
+        self.alias_entry.delete(0, END)
         self.category_entry.delete(0, END)
         self.prompt_text.delete("1.0", END)
-        self.variables = []  # Clear variables
-        self.var_tree.delete(*self.var_tree.get_children())  # Clear the variable treeview
+        self.variables = []
+        self.var_tree.delete(*self.var_tree.get_children())
         self.prompt_data = {}
