@@ -124,7 +124,7 @@ def update_menu_based_on_extension(ext):
     jobs_menu_index = None
 
     for index in range(menu.index('end') + 1):
-        if 'Jobs' in menu.entrycget(index, 'label'):
+        if localization_data["jobs"] in menu.entrycget(index, 'label'):
             jobs_menu_index = index
             break
 
