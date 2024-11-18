@@ -682,47 +682,49 @@ def toggle_interactive_view_visibility(frame):
                 return None
 
         def apply_changes_with_animation(start_idx, end_idx, opcodes, original_text, ai_response):
-            # Delete the original text (we need to store it before deletion)
+            # Delete the original text
             script_text.delete(start_idx, end_idx)
 
             # Initialize positions
             insert_idx = start_idx
 
-            # Function to apply changes recursively
             def process_opcode(index):
-                nonlocal insert_idx  # Declare nonlocal at the beginning
+                nonlocal insert_idx
                 if index < len(opcodes):
                     tag, i1, i2, j1, j2 = opcodes[index]
+
                     if tag == 'equal':
+                        # For unchanged parts, directly insert without animation
                         text_to_insert = ai_response[j1:j2]
                         script_text.insert(insert_idx, text_to_insert)
                         insert_idx = script_text.index(f"{insert_idx}+{len(text_to_insert)}c")
                         root.after(0, lambda: process_opcode(index + 1))
-                    elif tag == 'delete':
-                        # Deletion is already handled by deleting the original text
-                        root.after(0, lambda: process_opcode(index + 1))
+
                     elif tag == 'insert' or tag == 'replace':
+                        # For new/changed parts, apply character streaming animation
                         text_to_insert = ai_response[j1:j2]
                         text_chars = list(text_to_insert)
                         total_chars = len(text_chars)
                         current_char_index = [0]
 
                         def type_next_char():
-                            nonlocal insert_idx  # Declare nonlocal at the beginning
+                            nonlocal insert_idx
                             if current_char_index[0] < total_chars:
                                 script_text.insert(insert_idx, text_chars[current_char_index[0]])
                                 insert_idx = script_text.index(f"{insert_idx}+1c")
                                 current_char_index[0] += 1
-                                root.after(10, type_next_char)  # Adjust speed as needed
+                                root.after(10, type_next_char)  # Adjust typing speed as needed
                             else:
                                 root.after(0, lambda: process_opcode(index + 1))
 
                         type_next_char()
-                    else:
+
+                    else:  # 'delete'
+                        # Deletion is already handled by initial text deletion
                         root.after(0, lambda: process_opcode(index + 1))
+
                 else:
-                    # All opcodes processed
-                    # Re-enable the input field
+                    # All opcodes processed, re-enable input field
                     input_field.config(state="normal")
 
             # Start processing opcodes

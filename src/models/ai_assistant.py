@@ -158,7 +158,7 @@ def chat_loop_gemini(prompt, client, system_prompt, session_id):
     else:
         #print("Gemini:", response)
         print(response)
-    print("\n")
+    #print("\n")
     #print()
     #print("> ")
 
