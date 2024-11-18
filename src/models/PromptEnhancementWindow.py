@@ -2,7 +2,7 @@ import os
 import json
 import re
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
-    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog, INSERT
+    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog, INSERT, TclError
 from tkinter.ttk import Treeview
 
 # Add these constants at the top of the file
@@ -402,6 +402,67 @@ class PromptEnhancementWindow:
         Button(button_frame, text="Test Prompt", command=self.test_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Save Version", command=self.save_prompt).pack(side=LEFT, padx=5)
         Button(button_frame, text="Export", command=self.export_prompt).pack(side=LEFT, padx=5)
+
+        # Create context menu for prompt text
+        self.prompt_text_menu = Menu(self.enhancement_window, tearoff=0)
+        self.prompt_text.bind('<Button-3>', self.show_prompt_text_context_menu)
+
+    def show_prompt_text_context_menu(self, event):
+        """Show context menu for prompt text with enhance and explain options."""
+        # Check if there's selected text
+        try:
+            selected_text = self.prompt_text.get("sel.first", "sel.last")
+            if selected_text.strip():
+                # Create menu dynamically based on text selection
+                self.prompt_text_menu = Menu(self.enhancement_window, tearoff=0)
+                self.prompt_text_menu.add_command(label="Enhance", command=self.enhance_selected_text)
+                self.prompt_text_menu.add_command(label="Explain", command=self.explain_selected_text)
+
+                # Post the menu at the mouse click location
+                self.prompt_text_menu.post(event.x_root, event.y_root)
+        except TclError:
+            # No text selected, do nothing
+            pass
+
+    def enhance_selected_text(self):
+        """Enhance the selected text by improving its clarity, structure, or detail."""
+        try:
+            selected_text = self.prompt_text.get("sel.first", "sel.last")
+
+            # Basic enhancement prompt (you can make this more sophisticated)
+            enhanced_text = f"""Enhance the following text to make it more clear, precise, and professionally structured:
+
+    Original Text:
+    {selected_text}
+
+    Enhanced Text:
+    """
+
+            # Replace the selected text with the enhancement prompt
+            self.prompt_text.delete("sel.first", "sel.last")
+            self.prompt_text.insert("insert", enhanced_text)
+        except TclError:
+            messagebox.showerror("Error", "No text selected to enhance.")
+
+    def explain_selected_text(self):
+        """Provide an explanation or elaboration of the selected text."""
+        try:
+            selected_text = self.prompt_text.get("sel.first", "sel.last")
+
+            # Basic explanation prompt (you can make this more sophisticated)
+            explanation_text = f"""Explanation of the following text:
+
+    Original Text:
+    {selected_text}
+
+    Detailed Explanation:
+    """
+
+            # Replace the selected text with the explanation prompt
+            self.prompt_text.delete("sel.first", "sel.last")
+            self.prompt_text.insert("insert", explanation_text)
+        except TclError:
+            messagebox.showerror("Error", "No text selected to explain.")
 
     def validate_alias(self, event=None):
         """Validate the alias when focus leaves the entry field."""
