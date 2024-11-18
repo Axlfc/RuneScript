@@ -650,8 +650,10 @@ def toggle_interactive_view_visibility(frame):
             if ai_response:
                 # Compute the diff between original_text and ai_response
                 sm = difflib.SequenceMatcher(None, original_text, ai_response)
+
                 # Apply the changes to the editor with animation
-                root.after(0, lambda: apply_changes_with_animation(start_idx, end_idx, sm.get_opcodes(), original_text, ai_response))
+                root.after(0, lambda: apply_changes_with_animation(start_idx, end_idx, sm.get_opcodes(), original_text,
+                                                                   ai_response))
             else:
                 # Re-enable the input field if there was no response
                 root.after(0, lambda: input_field.config(state="normal"))
