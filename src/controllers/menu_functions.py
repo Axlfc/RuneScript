@@ -1,6 +1,7 @@
 import difflib
 import json
 import os
+import re
 import sys
 import subprocess
 import threading
@@ -476,7 +477,6 @@ def toggle_interactive_view_visibility(frame):
 
         def parse_variables(text):
             """Extract variables in the format {{var_name=value}} from text."""
-            import re
             var_pattern = r'\{\{(\w+)=(.*?)\}\}'
             matches = re.finditer(var_pattern, text)
             variables = {}

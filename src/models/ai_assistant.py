@@ -156,10 +156,11 @@ def chat_loop_gemini(prompt, client, system_prompt, session_id):
     if response.startswith("Error:"):
         print(f"An error occurred: {response}")
     else:
-        print("Gemini:", response)
-    print("\n> ")
-    print()
-    print("> ")
+        #print("Gemini:", response)
+        print(response)
+    print("\n")
+    #print()
+    #print("> ")
 
 
 def initialize_claude_client():
