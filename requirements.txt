@@ -14,3 +14,14 @@ pdf2image
 pyttsx3
 bs4
 pyperclip
+pyyaml
+psutil
+faiss-cpu
+torch
+torchaudio
+sentence_transformers
+langchain
+langchain_community
+PyPDF2
+openai
+tiktoken

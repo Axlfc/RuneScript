@@ -27,7 +27,6 @@ from src.controllers.scheduled_tasks import (
     open_new_at_task_window,
     open_new_crontab_task_window,
 )
-from src.models.AIAssistantWindow import AIAssistantWindow
 from src.models.FindInFilesWindow import FindInFilesWindow
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow

@@ -8,7 +8,14 @@ class PromptLookup:
     def __init__(self, prompt_folder: str):
         self.prompt_folder = prompt_folder
         self.alias_cache: Dict[str, dict] = {}
+        self.ensure_prompt_folder_exists()
         self.refresh_cache()
+
+    def ensure_prompt_folder_exists(self):
+        """Ensure the prompt folder exists, create if it doesn't."""
+        if not os.path.exists(self.prompt_folder):
+            os.makedirs(self.prompt_folder)
+            print(f"Created missing prompt folder: {self.prompt_folder}")
 
     def refresh_cache(self):
         """Refresh the alias cache from prompt files."""
@@ -20,7 +27,8 @@ class PromptLookup:
                         prompt_data = json.load(f)
                         if 'alias' in prompt_data:
                             self.alias_cache[prompt_data['alias']] = prompt_data
-                except Exception:
+                except Exception as e:
+                    print(f"Error reading file {filename}: {e}")
                     continue
 
     def find_prompt_by_alias(self, alias: str) -> Optional[dict]:
