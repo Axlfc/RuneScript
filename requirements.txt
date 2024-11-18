@@ -25,3 +25,9 @@ langchain_community
 PyPDF2
 openai
 tiktoken
+llama-cpp-python
+uvicorn
+starlette
+fastapi
+sse_starlette
+starlette_context

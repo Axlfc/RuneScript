@@ -1,5 +1,5 @@
 {
-    "scripts_editor": "Editor d'Scripts",
+    "scripts_editor": "RunScript",
     "scripts_editor_info": "Editor d'Scripts\nCreat en Python utilitzant Tkinter\nAxlfc, 2023-2024",
     "untitled": "Sense títol",
     "script_name_label": "Nom del Script: ",

@@ -1,4 +1,4 @@
-# ScriptsEditor: Your Versatile Script Editor
+# RuneScript: Your Versatile Script Editor
 
 [![License: GPL-2.0](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)](https://github.com/Axlfc/ScriptsEditor/releases)
@@ -7,9 +7,7 @@
 [![Contributors](https://img.shields.io/github/contributors/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/graphs/contributors)
 [![Stargazers](https://img.shields.io/github/stars/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/stargazers)
 
-ScriptsEditor is a powerful and versatile script writing and editing platform built with Python, tailored for developers, scriptwriters, and coding enthusiasts. Designed to streamline your workflow, it offers advanced script execution capabilities, seamless Git integration, and an intelligent AI assistant for enhanced productivity. Whether you're managing cron jobs, editing scripts, or generating creative assets, ScriptsEditor provides a scalable, user-friendly environment to boost efficiency and manage complex projects effortlessly. Perfect for those seeking a dynamic tool that adapts to both code and creative needs.
-
-![ScriptsEditor Screenshot](images/ScriptsStudio130.gif)
+RuneScript is a powerful and versatile script writing and editing platform built with Python, tailored for developers, scriptwriters, and coding enthusiasts. Designed to streamline your workflow, it offers advanced script execution capabilities, seamless Git integration, and an intelligent AI assistant for enhanced productivity. Whether you're managing cron jobs, editing scripts, or generating creative assets, RuneScript provides a scalable, user-friendly environment to boost efficiency and manage complex projects effortlessly. Perfect for those seeking a dynamic tool that adapts to both code and creative needs.
 
 ## Table of Contents
 - [Features](#features)
@@ -23,6 +21,26 @@ ScriptsEditor is a powerful and versatile script writing and editing platform bu
 - [Contributing](#contributing)
 - [License](#license)
 
+## System Requirements
+
+### Minimum Requirements
+- **OS**: Windows 10/11 or Linux (Ubuntu 20.04 or newer)
+- **CPU**: Intel Core i5/AMD Ryzen 5 or better
+- **RAM**: 8GB
+- **Storage**: 4GB free disk space
+- **Python**: 3.9 or newer
+
+### Recommended Requirements
+- **OS**: Windows 11 or Linux (Ubuntu 22.04 or newer)
+- **CPU**: Intel Core i7/AMD Ryzen 7 or better
+- **RAM**: 16GB
+- **Storage**: 8GB free disk space
+- **GPU**: NVIDIA RTX 2060 6GB or better (with CUDA support)
+- **Python**: 3.9 or newer
+
+Note: NVIDIA GPU with CUDA support is recommended for optimal performance with AI features, Stable Diffusion, and audio generation.
+
+
 ## Features
 - Save, open, and edit scripts with an intuitive editor
 - Script execution from within ScriptsEditor - Run immediately, Timeout, Entry Arguments...
@@ -31,7 +49,7 @@ ScriptsEditor is a powerful and versatile script writing and editing platform bu
 - Basic Kanban application for project management
 - System information display and program installation using **Winget**
 - **Git Console**: Manage Git repositories from within the Git Console Window, including commits and branches _(work in progress)_
-- **AI Assistant**: Multi-agent selection for local LLMs or external APIs (ChatGPT, Claude, etc.) _(work in progress)_
+- **AI Assistant**: Multi-agent selection for local LLMs or external APIs (llama-cpp-python, ChatGPT, Claude, etc.) _(work in progress)_
 - Integration with **Stable Diffusion** and **Stable Audio** for image and audio generation _(work in progress)_
 - Built-in **calculator window** _(work in progress)_
 
@@ -92,9 +110,13 @@ ScriptsEditor is a powerful and versatile script writing and editing platform bu
 
 ### Setting up the Project
 
-1. Clone the repository:
+1. Clone or fork the repository:
    ```bash
-   git clone https://github.com/Axlfc/ScriptsEditor
+   git clone https://github.com/Axlfc/RuneScript
+   ```
+   If you did a fork;
+   ```bash
+   git clone https://github.com/your_git_username/RuneScript
    ```
 2. Navigate to the project directory:
    ```bash
@@ -123,14 +145,12 @@ ScriptsEditor is a powerful and versatile script writing and editing platform bu
        ```bash
          .\venv\Scripts\pip install -r requirements.txt
          .\venv\Scripts\pip install -r src/models/requirements.txt
-         .\venv\Scripts\pip install torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
        ```
 
    - On macOS and Linux:
      ```bash
        venv/bin/pip install -r requirements.txt
        venv/bin/pip install -r src/models/requirements.txt
-       venv/bin/pip install torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
      ```
      
 6. Install models:
@@ -156,7 +176,7 @@ To use the `stable-audio-open-1.0` model for audio generation in ScriptsEditor, 
   - Get to download the model files 
     - [stable-audio-open-1.0.ckpt](https://huggingface.co/stabilityai/stable-audio-open-1.0)
     - [sd-v1-4.ckpt](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/blob/main/sd-v1-4.ckpt)
-    - [llama-2-7b-chat.Q4_K_M.gguf](https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF)
+    - [qwen2.5-coder-1.5b-q8_0.gguf](https://huggingface.co/ggerganov/Qwen2.5-Coder-1.5B-Q8_0-GGUF)
   - Create a new folder in this repository in ```src/models``` named ```model```
   ```bash
       mkdir src/models/model
@@ -165,7 +185,7 @@ To use the `stable-audio-open-1.0` model for audio generation in ScriptsEditor, 
   ```bash
       mkdir src/models/model/text
   ```
-  - Put the .gguf file in src/models/model/text directory.
+  - Put only one .gguf file in src/models/model/text directory.
   - Save Stable Diffusion model in src/models/model/image
   - Save Stable Audio model in src/models/model/audio 
 
@@ -177,11 +197,11 @@ We finished setting up ScriptsEditor.
 
 Before running ScriptsEditor, you need to set up the AI assistant server. Follow these steps:
 
-1. Place a valid `.gguf` file into the folder `src/models/model`. In this example, the file used is `llama-2-7b-chat.Q4_K_M.gguf`.
+1. Place a valid `.gguf` file into the folder `src/models/model`. In this example, the file used is `qwen2.5-coder-1.5b-q8_0.gguf`.
 
 2. Start the AI assistant server using the following command:
    ```Powershell
-   .\.venv\Scripts\python.exe -m llama_cpp.server --port 8004 --model .\src\models\model\llama-2-7b-chat.Q4_K_M.gguf
+   .\.venv\Scripts\python.exe -m llama_cpp.server --port 8004 --model .\src\models\model\qwen2.5-coder-1.5b-q8_0.gguf
    ```
 
 After setting up and starting the AI assistant server, you can run ScriptsEditor by executing the `main.py` script.
@@ -205,5 +225,5 @@ ScriptsEditor is open-source and licensed under the [GPL-2.0](LICENSE).
 
 ## TO-DO:
 - [] Implement whisper.cpp to be able to talk to ScriptsEditor
-- [] Implement TTS (Accessibility)
-
+- [] Implement stable-difussion-cpp as image generation backend
+- [] Implement stable-diffusion audio as audio generation backend
