@@ -955,18 +955,6 @@ def toggle_view(frame, function, options_parameter_name, view_variable):
 
 
 def update_config(option_name, value):
-    """ ""\"
-    ""\"
-    update_config
-
-    Args:
-        option_name (Any): Description of option_name.
-        value (Any): Description of value.
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     user_config_file = "data/user_config.json"
     try:
         with open(user_config_file, "r") as config_file:

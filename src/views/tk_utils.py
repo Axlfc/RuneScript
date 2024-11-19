@@ -1,3 +1,5 @@
+import json
+import shutil
 from tkinter.ttk import Treeview
 from ttkbootstrap import Style
 from src.controllers.parameters import (
@@ -11,8 +13,24 @@ from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox, fon
 from tkinter import scrolledtext, Text, Entry, Menu
 import os
 
+ensure_user_config()
 language_selected_option = read_config_parameter("options.editor_settings.language")
 localization_data = load_localization(f"data/locales/{language_selected_option}.json")
+
+
+def ensure_user_config():
+    user_config_file = "data/user_config.json"
+    default_config_file = "data/config.json"
+
+    if not os.path.exists(user_config_file):
+        if os.path.exists(default_config_file):
+            shutil.copy(default_config_file, user_config_file)
+        else:
+            # Create a minimal default config if no default file exists
+            os.makedirs(os.path.dirname(user_config_file), exist_ok=True)
+            default_config = {"options": {"view_options": {}, "language_selected": "en"}}
+            with open(user_config_file, "w") as file:
+                json.dump(default_config, file, indent=4)
 
 
 def configure_app():
