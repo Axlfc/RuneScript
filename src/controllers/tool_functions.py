@@ -919,10 +919,6 @@ def open_ai_assistant_window(session_id=None):
     # Initialize the context menu
     documents_context_menu = Menu(ai_assistant_window, tearoff=0)
 
-    # Remove these lines
-    # command_history = []
-    # history_pointer = [0]
-
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill="both", expand=True)
     html_display = HTMLLabel(ai_assistant_window, html="")
@@ -983,6 +979,11 @@ def open_ai_assistant_window(session_id=None):
 
     def interpret_command_string(text):
         """Interpret a string that may contain multiple commands and additional text."""
+        # Check for mathematical or assignment-like statements first
+        if re.match(r'^[a-z]\s*=\s*\d+\s*;?\s*[a-z]\s*=\s*\d+', text, re.IGNORECASE):
+            # If it looks like a mathematical assignment, pass the whole text
+            return [text]
+
         parts = text.split()
         results = []
         additional_text = []
@@ -1015,8 +1016,10 @@ def open_ai_assistant_window(session_id=None):
                                     results.append(" ".join(additional_text).strip())
                                     additional_text = []
 
-                                results.append(
-                                    f"Command: {part}, Variables: {provided_vars}, Result: {processed_content}")
+                                #results.append(f"Command: {part}, Variables: {provided_vars}, Result: {processed_content}")
+                                print("THE PROCESSED CONTENT:\t", processed_content)
+                                results.append(processed_content)
+
 
                             # Add any remaining text to additional_text
                             if remaining_text.strip():
