@@ -52,6 +52,7 @@ import xml.etree.ElementTree as ET
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 from src.models.LlamaCppServerManager import LlamaCppServerManager
+from src.models.PromptLookup import PromptLookup, PromptInterpreter
 
 from src.models.TTSManager import TTSManager
 from src.models.VaultRAG import VaultRAG
@@ -231,6 +232,8 @@ def open_ai_assistant_window(session_id=None):
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
     tts_manager = TTSManager()
+    prompt_lookup = PromptLookup(prompt_folder="data/prompts")
+    prompt_interpreter = PromptInterpreter(prompt_lookup)
 
     def open_ai_server_agent_settings_window():
         def load_agents():
@@ -937,6 +940,143 @@ def open_ai_assistant_window(session_id=None):
     output_text.insert(END, "> ", "ai")
     entry.focus()
 
+    def parse_variables(text):
+        """Extract variables in the format {{var_name=value}} from text."""
+        var_pattern = r'\{\{(\w+)=(.*?)\}\}'
+        matches = re.finditer(var_pattern, text)
+        variables = {}
+        remaining_text = text
+
+        for match in matches:
+            var_name = match.group(1)
+            var_value = match.group(2)
+            variables[var_name] = var_value
+            remaining_text = remaining_text.replace(match.group(0), '')
+
+        return variables, remaining_text.strip()
+
+    def process_prompt_content(prompt_data, provided_vars):
+        """Process prompt content with provided variables."""
+        if not prompt_data:
+            return None
+
+        content = prompt_data['content']
+        required_vars = {var['name']: var for var in prompt_data.get('variables', [])}
+
+        # Validate all required variables are provided
+        missing_vars = []
+        for var_name, var_info in required_vars.items():
+            if var_name not in provided_vars:
+                if not var_info.get('default'):
+                    missing_vars.append(var_name)
+
+        if missing_vars:
+            raise ValueError(f"Missing required variables: {', '.join(missing_vars)}")
+
+        # Process variables
+        for var_name, var_info in required_vars.items():
+            value = str(provided_vars.get(var_name, var_info.get('default', '')))
+            content = content.replace(f"{{{var_name}}}", value)
+            content = content.replace(f"{{{value}}}", value)
+
+        return content
+
+    def interpret_command_string(text):
+        """Interpret a string that may contain multiple commands and additional text."""
+        parts = text.split()
+        results = []
+        additional_text = []
+        i = 0
+
+        while i < len(parts):
+            part = parts[i]
+
+            if part.startswith('/'):  # This is a command
+                try:
+                    # Try to interpret as a command
+                    prompt_data = prompt_interpreter.interpret_input(part)
+
+                    if prompt_data:
+                        # Look ahead for variables
+                        vars_text = ""
+                        next_idx = i + 1
+                        while next_idx < len(parts) and '{{' in parts[next_idx]:
+                            vars_text += " " + parts[next_idx]
+                            next_idx += 1
+
+                        # Parse variables
+                        provided_vars, remaining_text = parse_variables(vars_text)
+
+                        try:
+                            processed_content = process_prompt_content(prompt_data, provided_vars)
+                            if processed_content:
+                                # Append additional text before the current command's result
+                                if additional_text:
+                                    results.append(" ".join(additional_text).strip())
+                                    additional_text = []
+
+                                results.append(
+                                    f"Command: {part}, Variables: {provided_vars}, Result: {processed_content}")
+
+                            # Add any remaining text to additional_text
+                            if remaining_text.strip():
+                                additional_text.append(remaining_text.strip())
+
+                            # Skip past the command and its variables
+                            i = next_idx
+                        except ValueError as e:
+                            output_text.insert("end", f"Error processing command: {str(e)}\n", "error")
+                            return None
+                    else:
+                        additional_text.append(part)
+                        i += 1
+                except Exception as e:
+                    additional_text.append(part)
+                    i += 1
+            else:
+                additional_text.append(part)
+                i += 1
+
+        # Append any remaining additional text
+        if additional_text:
+            results.append(" ".join(additional_text).strip())
+
+        return results
+
+    def handle_input(event=None):
+        """Handle input from the entry widget."""
+        text = entry.get().strip()
+
+        if text:
+            try:
+                # Process the input for commands
+                results = interpret_command_string(text)
+
+                if results:
+                    for result in results:
+                        if "Command:" in result:
+                            # Format command for AI with interpretation
+                            ai_input = f"Interpreted Input:\n{result}\nWhat would you like me to do with this?"
+                            execute_ai_assistant_command(
+                                add_current_main_opened_script_var,
+                                add_current_selected_text_var,
+                                ai_input
+                            )
+                        else:
+                            # For additional text, send directly to AI
+                            execute_ai_assistant_command(
+                                add_current_main_opened_script_var,
+                                add_current_selected_text_var,
+                                result
+                            )
+
+                    entry.delete(0, END)
+
+            except Exception as e:
+                output_text.insert("end", f"Error: {str(e)}\n", "error")
+
+        return "break"
+
     def on_md_content_change(event=None):
         global original_md_content
         original_md_content = script_text.get("1.0", END)
@@ -965,11 +1105,6 @@ def open_ai_assistant_window(session_id=None):
             output_text.insert("1.0", original_md_content)
             html_display.pack_forget()
             output_text.pack(fill="both", expand=True)
-
-    '''def save_to_history(self, command):
-        if command.strip():  # Evita agregar comandos vacíos
-            self.command_history.append(command)
-            self.history_pointer[0] = len(self.command_history)'''
 
     def navigate_history(event):
         global current_session
@@ -1216,12 +1351,11 @@ def open_ai_assistant_window(session_id=None):
         return ""
 
     def update_ui_display(ai_command):
-        """Update the UI with the user's command"""
+        """Update the UI with the user's command."""
         global original_md_content
         # Display the user's input in the UI
         output_text.insert("end", f"You: {ai_command}\n", "user")
         output_text.insert("end", "-" * 80 + "\n")
-        # Append to vault and update original markdown content
         append_to_vault(f"USER: {ai_command}")
         original_md_content += f"\n{ai_command}\n"
         original_md_content += "-" * 80 + "\n"
@@ -1413,14 +1547,15 @@ def open_ai_assistant_window(session_id=None):
     output_text.bind("<Button-3>", show_context_menu)
     output_text.bind("<<TextModified>>", on_md_content_change)
     output_text.see(END)
-    entry.bind(
+    '''entry.bind(
         "<Return>",
         lambda event: execute_ai_assistant_command(
             add_current_main_opened_script_var,
             add_current_selected_text_var,
             entry.get(),
         ),
-    )
+    )'''
+    entry.bind("<Return>", handle_input)
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
 
