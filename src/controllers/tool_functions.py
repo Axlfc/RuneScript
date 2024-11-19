@@ -916,6 +916,10 @@ def open_ai_assistant_window(session_id=None):
     # Initialize the context menu
     documents_context_menu = Menu(ai_assistant_window, tearoff=0)
 
+    # Command history and pointer for navigation
+    command_history = []
+    history_pointer = [0]
+
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill="both", expand=True)
     html_display = HTMLLabel(ai_assistant_window, html="")
@@ -962,19 +966,27 @@ def open_ai_assistant_window(session_id=None):
             html_display.pack_forget()
             output_text.pack(fill="both", expand=True)
 
+    def save_to_history(command):
+        if command.strip():  # Evita agregar comandos vacíos
+            command_history.append(command)
+            history_pointer[0] = len(command_history)
+
     def navigate_history(event):
-        if command_history:
+        print("NAVEGATE HISTORY TRIGGERED")
+        if command_history:  # Asegúrate de que haya historial
             if event.keysym == "Up":
-                history_pointer[0] = max(0, history_pointer[0] - 1)
+                history_pointer[0] = max(0, history_pointer[0] - 1)  # Mueve hacia atrás
             elif event.keysym == "Down":
-                history_pointer[0] = min(len(command_history), history_pointer[0] + 1)
+                history_pointer[0] = min(len(command_history), history_pointer[0] + 1)  # Mueve hacia adelante
+
+            # Recupera el comando del historial o limpia si está al final
             command = (
                 command_history[history_pointer[0]]
                 if history_pointer[0] < len(command_history)
                 else ""
             )
-            entry.delete(0, END)
-            entry.insert(0, command)
+            entry.delete(0, END)  # Limpia el campo
+            entry.insert(0, command)  # Inserta el comando en el campo
 
     def stream_output(process, history_manager):
         global current_session, original_md_content
@@ -1218,15 +1230,18 @@ def open_ai_assistant_window(session_id=None):
         if not current_session:
             create_session()
 
-        # Ensure current_session is initialized before accessing its history_manager
+        # Asegúrate de que current_session esté inicializado antes de acceder a su history_manager
         history_manager = current_session.history_manager
 
         if ai_command.strip():
-            # Get script content and relevant docs
+            # **Guardar en el historial antes de continuar**
+            save_to_history(ai_command)
+
+            # Obtener el contenido del script y los documentos relevantes
             script_content = get_script_content(opened_script_var, selected_text_var)
             relevant_docs = current_session.get_relevant_context(ai_command)
 
-            # Combine command with context
+            # Combinar el comando con el contexto
             combined_command = build_command_with_context(
                 script_content,
                 ai_command,
@@ -1234,30 +1249,27 @@ def open_ai_assistant_window(session_id=None):
                 history_manager
             )
 
-            # Add user's input to history
+            # Agregar la entrada del usuario al historial
             history_manager.add_message("user", ai_command)
 
-            # Add the user's message to the current session
+            # Agregar el mensaje del usuario a la sesión actual
             current_session.add_message("user", ai_command)
 
-            # Update UI
+            # Actualizar la interfaz de usuario
             update_ui_display(ai_command)
 
-            # Append relevant context if available
+            # Agregar el contexto relevante si está disponible
             if relevant_docs:
                 context_text = "\n\nRelevant context:\n" + "\n---\n".join(
                     f"{doc['content']}" for doc in relevant_docs
                 )
                 combined_command += context_text
 
-            # Update UI with the combined command (optional)
-            # update_ui_display(combined_command)
-
             entry.delete(0, END)
             entry.config(state="disabled")
             status_label_var.set("AI is thinking...")
 
-            # Prepare the command for processing by the AI assistant
+            # Preparar el comando para ser procesado por el asistente de IA
             ai_script_path = "src/models/ai_assistant.py"
             if persistent_agent_selection_var.get():
                 selected_agent = selected_agent_var
@@ -1270,7 +1282,7 @@ def open_ai_assistant_window(session_id=None):
             process_ai_command(command)
         else:
             entry.config(state="normal")
-
+            
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
         if platform.system() == "Windows":
             python_executable = os.path.join("venv", "Scripts", "python")
@@ -1410,8 +1422,8 @@ def open_ai_assistant_window(session_id=None):
     )
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
-    command_history = []
-    history_pointer = [0]
+    '''command_history = []
+    history_pointer = [0]'''
 
     class Session:
         def __init__(self, session_id, load_existing=True):
