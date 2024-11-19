@@ -916,9 +916,9 @@ def open_ai_assistant_window(session_id=None):
     # Initialize the context menu
     documents_context_menu = Menu(ai_assistant_window, tearoff=0)
 
-    # Command history and pointer for navigation
-    command_history = []
-    history_pointer = [0]
+    # Remove these lines
+    # command_history = []
+    # history_pointer = [0]
 
     output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
     output_text.pack(fill="both", expand=True)
@@ -966,27 +966,29 @@ def open_ai_assistant_window(session_id=None):
             html_display.pack_forget()
             output_text.pack(fill="both", expand=True)
 
-    def save_to_history(command):
+    '''def save_to_history(self, command):
         if command.strip():  # Evita agregar comandos vacíos
-            command_history.append(command)
-            history_pointer[0] = len(command_history)
+            self.command_history.append(command)
+            self.history_pointer[0] = len(self.command_history)'''
 
     def navigate_history(event):
-        print("NAVEGATE HISTORY TRIGGERED")
-        if command_history:  # Asegúrate de que haya historial
-            if event.keysym == "Up":
-                history_pointer[0] = max(0, history_pointer[0] - 1)  # Mueve hacia atrás
-            elif event.keysym == "Down":
-                history_pointer[0] = min(len(command_history), history_pointer[0] + 1)  # Mueve hacia adelante
+        global current_session
+        if not current_session or not current_session.command_history:
+            return
 
-            # Recupera el comando del historial o limpia si está al final
-            command = (
-                command_history[history_pointer[0]]
-                if history_pointer[0] < len(command_history)
-                else ""
-            )
-            entry.delete(0, END)  # Limpia el campo
-            entry.insert(0, command)  # Inserta el comando en el campo
+        if event.keysym == "Up":
+            current_session.history_pointer = max(0, current_session.history_pointer - 1)
+        elif event.keysym == "Down":
+            current_session.history_pointer = min(len(current_session.command_history),
+                                                  current_session.history_pointer + 1)
+
+        # Fetch the message from history or clear the input
+        if current_session.history_pointer < len(current_session.command_history):
+            command = current_session.command_history[current_session.history_pointer]
+            entry.delete(0, END)
+            entry.insert(0, command)
+        else:
+            entry.delete(0, END)
 
     def stream_output(process, history_manager):
         global current_session, original_md_content
@@ -1230,13 +1232,9 @@ def open_ai_assistant_window(session_id=None):
         if not current_session:
             create_session()
 
-        # Asegúrate de que current_session esté inicializado antes de acceder a su history_manager
         history_manager = current_session.history_manager
 
         if ai_command.strip():
-            # **Guardar en el historial antes de continuar**
-            save_to_history(ai_command)
-
             # Obtener el contenido del script y los documentos relevantes
             script_content = get_script_content(opened_script_var, selected_text_var)
             relevant_docs = current_session.get_relevant_context(ai_command)
@@ -1254,6 +1252,9 @@ def open_ai_assistant_window(session_id=None):
 
             # Agregar el mensaje del usuario a la sesión actual
             current_session.add_message("user", ai_command)
+
+            # Ensure history_pointer is updated
+            current_session.history_pointer = len(current_session.command_history)
 
             # Actualizar la interfaz de usuario
             update_ui_display(ai_command)
@@ -1282,7 +1283,7 @@ def open_ai_assistant_window(session_id=None):
             process_ai_command(command)
         else:
             entry.config(state="normal")
-            
+
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
         if platform.system() == "Windows":
             python_executable = os.path.join("venv", "Scripts", "python")
@@ -1422,8 +1423,6 @@ def open_ai_assistant_window(session_id=None):
     )
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
-    '''command_history = []
-    history_pointer = [0]'''
 
     class Session:
         def __init__(self, session_id, load_existing=True):
@@ -1438,6 +1437,8 @@ def open_ai_assistant_window(session_id=None):
             self.state = "NOT_INGESTED"  # Initial state for vault
             self.chat_history = []
             self.history_manager = OptimizedHistoryManager()
+            self.command_history = []
+            self.history_pointer = 0
             if load_existing and os.path.exists(self.file_path):
                 self.load()
             else:
@@ -1548,6 +1549,11 @@ def open_ai_assistant_window(session_id=None):
 
             # Keep chat history at a maximum of the last 3 messages
             self.chat_history = self.chat_history[-3:]
+
+            # If user message, add to command_history
+            if role == "user":
+                self.command_history.append(content)
+                self.history_pointer = len(self.command_history)
 
             self.save()
 
@@ -1694,7 +1700,9 @@ def open_ai_assistant_window(session_id=None):
                 "links": self.links,
                 "documents": self.documents,
                 "messages": self.messages,
-                "chat_history": self.chat_history,  # Save chat history
+                "chat_history": self.chat_history,
+                "command_history": self.command_history,
+                "history_pointer": self.history_pointer,
                 "vault_state": self.state
             }
             with open(self.file_path, "w", encoding="utf-8") as f:
@@ -1707,12 +1715,15 @@ def open_ai_assistant_window(session_id=None):
                 self.messages = data.get("messages", [])
                 self.links = data.get("links", [])
                 self.documents = data.get("documents", [])
-                self.chat_history = data.get("chat_history", [])  # Load chat history
+                self.chat_history = data.get("chat_history", [])
+                self.command_history = data.get("command_history", [])
+                self.history_pointer = data.get("history_pointer", len(self.command_history))
                 self.state = data.get("vault_state", "NOT_INGESTED")
-            # Initialize history manager with existing messages
-            self.history_manager = OptimizedHistoryManager()
-            for msg in self.chat_history:
-                self.history_manager.add_message(msg["role"], msg["content"])
+
+            # Reconstruct command_history if not present
+            if not self.command_history:
+                self.command_history = [msg['content'] for msg in self.messages if msg['role'] == 'user']
+                self.history_pointer = len(self.command_history)
 
         def update_vault(self, content, increment=True):
             if increment:
@@ -1778,6 +1789,8 @@ def open_ai_assistant_window(session_id=None):
         update_chat_display()
         refresh_links_list()
         refresh_documents_list()
+        entry.delete(0, END)  # Clear the Entry widget
+        current_session.history_pointer = len(current_session.command_history)  # Reset history pointer
         write_config_parameter("options.network_settings.last_selected_session_id", index + 1)
 
     def update_sessions_list():
