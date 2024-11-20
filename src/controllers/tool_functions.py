@@ -978,48 +978,66 @@ def open_ai_assistant_window(session_id=None):
         return content
 
     def interpret_command_string(text):
-        """Interpret a string that may contain multiple commands and additional text."""
+        """Interpret a string that contains multiple commands, variables, and additional text while preserving input order."""
         parts = text.split()
-        results = []
-        additional_text = []
-        interpreted_prompt = ""
+        result_parts = []
+        current_additional_text = []
 
         i = 0
         while i < len(parts):
             part = parts[i]
+
             if part.startswith('/'):  # This is a command
                 try:
+                    # Process any accumulated additional text first
+                    if current_additional_text:
+                        result_parts.append(" ".join(current_additional_text).strip())
+                        current_additional_text = []
+
+                    # Process the command
                     prompt_data = prompt_interpreter.interpret_input(part)
+
                     if prompt_data:
+                        # Collect variables associated with the command
                         vars_text = ""
                         next_idx = i + 1
                         while next_idx < len(parts) and '{{' in parts[next_idx]:
                             vars_text += " " + parts[next_idx]
                             next_idx += 1
 
+                        # Parse variables and process the command
                         provided_vars, remaining_text = parse_variables(vars_text)
                         processed_content = process_prompt_content(prompt_data, provided_vars)
 
                         if processed_content:
-                            interpreted_prompt += f"{processed_content}\n"  # Include interpreted content
+                            # Append the processed command result to the result list
+                            result_parts.append(processed_content)
+
+                        # If there's remaining text, add it to additional text
                         if remaining_text.strip():
-                            additional_text.append(remaining_text.strip())
+                            current_additional_text.append(remaining_text.strip())
+
+                        # Move the index forward past the command and its variables
                         i = next_idx
                     else:
-                        additional_text.append(part)
+                        # If command processing fails, treat it as additional text
+                        current_additional_text.append(part)
                         i += 1
                 except Exception as e:
-                    additional_text.append(part)
+                    # If an error occurs, treat as additional text
+                    current_additional_text.append(part)
                     i += 1
             else:
-                additional_text.append(part)
+                # Append to additional text
+                current_additional_text.append(part)
                 i += 1
 
-        # Add any additional text
-        if additional_text:
-            interpreted_prompt += " ".join(additional_text).strip()
+        # Append any final accumulated additional text
+        if current_additional_text:
+            result_parts.append(" ".join(current_additional_text).strip())
 
-        return interpreted_prompt
+        # Return the reconstructed input, maintaining the original order
+        return "\n".join(result_parts).strip()
 
     def handle_input(event=None):
         """Handle input from the entry widget."""
