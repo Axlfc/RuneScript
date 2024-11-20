@@ -979,57 +979,32 @@ def open_ai_assistant_window(session_id=None):
 
     def interpret_command_string(text):
         """Interpret a string that may contain multiple commands and additional text."""
-        # Check for mathematical or assignment-like statements first
-        if re.match(r'^[a-z]\s*=\s*\d+\s*;?\s*[a-z]\s*=\s*\d+', text, re.IGNORECASE):
-            # If it looks like a mathematical assignment, pass the whole text
-            return [text]
-
         parts = text.split()
         results = []
         additional_text = []
-        i = 0
+        interpreted_prompt = ""
 
+        i = 0
         while i < len(parts):
             part = parts[i]
-
             if part.startswith('/'):  # This is a command
                 try:
-                    # Try to interpret as a command
                     prompt_data = prompt_interpreter.interpret_input(part)
-
                     if prompt_data:
-                        # Look ahead for variables
                         vars_text = ""
                         next_idx = i + 1
                         while next_idx < len(parts) and '{{' in parts[next_idx]:
                             vars_text += " " + parts[next_idx]
                             next_idx += 1
 
-                        # Parse variables
                         provided_vars, remaining_text = parse_variables(vars_text)
+                        processed_content = process_prompt_content(prompt_data, provided_vars)
 
-                        try:
-                            processed_content = process_prompt_content(prompt_data, provided_vars)
-                            if processed_content:
-                                # Append additional text before the current command's result
-                                if additional_text:
-                                    results.append(" ".join(additional_text).strip())
-                                    additional_text = []
-
-                                #results.append(f"Command: {part}, Variables: {provided_vars}, Result: {processed_content}")
-                                print("THE PROCESSED CONTENT:\t", processed_content)
-                                results.append(processed_content)
-
-
-                            # Add any remaining text to additional_text
-                            if remaining_text.strip():
-                                additional_text.append(remaining_text.strip())
-
-                            # Skip past the command and its variables
-                            i = next_idx
-                        except ValueError as e:
-                            output_text.insert("end", f"Error processing command: {str(e)}\n", "error")
-                            return None
+                        if processed_content:
+                            interpreted_prompt += f"{processed_content}\n"  # Include interpreted content
+                        if remaining_text.strip():
+                            additional_text.append(remaining_text.strip())
+                        i = next_idx
                     else:
                         additional_text.append(part)
                         i += 1
@@ -1040,11 +1015,11 @@ def open_ai_assistant_window(session_id=None):
                 additional_text.append(part)
                 i += 1
 
-        # Append any remaining additional text
+        # Add any additional text
         if additional_text:
-            results.append(" ".join(additional_text).strip())
+            interpreted_prompt += " ".join(additional_text).strip()
 
-        return results
+        return interpreted_prompt
 
     def handle_input(event=None):
         """Handle input from the entry widget."""
@@ -1052,26 +1027,16 @@ def open_ai_assistant_window(session_id=None):
 
         if text:
             try:
-                # Process the input for commands
-                results = interpret_command_string(text)
+                # Process the input for commands and additional context
+                full_prompt = interpret_command_string(text)
 
-                if results:
-                    for result in results:
-                        if "Command:" in result:
-                            # Format command for AI with interpretation
-                            ai_input = f"Interpreted Input:\n{result}\nWhat would you like me to do with this?"
-                            execute_ai_assistant_command(
-                                add_current_main_opened_script_var,
-                                add_current_selected_text_var,
-                                ai_input
-                            )
-                        else:
-                            # For additional text, send directly to AI
-                            execute_ai_assistant_command(
-                                add_current_main_opened_script_var,
-                                add_current_selected_text_var,
-                                result
-                            )
+                if full_prompt:
+                    # Send the full prompt to AI
+                    execute_ai_assistant_command(
+                        add_current_main_opened_script_var,
+                        add_current_selected_text_var,
+                        full_prompt
+                    )
 
                     entry.delete(0, END)
 
@@ -1383,6 +1348,8 @@ def open_ai_assistant_window(session_id=None):
                 relevant_docs,
                 history_manager
             )
+            print("TYPE OF USER ENTRY:\t", type(ai_command))
+            print("AI COMMAND:\t", ai_command)
 
             # Agregar la entrada del usuario al historial
             history_manager.add_message("user", ai_command)

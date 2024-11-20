@@ -1,5 +1,5 @@
 {
-    "scripts_editor": "RunScript",
+    "scripts_editor": "RuneScript",
     "scripts_editor_info": "ScriptsEditor\nCreated in Python using Tkinter\nAxlfc, 2023-2024",
     "untitled": "Untitled",
     "script_name_label": "Script Name: ",
@@ -49,6 +49,7 @@
     "shortcuts": "Shortcuts",
     "mnemonics": "Mnemonics",
     "report_problems": "Report Problems",
+    "clock": "Clock",
     "choose_working_directory": "Choose Working Directory",
     "open_first_file_from_directory": "\"Do you want to open the first text file in the selected directory?\"",
     "current_directory": "Current directory",

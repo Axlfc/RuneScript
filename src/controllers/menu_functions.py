@@ -27,6 +27,7 @@ from src.controllers.scheduled_tasks import (
     open_new_at_task_window,
     open_new_crontab_task_window,
 )
+from src.models.ClockWindow import ClockWindow
 from src.models.FindInFilesWindow import FindInFilesWindow
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
@@ -256,6 +257,10 @@ def open_music_generation_window():
 
 def open_image_generation_window():
     return ImageGenerationWindow()
+
+
+def open_clock_window():
+    return ClockWindow()
 
 
 def open_scriptsstudio_folder(event=None):
@@ -518,66 +523,66 @@ def toggle_interactive_view_visibility(frame):
             return content
 
         def interpret_command_string(text):
-            """Interpret a string that may contain multiple commands and additional text."""
+            """Interpret a string that contains multiple commands, variables, and additional text while preserving input order."""
             parts = text.split()
-            results = []
-            additional_text = []
-            i = 0
+            result_parts = []
+            current_additional_text = []
 
+            i = 0
             while i < len(parts):
                 part = parts[i]
 
                 if part.startswith('/'):  # This is a command
                     try:
-                        # Try to interpret as a command
+                        # Process any accumulated additional text first
+                        if current_additional_text:
+                            result_parts.append(" ".join(current_additional_text).strip())
+                            current_additional_text = []
+
+                        # Process the command
                         prompt_data = prompt_interpreter.interpret_input(part)
 
                         if prompt_data:
-                            # Look ahead for variables
+                            # Collect variables associated with the command
                             vars_text = ""
                             next_idx = i + 1
                             while next_idx < len(parts) and '{{' in parts[next_idx]:
                                 vars_text += " " + parts[next_idx]
                                 next_idx += 1
 
-                            # Parse variables
+                            # Parse variables and process the command
                             provided_vars, remaining_text = parse_variables(vars_text)
+                            processed_content = process_prompt_content(prompt_data, provided_vars)
 
-                            try:
-                                processed_content = process_prompt_content(prompt_data, provided_vars)
-                                if processed_content:
-                                    # Append additional text before the current command's result
-                                    if additional_text:
-                                        results.append(" ".join(additional_text).strip())
-                                        additional_text = []
+                            if processed_content:
+                                # Append the processed command result to the result list
+                                result_parts.append(processed_content)
 
-                                    results.append(processed_content)
+                            # If there's remaining text, add it to additional text
+                            if remaining_text.strip():
+                                current_additional_text.append(remaining_text.strip())
 
-                                # Add any remaining text to additional_text
-                                if remaining_text.strip():
-                                    additional_text.append(remaining_text.strip())
-
-                                # Skip past the command and its variables
-                                i = next_idx
-                            except ValueError as e:
-                                print(f"Error processing command: {str(e)}")
-                                return None
+                            # Move the index forward past the command and its variables
+                            i = next_idx
                         else:
-                            additional_text.append(part)
+                            # If command processing fails, treat it as additional text
+                            current_additional_text.append(part)
                             i += 1
                     except Exception as e:
-                        additional_text.append(part)
+                        # If an error occurs, treat as additional text
+                        current_additional_text.append(part)
                         i += 1
                 else:
-                    # If it's not a command, add to additional text
-                    additional_text.append(part)
+                    # Append to additional text
+                    current_additional_text.append(part)
                     i += 1
 
-            # Append any remaining additional text
-            if additional_text:
-                results.append(" ".join(additional_text).strip())
+            # Append any final accumulated additional text
+            if current_additional_text:
+                result_parts.append(" ".join(current_additional_text).strip())
 
-            return results
+            # Return the reconstructed input, maintaining the original order
+            return "\n".join(result_parts).strip()
 
         def handle_input(event=None):
             text = input_field.get().strip()
@@ -1249,6 +1254,14 @@ def create_menu():
         accelerator="Ctrl+Alt+C",
     )
     root.bind("<Control-Alt-c>", open_calculator_window)
+
+    tool_menu.add_command(
+        label=localization_data["clock"],
+        command=open_clock_window,
+        accelerator="F7",
+    )
+    root.bind("<F7>", open_calculator_window)
+    open_clock_window
 
     tool_menu.add_command(
         label=localization_data["translator"],
