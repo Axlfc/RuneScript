@@ -6,6 +6,8 @@
     "cancel": "Cancel",
     "file": "File",
     "new": "New",
+    "new_file": "New File",
+    "new_project": "New Project",
     "open": "Open",
     "save": "Save",
     "save_as": "Save As...",

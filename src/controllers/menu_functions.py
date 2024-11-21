@@ -29,6 +29,7 @@ from src.controllers.scheduled_tasks import (
 )
 from src.models.ClockWindow import ClockWindow
 from src.models.FindInFilesWindow import FindInFilesWindow
+from src.models.ProjectWindow import ProjectWindow
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
 from src.models.file_operations import prompt_rename_file
@@ -241,6 +242,10 @@ def open_terminal_window(event=None):
 
 def open_prompt_enhancement_window(event=None):
     return PromptEnhancementWindow()
+
+
+def open_project_window(event=None):
+    return ProjectWindow()
 
 
 def open_translator_window(event=None):
@@ -995,7 +1000,16 @@ def create_menu():
 
     # File Operations
     file_menu.add_command(
-        label=localization_data["new"],
+        label=localization_data["new_project"],
+        command=open_project_window,
+        compound="left",
+        image=image_new,
+        accelerator="Ctrl+M",
+        underline=0,
+    )
+    root.bind('<Control-m>', new)
+    file_menu.add_command(
+        label=localization_data["new_file"],
         command=new,
         compound="left",
         image=image_new,
