@@ -12,12 +12,53 @@ import uuid
 from datetime import datetime
 
 
+def _check_duplicates(content, existing_features, log_func=None):
+    """Check for duplicate function or class definitions."""
+    # Ensure content is a string
+    if not isinstance(content, str):
+        content = str(content)
+
+    # Regex pattern for function/class definitions
+    pattern = r'\b(def|class)\s+(\w+)\b'
+    new_definitions = set(re.findall(pattern, content))
+
+    for feature in existing_features:
+        if not isinstance(feature, str):  # Skip non-string features
+            continue
+        existing_definitions = set(re.findall(pattern, feature))
+        if new_definitions & existing_definitions:  # Overlap of names
+            if log_func:
+                log_func(f"[WARNING] Duplicate function/class detected: {new_definitions & existing_definitions}")
+            return True
+    return False
+
+
+def _validate_names(content):
+    """Ensure function and variable names are descriptive and meaningful."""
+    invalid_names = re.findall(r'\bdef\s+(f|x|y|temp|tmp|test)\b', content)  # Example pattern for poor names
+    if invalid_names:
+        raise ValueError(f"Found invalid or undescriptive names: {', '.join(invalid_names)}")
+
+
 class ProjectAnalyzer:
     """Analyzes project requirements and generates appropriate structures."""
 
     def __init__(self, prompt):
         self.prompt = prompt.lower()
         self.keywords = self._extract_keywords()
+        self.feature_backlog = self._generate_feature_backlog()
+
+    def _generate_feature_backlog(self):
+        """Generate a feature backlog based on the prompt."""
+        # Example: Analyze the prompt to extract features
+        # You can enhance this logic to make it more comprehensive
+        features = [
+            {"name": "Create API Endpoints", "status": "pending"},
+            {"name": "Build Data Models", "status": "pending"},
+            {"name": "Implement UI", "status": "pending"},
+            {"name": "Add Utility Functions", "status": "pending"}
+        ]
+        return features
 
     def _extract_keywords(self):
         """Extract relevant keywords from the prompt."""
@@ -274,50 +315,6 @@ class DataEntryWidget(BaseWidget):
             self.callback(self.entry.get())
         self.entry.delete(0, tk.END)
 '''
-
-    def generate_project_structure(self):
-        """Generate appropriate project structure based on analysis."""
-        base_structure = {
-            'src': {
-                '__init__.py': '',
-                'core': {
-                    '__init__.py': '',
-                    'exceptions.py': self._generate_exceptions(),
-                    'utils.py': self._generate_utils(),
-                }
-            },
-            'tests': {
-                '__init__.py': '',
-                'conftest.py': self._generate_conftest(),
-            },
-            'requirements.txt': self._generate_requirements(),
-            'README.md': self._generate_readme(),
-            '.gitignore': self._generate_gitignore(),
-        }
-
-        # Add pattern-specific directories and files
-        if 'web' in self.keywords:
-            base_structure['src']['api'] = {
-                '__init__.py': '',
-                'routes.py': self._generate_routes(),
-                'models.py': self._generate_models(),
-            }
-
-        if 'data' in self.keywords:
-            base_structure['src']['data'] = {
-                '__init__.py': '',
-                'processors.py': self._generate_processors(),
-                'schema.py': self._generate_schema(),
-            }
-
-        if 'gui' in self.keywords:
-            base_structure['src']['ui'] = {
-                '__init__.py': '',
-                'windows.py': self._generate_windows(),
-                'widgets.py': self._generate_widgets(),
-            }
-
-        return base_structure
 
     def generate_project_structure(self):
         """Generate appropriate project structure based on analysis."""
@@ -855,7 +852,7 @@ class ProjectWindow:
             self.log_error(f"Failed to initialize project directory: {e}")
 
     def generate_project(self, path, prompt):
-        """Generate project with pause support."""
+        """Generate project with AI-based content generation."""
         try:
             self.generation_active = True
             self.analyzer = ProjectAnalyzer(prompt)
@@ -872,10 +869,20 @@ class ProjectWindow:
 
             self.ui_queue.put(('log', "[SUCCESS] Initial project structure generated!"))
 
-            # Start incremental development with pause support
+            # AI-based incremental development with TDD
             while self.generation_active:
                 if not self.paused:
-                    self._develop_next_feature(path)
+                    feature_type = self._select_feature_type()
+                    ai_prompt = self._build_ai_prompt(feature_type, prompt)
+                    ai_response = self.process_prompt_with_ai(ai_prompt)
+
+                    if ai_response:
+                        self._apply_ai_generated_feature(path, feature_type, ai_response)
+                        # Generate corresponding test for the new feature
+                        self._apply_ai_generated_feature(path, 'test', ai_response)
+                    else:
+                        self.ui_queue.put(('log', "[ERROR] AI failed to generate feature."))
+
                     self.ui_queue.put(('update_tree', None))
                 time.sleep(2)  # Prevent excessive updates
 
@@ -884,6 +891,160 @@ class ProjectWindow:
         finally:
             self.generation_active = False
             self.ui_queue.put(('enable_ui', None))
+
+    def _select_feature_type(self):
+        """Select the type of feature to generate dynamically."""
+        feature_types = ['utility', 'core', 'test']
+        return feature_types[int(time.time()) % len(feature_types)]
+
+    def _build_ai_prompt(self, feature_type, prompt):
+        """Build a prompt for AI based on the feature type."""
+        if feature_type == 'utility':
+            return f"Generate a Python utility function for the following project description. Output the code within triple backticks: {prompt}"
+        elif feature_type == 'core':
+            return f"Generate a core Python feature for the following project. Output the code within triple backticks: {prompt}"
+        elif feature_type == 'test':
+            return f"Generate a Python test case for the following project. Output the code within triple backticks: {prompt}"
+        else:
+            return f"Generate relevant code for the following project. Use triple backticks for code blocks: {prompt}"
+
+    def _apply_ai_generated_feature(self, path, feature_type, ai_response):
+        """Save AI-generated feature to the project, avoiding duplicates."""
+        if feature_type == 'utility':
+            file_path = os.path.join(path, 'src', 'core', 'utils.py')
+        elif feature_type == 'core':
+            file_path = os.path.join(path, 'src', 'core', f'feature_{uuid.uuid4().hex[:8]}.py')
+        elif feature_type == 'test':
+            file_path = os.path.join(path, 'tests', f'test_feature_{uuid.uuid4().hex[:8]}.py')
+        else:
+            return
+
+        cleaned_code = self._extract_code_blocks(ai_response)
+
+        if cleaned_code:
+            existing_features = self._get_existing_features(path)
+            if _check_duplicates(cleaned_code, existing_features, log_func=self.log_info):
+                # Append suffix to avoid collision
+                file_path = file_path.replace('.py', f'_duplicate_{uuid.uuid4().hex[:4]}.py')
+            self._create_file(file_path, cleaned_code, f"AI-generated {feature_type} added")
+        else:
+            self.log_error(f"Failed to extract code from AI response for {feature_type}")
+
+    def _get_existing_features(self, path):
+        """Collect all existing features in the project for duplication checks."""
+        existing_features = []
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith('.py'):
+                    try:
+                        with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
+                            content = f.read().strip()
+                            existing_features.append(content)
+                    except Exception as e:
+                        self.log_error(f"Failed to read {file}: {e}")
+        return existing_features
+
+    def _create_design_docs(self, path):
+        """Generate design documents for the project."""
+        docs_path = os.path.join(path, 'docs')
+        os.makedirs(docs_path, exist_ok=True)
+
+        design_doc = os.path.join(docs_path, 'design_document.md')
+        with open(design_doc, 'w', encoding='utf-8') as f:
+            f.write(
+                "# Design Document\n\nDescribe the project architecture, major components, and design decisions here.")
+
+        self.log_success("Generated design document.")
+
+    def _check_project_completeness(self, path):
+        """Check if the project is complete based on key criteria."""
+        required_files = [
+            os.path.join(path, 'src', '__init__.py'),
+            os.path.join(path, 'tests', '__init__.py'),
+            os.path.join(path, 'docs', 'design_document.md'),
+            os.path.join(path, 'README.md')
+        ]
+        missing_files = [file for file in required_files if not os.path.exists(file)]
+
+        if missing_files:
+            self.log_error(f"Project is incomplete. Missing files: {', '.join(missing_files)}")
+            return False
+
+        self.log_success("Project appears complete.")
+        return True
+
+    def _generate_testing_instructions(self, path):
+        """Generate a TESTING.md file with instructions for running tests."""
+        testing_file = os.path.join(path, 'docs', 'TESTING.md')
+        os.makedirs(os.path.dirname(testing_file), exist_ok=True)
+
+        with open(testing_file, 'w', encoding='utf-8') as f:
+            f.write("""# Testing Instructions
+
+    ## Running Unit Tests
+    1. Ensure all dependencies are installed: `pip install -r requirements.txt`
+    2. Run the test suite: `pytest tests/`
+
+    ## Testing Features
+    - Check API endpoints with a tool like Postman or cURL.
+    - Validate GUI functionality manually by launching the application.
+            """)
+
+        self.log_success("Generated testing instructions.")
+
+    def _extract_code_blocks(self, text):
+        """Extract code blocks from AI response, removing language markers."""
+        # Match any code block inside triple backticks
+        code_blocks = re.findall(r'```(?:[a-zA-Z]*)\n(.*?)```', text, re.DOTALL)
+
+        if code_blocks:
+            # Combine and clean all code blocks
+            return '\n\n'.join(block.strip() for block in code_blocks)
+
+        # Fallback: Detect lines that appear to be code
+        potential_code = '\n'.join(
+            line for line in text.splitlines()
+            if line.strip() and (line.lstrip().startswith(('def ', 'class ', 'import ', '#')))
+        )
+        return potential_code.strip() if potential_code else None
+
+    def _create_file(self, file_path, content, log_message):
+        """Create a file and validate its content for naming conventions."""
+        try:
+            _validate_names(content)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(content)
+            file_name = os.path.basename(file_path)
+            self.log_success(f"{log_message}: {file_name}")
+        except ValueError as e:
+            self.log_error(f"Validation failed for {file_path}: {e}")
+        except Exception as e:
+            self.log_error(f"Failed to create file {file_path}: {e}")
+
+    def process_prompt_with_ai(self, combined_input):
+        """Send the prompt to AI and receive the response."""
+        ai_script_path = "src/models/ai_assistant.py"
+        python_executable = 'python'
+
+        command = [python_executable, ai_script_path, combined_input]
+
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding='utf-8'
+            )
+            ai_response, error = process.communicate()
+
+            if error:
+                self.ui_queue.put(('log', f"[ERROR] AI Assistant Error: {error}"))
+            return ai_response.strip() if ai_response else None
+        except Exception as e:
+            self.ui_queue.put(('log', f"[ERROR] Failed to process prompt with AI: {e}"))
+            return None
 
     def _create_structure(self, base_path, structure, current_path=''):
         """Recursively create project structure."""
