@@ -3,7 +3,7 @@ import re
 import string
 import subprocess
 import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
+from tkinter import ttk, scrolledtext, messagebox, simpledialog
 import json
 import queue
 import threading
@@ -46,6 +46,7 @@ class ProjectAnalyzer:
     def __init__(self, prompt):
         self.prompt = prompt.lower()
         self.keywords = self._extract_keywords()
+        self.features = self._analyze_prompt()
         self.feature_backlog = self._generate_feature_backlog()
 
     def _generate_feature_backlog(self):
@@ -77,6 +78,55 @@ class ProjectAnalyzer:
                 found_patterns.add(category)
 
         return found_patterns
+
+    def _analyze_prompt(self):
+        """Extract required features from the project prompt."""
+        # This would typically use AI to analyze the prompt
+        # For now, using a simple implementation
+        features = []
+
+        # Core features every project needs
+        features.extend([
+            'Configuration',
+            'Logging',
+            'ErrorHandling'
+        ])
+
+        # Extract additional features from prompt
+        # This is where you'd integrate more sophisticated AI analysis
+        words = self.prompt.lower().split()
+        if 'api' in words:
+            features.extend(['APIEndpoints', 'RequestHandling'])
+        if 'database' in words:
+            features.extend(['DatabaseConnection', 'DataModels'])
+        if 'user' in words:
+            features.extend(['UserAuthentication', 'UserManagement'])
+
+        return features
+
+    def get_feature_list(self):
+        """Get the list of features to implement."""
+        return self.features.copy()
+
+    def generate_project_structure(self):
+        """Generate initial project structure."""
+        return {
+            'src': {
+                '__init__.py': '',
+                'core': {
+                    '__init__.py': ''
+                },
+                'utils': {
+                    '__init__.py': ''
+                }
+            },
+            'tests': {
+                '__init__.py': ''
+            },
+            'docs': {
+                'README.md': f'# Project Documentation\n\n{self.prompt}'
+            }
+        }
 
     def _generate_routes(self):
         """Generate API routes template."""
@@ -892,6 +942,164 @@ class ProjectWindow:
             self.generation_active = False
             self.ui_queue.put(('enable_ui', None))
 
+    def generate_project(self, path, prompt):
+        """Generate project using TDD methodology with clear phases."""
+        try:
+            self.generation_active = True
+            self.analyzer = ProjectAnalyzer(prompt)
+
+            # Initialize project structure
+            structure = self.analyzer.generate_project_structure()
+            self._create_structure(path, structure)
+            self.ui_queue.put(('update_tree', None))
+
+            # Get list of features to implement from analyzer
+            features = self.analyzer.get_feature_list()
+            implemented_features = set()
+
+            while self.generation_active and features:
+                if not self.paused:
+                    current_feature = features.pop(0)
+
+                    # Skip if feature already implemented
+                    if current_feature in implemented_features:
+                        continue
+
+                    # Red Phase - Write failing test
+                    if self._red_phase(path, current_feature):
+                        # Green Phase - Implement feature
+                        if self._green_phase(path, current_feature):
+                            # Refactor Phase
+                            self._refactor_phase(path, current_feature)
+                            implemented_features.add(current_feature)
+
+                    self.ui_queue.put(('update_tree', None))
+                    time.sleep(1)  # Prevent excessive updates
+
+            if not features:
+                self.ui_queue.put(('log', "[SUCCESS] All features implemented successfully!"))
+
+        except Exception as e:
+            self.ui_queue.put(('log', f"[ERROR] Project generation failed: {e}"))
+        finally:
+            self.generation_active = False
+            self.ui_queue.put(('enable_ui', None))
+
+    def _red_phase(self, path, feature):
+        """Red Phase: Write failing test for the feature."""
+        try:
+            self.log_info(f"[RED PHASE] Writing test for: {feature}")
+
+            # Generate test file path
+            test_file = os.path.join(path, 'tests', f'test_{feature.lower()}.py')
+
+            # Get test content from AI
+            test_prompt = f"Write a failing test for the following feature: {feature}. Include necessary imports and clear assertions."
+            test_content = self.process_prompt_with_ai(test_prompt)
+
+            if test_content:
+                cleaned_test_content = self._extract_code_blocks(test_content)
+                if cleaned_test_content:
+                    self._create_file(test_file, cleaned_test_content, "Created failing test")
+                    return True
+
+            return False
+        except Exception as e:
+            self.log_error(f"Failed to create test for {feature}: {e}")
+            return False
+
+    def _green_phase(self, path, feature):
+        """Green Phase: Implement minimal code to pass the test."""
+        try:
+            self.log_info(f"[GREEN PHASE] Implementing feature: {feature}")
+
+            # Generate implementation file path
+            impl_file = os.path.join(path, 'src', 'core', f'{feature.lower()}.py')
+
+            # Get implementation from AI
+            impl_prompt = f"Write minimal code to implement this feature and make its test pass: {feature}. Focus on simplicity."
+            impl_content = self.process_prompt_with_ai(impl_prompt)
+
+            if impl_content:
+                cleaned_impl_content = self._extract_code_blocks(impl_content)
+                if cleaned_impl_content:
+                    self._create_file(impl_file, cleaned_impl_content, "Created implementation")
+                    return True
+
+            return False
+        except Exception as e:
+            self.log_error(f"Failed to implement {feature}: {e}")
+            return False
+
+    def _refactor_phase(self, path, feature):
+        """Refactor Phase: Improve code quality while maintaining functionality."""
+        try:
+            self.log_info(f"[REFACTOR PHASE] Refactoring: {feature}")
+
+            # Get implementation file path
+            impl_file = os.path.join(path, 'src', 'core', f'{feature.lower()}.py')
+
+            # Read current implementation
+            with open(impl_file, 'r', encoding='utf-8') as f:
+                current_code = f.read()
+
+            # Get refactored version from AI
+            refactor_prompt = f"Refactor this code while maintaining its functionality:\n{current_code}"
+            refactored_content = self.process_prompt_with_ai(refactor_prompt)
+
+            if refactored_content:
+                cleaned_refactored_content = self._extract_code_blocks(refactored_content)
+                if cleaned_refactored_content:
+                    # Verify refactored code still passes tests
+                    backup_file = impl_file + '.bak'
+                    os.rename(impl_file, backup_file)
+
+                    try:
+                        self._create_file(impl_file, cleaned_refactored_content, "Refactored implementation")
+                        if self._run_tests(path, feature):
+                            os.remove(backup_file)
+                            self.log_success(f"Refactoring successful for {feature}")
+                            return True
+                        else:
+                            # Restore backup if tests fail
+                            os.remove(impl_file)
+                            os.rename(backup_file, impl_file)
+                            self.log_error(f"Refactoring broke tests for {feature}, reverting changes")
+                            return False
+                    except Exception as e:
+                        if os.path.exists(backup_file):
+                            os.rename(backup_file, impl_file)
+                        raise e
+
+            return False
+        except Exception as e:
+            self.log_error(f"Failed to refactor {feature}: {e}")
+            return False
+
+    def _run_tests(self, path, feature):
+        """Run tests for a specific feature."""
+        try:
+            test_file = os.path.join(path, 'tests', f'test_{feature.lower()}.py')
+
+            # Run pytest for the specific test file
+            result = subprocess.run(
+                ['pytest', test_file, '-v'],
+                capture_output=True,
+                text=True,
+                cwd=path
+            )
+
+            if result.returncode == 0:
+                self.log_success(f"Tests passed for {feature}")
+                return True
+            else:
+                self.log_error(f"Tests failed for {feature}:\n{result.stdout}")
+                return False
+
+        except Exception as e:
+            self.log_error(f"Failed to run tests for {feature}: {e}")
+            return False
+
     def _select_feature_type(self):
         """Select the type of feature to generate dynamically."""
         feature_types = ['utility', 'core', 'test']
@@ -923,7 +1131,7 @@ class ProjectWindow:
 
         if cleaned_code:
             existing_features = self._get_existing_features(path)
-            if _check_duplicates(cleaned_code, existing_features, log_func=self.log_info):
+            if self._check_duplicates(cleaned_code, existing_features, log_func=self.log_info):
                 # Append suffix to avoid collision
                 file_path = file_path.replace('.py', f'_duplicate_{uuid.uuid4().hex[:4]}.py')
             self._create_file(file_path, cleaned_code, f"AI-generated {feature_type} added")
@@ -1130,37 +1338,101 @@ def test_new_feature():
         self.log_info("Added new test case")
 
     def new_file(self):
-        """Create a new file and update the tree view."""
+        """Create a new file in the selected directory or project root."""
         if not self.current_project_path:
             messagebox.showwarning("Warning", "No project open")
             return
 
-        name = messagebox.askstring("New File", "Enter file name:")
+        # Get the selected directory or use project root
+        selection = self.tree.selection()
+        parent_path = self.current_project_path
+        if selection:
+            selected_path = self.tree.item(selection[0])['values'][0]
+            if os.path.isdir(selected_path):
+                parent_path = selected_path
+            else:
+                parent_path = os.path.dirname(selected_path)
+
+        name = simpledialog.askstring("New File", "Enter file name:")
         if name:
-            path = os.path.join(self.current_project_path, name)
             try:
-                with open(path, 'w', encoding='utf-8') as f:
+                # Create full path and ensure parent directories exist
+                full_path = os.path.join(parent_path, name)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+                # Create the file
+                with open(full_path, 'w', encoding='utf-8') as f:
                     f.write('')
+
                 self.log_success(f"Created file: {name}")
-                self.update_tree()  # Refresh the TreeView to include the new file
+
+                # Update tree and expand parent directory
+                self.update_tree(force=True)
+
+                # Select and show the new file
+                for item in self.tree.get_children(''):
+                    if self._find_and_select_item(item, full_path):
+                        break
+
             except Exception as e:
                 self.log_error(f"Failed to create file: {e}")
 
     def new_folder(self):
-        """Create a new folder and update the tree view."""
+        """Create a new folder in the selected directory or project root."""
         if not self.current_project_path:
             messagebox.showwarning("Warning", "No project open")
             return
 
-        name = messagebox.askstring("New Folder", "Enter folder name:")
+        # Get the selected directory or use project root
+        selection = self.tree.selection()
+        parent_path = self.current_project_path
+        if selection:
+            selected_path = self.tree.item(selection[0])['values'][0]
+            if os.path.isdir(selected_path):
+                parent_path = selected_path
+            else:
+                parent_path = os.path.dirname(selected_path)
+
+        name = simpledialog.askstring("New Folder", "Enter folder name:")
         if name:
-            path = os.path.join(self.current_project_path, name)
             try:
-                os.makedirs(path, exist_ok=True)
+                # Create full path
+                full_path = os.path.join(parent_path, name)
+                os.makedirs(full_path, exist_ok=True)
+
                 self.log_success(f"Created folder: {name}")
-                self.update_tree()  # Refresh the TreeView to include the new folder
+
+                # Update tree and expand parent directory
+                self.update_tree(force=True)
+
+                # Select and show the new folder
+                for item in self.tree.get_children(''):
+                    if self._find_and_select_item(item, full_path):
+                        break
+
             except Exception as e:
                 self.log_error(f"Failed to create folder: {e}")
+
+    def _find_and_select_item(self, node, target_path):
+        """Recursively find and select an item in the tree by its path."""
+        # Check current node
+        if self.tree.item(node)['values'][0] == target_path:
+            self.tree.selection_set(node)
+            self.tree.see(node)
+            return True
+
+        # Check children
+        for child in self.tree.get_children(node):
+            if self._find_and_select_item(child, target_path):
+                # Expand parent nodes to make the item visible
+                parent = self.tree.parent(child)
+                while parent:
+                    self.tree.item(parent, open=True)
+                    self.expanded_nodes.add(parent)
+                    parent = self.tree.parent(parent)
+                return True
+
+        return False
 
     def delete_item(self):
         """Delete selected item"""
@@ -1270,49 +1542,71 @@ def test_new_feature():
     """
 
     def update_tree(self, force=False):
-        """Update project tree view while preserving expansion state."""
+        """Update project tree view while preserving expansion state and maintaining hierarchy."""
         if self.paused and not force:
             return
 
-        # Store current selection
+        # Store current selection and expanded state
         selection = self.tree.selection()
+        expanded_items = {}
 
-        # Remember expanded paths before update
-        expanded_paths = {
-            self.tree.item(item_id)['values'][0]
-            for item_id in self.expanded_nodes
-            if self.tree.exists(item_id)
-        }
+        def store_expanded_state(node=''):
+            children = self.tree.get_children(node)
+            for child in children:
+                if self.tree.item(child, 'open'):
+                    item_path = self.tree.item(child)['values'][0]
+                    expanded_items[item_path] = child
+                store_expanded_state(child)
 
+        store_expanded_state()
+
+        # Clear existing tree items
         self.tree.delete(*self.tree.get_children())
+
         if not self.current_project_path:
             return
 
-        def insert_path(parent, path):
-            for item in sorted(os.listdir(path)):
-                item_path = os.path.join(path, item)
-                is_dir = os.path.isdir(item_path)
-                icon = "📁 " if is_dir else "📄 "
-                node = self.tree.insert(
-                    parent,
-                    'end',
-                    text=f"{icon}{item}",
-                    values=(item_path,)
-                )
+        def sort_items(items, path):
+            """Sort items with directories first, then files, both alphabetically."""
+            return sorted(items, key=lambda x: (not os.path.isdir(os.path.join(path, x)), x.lower()))
 
-                # Re-expand if this path was expanded
-                if is_dir and item_path in expanded_paths:
-                    self.tree.item(node, open=True)
-                    self.expanded_nodes.add(node)
-                    insert_path(node, item_path)
-                elif is_dir:
-                    insert_path(node, item_path)
+        def insert_path(parent, path, level=0):
+            try:
+                items = os.listdir(path)
+                for item in sort_items(items, path):  # Pass path to sort_items
+                    item_path = os.path.join(path, item)
+                    is_dir = os.path.isdir(item_path)
+                    icon = "📁 " if is_dir else "📄 "
 
+                    # Insert the item
+                    node = self.tree.insert(
+                        parent,
+                        'end',
+                        text=f"{icon}{item}",
+                        values=(item_path,),
+                        open=item_path in expanded_items
+                    )
+
+                    # If it's a directory and was previously expanded, process its children
+                    if is_dir and (item_path in expanded_items or level == 0):
+                        insert_path(node, item_path, level + 1)
+
+                    # Keep track of the node if it was previously expanded
+                    if item_path in expanded_items:
+                        expanded_items[item_path] = node
+                        self.expanded_nodes.add(node)
+
+            except Exception as e:
+                self.log_error(f"Failed to insert path {path}: {e}")
+
+        # Add the root directory to the tree
         insert_path('', self.current_project_path)
 
         # Restore selection if possible
-        if selection:
-            self.tree.selection_set(selection)
+        for item in selection:
+            if self.tree.exists(item):
+                self.tree.selection_set(item)
+                self.tree.see(item)  # Ensure the selected item is visible
 
     def on_tree_select(self, event):
         """Display selected file in the editor."""
