@@ -860,6 +860,7 @@ class ProjectWindow:
         except Exception as e:
             self.ui_queue.put(('log', f"[ERROR] TDD cycle failed for {feature}: {e}"))
             return False
+
     def _generate_test_content(self, feature):
         """Generate test content using AI assistant."""
         prompt = f"""
@@ -870,7 +871,8 @@ class ProjectWindow:
         - Error conditions
         Follow pytest best practices and include necessary imports.
         """
-        return self.process_prompt_with_ai(prompt)
+        response = self.process_prompt_with_ai(prompt)
+        return self._extract_code_blocks(response)  # Clean extracted code
 
     def _generate_implementation(self, feature, test_content):
         """Generate implementation based on test requirements."""
@@ -883,7 +885,8 @@ class ProjectWindow:
         - Proper error handling
         - Clear documentation
         """
-        return self.process_prompt_with_ai(prompt)
+        response = self.process_prompt_with_ai(prompt)
+        return self._extract_code_blocks(response)  # Clean extracted code
 
     def _should_refactor(self, code):
         """Analyze if code needs refactoring."""
@@ -995,31 +998,41 @@ class ProjectWindow:
             return False
 
     def _extract_code_blocks(self, text):
-        """Extract code blocks from AI response, removing language markers."""
-        # Match any code block inside triple backticks
+        """Extract clean code blocks from AI response."""
+        # Match code blocks enclosed in triple backticks (```language)
         code_blocks = re.findall(r'```(?:[a-zA-Z]*)\n(.*?)```', text, re.DOTALL)
 
         if code_blocks:
-            # Combine and clean all code blocks
+            # Combine and clean all extracted code blocks
             return '\n\n'.join(block.strip() for block in code_blocks)
 
-        # Fallback: Detect lines that appear to be code
+        # Fallback: Detect lines resembling code
         potential_code = '\n'.join(
             line for line in text.splitlines()
-            if line.strip() and (line.lstrip().startswith(('def ', 'class ', 'import ', '#')))
+            if line.strip() and (
+                    line.strip().startswith(('def ', 'class ', 'import ', '#')) or
+                    re.match(r'[a-zA-Z_]+\s*=\s*.+', line)  # Variable assignments
+            )
         )
         return potential_code.strip() if potential_code else None
 
     def _create_file(self, file_path, content, log_message):
-        """Create a file and update the tree view in a thread-safe manner."""
+        """Create a file with cleaned content."""
+
         def _create_file_internal():
             try:
+                # Extract clean code content
+                cleaned_content = self._extract_code_blocks(content)
+                if not cleaned_content:
+                    self.log_error(f"Failed to extract code for {file_path}")
+                    return
+
                 # Create directories if they don't exist
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-                # Write the file
+                # Write the cleaned content to the file
                 with open(file_path, 'w', encoding='utf-8') as file:
-                    file.write(content)
+                    file.write(cleaned_content)
 
                 # Log success
                 file_name = os.path.basename(file_path)
@@ -1037,7 +1050,6 @@ class ProjectWindow:
             _create_file_internal()
         else:
             self.ui_queue.put(('create_file', (_create_file_internal,)))
-
 
     def _ensure_path_visible(self, path):
         """Ensure a path is visible in the tree by expanding all parent directories."""
