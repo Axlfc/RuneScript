@@ -1,4 +1,4 @@
-# RuneScript: Your Versatile Script Editor
+# **RuneScript: Your Gateway to Intelligent Script Editing and Beyond**
 
 [![License: GPL-2.0](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)](https://github.com/Axlfc/ScriptsEditor/releases)
@@ -7,223 +7,193 @@
 [![Contributors](https://img.shields.io/github/contributors/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/graphs/contributors)
 [![Stargazers](https://img.shields.io/github/stars/Axlfc/scriptseditor.svg?style=v2-blue)](https://github.com/Axlfc/ScriptsEditor/stargazers)
 
-RuneScript is a powerful and versatile script writing and editing platform built with Python, tailored for developers, scriptwriters, and coding enthusiasts. Designed to streamline your workflow, it offers advanced script execution capabilities, seamless Git integration, and an intelligent AI assistant for enhanced productivity. Whether you're managing cron jobs, editing scripts, or generating creative assets, RuneScript provides a scalable, user-friendly environment to boost efficiency and manage complex projects effortlessly. Perfect for those seeking a dynamic tool that adapts to both code and creative needs.
+RuneScript redefines how you create, edit, and manage scripts. Built with Python, it’s more than a script editor—it's a fully integrated platform offering advanced AI capabilities, intuitive Git management, creative tools, and powerful automation. Whether you're a developer, designer, or technical writer, RuneScript is designed to streamline workflows and enable collaboration on a whole new level.  
 
-## Table of Contents
+**Join us on our journey to innovate, create, and revolutionize script editing!**
+
+---
+
+## **Table of Contents**
+- [System Requirements](#system-requirements)
 - [Features](#features)
+- [Planned Features](#planned-features)
 - [Installation](#installation)
-  - [Installing Dependencies](#installing-dependencies)
-    - [Python](#python)
-    - [Git](#git)
-    - [llama-cpp-python](#llama-cpp-python)
-  - [Setting up the Project](#setting-up-the-project)
-- [Running ScriptsEditor](#running-scriptseditor)
-- [Contributing](#contributing)
+- [Running RuneScript](#running-runescript)
+- [How to Contribute](#how-to-contribute)
+- [Roadmap & Vision](#roadmap--vision)
 - [License](#license)
 
-## System Requirements
+---
+
+## **System Requirements**
 
 ### Minimum Requirements
-- **OS**: Windows 10/11 or Linux (Ubuntu 20.04 or newer)
-- **CPU**: Intel Core i5/AMD Ryzen 5 or better
+- **OS**: Windows 10/11 or Linux (Ubuntu 20.04+)
+- **CPU**: Intel Core i5/AMD Ryzen 5
 - **RAM**: 8GB
-- **Storage**: 4GB free disk space
-- **Python**: 3.9 or newer
+- **Storage**: 4GB free space
+- **Python**: 3.9+
 
 ### Recommended Requirements
-- **OS**: Windows 11 or Linux (Ubuntu 22.04 or newer)
-- **CPU**: Intel Core i7/AMD Ryzen 7 or better
+- **OS**: Windows 11 or Linux (Ubuntu 22.04+)
+- **CPU**: Intel Core i7/AMD Ryzen 7
 - **RAM**: 16GB
-- **Storage**: 8GB free disk space
-- **GPU**: NVIDIA RTX 2060 6GB or better (with CUDA support)
-- **Python**: 3.9 or newer
+- **Storage**: 8GB free space
+- **GPU**: NVIDIA RTX 2060 6GB (CUDA support)
+- **Python**: 3.9+
 
-Note: NVIDIA GPU with CUDA support is recommended for optimal performance with AI features, Stable Diffusion, and audio generation.
+---
 
+## **Features**
 
-## Features
-- Save, open, and edit scripts with an intuitive editor
-- Script execution from within ScriptsEditor - Run immediately, Timeout, Entry Arguments...
-- Advanced script execution with `at`, `crontab`, or Windows Scheduled Tasks
-- **Shell integration**: Run custom system commands and manage tasks
-- Basic Kanban application for project management
-- System information display and program installation using **Winget**
-- **Git Console**: Manage Git repositories from within the Git Console Window, including commits and branches _(work in progress)_
-- **AI Assistant**: Multi-agent selection for local LLMs or external APIs (llama-cpp-python, ChatGPT, Claude, etc.) _(work in progress)_
-- Integration with **Stable Diffusion** and **Stable Audio** for image and audio generation _(work in progress)_
-- Built-in **calculator window** _(work in progress)_
+### Core Functionality:
+1. **Versatile Script Editor**:
+   - Save, open, and edit scripts with an intuitive editor.
+   - Execute scripts directly with runtime arguments, timeouts, and environment setup.
+   - Advanced job scheduling using `crontab` or Windows Task Scheduler.
 
-## Installation
+2. **Shell and Git Integration**:
+   - Run custom system commands from the editor.
+   - Manage repositories with built-in Git functionality:
+     - Commits, branches, and merges via a user-friendly console.
 
-### Installing Dependencies
+3. **AI-Enhanced Productivity**:
+   - Multi-agent assistant with support for local models (llama-cpp-python) and external APIs (ChatGPT, Claude, etc.).
+   - Intelligent prompt management to improve and reuse common tasks.
+   - Integrated Stable Diffusion and Stable Audio for generating images and audio.
+
+4. **Built-in Utilities**:
+   - Kanban board for project and task management.
+   - System monitoring dashboard with quick installation via Winget.
+
+---
+
+## **Planned Features**
+
+### **Big Picture Vision**  
+RuneScript aims to become the ultimate workspace for developers, creative professionals, and technical teams. Here’s what’s coming next:
+
+1. **1-Click Deployment**:
+   - Deploy projects seamlessly across AWS, Azure, Google Cloud, or on-prem servers.
+   - Generate Dockerfiles and Kubernetes manifests automatically.
+   - Integrated CI/CD pipeline management.
+
+2. **Audio and Visual Creativity**:
+   - Integration with **Stable Diffusion CPP** for image generation.
+   - **Whisper** integration for speech-to-text functionality.
+   - Advanced **Stable Audio** backend for high-quality audio synthesis.
+
+3. **Collaboration Tools**:
+   - Real-time co-editing for remote teams.
+   - Role-based access control and task management.
+
+4. **Marketplace & Plugin System**:
+   - Download and share community-made plugins, templates, and AI tools.
+
+---
+
+## **Installation**
+
+### Dependencies
 
 #### Python
-
-##### On Windows:
-1. Open PowerShell.
-2. Install Python:
-   ```Powershell
-   winget install -e --id Python.Python.3.9
-   ```
-3. Follow the installer instructions.
-4. Ensure Python is accessible:
-   ```Powershell
-   python --version
-   ```
-
-##### On GNU/Linux:
-1. Open terminal.
-2. Install Python:
-   ```bash
-   sudo apt-get update -y
-   sudo apt-get install -y python3
-   ```
-3. Check Python installation:
-   ```bash
-   python3 --version
-   ```
+- **Windows**:
+  ```Powershell
+  winget install -e --id Python.Python.3.9
+  ```
+- **Linux**:
+  ```bash
+  sudo apt update && sudo apt install python3
+  ```
 
 #### Git
-
-##### On Windows:
-1. Open PowerShell.
-2. Install Git:
-   ```Powershell
-   winget install -e --id Git.Git
-   ```
-3. Verify Git installation:
-   ```Powershell
-   git --version
-   ```
-
-##### On GNU/Linux:
-1. Open terminal.
-2. Install Git:
-   ```bash
-   sudo apt-get update -y
-   sudo apt-get install -y git
-   ```
-3. Verify Git installation:
-   ```bash
-   git --version
-   ```
-
-### Setting up the Project
-
-1. Clone or fork the repository:
-   ```bash
-   git clone https://github.com/Axlfc/RuneScript
-   ```
-   If you did a fork;
-   ```bash
-   git clone https://github.com/your_git_username/RuneScript
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd ScriptsEditor
-   ```
-3. Create a virtual environment:
-   - On Windows:
-     ```Powershell
-     python -m venv .venv
-     ```
-   - On macOS and Linux:
-     ```bash
-     python3 -m venv .venv
-     ```
-4. Activate the virtual environment:
-   - On Windows:
-     ```Powershell
-     .\.venv\Scripts\activate
-     ```
-   - On macOS and Linux:
-     ```bash
-     source .venv/bin/activate
-     ```
-5. Install the required packages:
-   - On Windows:
-       ```bash
-         .\venv\Scripts\pip install -r requirements.txt
-         .\venv\Scripts\pip install -r src/models/requirements.txt
-       ```
-
-   - On macOS and Linux:
-     ```bash
-       venv/bin/pip install -r requirements.txt
-       venv/bin/pip install -r src/models/requirements.txt
-     ```
-     
-6. Install models:
-  ## Accessing Models on Hugging Face  ```(TO-DO)```
-
-To use the `stable-audio-open-1.0` model for audio generation in ScriptsEditor, follow these steps:
-
-1. **Create a Hugging Face Account:**
-   - If you haven't already, create an account on Hugging Face. You can sign up [here](https://huggingface.co/join).
-
-2. **Request Access to the Model:**
-   - Visit the [stable-audio-open-1.0 model page](https://huggingface.co/stabilityai/stable-audio-open-1.0).
-   - Click on the "Request Access" button to request access to the model. This step may require accepting terms and conditions specific to the model's license.
-
-3. **Generate an API Token:**
-   - After your access request is approved, go to your Hugging Face profile settings.
-   - Navigate to the API Tokens section and generate a new token. This token will be used to authenticate your access to the model from ScriptsEditor.
-
-4. **Use the API Token in ScriptsEditor:**
-   - Once you have your API token, you can use it in your ScriptsEditor setup to authenticate requests to the Hugging Face model.
-   - Ensure that your token is securely stored and used according to best practices.
-
-  - Get to download the model files 
-    - [stable-audio-open-1.0.ckpt](https://huggingface.co/stabilityai/stable-audio-open-1.0)
-    - [sd-v1-4.ckpt](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/blob/main/sd-v1-4.ckpt)
-    - [qwen2.5-coder-1.5b-q8_0.gguf](https://huggingface.co/ggerganov/Qwen2.5-Coder-1.5B-Q8_0-GGUF)
-  - Create a new folder in this repository in ```src/models``` named ```model```
-  ```bash
-      mkdir src/models/model
-  ```
-  - Create a new folder in this repository in ```src/models/model``` named ```text```
-  ```bash
-      mkdir src/models/model/text
-  ```
-  - Put only one .gguf file in src/models/model/text directory.
-  - Save Stable Diffusion model in src/models/model/image
-  - Save Stable Audio model in src/models/model/audio 
-
-We finished setting up ScriptsEditor.
-
-## Running ScriptsEditor
-
-### Setting up the AI Assistant
-
-Before running ScriptsEditor, you need to set up the AI assistant server. Follow these steps:
-
-1. Place a valid `.gguf` file into the folder `src/models/model`. In this example, the file used is `qwen2.5-coder-1.5b-q8_0.gguf`.
-
-2. Start the AI assistant server using the following command:
-   ```Powershell
-   .\.venv\Scripts\python.exe -m llama_cpp.server --port 8004 --model .\src\models\model\qwen2.5-coder-1.5b-q8_0.gguf
-   ```
-
-After setting up and starting the AI assistant server, you can run ScriptsEditor by executing the `main.py` script.
-
-- On Windows:
+- **Windows**:
   ```Powershell
-  .\.venv\Scripts\python main.py
+  winget install -e --id Git.Git
   ```
-- On macOS and Linux:
+- **Linux**:
+  ```bash
+  sudo apt update && sudo apt install git
+  ```
+
+#### Additional Tools
+Install AI models, dependencies, and configure as detailed in our [documentation](docs/INSTALLATION.md).
+
+---
+
+## **Running RuneScript**
+
+### **Setup the AI Assistant**
+
+1. Download your preferred `.gguf` model for local use:
+   - [Hugging Face Link](https://huggingface.co/models)
+   - Example: `qwen2.5-coder-1.5b-q8_0.gguf`.
+
+2. Start the AI server:
+   ```Powershell
+   .venv\Scripts\python -m llama_cpp.server --port 8004 --model .\src\models\model\qwen2.5-coder-1.5b-q8_0.gguf
+   ```
+
+### **Launch RuneScript**
+
+- **Windows**:
+  ```Powershell
+  .venv\Scripts\python main.py
+  ```
+- **Linux**:
   ```bash
   .venv/bin/python main.py
   ```
 
-## Contributing
+---
 
-We welcome contributions! If you'd like to contribute to ScriptsEditor, please check our [contribution guidelines](CONTRIBUTING.md).
+## **How to Contribute**
 
-## License
+We value the contributions of developers, designers, and visionaries.  
+- Check out our [contribution guidelines](CONTRIBUTING.md).
+- Join discussions and report issues [here](https://github.com/Axlfc/scriptseditor/issues).
+- Fork and submit pull requests to enhance RuneScript.
 
-ScriptsEditor is open-source and licensed under the [GPL-2.0](LICENSE).
+---
 
-## TO-DO:
-- [] Implement whisper.cpp to be able to talk to ScriptsEditor
-- [] Implement stable-difussion-cpp as image generation backend
-- [] Implement stable-diffusion audio as audio generation backend
+## **Roadmap & Vision**
+
+RuneScript is a collaborative, dynamic project with a bold future. Here’s what we’re working toward:
+
+- **Collaborative Innovation**:
+  - Join a community of forward-thinking engineers and designers building the future.
+  - Contribute to open-source modules that shape the industry.
+
+- **Developer Empowerment**:
+  - Unlock potential through AI-enhanced workflows and intelligent assistants.
+  - Bridge technical barriers with low-code/no-code integrations.
+
+- **Sustainable Growth**:
+  - Foster a marketplace for extensions, plugins, and templates.
+  - Drive funding and support from individuals and enterprises who believe in our mission.
+
+---
+
+## **Join the Movement**
+
+### Why RuneScript?  
+- **Efficiency**: Simplify tasks with AI-driven tools.  
+- **Collaboration**: Empower teams to achieve more, faster.  
+- **Innovation**: Build, share, and evolve the tools of tomorrow.
+
+### **Get Involved**  
+- ⭐ **Star us on GitHub**: Show your support and help us grow.  
+- 🤝 **Collaborate**: Share your expertise and contribute to the future.  
+- 🚀 **Invest**: Partner with us to accelerate development and reach new heights.
+
+Let’s transform how the world writes, manages, and executes scripts—together.
+
+---  
+### **License**
+RuneScript is licensed under the [GPL-2.0](LICENSE).  
+
+---  
+
+We’d love to hear your thoughts and ideas! Join us on this exciting journey.  
+**Together, let’s shape the future of intelligent scripting.** 🌟
+
