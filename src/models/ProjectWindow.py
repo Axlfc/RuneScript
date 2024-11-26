@@ -81,7 +81,6 @@ class InputDialog(tk.Toplevel):
         self.destroy()
 
 
-
 class ProjectAnalyzer:
     """Analyzes project requirements and generates appropriate structures."""
 
