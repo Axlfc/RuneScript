@@ -143,17 +143,6 @@ def ensure_user_config():
 
 
 def load_theme_setting():
-    """ ""\"
-    ""\"
-    load_theme_setting
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\"
-    ""\" """
     theme = read_config_parameter("options.theme_appearance.theme")
     if theme is None:
         theme = "cosmo"

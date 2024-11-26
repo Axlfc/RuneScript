@@ -1,6 +1,5 @@
 from tkinter import (
     Button,
-    Checkbutton,
     Scrollbar,
     HORIZONTAL,
     LEFT,
@@ -11,7 +10,6 @@ from tkinter import (
     BOTTOM,
     W,
 )
-from tkinter.ttk import Treeview
 from src.controllers.menu_functions import open_search_window, open_search_replace_window
 from src.models.file_operations import prompt_rename_file
 from src.controllers.menu_functions import (
@@ -28,10 +26,8 @@ from src.controllers.menu_functions import (
     cut,
     copy,
     paste,
-    duplicate,
 )
 from src.models.script_operations import (
-    run_script_with_timeout,
     run_script_once,
     run_script_crontab,
     get_operative_system,
@@ -49,86 +45,22 @@ from src.controllers.file_operations import on_text_change
 
 
 def create_app():
-    """ ""\"
-    create_app
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\" """
     create_menu()
     create_body()
     create_footer()
 
 
 def create_footer():
-    """ ""\"
-    create_footer
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\" """
     create_execute_one_time_with_format()
     create_program_daily_with_format()
 
 
 def create_body():
-    """ ""\"
-    create_body
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\" """
     create_content_file_window()
     create_filesystem_window()
 
 
-def create_footer_line():
-    """ ""\"
-    create_footer_line
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\" """
-    pass
-
-
-def create_icon_buttons_line():
-    """ ""\"
-    create_icon_buttons_line
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\" """
-    pass
-
-
 def create_open_script_line():
-    """ ""\"
-    Creates the interface elements for opening a script file.
-
-    This includes buttons and labels to facilitate the opening of script files from the file system into the application.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\" """
     script_frm.grid(row=1, column=0, pady=0, sticky="ew")
     script_frm.grid_columnconfigure(2, weight=1)
     open_button = Button(script_frm, text=open_icon, command=open_script)
@@ -152,15 +84,6 @@ def create_open_script_line():
 
 
 def create_filesystem_window():
-    """ ""\"
-    create_filesystem_window
-
-    Args:
-        None
-
-    Returns:
-        None: Description of return value.
-    ""\" """
     vsb = Scrollbar(tree_frame, orient="vertical", command=tree.yview)
     vsb.pack(side=RIGHT, fill=Y)
     hsb = Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
@@ -262,18 +185,6 @@ def create_content_file_window():
 
 
 def create_horizontal_scrollbar_lines():
-    """ ""\"
-    Creates the horizontal scrollbar for the script_text widget.
-
-    This function adds a horizontal scrollbar to the script_text widget, allowing users to scroll horizontally
-    through the text content.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\" """
     scrollbar_frm.grid(row=3, column=0, pady=0, sticky="ew")
     scrollbar = Scrollbar(root, orient=HORIZONTAL, command=script_text.xview)
     scrollbar.grid(row=3, column=0, sticky="ew")
@@ -281,18 +192,6 @@ def create_horizontal_scrollbar_lines():
 
 
 def create_execute_one_time_with_format():
-    """ ""\"
-    Sets up the interface elements for scheduling a one-time script execution.
-
-    This function allows users to schedule a script to be run at a specific time, enhancing the scheduler
-    capabilities of the application.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\" """
     if get_operative_system() != "Windows":
         one_time_frm.grid(row=8, column=0, pady=0, sticky="nsew")
         Label(one_time_frm, text=localization_data["scheduled_script_execution"]).grid(
@@ -311,18 +210,6 @@ def create_execute_one_time_with_format():
 
 
 def create_program_daily_with_format():
-    """ ""\"
-    Creates UI components for setting up daily scheduled script execution.
-
-    This interface enables users to schedule scripts to run daily at specified times, supporting routine
-    automation tasks.
-
-    Parameters:
-    None
-
-    Returns:
-    None
-    ""\" """
     if get_operative_system() != "Windows":
         daily_frm.grid(row=9, column=0, pady=0, sticky="ew")
         Label(daily_frm, text=localization_data["daily_script_scheduling"]).grid(
