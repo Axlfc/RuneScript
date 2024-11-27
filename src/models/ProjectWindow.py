@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import shutil
@@ -12,34 +13,570 @@ import threading
 import time
 import uuid
 from datetime import datetime
+from typing import Dict, Any, List, Optional
 
 
-def _check_duplicates(content, existing_features, log_func=None):
-    """Check for duplicate function or class definitions."""
-    # Ensure content is a string
-    if not isinstance(content, str):
-        content = str(content)
+class AIProjectGenerator:
+    def __init__(self, project_prompt: str, base_path: str, ai_handler=None):
+        print("Initializing AIProjectGenerator...")
+        self.project_prompt = project_prompt
+        self.base_path = base_path
+        self.project_id = uuid.uuid4().hex[:8]
+        print(f"Project ID: {self.project_id}")
 
-    # Regex pattern for function/class definitions
-    pattern = r'\b(def|class)\s+(\w+)\b'
-    new_definitions = set(re.findall(pattern, content))
+        self.logger = self._setup_logger()
+        print("Logger initialized.")
 
-    for feature in existing_features:
-        if not isinstance(feature, str):  # Skip non-string features
-            continue
-        existing_definitions = set(re.findall(pattern, feature))
-        if new_definitions & existing_definitions:  # Overlap of names
-            if log_func:
-                log_func(f"[WARNING] Duplicate function/class detected: {new_definitions & existing_definitions}")
-            return True
-    return False
+        # Initialize project metadata first
+        self.project_metadata = {
+            'id': self.project_id,
+            'prompt': project_prompt,
+            'insights': {},
+            'features': [],
+            'design_iterations': 0
+        }
+        print("Project metadata initialized.")
 
+        try:
+            self.project_analyzer = AdvancedProjectAnalyzer(project_prompt)
+            print("Analyzer initialized successfully.")
+        except Exception as e:
+            print(f"Error initializing analyzer: {e}")
+            raise
 
-def _validate_names(content):
-    """Ensure function and variable names are descriptive and meaningful."""
-    invalid_names = re.findall(r'\bdef\s+(f|x|y|temp|tmp|test)\b', content)  # Example pattern for poor names
-    if invalid_names:
-        raise ValueError(f"Found invalid or undescriptive names: {', '.join(invalid_names)}")
+        try:
+            self.project_metadata['insights'] = self.project_analyzer.get_project_insights()
+            print("Insights retrieved successfully.")
+        except Exception as e:
+            print(f"Error retrieving insights: {e}")
+            raise
+
+        # Handle AI interaction
+        self.ai_handler = ai_handler or process_prompt_with_ai
+        print("AI handler initialized.")
+
+    def _generate_project_name(self) -> str:
+        return f"{self.project_prompt.split()[0].lower()}_{self.project_metadata['id']}"
+
+    def _setup_logger(self) -> logging.Logger:
+        logger = logging.getLogger(f'project_{self.project_id}')
+        logger.setLevel(logging.DEBUG)
+
+        # Console Handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s: %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        return logger
+
+    def generate_project(self):
+        if not hasattr(self, 'project_metadata'):
+            raise AttributeError("The attribute 'project_metadata' has not been initialized")
+        print("GENERATING PROJECT")
+        try:
+            # Verificar si el atributo está inicializado
+            if not hasattr(self, 'project_metadata'):
+                raise AttributeError("The attribute 'project_metadata' has not been initialized")
+
+            # Crear estructura base
+            self._create_base_structure()
+            print("STRUCTURE CREATED")
+
+            # Analizar y generar características
+            features = self._analyze_project_features()
+
+            print("FEATURES GENERATED")
+
+            # Generar implementaciones de características
+            for feature in features:
+                print("FEATURE!!", feature)
+                self._implement_feature(feature)
+
+            # Crear documentación
+            self._generate_documentation()
+
+            # Guardar metadatos
+            self._save_project_metadata()
+            print("WE SEND THIS METADATA (generate project):\n", self.project_metadata)
+
+            return self.project_metadata
+
+        except Exception as e:
+            raise RuntimeError(f"Project generation failed: {e}")
+
+    def _create_base_structure(self):
+        """Create basic project directory structure."""
+        dirs = [
+            'src',
+            'src/core',
+            'src/utils',
+            'tests',
+            'docs',
+            'config'
+        ]
+
+        for dir_path in dirs:
+            os.makedirs(os.path.join(self.base_path, dir_path), exist_ok=True)
+
+    def _analyze_project_features(self) -> List[str]:
+        # AI-assisted feature extraction (simulated)
+        features_prompt = f"""
+        Analyze this project description and extract key features:
+        {self.project_prompt}
+
+        Return comma-separated list of features, using lowercase names.
+        """
+
+        # In a real implementation, this would call an AI service
+        # For demonstration, we'll use a basic extraction
+        features = [
+            'data_processing',
+            'user_management',
+            'reporting'
+        ]
+
+        self.project_metadata['features'] = features
+        return features
+
+    def _implement_feature(self, feature: str):
+        """
+        Implement a single feature using TDD principles.
+
+        Args:
+            feature (str): Name of feature to implement
+        """
+        # Create test file
+        test_path = os.path.join(self.base_path, 'tests', f'test_{feature}.py')
+        with open(test_path, 'w') as f:
+            f.write(self._generate_test_content(feature))
+
+        # Create implementation file
+        impl_path = os.path.join(self.base_path, 'src', 'core', f'{feature}.py')
+        with open(impl_path, 'w') as f:
+            f.write(self._generate_implementation(feature))
+
+    def _generate_test_content(self, feature: str) -> str:
+        """
+        Generate comprehensive test content for a feature.
+
+        Args:
+            feature (str): Feature name
+
+        Returns:
+            str: Generated test code
+        """
+        return f'''
+import pytest
+
+def test_{feature}_initialization():
+    """Basic initialization test for {feature}"""
+    assert True, "Feature initialization test placeholder"
+
+def test_{feature}_basic_functionality():
+    """Test basic functionality of {feature}"""
+    # TODO: Implement specific tests for {feature}
+    assert True, "Basic functionality test placeholder"
+
+def test_{feature}_edge_cases():
+    """Test edge cases for {feature}"""
+    # TODO: Implement edge case tests
+    assert True, "Edge case test placeholder"
+'''
+
+    def _generate_implementation(self, feature: str) -> str:
+        """
+        Generate initial implementation for a feature.
+
+        Args:
+            feature (str): Feature name
+
+        Returns:
+            str: Generated implementation code
+        """
+        return f'''
+class {feature.title().replace('_', '')}:
+    """
+    Initial implementation of {feature} feature.
+    """
+    def __init__(self):
+        """
+        Initialize {feature} feature.
+        """
+        pass
+
+    def process(self):
+        """
+        Placeholder processing method.
+
+        Returns:
+            None
+        """
+        # TODO: Implement actual feature logic
+        pass
+'''
+
+    def _generate_documentation(self):
+        """Generate project documentation files."""
+        # README
+        readme_path = os.path.join(self.base_path, 'README.md')
+        with open(readme_path, 'w') as f:
+            f.write(f'''# {self.project_metadata['name']}
+
+## Project Description
+{self.project_prompt}
+
+## Features
+{', '.join(self.project_metadata['features'])}
+
+## Setup
+1. Clone the repository
+2. Install dependencies
+3. Run tests: `pytest tests/`
+''')
+
+    def _save_project_metadata(self):
+        """Save project metadata to a JSON file."""
+        metadata_path = os.path.join(self.base_path, 'config', 'project_metadata.json')
+        with open(metadata_path, 'w') as f:
+            json.dump(self.project_metadata, f, indent=2)
+
+    def _generate_dynamic_structure(self, project_type: str) -> Dict[str, Any]:
+        """
+        Dynamically generate project structure based on project type
+
+        Args:
+            project_type (str): Detected project type
+
+        Returns:
+            Dynamically generated project structure
+        """
+        base_structure = {
+            'src': {
+                '__init__.py': '',
+                'core': {'__init__.py': ''},
+                'utils': {'__init__.py': ''}
+            },
+            'tests': {'__init__.py': ''},
+            'docs': {}
+        }
+
+        # Add type-specific directories
+        type_specific_dirs = {
+            'web': ['api', 'models', 'routes'],
+            'data_science': ['data', 'models', 'notebooks'],
+            'desktop_app': ['ui', 'models', 'controllers'],
+            'cli_tool': ['commands', 'utils']
+        }
+
+        for dir_name in type_specific_dirs.get(project_type, []):
+            base_structure['src'][dir_name] = {'__init__.py': ''}
+
+        return base_structure
+
+    def _create_project_structure(self, structure: Dict[str, Any],
+                                  current_path: Optional[str] = None):
+        """
+        Recursively create project directory structure
+
+        Args:
+            structure (Dict): Project structure dictionary
+            current_path (str, optional): Current path being processed
+        """
+        current_path = current_path or self.base_path
+
+        for name, content in structure.items():
+            path = os.path.join(current_path, name)
+
+            if isinstance(content, dict):
+                # Create directory
+                os.makedirs(path, exist_ok=True)
+                # Recursively create subdirectories
+                self._create_project_structure(content, path)
+            else:
+                # Create file
+                with open(path, 'w') as f:
+                    f.write(content or '')
+
+        self.logger.info(f"Created project structure in {current_path}")
+
+    def _execute_feature_driven_development(self):
+        """
+        Execute AI-driven feature generation and TDD cycle.
+        """
+        feature_priorities = self.project_analyzer._prioritize_features()
+
+        for feature_config in feature_priorities:
+            feature_name = feature_config['name']
+            try:
+                self.logger.info(f"Starting TDD cycle for {feature_name}")
+
+                # Step 1: Generate tests
+                test_content = self.generate_tests(feature_name)
+
+                # Step 2: Implement feature
+                implementation = self.implement_feature(feature_name, test_content)
+
+                # Step 3: Verify and refactor
+                self.verify_and_refactor_feature(feature_name, test_content, implementation)
+
+                # Update metadata
+                self.project_metadata['features'].append({
+                    'name': feature_name,
+                    'status': 'completed',
+                    'priority': feature_config['priority']
+                })
+                self.logger.info(f"Completed TDD cycle for {feature_name}")
+
+            except Exception as e:
+                self.logger.error(f"TDD cycle failed for {feature_name}: {e}")
+
+    def generate_tests(self, feature_name: str) -> str:
+        """
+        Generate a comprehensive pytest test suite for a feature.
+        """
+        prompt = f"Write tests for {feature_name} following TDD principles."
+        return self.ai_handler(prompt)
+
+    def implement_feature(self, feature_name: str, test_content: str) -> str:
+        """
+        Implement a feature to pass its corresponding tests.
+        """
+        prompt = f"Implement {feature_name} to pass the following tests:\n{test_content}"
+        return self.ai_handler(prompt)
+
+    def verify_and_refactor_feature(self, feature_name: str, test_content: str, implementation: str):
+        """
+        Verify the implementation of a feature and refactor it if necessary.
+
+        Args:
+            feature_name (str): The name of the feature being implemented.
+            test_content (str): The test cases for the feature.
+            implementation (str): The implementation code for the feature.
+
+        Raises:
+            RuntimeError: If both initial and refactored implementations fail tests.
+        """
+        self.logger.info(f"Verifying implementation for {feature_name}")
+        try:
+            # Step 1: Verify the initial implementation
+            test_passed = self._simulate_test_verification(test_content, implementation)
+            if test_passed:
+                self.logger.info(f"Initial implementation passed tests for {feature_name}")
+                return
+
+            # Step 2: Perform refactoring if tests fail
+            self.logger.warning(f"Initial implementation failed tests for {feature_name}, refactoring...")
+            refactoring_prompt = f"""
+            Refactor the following implementation of {feature_name} to pass these tests:
+            {implementation}
+
+            Tests:
+            {test_content}
+            """
+            refactored_implementation = self._simulate_ai_generation(refactoring_prompt)
+
+            # Step 3: Verify the refactored implementation
+            test_passed = self._simulate_test_verification(test_content, refactored_implementation)
+            if test_passed:
+                self.logger.info(f"Refactored implementation passed tests for {feature_name}")
+            else:
+                raise RuntimeError(f"Both initial and refactored implementations failed for {feature_name}")
+
+        except Exception as e:
+            self.logger.error(f"Error during verification and refactoring of {feature_name}: {e}")
+            raise
+
+    def _ai_generate_tests(self, feature_name: str) -> str:
+        """
+        Generate tests for a feature using the AI handler.
+        """
+        ai_test_prompt = f"""
+        Generate a comprehensive pytest test suite for {feature_name}:
+        - Include multiple test scenarios
+        - Cover edge cases and error handling
+        - Follow best practices in test design
+        """
+        return self.ai_handler(ai_test_prompt)
+
+    def _ai_generate_implementation(self, feature_name: str, test_content: str) -> str:
+        """
+        Generate feature implementation to pass the provided tests.
+        """
+        ai_implementation_prompt = f"""
+        Implement {feature_name} to pass these test cases:
+        {test_content}
+
+        Requirements:
+        - Clean, modular code
+        - Efficient implementation
+        - Robust error handling
+        """
+        return self.ai_handler(ai_implementation_prompt)
+
+    def _verify_and_refactor_feature(self,
+                                     feature_name: str,
+                                     test_content: str,
+                                     implementation: str):
+        """
+        Verify implementation and refactor if necessary
+
+        Args:
+            feature_name (str): Name of the feature
+            test_content (str): Test cases
+            implementation (str): Feature implementation
+        """
+        # Simulate test verification (replace with actual test runner)
+        test_passed = self._simulate_test_verification(
+            test_content,
+            implementation
+        )
+
+        if not test_passed:
+            # AI-driven refactoring
+            refactoring_prompt = f"""
+            Refactor this implementation for {feature_name} to pass tests:
+            {implementation}
+
+            Reasons for refactoring:
+            - Failed initial test cases
+            - Improve code quality
+            - Enhance maintainability
+            """
+
+            refactored_implementation = self._simulate_ai_generation(
+                refactoring_prompt
+            )
+
+            # Re-verify refactored implementation
+            test_passed = self._simulate_test_verification(
+                test_content,
+                refactored_implementation
+            )
+
+            if test_passed:
+                self.logger.info(f"Successfully refactored {feature_name}")
+            else:
+                self.logger.error(f"Failed to refactor {feature_name}")
+
+    def _validate_project(self):
+        """
+        Perform final project validation
+        """
+        validation_checks = [
+            self._check_code_quality,
+            self._check_test_coverage,
+            self._generate_documentation
+        ]
+
+        for check in validation_checks:
+            check()
+
+        self.logger.info("Project generation and validation completed")
+
+    def _check_code_quality(self):
+        """
+        Simulate code quality check
+        """
+        quality_prompt = """
+        Analyze the entire project codebase:
+        - Check for code complexity
+        - Identify potential improvements
+        - Ensure consistent coding standards
+        """
+
+        code_quality_report = self._simulate_ai_generation(quality_prompt)
+
+        self.project_metadata['code_quality_report'] = code_quality_report
+
+    def _check_test_coverage(self):
+        """
+        Simulate test coverage analysis
+        """
+        coverage_prompt = """
+        Analyze test coverage for the entire project:
+        - Identify untested code paths
+        - Recommend additional test cases
+        - Measure overall test effectiveness
+        """
+
+        coverage_report = self._simulate_ai_generation(coverage_prompt)
+
+        self.project_metadata['test_coverage_report'] = coverage_report
+
+    def _generate_documentation(self):
+        """
+        Generate project documentation
+        """
+        doc_prompt = f"""
+        Generate comprehensive documentation for the project:
+        - Project overview based on initial prompt: {self.project_prompt}
+        - Architectural decisions
+        - Feature descriptions
+        - Setup and usage instructions
+        """
+
+        documentation = self._simulate_ai_generation(doc_prompt)
+
+        # Save documentation
+        doc_path = os.path.join(self.base_path, 'docs', 'README.md')
+        with open(doc_path, 'w') as f:
+            f.write(documentation)
+
+        self.project_metadata['documentation_path'] = doc_path
+
+    def _simulate_ai_generation(self, prompt: str) -> str:
+        """
+        Generate AI-driven content using the provided process_prompt_with_ai function.
+        """
+        try:
+            response = process_prompt_with_ai(prompt)
+            if response:
+                self.logger.info(f"AI generated response for prompt: {prompt}")
+                return response
+            else:
+                self.logger.error(f"AI failed to generate a response for prompt: {prompt}")
+                return "Failed to generate response"
+        except Exception as e:
+            self.logger.error(f"Error during AI generation: {e}")
+            return f"Error: {e}"
+
+    def _generate_refactored_code(self, original_code: str) -> str:
+        """
+        Refactor existing code for improved quality and maintainability.
+        """
+        refactoring_prompt = f"""
+        Refactor the following code to improve its quality while maintaining functionality:
+        {original_code}
+
+        Focus on:
+        - Enhancing readability
+        - Reducing complexity
+        - Applying design principles like SOLID
+        - Maintaining compatibility with existing tests
+        """
+        return self.ai_handler(refactoring_prompt)
+
+    def _simulate_test_verification(self,
+                                    test_content: str,
+                                    implementation: str) -> bool:
+        """
+        Simulate test verification
+
+        Args:
+            test_content (str): Test cases
+            implementation (str): Feature implementation
+
+        Returns:
+            Whether tests passed
+        """
+        # In a real implementation, this would run actual tests
+        return len(implementation) > 10  # Simple placeholder logic
+
 
 
 class InputDialog(tk.Toplevel):
@@ -79,6 +616,172 @@ class InputDialog(tk.Toplevel):
     def on_cancel(self):
         self.callback(None)
         self.destroy()
+
+
+class AdvancedProjectAnalyzer:
+    def __init__(self, prompt: str):
+        self.prompt = prompt.lower()
+        self.analysis = self._comprehensive_analysis()
+
+    def _comprehensive_analysis(self) -> Dict[str, Any]:
+        """
+        Perform a multi-dimensional analysis of the project prompt.
+
+        Returns:
+            Dict containing detailed project insights
+        """
+        return {
+            "project_type": self._determine_project_type(),
+            "complexity_score": self._assess_complexity(),
+            "recommended_architecture": self._suggest_architecture(),
+            "potential_challenges": self._identify_challenges(),
+            "tech_stack_suggestions": self._recommend_tech_stack(),
+            "feature_priorities": self._prioritize_features()
+        }
+
+    def _determine_project_type(self) -> str:
+        """
+        Classify the project type based on key terms and context.
+
+        Returns:
+            str: Project type classification
+        """
+        project_type_mapping = {
+            'web': ['web', 'http', 'api', 'rest', 'flask', 'django', 'server'],
+            'data_science': ['data', 'machine learning', 'analysis', 'prediction', 'ml', 'ai'],
+            'desktop_app': ['desktop', 'gui', 'tkinter', 'qt', 'window'],
+            'cli_tool': ['command', 'cli', 'terminal', 'console'],
+            'microservice': ['microservice', 'distributed', 'service', 'scalable']
+        }
+
+        for project_type, keywords in project_type_mapping.items():
+            if any(keyword in self.prompt for keyword in keywords):
+                return project_type
+
+        return 'generic'
+
+    def _assess_complexity(self) -> float:
+        """
+        Assign a complexity score to the project based on identified features.
+
+        Returns:
+            float: Complexity score (0-10)
+        """
+        complexity_factors = [
+            ('machine learning' in self.prompt, 3),
+            ('api' in self.prompt, 2),
+            ('database' in self.prompt, 2),
+            ('authentication' in self.prompt, 1.5),
+            ('real-time' in self.prompt, 1.5),
+            ('multi-user' in self.prompt, 1)
+        ]
+
+        return min(sum(factor[1] for factor in complexity_factors if factor[0]), 10)
+
+    def _suggest_architecture(self) -> str:
+        """
+        Recommend an architectural pattern based on project characteristics.
+
+        Returns:
+            str: Recommended architectural pattern
+        """
+        architectures = {
+            'web': ['Layered Architecture', 'Microservices', 'RESTful API'],
+            'data_science': ['Modular Architecture', 'Pipeline Architecture'],
+            'desktop_app': ['Model-View-Controller (MVC)', 'Model-View-ViewModel (MVVM)'],
+            'cli_tool': ['Command Pattern', 'Pipeline Architecture'],
+            'microservice': ['Microservices', 'Event-Driven Architecture']
+        }
+
+        project_type = self._determine_project_type()
+        return architectures.get(project_type, ['Modular Architecture'])[0]
+
+    def _identify_challenges(self) -> List[str]:
+        """
+        Proactively identify potential project challenges.
+
+        Returns:
+            List of potential challenges
+        """
+        challenge_patterns = {
+            'scalability': ['multi-user', 'high-traffic', 'scalable'],
+            'performance': ['real-time', 'high-performance', 'low-latency'],
+            'security': ['authentication', 'user-management', 'secure'],
+            'complexity': ['machine learning', 'ai', 'advanced', 'complex']
+        }
+
+        challenges = []
+        for challenge, keywords in challenge_patterns.items():
+            if any(keyword in self.prompt for keyword in keywords):
+                challenges.append(challenge)
+
+        return challenges or ['standard complexity']
+
+    def _recommend_tech_stack(self) -> Dict[str, List[str]]:
+        """
+        Suggest technology stack based on project type and requirements.
+
+        Returns:
+            Dict of technology recommendations
+        """
+        tech_stack_recommendations = {
+            'web': {
+                'backend': ['Flask', 'FastAPI', 'Django'],
+                'database': ['PostgreSQL', 'MongoDB', 'SQLAlchemy'],
+                'deployment': ['Docker', 'Kubernetes', 'Heroku']
+            },
+            'data_science': {
+                'libraries': ['NumPy', 'Pandas', 'Scikit-learn', 'TensorFlow'],
+                'visualization': ['Matplotlib', 'Seaborn', 'Plotly'],
+                'notebook': ['Jupyter', 'Google Colab']
+            },
+            'desktop_app': {
+                'framework': ['PyQt', 'Tkinter', 'wxPython'],
+                'ui': ['QT Designer', 'Glade'],
+                'packaging': ['PyInstaller', 'cx_Freeze']
+            },
+            'cli_tool': {
+                'cli_library': ['Click', 'Typer'],
+                'utility': ['Rich', 'Colorama'],
+                'packaging': ['Poetry', 'setuptools']
+            }
+        }
+
+        project_type = self._determine_project_type()
+        return tech_stack_recommendations.get(project_type, {})
+
+    def _prioritize_features(self) -> List[Dict[str, Any]]:
+        """
+        Generate feature priorities based on project requirements.
+
+        Returns:
+            Prioritized list of features with estimated effort and importance
+        """
+        feature_priorities = [
+            {
+                "name": "Core Functionality",
+                "priority": 1,
+                "estimated_effort": "High",
+                "description": "Essential features that define the project's primary purpose"
+            },
+            {
+                "name": "User Experience",
+                "priority": 2,
+                "estimated_effort": "Medium",
+                "description": "UI/UX improvements and user interaction flows"
+            },
+            {
+                "name": "Performance Optimization",
+                "priority": 3,
+                "estimated_effort": "Medium",
+                "description": "Scalability, speed, and efficiency enhancements"
+            }
+        ]
+
+        return feature_priorities
+
+    def get_project_insights(self) -> Dict[str, Any]:
+        return self.analysis
 
 
 class ProjectAnalyzer:
@@ -525,6 +1228,56 @@ coverage.xml
 '''
 
 
+def _check_duplicates(content, existing_features, log_func=None):
+    """Check for duplicate function or class definitions."""
+    # Ensure content is a string
+    if not isinstance(content, str):
+        content = str(content)
+
+    # Regex pattern for function/class definitions
+    pattern = r'\b(def|class)\s+(\w+)\b'
+    new_definitions = set(re.findall(pattern, content))
+
+    for feature in existing_features:
+        if not isinstance(feature, str):  # Skip non-string features
+            continue
+        existing_definitions = set(re.findall(pattern, feature))
+        if new_definitions & existing_definitions:  # Overlap of names
+            if log_func:
+                log_func(f"[WARNING] Duplicate function/class detected: {new_definitions & existing_definitions}")
+            return True
+    return False
+
+
+def _validate_names(content):
+    """Ensure function and variable names are descriptive and meaningful."""
+    invalid_names = re.findall(r'\bdef\s+(f|x|y|temp|tmp|test)\b', content)  # Example pattern for poor names
+    if invalid_names:
+        raise ValueError(f"Found invalid or undescriptive names: {', '.join(invalid_names)}")
+
+
+def process_prompt_with_ai(combined_input: str) -> str:
+    ai_script_path = "src/models/ai_assistant.py"
+    python_executable = 'python'
+
+    try:
+        command = [python_executable, ai_script_path, combined_input]
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding='utf-8'
+        )
+        ai_response, error = process.communicate()
+        if process.returncode != 0 or error:
+            raise Exception(f"AI Assistant Error: {error.strip()}")
+        print("THE INPUT:\n", combined_input)
+        return ai_response.strip()
+    except Exception as e:
+        logging.error(f"Failed to communicate with AI: {e}")
+        return None
+
 class ProjectWindow:
     def __init__(self, root=None):
         if root is None:
@@ -534,23 +1287,19 @@ class ProjectWindow:
         self.root.title("AI Project Generator")
         self.root.geometry("600x800")
 
-        # Project state
         self.current_project_path = None
         self.config = self.load_config()
         self.generation_active = False
         self.analyzer = None
         self.paused = False
-        self.expanded_nodes = set()  # Track expanded nodes
+        self.expanded_nodes = set()
 
-        # UI state
         self.ui_queue = queue.Queue()
         self.setup_ui()
 
-        # Start queue monitoring
         self.root.after(100, self.process_ui_queue)
 
     def load_config(self):
-        """Load or create configuration file."""
         config_path = 'data/project_generator_config.json'
         default_config = {
             'recent_projects': [],
@@ -569,7 +1318,6 @@ class ProjectWindow:
             return default_config
 
     def setup_ui(self):
-        """Initialize the main UI components."""
         self.main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         self.main_paned.pack(fill=tk.BOTH, expand=True)
 
@@ -580,7 +1328,6 @@ class ProjectWindow:
         self.setup_styles()
 
     def setup_project_tree(self):
-        """Setup the project file tree panel with improved state management."""
         tree_frame = ttk.Frame(self.main_paned)
         self.main_paned.add(tree_frame)
 
@@ -610,17 +1357,14 @@ class ProjectWindow:
         self.tree.bind('<<TreeviewClose>>', self.on_node_collapsed)
 
     def on_node_expanded(self, event):
-        """Track expanded nodes."""
         item = self.tree.focus()
         self.expanded_nodes.add(item)
 
     def on_node_collapsed(self, event):
-        """Track collapsed nodes."""
         item = self.tree.focus()
         self.expanded_nodes.discard(item)
 
     def show_context_menu(self, event):
-        """Show context menu for tree items"""
         menu = tk.Menu(self.root, tearoff=0)
         menu.add_command(label="New File", command=self.new_file)
         menu.add_command(label="New Folder", command=self.new_folder)
@@ -629,7 +1373,6 @@ class ProjectWindow:
         menu.post(event.x_root, event.y_root)
 
     def setup_right_panel(self):
-        """Setup the right panel for editor and output."""
         self.right_paned = ttk.PanedWindow(self.main_paned, orient=tk.VERTICAL)
         self.main_paned.add(self.right_paned)
 
@@ -637,7 +1380,6 @@ class ProjectWindow:
         self.setup_output_area()
 
     def setup_editor(self):
-        """Setup the code editor area."""
         editor_frame = ttk.Frame(self.right_paned)
         self.right_paned.add(editor_frame)
 
@@ -655,7 +1397,6 @@ class ProjectWindow:
         self.editor.pack(fill=tk.BOTH, expand=True)
 
     def setup_output_area(self):
-        """Setup the output and status area."""
         output_frame = ttk.Frame(self.right_paned)
         self.right_paned.add(output_frame)
 
@@ -682,7 +1423,6 @@ class ProjectWindow:
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
     def setup_command_bar(self):
-        """Setup the command input area with pause functionality."""
         cmd_frame = ttk.Frame(self.root)
         cmd_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -717,7 +1457,6 @@ class ProjectWindow:
         self.stop_btn.pack(side=tk.LEFT, padx=2)
 
     def toggle_pause(self):
-        """Toggle pause state for file inspection."""
         self.paused = not self.paused
         if self.paused:
             self.pause_btn.configure(text="▶️ Resume")
@@ -728,7 +1467,6 @@ class ProjectWindow:
             self.update_tree(force=True)
 
     def setup_styles(self):
-        """Setup ttk styles."""
         style = ttk.Style()
         style.configure(
             'Header.TLabel',
@@ -743,7 +1481,6 @@ class ProjectWindow:
         )
 
     def start_project_generation(self):
-        """Handle project generation start with pause support."""
         prompt = self.prompt_entry.get().strip()
         if not prompt:
             messagebox.showwarning("Warning", "Please enter a project prompt")
@@ -773,31 +1510,22 @@ class ProjectWindow:
             self.log_error(f"Failed to initialize project directory: {e}")
 
     def generate_project(self, path, prompt):
-        """Generate project using TDD methodology with improved thread safety."""
+        print("D:")
         try:
             self.generation_active = True
-            self.analyzer = ProjectAnalyzer(prompt)
+            print("AAAAAAAAAA")
+            # Initialize AI Project Generator
+            self.ui_queue.put(('status', "Initializing AI-driven project generator..."))
+            print("NEXT...")
+            project_generator = AIProjectGenerator(prompt, path)
+            # Generate the project
+            print("THE PROBLEM IS HERE")
+            project_metadata = project_generator.generate_project()
 
-            # Initialize project structure
-            self.ui_queue.put(('status', "Initializing project structure..."))
-            structure = self.analyzer.generate_project_structure()
-            self._create_structure(path, structure)
-
-            # Get list of features to implement
-            features = self.analyzer.get_feature_list()
-            self.ui_queue.put(('log', f"[INFO] Features to implement: {', '.join(features)}"))
-
-            # TDD Cycle for each feature
-            for feature in features:
-                if not self.generation_active:
-                    break
-
-                while self.paused:
-                    time.sleep(0.1)
-                    continue
-
-                self._execute_tdd_cycle(path, feature)
-                time.sleep(0.5)  # Prevent UI overload
+            # Update UI and log results
+            self.ui_queue.put(('log', f"[INFO] Project generated successfully: {project_metadata}"))
+            self.ui_queue.put(('status', "Project generation complete!"))
+            self.update_tree(force=True)
 
         except Exception as e:
             self.ui_queue.put(('log', f"[ERROR] Project generation failed: {e}"))
@@ -806,7 +1534,6 @@ class ProjectWindow:
             self.ui_queue.put(('enable_ui', None))
 
     def _execute_tdd_cycle(self, path, feature):
-        """Execute a single TDD cycle for a feature with improved error handling and backup support."""
         try:
             # Red Phase
             self.ui_queue.put(('status', f"Red Phase: Writing tests for {feature}"))
@@ -861,7 +1588,6 @@ class ProjectWindow:
             return False
 
     def _generate_test_content(self, feature):
-        """Generate test content using AI assistant."""
         prompt = f"""
         Write a comprehensive test suite for the {feature} feature.
         Include:
@@ -870,11 +1596,10 @@ class ProjectWindow:
         - Error conditions
         Follow pytest best practices and include necessary imports.
         """
-        response = self.process_prompt_with_ai(prompt)
+        response = process_prompt_with_ai(prompt)
         return self._extract_code_blocks(response)  # Clean extracted code
 
     def _generate_implementation(self, feature, test_content):
-        """Generate implementation based on test requirements."""
         prompt = f"""
         Implement the {feature} feature to pass these tests:
         {test_content}
@@ -884,11 +1609,10 @@ class ProjectWindow:
         - Proper error handling
         - Clear documentation
         """
-        response = self.process_prompt_with_ai(prompt)
+        response = process_prompt_with_ai(prompt)
         return self._extract_code_blocks(response)  # Clean extracted code
 
     def _should_refactor(self, code):
-        """Analyze if code needs refactoring."""
         # Basic heuristics for refactoring need
         code_lines = code.split('\n')
         return (
@@ -898,7 +1622,6 @@ class ProjectWindow:
         )
 
     def _generate_refactored_code(self, original_code):
-        """Generate refactored version of the code using AI assistant."""
         prompt = f"""
         Refactor this code to improve its quality while maintaining functionality:
         {original_code}
@@ -912,7 +1635,7 @@ class ProjectWindow:
 
         Return only the refactored code without explanations.
         """
-        refactored = self.process_prompt_with_ai(prompt)
+        refactored = process_prompt_with_ai(prompt)
 
         if not refactored:
             self.log_error("Failed to generate refactored code")
@@ -926,7 +1649,6 @@ class ProjectWindow:
         return cleaned_code
 
     def _run_tests_for_feature(self, path, feature):
-        """Run tests for a specific feature and return results."""
         try:
             test_file = os.path.join(path, 'tests', f'test_{feature.lower()}.py')
             if not os.path.exists(test_file):
@@ -954,7 +1676,6 @@ class ProjectWindow:
             return False
 
     def _verify_implementation(self, path, feature, implementation_file):
-        """Verify that the implementation passes its tests."""
         try:
             # Ensure source directory is in Python path
             sys.path.insert(0, os.path.join(path, 'src'))
@@ -972,7 +1693,6 @@ class ProjectWindow:
             return False
 
     def _backup_file(self, file_path):
-        """Create a backup of a file."""
         try:
             backup_path = f"{file_path}.bak"
             if os.path.exists(file_path):
@@ -984,7 +1704,6 @@ class ProjectWindow:
             return None
 
     def _restore_backup(self, backup_path, original_path):
-        """Restore a file from its backup."""
         try:
             if backup_path and os.path.exists(backup_path):
                 shutil.copy2(backup_path, original_path)
@@ -997,7 +1716,6 @@ class ProjectWindow:
             return False
 
     def _extract_code_blocks(self, text):
-        """Extract clean code blocks from AI response."""
         # Match code blocks enclosed in triple backticks (```language)
         code_blocks = re.findall(r'```(?:[a-zA-Z]*)\n(.*?)```', text, re.DOTALL)
 
@@ -1016,7 +1734,6 @@ class ProjectWindow:
         return potential_code.strip() if potential_code else None
 
     def _create_file(self, file_path, content, log_message):
-        """Create a file with cleaned content."""
 
         def _create_file_internal():
             try:
@@ -1051,7 +1768,6 @@ class ProjectWindow:
             self.ui_queue.put(('create_file', (_create_file_internal,)))
 
     def _ensure_path_visible(self, path):
-        """Ensure a path is visible in the tree by expanding all parent directories."""
         if not self.current_project_path:
             return
 
@@ -1079,32 +1795,7 @@ class ProjectWindow:
         except Exception as e:
             self.log_error(f"Failed to ensure path visibility: {e}")
 
-    def process_prompt_with_ai(self, combined_input):
-        """Send the prompt to AI and receive the response."""
-        ai_script_path = "src/models/ai_assistant.py"
-        python_executable = 'python'
-
-        command = [python_executable, ai_script_path, combined_input]
-
-        try:
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8'
-            )
-            ai_response, error = process.communicate()
-
-            if error:
-                self.ui_queue.put(('log', f"[ERROR] AI Assistant Error: {error}"))
-            return ai_response.strip() if ai_response else None
-        except Exception as e:
-            self.ui_queue.put(('log', f"[ERROR] Failed to process prompt with AI: {e}"))
-            return None
-
     def _create_structure(self, base_path, structure, current_path=''):
-        """Recursively create project structure."""
         for name, content in structure.items():
             path = os.path.join(base_path, current_path, name)
             if isinstance(content, dict):
@@ -1117,7 +1808,6 @@ class ProjectWindow:
                 self.log_info(f"Created: {os.path.relpath(path, base_path)}")
 
     def new_file(self):
-        """Create a new file in the selected directory or project root."""
         if not self.current_project_path:
             messagebox.showwarning("Warning", "No project open")
             return
@@ -1160,7 +1850,6 @@ class ProjectWindow:
         InputDialog(self.root, "New File", "Enter file name:", on_new_file_name)
 
     def new_folder(self):
-        """Create a new folder in the selected directory or project root."""
         if not self.current_project_path:
             messagebox.showwarning("Warning", "No project open")
             return
@@ -1199,7 +1888,6 @@ class ProjectWindow:
         InputDialog(self.root, "New Folder", "Enter folder name:", on_new_folder_name)
 
     def _find_and_select_item(self, node, target_path):
-        """Recursively find and select an item in the tree by its path."""
         # Check current node
         if self.tree.item(node)['values'][0] == target_path:
             self.tree.selection_set(node)
@@ -1220,7 +1908,6 @@ class ProjectWindow:
         return False
 
     def delete_item(self):
-        """Delete selected item"""
         selection = self.tree.selection()
         if not selection:
             return
@@ -1240,56 +1927,7 @@ class ProjectWindow:
             except Exception as e:
                 self.log_error(f"Failed to delete {name}: {e}")
 
-    def generate_tests_from_prompt(self):
-        """
-        Generate test cases based on the user's input prompt.
-        These tests include meaningful assertions related to typical expected functionality.
-        """
-        prompt = self.prompt_entry.get().strip()
-
-        if not prompt:
-            return """\
-    import pytest
-
-    def test_placeholder():
-        assert True  # No prompt provided. Replace with meaningful tests.
-    """
-
-        # Analyzing the prompt for keywords and potential functionality
-        keywords = re.findall(r'\b\w+\b', prompt.lower())  # Extract keywords from the prompt
-        primary_features = ['add', 'delete', 'update', 'retrieve', 'process']
-
-        # Base test template
-        test_cases = []
-
-        for feature in primary_features:
-            if feature in keywords:
-                test_cases.append(f"""\
-    def test_{feature}():
-        # Assuming a {feature} function exists
-        # TODO: Replace with the actual implementation and meaningful assertions
-        assert True  # Replace this with an actual assertion
-    """)
-
-        # General fallback if no specific features match
-        if not test_cases:
-            test_cases.append("""\
-    def test_basic_functionality():
-        # TODO: Replace with general tests for basic functionality
-        assert True
-    """)
-
-        # Combine all tests
-        return f"""\
-    import pytest
-
-    # Tests generated based on the prompt: "{prompt}"
-
-    {''.join(test_cases)}
-    """
-
     def update_tree(self, force=False):
-        """Update project tree view with immediate visual feedback."""
         if self.paused and not force:
             return
 
@@ -1349,7 +1987,6 @@ class ProjectWindow:
         self.tree.update_idletasks()
 
     def on_tree_select(self, event):
-        """Display selected file in the editor."""
         selection = self.tree.selection()
         if not selection:
             return
@@ -1366,7 +2003,6 @@ class ProjectWindow:
                 self.log_error(f"Failed to open file: {e}")
 
     def toggle_ui_state(self, enabled):
-        """Toggle UI state with pause button support."""
         state = tk.NORMAL if enabled else tk.DISABLED
         self.prompt_entry.config(state=state)
         self.generate_btn.config(state=state)
@@ -1374,7 +2010,6 @@ class ProjectWindow:
         self.pause_btn.config(state=tk.DISABLED if enabled else tk.NORMAL)
 
     def process_ui_queue(self):
-        """Process queued UI updates in the main thread with enhanced handlers."""
         try:
             while True:
                 command, data = self.ui_queue.get_nowait()
@@ -1398,7 +2033,6 @@ class ProjectWindow:
             self.root.after(100, self.process_ui_queue)
 
     def write_to_output(self, message):
-        """Log output messages."""
         self.output.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M:%S")
         if "[ERROR]" in message:
@@ -1415,28 +2049,23 @@ class ProjectWindow:
         self.output.see(tk.END)
         self.output.config(state=tk.DISABLED)
 
-    def log_info(self, message):
-        """Log an informational message."""
-        self.ui_queue.put(('log', f"[INFO] {message}"))
-
-    def log_error(self, message):
-        """Log an error message."""
-        self.ui_queue.put(('log', f"[ERROR] {message}"))
-
-    def log_success(self, message):
-        """Log a success message."""
-        self.ui_queue.put(('log', f"[SUCCESS] {message}"))
-
-    def update_status(self, message):
-        """Update the status bar."""
-        self.ui_queue.put(('status', message))
-
     def stop_generation(self):
-        """Stop project generation."""
         self.generation_active = False
         self.log_info("Stopping project generation...")
         self.update_status("Stopping...")
         self.toggle_ui_state(True)
+
+    def log_info(self, message):
+        self.ui_queue.put(('log', f"[INFO] {message}"))
+
+    def log_error(self, message):
+        self.ui_queue.put(('log', f"[ERROR] {message}"))
+
+    def log_success(self, message):
+        self.ui_queue.put(('log', f"[SUCCESS] {message}"))
+
+    def update_status(self, message):
+        self.ui_queue.put(('status', message))
 
 
 if __name__ == '__main__':
