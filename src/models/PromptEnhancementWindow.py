@@ -574,6 +574,12 @@ class PromptEnhancementWindow:
             self.alias_status_label.config(text=validation_result['error'], fg="red")
             self.alias_valid = False
             self.alias_error = validation_result['error']
+            # Fallback: auto-generate a valid alias if the current one is invalid
+            if event is None:  # During save
+                generated_alias = self.generate_prompt_alias(self.title_entry.get().strip())
+                self.alias_entry.delete(0, END)
+                self.alias_entry.insert(0, generated_alias)
+                return self.validate_alias()
         else:
             self.alias_status_label.config(text="✓", fg="green")
             self.alias_valid = True
@@ -641,7 +647,7 @@ class PromptEnhancementWindow:
             self.alias_entry.insert(0, alias)
             self.alias_entry.icursor(current_cursor)  # Restore cursor position
             # Trigger validation
-            self.on_alias_change()
+            self.validate_alias()
 
     def check_alias_exists(self, alias, current_title=None):
         """Check if an alias already exists in any prompt file.
@@ -812,27 +818,25 @@ class PromptEnhancementWindow:
 
     def save_prompt(self):
         """Save the current prompt template to file with validation."""
-        self.prompt_data["arguments"] = self.arguments
+        self.prompt_data["arguments"] = self.arguments  # Save arguments to prompt_data
         title = self.title_entry.get().strip()
         category = self.category_entry.get().strip()
         content = self.prompt_text.get("1.0", END).strip()
         alias = self.alias_entry.get().strip()
 
         # Validate all required fields
-        if not all([title, content, category, alias]):
-            messagebox.showerror("Error", "Title, category, content, and alias cannot be empty.")
+        if not all([title, content, category]):
+            messagebox.showerror("Error", "Title, category, and content cannot be empty.")
             return
 
-        # Validate alias format
-        if not self.alias_valid:
-            messagebox.showerror("Error", f"Invalid alias: {self.alias_error}")
-            return
-
-        # Check for existing prompt with same title
-        if os.path.exists(os.path.join(self.prompt_folder, f"{title}.json")) and \
-                title != self.prompt_data.get('title'):
-            messagebox.showerror("Error", f"A prompt with the title '{title}' already exists.")
-            return
+        # Validate alias format or auto-correct
+        if not self.validate_alias():
+            alias = self.generate_prompt_alias(title)
+            self.alias_entry.delete(0, END)
+            self.alias_entry.insert(0, alias)
+            if not self.validate_alias():  # Final check
+                messagebox.showerror("Error", f"Invalid alias: {self.alias_error}")
+                return
 
         try:
             self.prompt_data = {
@@ -840,6 +844,7 @@ class PromptEnhancementWindow:
                 "alias": alias,
                 "category": category,
                 "content": content,
+                "arguments": self.arguments,  # Include arguments in the saved data
                 "variables": self.variables,
             }
 
@@ -983,8 +988,9 @@ class PromptEnhancementWindow:
         self.alias_entry.delete(0, END)
         self.category_entry.delete(0, END)
         self.prompt_text.delete("1.0", END)
-        self.arguments = []
-        self.arg_tree.delete(*self.arg_tree.get_children())
+        self.arguments = []  # Clear arguments
+        self.arg_tree.delete(*self.arg_tree.get_children())  # Clear arguments Treeview
         self.variables = []
         self.var_tree.delete(*self.var_tree.get_children())
         self.prompt_data = {}
+
