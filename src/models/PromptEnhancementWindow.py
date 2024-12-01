@@ -2,8 +2,8 @@ import os
 import json
 import re
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
-    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog, INSERT, TclError
-from tkinter.ttk import Treeview
+    scrolledtext, LabelFrame, messagebox, StringVar, Menu, simpledialog, INSERT, TclError, Scrollbar, BOTTOM
+from tkinter.ttk import Treeview, Separator, Panedwindow
 
 # Add these constants at the top of the file
 ALIAS_PATTERN = r'^[a-z][a-z0-9_]*[a-z0-9]$'
@@ -31,12 +31,20 @@ def generate_prompt_alias(self, title):
     return alias
 
 
-class VariableEditDialog(Toplevel):
-    def __init__(self, parent, variable=None):
+class EditDialog(Toplevel):
+    def __init__(self, parent, data=None, fields=None, title="Edit Dialog"):
+        """
+        A generic edit dialog for editing or creating items.
+
+        :param parent: Parent window
+        :param data: Existing data to edit (dict)
+        :param fields: Fields to display in the dialog (list of tuples: (label, field_key, default_value))
+        :param title: Dialog title
+        """
         super().__init__(parent)
-        self.title("Edit Variable")
-        # Ensure `variable` is a dictionary, even if None is passed
-        self.variable = variable or {}
+        self.title(title)
+        self.data = data or {}
+        self.fields = fields or []
         self.result = None
 
         # Make dialog modal
@@ -47,53 +55,67 @@ class VariableEditDialog(Toplevel):
         form = Frame(self)
         form.pack(padx=10, pady=5, fill=BOTH, expand=True)
 
-        # Name field
-        Label(form, text="Name:").grid(row=0, column=0, sticky=W, pady=2)
-        self.name_var = StringVar(value=self.variable.get("name", ""))
-        self.name_entry = Entry(form, textvariable=self.name_var)
-        self.name_entry.grid(row=0, column=1, sticky=W + E, pady=2)
-
-        # Description field
-        Label(form, text="Description:").grid(row=1, column=0, sticky=W, pady=2)
-        self.desc_var = StringVar(value=self.variable.get("description", ""))
-        self.desc_entry = Entry(form, textvariable=self.desc_var)
-        self.desc_entry.grid(row=1, column=1, sticky=W + E, pady=2)
-
-        # Type field
-        Label(form, text="Type:").grid(row=2, column=0, sticky=W, pady=2)
-        self.type_var = StringVar(value=self.variable.get("type", "text"))
-        self.type_entry = Entry(form, textvariable=self.type_var)
-        self.type_entry.grid(row=2, column=1, sticky=W + E, pady=2)
-
-        # Default value field
-        Label(form, text="Default Value:").grid(row=3, column=0, sticky=W, pady=2)
-        self.default_var = StringVar(value=self.variable.get("default", ""))
-        self.default_entry = Entry(form, textvariable=self.default_var)
-        self.default_entry.grid(row=3, column=1, sticky=W + E, pady=2)
+        # Dynamically create fields
+        self.inputs = {}
+        for i, (label, key, default) in enumerate(self.fields):
+            Label(form, text=f"{label}:").grid(row=i, column=0, sticky=W, pady=2)
+            var = StringVar(value=self.data.get(key, default))
+            entry = Entry(form, textvariable=var)
+            entry.grid(row=i, column=1, sticky=W + E, pady=2)
+            self.inputs[key] = var
 
         # Buttons
         button_frame = Frame(form)
-        button_frame.grid(row=4, column=0, columnspan=2, pady=10)
+        button_frame.grid(row=len(self.fields), column=0, columnspan=2, pady=10)
         Button(button_frame, text="OK", command=self.ok).pack(side=LEFT, padx=5)
         Button(button_frame, text="Cancel", command=self.cancel).pack(side=LEFT, padx=5)
 
         # Center the dialog
         self.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 50))
-
         self.wait_window(self)
 
     def ok(self):
-        self.result = {
-            "name": self.name_var.get(),
-            "description": self.desc_var.get(),
-            "type": self.type_var.get(),
-            "default": self.default_var.get()
-        }
+        """Save the input data and close the dialog."""
+        self.result = {key: var.get() for key, var in self.inputs.items()}
         self.destroy()
 
     def cancel(self):
+        """Discard changes and close the dialog."""
         self.result = None
         self.destroy()
+
+
+class VariableEditDialog(EditDialog):
+    def __init__(self, parent, variable=None):
+        super().__init__(
+            parent,
+            data=variable,
+            fields=[
+                ("Name", "name", ""),
+                ("Description", "description", ""),
+                ("Type", "type", "text"),
+                ("Default Value", "default", ""),
+            ],
+            title="Edit Variable"
+        )
+
+
+class ArgumentEditDialog(EditDialog):
+    def __init__(self, parent, argument=None):
+        super().__init__(
+            parent,
+            data=argument,
+            fields=[
+                ("Argument Name", "name", ""),
+                ("Long Form", "long", ""),
+                ("Short Form", "short", ""),
+                ("Type", "type", "str"),
+                ("Default Value", "default", ""),
+                ("Description", "description", ""),
+                ("Required", "required", "False"),  # Can be enhanced with a checkbox later
+            ],
+            title="Edit Argument"
+        )
 
 
 class PromptEnhancementWindow:
@@ -107,6 +129,7 @@ class PromptEnhancementWindow:
         self.prompt_data = {}
         self.categories = {}
         self.default_categories = self.load_default_categories()
+        self.arguments = []
         self.variables = []
         self.prompt_folder = "data/prompts"
 
@@ -318,7 +341,6 @@ class PromptEnhancementWindow:
         Button(toolbar, text="Load", command=self.load_prompt).pack(side=LEFT, padx=2)
         Button(toolbar, text="Export", command=self.export_prompt).pack(side=LEFT, padx=2)
         Button(toolbar, text="Search", command=self.search_prompt).pack(side=LEFT, padx=2)
-        Button(toolbar, text="Help").pack(side=RIGHT, padx=2)
 
         # Sidebar for categories and templates
         sidebar = Frame(main_frame, width=300)
@@ -330,37 +352,32 @@ class PromptEnhancementWindow:
         self.category_tree.pack(fill=Y, expand=True)
         self.category_tree.bind('<<TreeviewSelect>>', self.on_treeview_select)
 
-        # Right-click context menus
-        self.create_context_menus()
-
         # Main prompt editing area
         editor_frame = Frame(main_frame)
         editor_frame.grid(row=1, column=1, sticky=(N, S, W, E), pady=5)
+
+        # Make the editor area resizable
+        main_frame.columnconfigure(1, weight=3)
+        main_frame.rowconfigure(1, weight=1)
 
         # Title and alias frame
         title_frame = Frame(editor_frame)
         title_frame.pack(fill=X, pady=5)
 
-        # Title subframe
-        title_subframe = Frame(title_frame)
-        title_subframe.pack(fill=X, expand=True)
-        Label(title_subframe, text="Title:").pack(side=LEFT)
-        self.title_entry = Entry(title_subframe)
+        Label(title_frame, text="Title:").pack(side=LEFT)
+        self.title_entry = Entry(title_frame)
         self.title_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
 
-        # Alias subframe with validation feedback
-        alias_subframe = Frame(title_frame)
-        alias_subframe.pack(fill=X, expand=True, pady=(5, 0))
-        Label(alias_subframe, text="Alias:").pack(side=LEFT)
-        self.alias_entry = Entry(alias_subframe)
+        # Alias frame
+        alias_frame = Frame(editor_frame)
+        alias_frame.pack(fill=X, pady=(5, 0))
+        Label(alias_frame, text="Alias:").pack(side=LEFT)
+        self.alias_entry = Entry(alias_frame)
         self.alias_entry.pack(side=LEFT, fill=X, expand=True, padx=5)
-        self.alias_status_label = Label(alias_subframe, text="", fg="black")
+        self.alias_status_label = Label(alias_frame, text="", fg="black")
         self.alias_status_label.pack(side=LEFT, padx=5)
 
-        # Add binding for alias changes
-        self.alias_entry.bind('<KeyRelease>', self.on_alias_change)
-        self.alias_entry.bind('<FocusOut>', self.validate_alias)
-
+        # Category frame
         category_frame = Frame(editor_frame)
         category_frame.pack(fill=X, pady=5)
         Label(category_frame, text="Category:").pack(side=LEFT)
@@ -371,20 +388,57 @@ class PromptEnhancementWindow:
         self.prompt_text = scrolledtext.ScrolledText(editor_frame, height=15)
         self.prompt_text.pack(fill=BOTH, expand=True, pady=5)
 
-        # Variable management
-        var_frame = LabelFrame(editor_frame, text="Variables")
-        var_frame.pack(fill=X, pady=5)
+        # Frame for variables and arguments
+        paned_window = Panedwindow(editor_frame, orient='horizontal')
+        paned_window.pack(fill=BOTH, expand=True, padx=5, pady=5)
 
-        self.var_tree = Treeview(var_frame, columns=("name", "description", "type", "default"), height=5,
-                                 show="headings")
+        # Arguments Section
+        arg_label_frame = LabelFrame(paned_window, text="Arguments")
+        paned_window.add(arg_label_frame, weight=1)
+        arg_label_frame.grid_rowconfigure(0, weight=1)
+        arg_label_frame.grid_columnconfigure(0, weight=1)
+
+        self.arg_tree = Treeview(arg_label_frame, columns=("long", "short", "type", "default", "required"),
+                                 height=5, show="headings")
+        self.arg_tree.heading("long", text="Long Form")
+        self.arg_tree.heading("short", text="Short Form")
+        self.arg_tree.heading("type", text="Type")
+        self.arg_tree.heading("default", text="Default")
+        self.arg_tree.heading("required", text="Required")
+        self.arg_tree.grid(row=0, column=0, sticky=(N, S, W, E))
+
+        arg_scrollbar = Scrollbar(arg_label_frame, orient='horizontal', command=self.arg_tree.xview)
+        arg_scrollbar.grid(row=1, column=0, sticky=(W, E))
+        self.arg_tree.configure(xscrollcommand=arg_scrollbar.set)
+
+        # Arguments buttons
+        arg_button_frame = Frame(arg_label_frame)
+        arg_button_frame.grid(row=2, column=0, sticky=(W, E), pady=5)
+        Button(arg_button_frame, text="Add Argument", command=self.add_argument).pack(side=LEFT, padx=5)
+        Button(arg_button_frame, text="Edit Argument", command=self.edit_argument).pack(side=LEFT, padx=5)
+        Button(arg_button_frame, text="Delete Argument", command=self.delete_argument).pack(side=LEFT, padx=5)
+
+        # Variables Section
+        var_label_frame = LabelFrame(paned_window, text="Variables")
+        paned_window.add(var_label_frame, weight=1)
+        var_label_frame.grid_rowconfigure(0, weight=1)
+        var_label_frame.grid_columnconfigure(0, weight=1)
+
+        self.var_tree = Treeview(var_label_frame, columns=("name", "description", "type", "default"),
+                                 height=5, show="headings")
         self.var_tree.heading("name", text="Name")
         self.var_tree.heading("description", text="Description")
         self.var_tree.heading("type", text="Type")
         self.var_tree.heading("default", text="Default Value")
-        self.var_tree.pack(fill=X, pady=5)
+        self.var_tree.grid(row=0, column=0, sticky=(N, S, W, E))
 
-        var_button_frame = Frame(var_frame)
-        var_button_frame.pack(fill=X, pady=5)
+        var_scrollbar = Scrollbar(var_label_frame, orient='horizontal', command=self.var_tree.xview)
+        var_scrollbar.grid(row=1, column=0, sticky=(W, E))
+        self.var_tree.configure(xscrollcommand=var_scrollbar.set)
+
+        # Variables buttons
+        var_button_frame = Frame(var_label_frame)
+        var_button_frame.grid(row=2, column=0, sticky=(W, E), pady=5)
         Button(var_button_frame, text="Add Variable", command=self.add_variable).pack(side=LEFT, padx=5)
         Button(var_button_frame, text="Edit Variable", command=self.edit_variable).pack(side=LEFT, padx=5)
         Button(var_button_frame, text="Delete Variable", command=self.delete_variable).pack(side=LEFT, padx=5)
@@ -406,6 +460,53 @@ class PromptEnhancementWindow:
         # Create context menu for prompt text
         self.prompt_text_menu = Menu(self.enhancement_window, tearoff=0)
         self.prompt_text.bind('<Button-3>', self.show_prompt_text_context_menu)
+
+    def add_argument(self):
+        """Add a new argument using the edit dialog."""
+        dialog = ArgumentEditDialog(self.enhancement_window)
+        if dialog.result:
+            self.arguments.append(dialog.result)
+            self.load_arguments_into_tree()
+
+    def edit_argument(self):
+        """Edit the selected argument using a dialog."""
+        selected_item = self.arg_tree.selection()
+        if not selected_item:
+            messagebox.showinfo("Info", "Please select an argument to edit.")
+            return
+
+        item_values = self.arg_tree.item(selected_item[0], "values")
+        arg_index = next((i for i, arg in enumerate(self.arguments)
+                          if arg["long"] == item_values[0]), None)
+
+        if arg_index is not None:
+            dialog = ArgumentEditDialog(self.enhancement_window, self.arguments[arg_index])
+            if dialog.result:
+                self.arguments[arg_index] = dialog.result
+                self.load_arguments_into_tree()
+
+    def delete_argument(self):
+        """Delete the selected argument."""
+        selected_item = self.arg_tree.selection()
+        if not selected_item:
+            messagebox.showinfo("Info", "Please select an argument to delete.")
+            return
+
+        item_values = self.arg_tree.item(selected_item, "values")
+        self.arguments = [arg for arg in self.arguments if arg["long"] != item_values[0]]
+        self.load_arguments_into_tree()
+
+    def load_arguments_into_tree(self):
+        """Load all arguments into the Treeview."""
+        self.arg_tree.delete(*self.arg_tree.get_children())
+        for arg in self.arguments:
+            self.arg_tree.insert("", "end", values=(
+                arg["long"],
+                arg["short"],
+                arg["type"],
+                arg["default"],
+                "Yes" if arg["required"] else "No"
+            ))
 
     def show_prompt_text_context_menu(self, event):
         """Show context menu for prompt text with enhance and explain options."""
@@ -711,6 +812,7 @@ class PromptEnhancementWindow:
 
     def save_prompt(self):
         """Save the current prompt template to file with validation."""
+        self.prompt_data["arguments"] = self.arguments
         title = self.title_entry.get().strip()
         category = self.category_entry.get().strip()
         content = self.prompt_text.get("1.0", END).strip()
@@ -838,6 +940,10 @@ class PromptEnhancementWindow:
             self.prompt_text.delete("1.0", END)
             self.prompt_text.insert("1.0", self.prompt_data.get('content', ''))
 
+            # Load arguments if they exist
+            self.arguments = self.prompt_data.get("arguments", [])
+            self.load_arguments_into_tree()
+
             # Load variables
             self.variables = self.prompt_data.get("variables", [])
             self.load_variables_into_tree()
@@ -877,6 +983,8 @@ class PromptEnhancementWindow:
         self.alias_entry.delete(0, END)
         self.category_entry.delete(0, END)
         self.prompt_text.delete("1.0", END)
+        self.arguments = []
+        self.arg_tree.delete(*self.arg_tree.get_children())
         self.variables = []
         self.var_tree.delete(*self.var_tree.get_children())
         self.prompt_data = {}

@@ -578,7 +578,6 @@ class {feature.title().replace('_', '')}:
         return len(implementation) > 10  # Simple placeholder logic
 
 
-
 class InputDialog(tk.Toplevel):
     def __init__(self, parent, title, prompt, callback):
         super().__init__(parent)
