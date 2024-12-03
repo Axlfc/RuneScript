@@ -31,3 +31,5 @@ starlette
 fastapi
 sse_starlette
 starlette_context
+py-solc-x
+web3

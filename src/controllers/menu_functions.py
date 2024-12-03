@@ -32,6 +32,7 @@ from src.models.FindInFilesWindow import FindInFilesWindow
 from src.models.ProjectWindow import ProjectWindow
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
+from src.models.Web3EditorWindow import Web3DevStudio
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import (
     get_operative_system,
@@ -170,6 +171,10 @@ def report_url(event=None, url="https://github.com/Axlfc/ScriptsEditor/issues/ne
 
 def create_settings_window(event=None):
     return SettingsWindow()
+
+
+def create_web3_window(event=None):
+    return Web3DevStudio()
 
 
 def open_system_info_window(event=None):
@@ -1339,6 +1344,13 @@ def create_menu():
         accelerator="Ctrl+,",
     )
     root.bind("<Control-,>", create_settings_window)
+
+    tool_menu.add_command(
+        label="Web3",
+        command=create_web3_window,
+        accelerator="Ctrl+W+3",
+    )
+    # root.bind("<Control-W-3>", create_web3_window)
 
     tool_menu.add_separator()
     tool_menu.add_command(

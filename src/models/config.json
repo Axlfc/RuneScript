@@ -2,45 +2,59 @@
     "host": "0.0.0.0",
     "port": 8004,
     "models": [
-      {
-        "model": "models/gemma-2b.gguf",
-        "model_alias": "gemma",
-        "chat_format": "chatml",
-        "n_gpu_layers": -1,
-        "offload_kqv": true,
-        "n_threads": 12,
-        "n_batch": 512,
-        "n_ctx": 2048
-      },
-      {
-        "model": "models/llava-v1.5-7b-Q4_K.gguf",
-        "model_alias": "llava",
-        "chat_format": "chatml",
-        "n_gpu_layers": -1,
-        "offload_kqv": true,
-        "n_threads": 12,
-        "n_batch": 512,
-        "n_ctx": 2048
-      },
-      {
-        "model": "models/llama-2-7b-chat.Q4_K_M",
-        "model_alias": "llama",
-        "chat_format": "chatml",
-        "n_gpu_layers": -1,
-        "offload_kqv": true,
-        "n_threads": 12,
-        "n_batch": 512,
-        "n_ctx": 2048
-      },
-      {
-        "model": "models/mistral-7b-instruct-v0.1.Q4_0.gguf",
-        "model_alias": "mistral-function-calling",
-        "chat_format": "functionary",
-        "n_gpu_layers": -1,
-        "offload_kqv": true,
-        "n_threads": 12,
-        "n_batch": 512,
-        "n_ctx": 2048
-      }
-    ]
-  }
+        {
+            "model": "models/gemma-2b.gguf",
+            "model_alias": "gemma",
+            "chat_format": "chatml",
+            "n_gpu_layers": -1,
+            "offload_kqv": true,
+            "n_threads": 12,
+            "n_batch": 512,
+            "n_ctx": 2048
+        },
+        {
+            "model": "models/llava-v1.5-7b-Q4_K.gguf",
+            "model_alias": "llava",
+            "chat_format": "chatml",
+            "n_gpu_layers": -1,
+            "offload_kqv": true,
+            "n_threads": 12,
+            "n_batch": 512,
+            "n_ctx": 2048
+        },
+        {
+            "model": "models/llama-2-7b-chat.Q4_K_M",
+            "model_alias": "llama",
+            "chat_format": "chatml",
+            "n_gpu_layers": -1,
+            "offload_kqv": true,
+            "n_threads": 12,
+            "n_batch": 512,
+            "n_ctx": 2048
+        },
+        {
+            "model": "models/mistral-7b-instruct-v0.1.Q4_0.gguf",
+            "model_alias": "mistral-function-calling",
+            "chat_format": "functionary",
+            "n_gpu_layers": -1,
+            "offload_kqv": true,
+            "n_threads": 12,
+            "n_batch": 512,
+            "n_ctx": 2048
+        }
+    ],
+    "network_configs": {
+        "Ethereum Mainnet": {
+            "rpc_url": "https://mainnet.infura.io/v3/YOUR-PROJECT-ID1",
+            "chain_id": 1
+        },
+        "Sepolia Testnet": {
+            "rpc_url": "https://sepolia.infura.io/v3/YOUR-PROJECT-ID2",
+            "chain_id": 11155111
+        },
+        "Goerli Testnet": {
+            "rpc_url": "https://goerli.infura.io/v3/YOUR-PROJECT-ID3",
+            "chain_id": 5
+        }
+    }
+}
