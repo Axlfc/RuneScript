@@ -595,6 +595,74 @@ class AutonomousProjectAgent:
         }
 
 
+class ProjectContext:
+    def __init__(self, project_name, description, path):
+        self.project_name = project_name
+        self.description = description
+        self.path = path
+        self.milestones = []
+        self.tasks = []
+        self.completed_tasks = []
+        self.documentation = []
+        self.current_phase = "Planning"
+
+    def update_milestones(self, milestone):
+        if milestone not in self.milestones:
+            self.milestones.append(milestone)
+
+    def complete_task(self, task):
+        if task in self.tasks:
+            self.tasks.remove(task)
+            self.completed_tasks.append(task)
+
+    def add_documentation(self, doc):
+        self.documentation.append(doc)
+
+
+def generate_readme(context: ProjectContext):
+    """
+    Generate a README.md file with project information and instructions.
+    """
+    readme_path = os.path.join(context.path, 'README.md')
+    with open(readme_path, 'w', encoding='utf-8') as readme:
+        readme.write(f"# {context.project_name}\n\n")
+        readme.write(f"## Description\n{context.description}\n\n")
+        readme.write("## Milestones\n")
+        for milestone in context.milestones:
+            readme.write(f"- {milestone}\n")
+        readme.write("\n## Completed Tasks\n")
+        for task in context.completed_tasks:
+            readme.write(f"- {task}\n")
+        readme.write("\n## How to Use\n")
+        readme.write("1. Follow the setup instructions in `docs/SETUP.md`.\n")
+        readme.write("2. Run the main script in the `src` folder.\n")
+        readme.write("3. Run tests using `pytest`.\n")
+
+
+
+def transition_to_next_phase(context: ProjectContext):
+    """
+    Transition the project to the next phase based on context and progress.
+    """
+    if context.current_phase == "Planning":
+        context.current_phase = "Development"
+    elif context.current_phase == "Development":
+        if len(context.tasks) == 0:
+            context.current_phase = "Testing"
+        else:
+            logging.info("Development phase ongoing, tasks remain.")
+    elif context.current_phase == "Testing":
+        if all(task in context.completed_tasks for task in context.tasks):
+            context.current_phase = "Documentation"
+        else:
+            logging.info("Testing phase ongoing, not all tasks completed.")
+    elif context.current_phase == "Documentation":
+        context.current_phase = "Ready for Review"
+    else:
+        logging.info("Project is ready for review.")
+
+
+
 class RedGreenRefactorIDE:
     def __init__(self, root=None):
         self.root = root or tk.Tk()
@@ -816,7 +884,7 @@ class RedGreenRefactorIDE:
 
     def run_project_generation(self, metadata: Dict[str, Any]):
         """
-        Run the project generation process autonomously with AI metadata.
+        Run project generation and ensure tasks are processed.
         """
         if not self.current_project:
             self.log_output("No project selected. Create or open a project first.")
@@ -824,28 +892,39 @@ class RedGreenRefactorIDE:
 
         self.log_output("Starting project generation...")
 
-        # Create the project structure
+        # Initialize project context
+        context = ProjectContext(
+            project_name=metadata.get("project_name", "Unnamed Project"),
+            description=metadata.get("project_description", "No description provided."),
+            path=self.current_project
+        )
+
+        # Update milestones and tasks
+        context.milestones.extend(metadata.get("milestones", []))
+        context.tasks.extend(metadata.get("tasks", []))
+
+        # Generate project structure
         ProjectManager.create_project_structure(self.current_project, metadata, self.log_output)
 
         # Write TODO.md
-        tasks = metadata.get("project_tasks", [])
-        ProjectManager.write_todo_list(self.current_project, tasks, self.log_output)
+        ProjectManager.write_todo_list(self.current_project, context.tasks, self.log_output)
 
-        # Write LIST.md
-        features = metadata.get("feature_priorities", {"high": [], "medium": [], "low": []})
-        ProjectManager.write_list_md(self.current_project, features, self.log_output)
+        # Generate documentation
+        generate_readme(context)
 
         # Run tests
         if ProjectManager.run_tests(self.current_project, self.log_output):
+            context.complete_task("Run all tests")
             self.log_output("All tests passed successfully!")
+
+        # Update project phase
+        transition_to_next_phase(context)
+
+        if context.current_phase == "Ready for Review":
+            self.log_output("Project development is complete and ready for review.")
         else:
-            self.log_output("Some tests failed. Fix errors and retry.")
-
-        # Populate the project tree
-        self.populate_tree_view()
-
-        # Check if more iterations are needed
-        self.continue_autonomous_workflow(metadata)
+            # Continue autonomous workflow
+            self.continue_autonomous_workflow(metadata)
 
     def continue_autonomous_workflow(self, metadata: Dict[str, Any]):
         """
