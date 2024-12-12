@@ -1,5 +1,7 @@
+import json
 import os
 import logging
+import random
 import re
 import subprocess
 import threading
@@ -7,101 +9,590 @@ import queue
 import tkinter as tk
 import uuid
 from tkinter import ttk, messagebox, filedialog, scrolledtext
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List, Callable, Union
+from datetime import datetime
 
 
 class AIResponseParser:
     @staticmethod
-    def validate_prompt(prompt: str) -> bool:
+    def validate_prompt(prompt):
         """
-        Validate the AI project generation prompt.
-        Ensures prompt meets minimum complexity and clarity requirements.
+        Validate the project generation prompt.
+
+        :param prompt: User-provided project description
+        :return: Boolean indicating prompt validity
         """
-        min_length = 20  # Minimum meaningful prompt length
-        max_length = 500  # Prevent overly complex prompts
-
-        if not prompt or len(prompt) < min_length:
-            return False
-
-        # Sophisticated validation
-        required_keywords = ['create', 'develop', 'build', 'implement']
-        return (len(prompt) <= max_length and
-                any(keyword in prompt.lower() for keyword in required_keywords))
+        return prompt and len(prompt.split()) >= 3
 
     @staticmethod
-    def parse_ai_response(response: str) -> Dict[str, Any]:
+    def parse_ai_response(ai_response):
         """
-        Parse AI response into structured metadata
+        Parse the AI-generated project metadata.
+
+        :param ai_response: JSON or structured response from AI
+        :return: Parsed project metadata dictionary
         """
         try:
-            # Structured parsing with fallback
-            parsed_data = {
-                'project_structure': [],
-                'initial_files': {},
-                'test_cases': [],
-                'dependencies': []
+            # If AI response is a JSON string, parse it
+            if isinstance(ai_response, str):
+                parsed_data = json.loads(ai_response)
+            else:
+                parsed_data = ai_response
+
+            # Ensure all required fields are present with default values
+            metadata = {
+                'project_name': parsed_data.get('project_name', 'Unnamed Project'),
+                'project_description': parsed_data.get('project_description', 'No description provided'),
+                'project_structure': parsed_data.get('project_structure', []),
+                'key_features': parsed_data.get('key_features', []),
+                'project_tasks': parsed_data.get('project_tasks', []),
+                'implemented_features': parsed_data.get('implemented_features', []),
+                'planned_features': parsed_data.get('planned_features', []),
+                'feature_priorities': parsed_data.get('feature_priorities', {
+                    'high': [],
+                    'medium': [],
+                    'low': []
+                }),
+                'validation_notes': parsed_data.get('validation_notes', [])
             }
 
-            # Basic structure extraction
-            structure_match = re.findall(r'Project Structure:(.*?)(?=Test Cases:|$)', response, re.DOTALL)
-            print("HOLAAAAAAAA")
-            if structure_match:
-                parsed_data['project_structure'] = [
-                    dir.strip() for dir in structure_match[0].split('\n') if dir.strip()
-                ]
+            return metadata
 
-            # File content extraction
-            file_matches = re.findall(r'File: (.*?)\n```(.*?)```', response, re.DOTALL)
-            for filename, content in file_matches:
-                parsed_data['initial_files'][filename.strip()] = content.strip()
-
-            return parsed_data
-        except Exception as e:
-            logging.error(f"AI response parsing error: {e}")
-            return {}
+        except (json.JSONDecodeError, TypeError) as e:
+            logging.error(f"Error parsing AI response: {e}")
+            return {
+                'project_name': 'Error Project',
+                'project_description': 'Failed to parse AI response',
+                'project_structure': [],
+                'key_features': [],
+                'project_tasks': ['Resolve AI response parsing error'],
+                'implemented_features': [],
+                'planned_features': [],
+                'feature_priorities': {},
+                'validation_notes': [str(e)]
+            }
 
 
 class ProjectManager:
     @staticmethod
-    def create_project_structure(project_path: str, metadata: Dict[str, Any]) -> None:
+    def create_project_structure(project_path: str, metadata: Dict[str, Any], logger: Callable[[str], None]):
         """
-        Create a comprehensive and modular project structure
+        Create the project structure, generate files, and log progress.
+        Enhanced with more robust error handling and flexibility.
         """
-        directories = [
-                          'src', 'tests', 'docs', 'config', 'scripts'
-                      ] + metadata.get('project_structure', [])
+        try:
+            logger("Creating project structure...")
 
-        for directory in directories:
-            dir_path = os.path.join(project_path, directory)
-            os.makedirs(dir_path, exist_ok=True)
+            # Ensure project path exists
+            os.makedirs(project_path, exist_ok=True)
 
-        # Create initial files
-        for filename, content in metadata.get('initial_files', {}).items():
-            file_path = os.path.join(project_path, filename)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
+            # Create directories with error handling
+            directories = ['src', 'tests', 'docs', 'config', 'scripts']
+            directories.extend(metadata.get('project_structure', []))
 
-        # Generate README
-        readme_path = os.path.join(project_path, 'README.md')
-        with open(readme_path, 'w', encoding='utf-8') as readme:
-            readme.write(f"""# Project Development Guide
+            for directory in directories:
+                try:
+                    dir_path = os.path.join(project_path, directory)
+                    os.makedirs(dir_path, exist_ok=True)
+                    logger(f"Created directory: {dir_path}")
+                except OSError as dir_error:
+                    logger(f"Warning: Could not create directory {directory}: {dir_error}")
 
-## Project Overview
-Generated with Red-Green-Refactor IDE
+            # Create files with more robust handling
+            initial_files = metadata.get('initial_files', {})
+            for filename, content in initial_files.items():
+                try:
+                    file_path = os.path.join(project_path, filename)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content or '')
+                    logger(f"Created file: {file_path}")
+                except IOError as file_error:
+                    logger(f"Error creating file {filename}: {file_error}")
 
-## Setup Instructions
-1. Ensure Python 3.8+ is installed
-2. Create virtual environment: `python -m venv venv`
-3. Activate virtual environment
-4. Install dependencies: `pip install -r requirements.txt`
-5. Run tests: `pytest`
+            # Write README with fallback
+            readme_path = os.path.join(project_path, 'README.md')
+            try:
+                with open(readme_path, 'w', encoding='utf-8') as readme:
+                    readme.write(metadata.get('readme', '# Project Generated by Red-Green-Refactor IDE'))
+                logger(f"Created README: {readme_path}")
+            except IOError as readme_error:
+                logger(f"Could not create README: {readme_error}")
 
-## Development Workflow
-- Write tests first
-- Implement minimal code to pass tests
-- Continuously refactor
-""")
+        except Exception as e:
+            logger(f"Critical error in project structure creation: {e}")
+            raise
+
+    @staticmethod
+    def write_todo_list(project_path: str, tasks: Union[List[str], List[Dict[str, str]]],
+                        logger: Callable[[str], None]):
+        """
+        Write a TODO.md file to track tasks with enhanced flexibility.
+
+        Supports both list of strings and list of dictionaries with 'description' key.
+        """
+        todo_path = os.path.join(project_path, 'TODO.md')
+        try:
+            with open(todo_path, 'w', encoding='utf-8') as todo_file:
+                todo_file.write("# TODO List\n\n")
+
+                # Handle different task input formats
+                for task in tasks:
+                    # If task is a dictionary, try to get 'description'
+                    if isinstance(task, dict):
+                        description = task.get('description', str(task))
+                    # If task is a string, use it directly
+                    elif isinstance(task, str):
+                        description = task
+                    # For other types, convert to string
+                    else:
+                        description = str(task)
+
+                    # Write task with checkbox
+                    todo_file.write(f"- [ ] {description}\n")
+
+            logger("Wrote TODO.md with tasks.")
+        except IOError as e:
+            logger(f"Error writing TODO list: {e}")
+
+    @staticmethod
+    def write_list_md(project_path: str, features: Dict[str, List[str]], logger: Callable[[str], None]):
+        """
+        Write a LIST.md file to track features and priorities with improved error handling.
+        """
+        list_path = os.path.join(project_path, 'LIST.md')
+        try:
+            with open(list_path, 'w', encoding='utf-8') as list_file:
+                list_file.write("# Feature Tracking\n\n")
+
+                # Ensure default structure if features are empty
+                if not features:
+                    features = {
+                        'high': ['Initial project setup'],
+                        'medium': [],
+                        'low': []
+                    }
+
+                for priority, feature_list in features.items():
+                    # Normalize priority display
+                    display_priority = priority.capitalize()
+                    list_file.write(f"## {display_priority} Priority\n")
+
+                    # Handle empty feature lists
+                    if not feature_list:
+                        list_file.write("- No features defined\n")
+                    else:
+                        for feature in feature_list:
+                            list_file.write(f"- {feature}\n")
+
+                    list_file.write("\n")
+
+            logger("Wrote LIST.md with feature tracking.")
+        except IOError as e:
+            logger(f"Error writing feature list: {e}")
+
+    @staticmethod
+    def run_tests(project_path: str, logger: Callable[[str], None]) -> bool:
+        """
+        Run tests in the project with enhanced logging and error handling.
+        """
+        logger("Running tests...")
+        try:
+            # Use pytest with comprehensive reporting
+            result = subprocess.run(
+                [
+                    'pytest',
+                    '--disable-warnings',
+                    '--maxfail=1',
+                    '-v',  # Verbose output
+                    '--tb=short'  # Shorter traceback
+                ],
+                cwd=project_path,
+                text=True,
+                capture_output=True
+            )
+
+            # Log full output
+            logger(result.stdout)
+
+            # Log errors separately
+            if result.stderr:
+                logger(f"Test Stderr: {result.stderr}")
+
+            # Determine test success
+            test_success = result.returncode == 0
+
+            # Provide detailed logging
+            if test_success:
+                logger("All tests passed successfully!")
+            else:
+                logger("Some tests failed. Review the output above.")
+
+            return test_success
+
+        except Exception as e:
+            logger(f"Critical error running tests: {e}")
+            return False
+
+
+class AutonomousProjectAgent:
+    def __init__(self, project_path: str):
+        """
+        Initialize the Autonomous Project Agent for managing project development.
+
+        :param project_path: Base directory for the project
+        """
+        self.project_path = project_path
+
+        # Queues for managing asynchronous tasks
+        self.task_queue = queue.Queue()
+        self.result_queue = queue.Queue()
+
+        # Project development state tracking
+        self.current_phase = "idle"
+        self.development_stages = [
+            "requirement_analysis",
+            "architecture_design",
+            "test_driven_development",
+            "implementation",
+            "refactoring",
+            "validation"
+        ]
+
+        # Logging setup
+        self.setup_logging()
+
+    def setup_logging(self):
+        """Configure logging for the autonomous project agent."""
+        log_file = os.path.join(self.project_path, 'autonomous_agent.log')
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [AutonomousProjectAgent] %(levelname)s: %(message)s',
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler()
+            ]
+        )
+
+    def process_prompt_with_ai(self, stage: str, context: Dict) -> Optional[str]:
+        """
+        Process AI prompt for a specific development stage.
+        """
+        try:
+            combined_input = json.dumps({"stage": stage, "context": context})
+            ai_script_path = "src/models/ai_assistant.py"
+            command = ["python", ai_script_path, combined_input]
+
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding='utf-8'
+            )
+
+            ai_response, error = process.communicate()
+            if error or process.returncode != 0:
+                logging.error(f"AI Assistant Error: {error}")
+                return None
+
+            return ai_response.strip()
+
+        except Exception as e:
+            logging.error(f"Error processing AI prompt: {e}")
+            return None
+
+    def start_autonomous_development(self, initial_requirements: str):
+        """
+        Initiate the autonomous project development process.
+
+        :param initial_requirements: Initial project requirements or description
+        """
+        threading.Thread(
+            target=self._development_workflow,
+            args=(initial_requirements,),
+            daemon=True
+        ).start()
+
+    def _development_workflow(self, initial_requirements: str):
+        """
+        Core development workflow orchestrating project creation.
+
+        :param initial_requirements: Initial project requirements or description
+        """
+        try:
+            # Phase 1: Requirement Analysis
+            self.current_phase = "requirement_analysis"
+            project_scope = self._analyze_requirements(initial_requirements)
+
+            # Phase 2: Architecture Design
+            self.current_phase = "architecture_design"
+            project_architecture = self._design_project_architecture(project_scope)
+
+            # Phase 3: Test-Driven Development
+            self.current_phase = "test_driven_development"
+            initial_tests = self._generate_initial_tests(project_architecture)
+
+            # Phase 4: Implementation
+            self.current_phase = "implementation"
+            implementation_results = self._implement_features(initial_tests)
+
+            # Phase 5: Refactoring
+            self.current_phase = "refactoring"
+            self._perform_code_refactoring(implementation_results)
+
+            # Phase 6: Validation
+            self.current_phase = "validation"
+            validation_results = self._validate_project()
+
+            self.current_phase = "completed"
+            logging.info(f"Autonomous project development completed: {validation_results}")
+
+        except Exception as e:
+            logging.error(f"Autonomous development failed: {e}")
+            self.current_phase = "error"
+
+    def _analyze_requirements(self, requirements: str) -> Dict:
+        """
+        Analyze and break down project requirements.
+
+        :param requirements: Initial project description
+        :return: Structured project scope
+        """
+        logging.info(f"Analyzing requirements: {requirements}")
+
+        context = {
+            "requirements": requirements,
+            "project_name": self._generate_project_name()
+        }
+
+        ai_response = self.process_prompt_with_ai("requirement_analysis", context)
+
+        # Parse AI response or use default
+        try:
+            project_scope = json.loads(ai_response) if ai_response else {
+                "project_name": context["project_name"],
+                "key_features": ["Core Functionality"],
+                "constraints": []
+            }
+        except json.JSONDecodeError:
+            project_scope = {
+                "project_name": context["project_name"],
+                "key_features": ["Core Functionality"],
+                "constraints": []
+            }
+
+        return project_scope
+
+    def _design_project_architecture(self, project_scope: Dict) -> Dict:
+        """
+        Design initial project architecture and structure.
+
+        :param project_scope: Analyzed project requirements
+        :return: Project architecture blueprint
+        """
+        logging.info("Designing project architecture")
+
+        context = {
+            "project_scope": project_scope,
+            "default_structure": [
+                "src/",
+                "tests/",
+                "docs/",
+                "README.md"
+            ]
+        }
+
+        ai_response = self.process_prompt_with_ai("architecture_design", context)
+
+        # Parse AI response or use default
+        try:
+            architecture = json.loads(ai_response) if ai_response else {
+                "project_name": project_scope.get("project_name", "Unnamed Project"),
+                "directory_structure": context["default_structure"],
+                "initial_modules": [],
+                "testing_framework": "pytest"
+            }
+        except json.JSONDecodeError:
+            architecture = {
+                "project_name": project_scope.get("project_name", "Unnamed Project"),
+                "directory_structure": context["default_structure"],
+                "initial_modules": [],
+                "testing_framework": "pytest"
+            }
+
+        return architecture
+
+    def _generate_initial_tests(self, architecture: Dict) -> List[Dict]:
+        """
+        Generate initial test cases for the project.
+
+        :param architecture: Project architecture blueprint
+        :return: List of initial test cases
+        """
+        logging.info("Generating initial test cases")
+
+        context = {
+            "architecture": architecture
+        }
+
+        ai_response = self.process_prompt_with_ai("test_generation", context)
+
+        # Parse AI response or use default
+        try:
+            initial_tests = json.loads(ai_response) if ai_response else [
+                {
+                    "name": "test_project_initialization",
+                    "description": "Verify project initializes correctly",
+                    "module": "test_core.py"
+                }
+            ]
+        except json.JSONDecodeError:
+            initial_tests = [
+                {
+                    "name": "test_project_initialization",
+                    "description": "Verify project initializes correctly",
+                    "module": "test_core.py"
+                }
+            ]
+
+        return initial_tests
+
+    def _implement_features(self, tests: List[Dict]) -> Dict:
+        """
+        Implement features based on generated test cases.
+
+        :param tests: List of test cases
+        :return: Implementation results
+        """
+        logging.info("Implementing features")
+
+        context = {
+            "tests": tests
+        }
+
+        ai_response = self.process_prompt_with_ai("feature_implementation", context)
+
+        # Parse AI response or use default
+        try:
+            implementation_results = json.loads(ai_response) if ai_response else {
+                "implemented_modules": [],
+                "test_coverage": {}
+            }
+        except json.JSONDecodeError:
+            implementation_results = {
+                "implemented_modules": [],
+                "test_coverage": {}
+            }
+
+        return implementation_results
+
+    def _perform_code_refactoring(self, implementation_results: Dict):
+        """
+        Refactor implemented code to improve quality and maintainability.
+
+        :param implementation_results: Results from feature implementation
+        """
+        logging.info("Performing code refactoring")
+
+        context = {
+            "implementation_results": implementation_results
+        }
+
+        self.process_prompt_with_ai("code_refactoring", context)
+
+    def _validate_project(self) -> Dict:
+        """
+        Validate the overall project quality and completeness.
+
+        :return: Validation results
+        """
+        logging.info("Validating project")
+
+        validation_results = {
+            "test_success_rate": self._run_tests(),
+            "code_quality_score": self._analyze_code_quality()
+        }
+
+        return validation_results
+
+    def _run_tests(self) -> float:
+        """
+        Run project tests and calculate success rate.
+
+        :return: Percentage of tests passed
+        """
+        try:
+            result = subprocess.run(
+                ['pytest', '--disable-warnings', '--quiet'],
+                capture_output=True,
+                text=True,
+                cwd=self.project_path
+            )
+
+            # Basic test success rate calculation
+            total_tests = result.stdout.count('collected')
+            passed_tests = result.stdout.count('passed')
+
+            success_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
+            return success_rate
+
+        except Exception as e:
+            logging.error(f"Test execution failed: {e}")
+            return 0.0
+
+    def _analyze_code_quality(self) -> float:
+        """
+        Perform basic code quality analysis.
+
+        :return: Code quality score (0-100)
+        """
+        try:
+            result = subprocess.run(
+                ['pylint', self.project_path],
+                capture_output=True,
+                text=True
+            )
+
+            # Parse pylint output and convert to quality score
+            # This is a simplistic implementation and can be enhanced
+            quality_score = 100 - result.stdout.count('issue')
+            return max(0, min(quality_score, 100))
+
+        except Exception as e:
+            logging.error(f"Code quality analysis failed: {e}")
+            return 50.0  # Default neutral score
+
+    def _generate_project_name(self) -> str:
+        """
+        Generate a unique project name.
+
+        :return: Generated project name
+        """
+        project_prefixes = [
+            "quantum", "dynamic", "smart", "advanced", "intelligent",
+            "adaptive", "innovative", "next-gen", "ultra", "pro"
+        ]
+        project_suffixes = [
+            "system", "framework", "solution", "engine", "platform"
+        ]
+
+        prefix = random.choice(project_prefixes)
+        suffix = random.choice(project_suffixes)
+        unique_id = str(uuid.uuid4())[:8]
+
+        return f"{prefix}_{suffix}_{unique_id}"
+
+    def get_current_status(self) -> Dict:
+        """
+        Retrieve the current status of the autonomous project development.
+
+        :return: Current development status
+        """
+        return {
+            "phase": self.current_phase,
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 class RedGreenRefactorIDE:
@@ -119,6 +610,36 @@ class RedGreenRefactorIDE:
         self.projects_base_dir = os.path.join('data', 'projects')
         self.current_project_files = {}
         os.makedirs(self.projects_base_dir, exist_ok=True)
+
+        self.current_project = None
+        self.project_tree = None
+
+        self.setup_logging()
+        self.setup_ui()
+
+    def setup_ui(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="New Project", command=self.new_project)
+        file_menu.add_command(label="Open Project", command=self.open_project)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+
+        main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        main_container.pack(fill=tk.BOTH, expand=True)
+
+        left_panel = ttk.Frame(main_container)
+        self.project_tree = ttk.Treeview(left_panel, columns=('path',), show='tree')
+        self.project_tree.pack(fill=tk.BOTH, expand=True)
+        main_container.add(left_panel)
+
+        right_panel = ttk.Frame(main_container)
+        self.output_console = scrolledtext.ScrolledText(right_panel, wrap=tk.WORD, state='disabled', height=20)
+        self.output_console.pack(fill=tk.BOTH, expand=True)
+        main_container.add(right_panel)
 
     def poll_queue(self):
         """
@@ -272,45 +793,81 @@ class RedGreenRefactorIDE:
     def new_project(self):
         project_id = str(uuid.uuid4())
         project_path = os.path.join(self.projects_base_dir, project_id)
-
-        try:
-            os.makedirs(project_path, exist_ok=True)
-            os.makedirs(os.path.join(project_path, 'src'), exist_ok=True)
-            os.makedirs(os.path.join(project_path, 'tests'), exist_ok=True)
-
-            with open(os.path.join(project_path, 'README.md'), 'w') as f:
-                f.write(f"# Project {project_id}\n\nCreated with Red-Green-Refactor IDE")
-
-            self.current_project = project_path
-            self.populate_project_tree()
-            self.log_output(f"New project created: {project_id}")
-
-        except Exception as e:
-            self.log_output(f"Error creating project: {e}")
-            messagebox.showerror("Project Creation Error", str(e))
+        os.makedirs(project_path, exist_ok=True)
+        self.current_project = project_path
+        self.log_output(f"New project created: {project_path}")
 
     def open_project(self):
-        os.makedirs(self.projects_base_dir, exist_ok=True)
-        project_path = filedialog.askdirectory(
-            title="Open Existing Project",
-            initialdir=self.projects_base_dir
-        )
+        project_path = filedialog.askdirectory(initialdir=self.projects_base_dir)
+        if project_path:
+            self.current_project = project_path
+            self.log_output(f"Opened project: {project_path}")
+            self.populate_tree_view()
 
-        if project_path and os.path.exists(project_path):
-            if os.path.exists(os.path.join(project_path, 'src')) and \
-                    os.path.exists(os.path.join(project_path, 'tests')):
-                self.current_project = project_path
-                self.populate_project_tree()
-                self.log_output(f"Opened project: {os.path.basename(project_path)}")
-            else:
-                messagebox.showerror(
-                    "Invalid Project",
-                    "Selected directory is not a valid project. Must contain 'src' and 'tests' directories."
-                )
+    def populate_tree_view(self):
+        if not self.current_project:
+            return
+
+        self.project_tree.delete(*self.project_tree.get_children())
+        for root, dirs, files in os.walk(self.current_project):
+            parent = self.project_tree.insert('', 'end', text=os.path.basename(root), values=(root,))
+            for file in files:
+                self.project_tree.insert(parent, 'end', text=file, values=(os.path.join(root, file),))
+
+    def run_project_generation(self, metadata: Dict[str, Any]):
+        """
+        Run the project generation process autonomously with AI metadata.
+        """
+        if not self.current_project:
+            self.log_output("No project selected. Create or open a project first.")
+            return
+
+        self.log_output("Starting project generation...")
+
+        # Create the project structure
+        ProjectManager.create_project_structure(self.current_project, metadata, self.log_output)
+
+        # Write TODO.md
+        tasks = metadata.get("project_tasks", [])
+        ProjectManager.write_todo_list(self.current_project, tasks, self.log_output)
+
+        # Write LIST.md
+        features = metadata.get("feature_priorities", {"high": [], "medium": [], "low": []})
+        ProjectManager.write_list_md(self.current_project, features, self.log_output)
+
+        # Run tests
+        if ProjectManager.run_tests(self.current_project, self.log_output):
+            self.log_output("All tests passed successfully!")
+        else:
+            self.log_output("Some tests failed. Fix errors and retry.")
+
+        # Populate the project tree
+        self.populate_tree_view()
+
+        # Check if more iterations are needed
+        self.continue_autonomous_workflow(metadata)
+
+    def continue_autonomous_workflow(self, metadata: Dict[str, Any]):
+        """
+        Continue the workflow based on AI feedback and project state.
+        """
+        if not metadata.get("next_steps"):
+            self.log_output("Project development is complete.")
+            return
+
+        self.log_output("Requesting additional steps from AI...")
+        ai_agent = AutonomousProjectAgent(self.current_project)
+        ai_feedback = ai_agent.process_prompt_with_ai("next_steps", {"current_state": metadata})
+
+        if ai_feedback:
+            parsed_metadata = AIResponseParser.parse_ai_response(ai_feedback)
+            self.run_project_generation(parsed_metadata)
+        else:
+            self.log_output("No further steps provided by AI.")
 
     def generate_project_with_ai(self):
         """
-        Validate prompt and start AI generation in a new thread.
+        Start autonomous project generation with AI.
         """
         prompt = self.prompt_entry.get().strip()
 
@@ -318,14 +875,25 @@ class RedGreenRefactorIDE:
             messagebox.showwarning("Invalid Prompt", "Please provide a clear, meaningful project description.")
             return
 
+        self.log_output("Starting AI-based autonomous project generation...")
         self.toggle_generation_ui(False)
 
-        # Start AI generation in a background thread
-        threading.Thread(
-            target=self.threaded_ai_generation,
-            args=(prompt,),
-            daemon=True
-        ).start()
+        # Create project directory
+        project_id = str(uuid.uuid4())
+        project_path = os.path.join(self.projects_base_dir, project_id)
+        os.makedirs(project_path, exist_ok=True)
+        self.current_project = project_path
+
+        # Initialize Autonomous Project Agent
+        ai_agent = AutonomousProjectAgent(self.current_project)
+        ai_response = ai_agent.process_prompt_with_ai("initial_project_setup", {"prompt": prompt})
+
+        if ai_response:
+            parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
+            self.run_project_generation(parsed_metadata)
+        else:
+            self.log_output("Failed to initialize the project with AI.")
+            self.toggle_generation_ui(True)
 
     def threaded_ai_generation(self, prompt):
         """
@@ -344,7 +912,9 @@ class RedGreenRefactorIDE:
 
     def finalize_project_generation(self, parsed_metadata):
         """
-        Finalize the project generation and update UI.
+        Finalize the project generation with enhanced documentation and structure.
+
+        :param parsed_metadata: Metadata returned by AI project generation
         """
         try:
             # Generate a sanitized project ID
@@ -354,14 +924,20 @@ class RedGreenRefactorIDE:
             # Create the project structure
             ProjectManager.create_project_structure(project_path, parsed_metadata)
 
+            # Generate comprehensive project documentation
+            self._generate_project_docs(project_path, parsed_metadata)
+
             # Set the current project and refresh the UI
             self.current_project = project_path
             self.populate_project_tree()
 
-            # Format project structure for AI Plan
+            # Format project structure and tasks for AI Plan
             project_structure = parsed_metadata.get('project_structure', [])
-            formatted_structure = '\n'.join(project_structure)  # Convert list to string
-            self.update_ai_plan(formatted_structure)
+            project_tasks = parsed_metadata.get('project_tasks', [])
+
+            # Update AI Plan with tasks
+            formatted_tasks = '\n'.join(project_tasks)
+            self.update_ai_plan(formatted_tasks)
 
             self.log_output(f"Project {project_id} generated successfully at {project_path}!")
 
@@ -370,6 +946,66 @@ class RedGreenRefactorIDE:
             messagebox.showerror("Generation Error", str(e))
         finally:
             self.toggle_generation_ui(True)
+
+    def _generate_project_docs(self, project_path, parsed_metadata):
+        """
+        Generate comprehensive project documentation.
+
+        :param project_path: Path to the project directory
+        :param parsed_metadata: Metadata returned by AI project generation
+        """
+        # Ensure docs directory exists
+        docs_dir = os.path.join(project_path, 'docs')
+        os.makedirs(docs_dir, exist_ok=True)
+
+        # Generate README.md
+        readme_path = os.path.join(project_path, 'README.md')
+        with open(readme_path, 'w') as f:
+            f.write(f"# {parsed_metadata.get('project_name', 'Unnamed Project')}\n\n")
+            f.write("## Project Overview\n")
+            f.write(parsed_metadata.get('project_description', 'No description available') + "\n\n")
+            f.write("## Key Features\n")
+            for feature in parsed_metadata.get('key_features', []):
+                f.write(f"- {feature}\n")
+            f.write("\n## Setup and Installation\n")
+            f.write("(Add setup instructions here)\n")
+
+        # Generate TODO.md with project tasks
+        todo_path = os.path.join(project_path, 'TODO.md')
+        with open(todo_path, 'w') as f:
+            f.write("# Project Tasks and Milestones\n\n")
+            f.write("## Pending Tasks\n")
+            for task in parsed_metadata.get('project_tasks', []):
+                f.write(f"- [ ] {task}\n")
+
+        # Generate LIST.md for feature tracking and prioritization
+        list_path = os.path.join(project_path, 'LIST.md')
+        with open(list_path, 'w') as f:
+            f.write("# Project Feature Tracking\n\n")
+
+            # Implemented Features
+            f.write("## Implemented Features\n")
+            for feature in parsed_metadata.get('implemented_features', []):
+                f.write(f"- [x] {feature}\n")
+
+            # Planned Features
+            f.write("\n## Planned Features\n")
+            for feature in parsed_metadata.get('planned_features', []):
+                f.write(f"- [ ] {feature}\n")
+
+            # Priority Levels
+            f.write("\n## Feature Priorities\n")
+            priorities = parsed_metadata.get('feature_priorities', {})
+            for priority, features in priorities.items():
+                f.write(f"\n### {priority.capitalize()} Priority\n")
+                for feature in features:
+                    f.write(f"- {feature}\n")
+
+            # Validation Notes
+            f.write("\n## Validation Notes\n")
+            validations = parsed_metadata.get('validation_notes', [])
+            for note in validations:
+                f.write(f"- {note}\n")
 
     def handle_generation_failure(self, error_message="AI generation failed. Please try again."):
         """
@@ -452,15 +1088,13 @@ class RedGreenRefactorIDE:
         self.output_console.insert(tk.END, message + "\n")
         self.output_console.see(tk.END)
         self.output_console.config(state='disabled')
+        logging.info(message)
 
     def setup_logging(self):
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s: %(message)s',
-            handlers=[
-                logging.FileHandler('red_green_refactor.log'),
-                logging.StreamHandler()
-            ]
+            handlers=[logging.FileHandler('project.log'), logging.StreamHandler()]
         )
 
     def show_about(self):
