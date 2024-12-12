@@ -27,6 +27,7 @@
     "is_filesystem_view_visible": "Open Filesystem Explorer",
     "tools": "Tools",
     "ai_assistant": "AI Assistant",
+    "ai_assistant_options": "AI Assistant Options...",
     "calculator": "Calculator",
     "translator": "Translator",
     "prompt_enhancement": "Prompt Enhancement",

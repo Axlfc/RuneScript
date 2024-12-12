@@ -29,7 +29,7 @@ from src.controllers.scheduled_tasks import (
 )
 from src.models.ClockWindow import ClockWindow
 from src.models.FindInFilesWindow import FindInFilesWindow
-from src.models.ProjectWindow import ProjectWindow
+from src.models.ProjectWindow import RedGreenRefactorIDE
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
 from src.models.Web3EditorWindow import Web3DevStudio
@@ -71,10 +71,11 @@ from src.views.tk_utils import (
     show_interactive_view_var,
     interactive_frm,
     show_filesystem_view_var,
-    filesystem_frm, my_font,
+    filesystem_frm, my_font, persistent_agent_selection_var,
 )
 from src.controllers.tool_functions import (
-    open_ai_assistant_window,
+    open_ai_assistant_window, open_ai_server_settings_window, open_llama_cpp_python_settings_window,
+    open_ai_server_agent_settings_window
 )
 from src.controllers.parameters import read_config_parameter, write_config_parameter
 
@@ -250,7 +251,7 @@ def open_prompt_enhancement_window(event=None):
 
 
 def open_project_window(event=None):
-    return ProjectWindow()
+    return RedGreenRefactorIDE()
 
 
 def open_translator_window(event=None):
@@ -1253,6 +1254,40 @@ def create_menu():
         accelerator="Ctrl+Alt+A",
     )
     root.bind("<Control-Alt-a>", open_ai_assistant_window)
+
+    # Tools and Utilities
+    '''tool_menu.add_command(
+        label=localization_data["ai_assistant_options"],
+        command=open_ai_assistant_window,
+        accelerator="Ctrl+Alt+O",
+    )
+    root.bind("<Control-Alt-o>", open_ai_assistant_window)'''
+
+    ai_assistant_tool_menu = Menu(tool_menu, tearoff=0)
+    ai_assistant_tool_menu.add_command(
+        label="llama-cpp-python Settings",
+        command=open_llama_cpp_python_settings_window,
+        accelerator="Ctrl+L",
+    )
+    root.bind("<Control-l>", open_llama_cpp_python_settings_window)
+
+    tool_menu.add_cascade(label=localization_data["ai_assistant_options"], menu=ai_assistant_tool_menu)
+    ai_assistant_tool_menu.add_command(
+        label=localization_data["ai_assistant_options"],
+        command=open_ai_server_settings_window,
+        accelerator="Ctrl+Alt+O",
+    )
+    root.bind("<Control-Alt-o>", open_ai_server_settings_window)
+    
+    ai_assistant_tool_menu.add_command(
+        label="Agent Options", command=lambda: open_ai_server_agent_settings_window(localization_data,
+                                                                                    persistent_agent_selection_var,
+                                                                                    on_save_callback=lambda agent,
+                                                                                                            temperature: print(
+                                                                                        f"Agent Saved: {agent}, Temperature: {temperature}")
+                                                                                    )
+    )
+    
 
     #TODO: Convert to GENERATE_WINDOW: Text, Images, Audio, Music, Video, 3D Models, Personalized Avatars,
     # Interactive Content, Interactive Content, Application, Web...

@@ -60,7 +60,7 @@ from src.models.VaultRAG import VaultRAG
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
 from src.views.tk_utils import text, script_text, root, current_session, menu, SIMILARITY_THRESHOLD, status_label_var, \
-    localization_data
+    localization_data, persistent_agent_selection_var
 from src.views.ui_elements import Tooltip, ScrollableFrame
 from src.models.ai_assistant import find_gguf_file
 from difflib import SequenceMatcher
@@ -70,11 +70,6 @@ from typing import List, Dict, Optional
 
 def open_llama_cpp_python_settings_window():
     return LlamaCppServerManager()
-
-
-def start_llama_cpp_python_server():
-    file_path = find_gguf_file()
-    print("THE PATH TO THE MODEL IS:\t", file_path)
 
 
 def open_ai_server_settings_window():
@@ -228,6 +223,87 @@ def open_ai_server_settings_window():
     settings_window.mainloop()
 
 
+
+def open_ai_server_agent_settings_window(localization_data, persistent_agent_selection_var, on_save_callback=None):
+    """
+    Opens a settings window to configure AI server agent settings.
+
+    Args:
+        localization_data (dict): Localization strings for UI labels and messages.
+        persistent_agent_selection_var (tk.IntVar): Checkbox variable for persistent agent selection.
+        on_save_callback (callable, optional): Callback function to invoke on successful save.
+    """
+
+    def load_agents():
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        json_file_path = os.path.join(current_dir, "..", "..", "data", "agents.json")
+        json_file_path = os.path.normpath(json_file_path)
+        try:
+            with open(json_file_path, "r") as file:
+                agents = json.load(file)
+            return agents
+        except FileNotFoundError:
+            messagebox.showerror("Error", f"File not found: {json_file_path}")
+            return []
+        except json.JSONDecodeError:
+            messagebox.showerror("Error", f"Error decoding JSON from file: {json_file_path}")
+            return []
+
+    def update_instructions(selected_agent):
+        for agent in agents:
+            if agent["name"] == selected_agent:
+                instructions_text.delete("1.0", "end")
+                instructions_text.insert("1.0", agent["instructions"])
+                temperature_entry.delete(0, "end")
+                temperature_entry.insert(0, agent["temperature"])
+                break
+
+    def save_agent_settings():
+        selected_agent = selected_agent_var.get()
+        temperature = temperature_entry.get()
+        print(f"Selected Agent: {selected_agent}, Temperature: {temperature}")
+        if on_save_callback:
+            on_save_callback(selected_agent, temperature)
+        messagebox.showinfo("Agent Settings", "Settings saved successfully!")
+        settings_window.destroy()
+
+    agents = load_agents()
+    if not agents:
+        return
+
+    settings_window = Toplevel()
+    settings_window.title(localization_data["ai_server_agent_settings_title"])
+
+    Label(settings_window, text=localization_data["ai_server_select_agent_label"]).grid(row=0, column=0)
+
+    selected_agent_var = StringVar(settings_window)
+    selected_agent_var.set(agents[0]["name"])
+    agent_options = [agent["name"] for agent in agents]
+    agent_dropdown = OptionMenu(settings_window, selected_agent_var, *agent_options, command=update_instructions)
+    agent_dropdown.grid(row=0, column=1)
+
+    Label(settings_window, text=localization_data["ai_server_agent_instructions_label"]).grid(row=1, column=0)
+    instructions_text = scrolledtext.ScrolledText(settings_window, height=7, width=50)
+    instructions_text.grid(row=1, column=1, columnspan=2)
+
+    Label(settings_window, text=localization_data["ai_server_agent_temperature_label"]).grid(row=2, column=0)
+    temperature_entry = Entry(settings_window)
+    temperature_entry.grid(row=2, column=1)
+
+    persistent_agent_selection_checkbox = Checkbutton(
+        settings_window,
+        text=localization_data["ai_server_agent_persistent_checkbutton"],
+        variable=persistent_agent_selection_var,
+    )
+    persistent_agent_selection_checkbox.grid(row=3, columnspan=2)
+
+    Button(settings_window, text=localization_data["save"], command=save_agent_settings).grid(row=4, column=0)
+    Button(settings_window, text=localization_data["cancel"], command=settings_window.destroy).grid(row=4, column=1)
+
+    # Prepopulate the fields for the first agent
+    update_instructions(selected_agent_var.get())
+
+
 def open_ai_assistant_window(session_id=None):
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
@@ -235,7 +311,7 @@ def open_ai_assistant_window(session_id=None):
     prompt_lookup = PromptLookup(prompt_folder="data/prompts")
     prompt_interpreter = PromptInterpreter(prompt_lookup)
 
-    def open_ai_server_agent_settings_window():
+    '''def open_ai_server_agent_settings_window():
         def load_agents():
             current_dir = os.path.dirname(os.path.abspath(__file__))
             json_file_path = os.path.join(
@@ -319,7 +395,7 @@ def open_ai_assistant_window(session_id=None):
         Button(settings_window, text=localization_data["cancel"], command=settings_window.destroy).grid(
             row=4, column=1
         )
-        update_instructions(selected_agent_var.get())
+        update_instructions(selected_agent_var.get())'''
 
     def add_current_main_opened_script(include_main_script):
         global include_main_script_in_command
@@ -342,14 +418,12 @@ def open_ai_assistant_window(session_id=None):
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
     menu_bar.add_command(
-        label="AI Server Settings", command=open_ai_server_settings_window
-    )
-    # TO-DO: Only toggle this menu section when the read_config("ai-server-model") is llama-cpp-python
-    menu_bar.add_command(
-        label="llama-cpp-python Settings", command=open_llama_cpp_python_settings_window
-    )
-    menu_bar.add_command(
-        label="Agent Options", command=open_ai_server_agent_settings_window
+        label="Agent Options",
+        command=lambda: open_ai_server_agent_settings_window(
+            localization_data,
+            persistent_agent_selection_var,
+            on_save_callback=lambda agent, temperature: print(f"Agent Saved: {agent}, Temperature: {temperature}")
+        )
     )
     render_markdown_var = IntVar()
     settings_menu.add_checkbutton(
@@ -384,7 +458,6 @@ def open_ai_assistant_window(session_id=None):
         variable=add_current_selected_text_var,
         command=lambda: add_current_selected_text(add_current_selected_text_var.get()),
     )
-    persistent_agent_selection_var = IntVar()
     """settings_menu.add_checkbutton(
         label="Persistent Agent Selection",
         onvalue=1,

@@ -33,3 +33,4 @@ sse_starlette
 starlette_context
 py-solc-x
 web3
+aria2p

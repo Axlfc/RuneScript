@@ -1,27 +1,45 @@
+
 import io
 import os
 import signal
 import subprocess
+import time
 from threading import Thread
 from tkinter import (messagebox, Label, DoubleVar, Toplevel, Menu, Button, Entry, StringVar, BooleanVar,
                      Checkbutton, Text, Scrollbar, filedialog)
 from tkinter.ttk import Progressbar, Combobox, Notebook, Treeview, LabelFrame, Frame
+from datetime import datetime
 import queue
 import psutil
 import requests
+import multiprocessing
 import sys
 
 from src.controllers.parameters import write_config_parameter, read_config_parameter
 from src.views.tk_utils import status_label_var, my_font
+from src.controllers.message_queue import MessageQueue
 
 
 class LlamaCppServerManager:
     DEFAULT_MODEL_DIR = os.path.join("src", "models", "model", "text")
     MODELS_INFO_URL = "https://huggingface.co/TheBloke/models-json/raw/main/models.json"
 
-    def __init__(self):
+    def __init__(self, message_queue=None):
+        """
+        Initialize the Llama.cpp Server Manager
+
+        Args:
+            message_queue (MessageQueue, optional): Shared message queue for inter-window communication
+        """
+        # Use provided message queue or create a new one
+        self.message_queue = message_queue or MessageQueue()
+
+        # Server management variables
         self.server_process = None
-        self.output_queue = queue.Queue()
+        self.server_output_queue = multiprocessing.Queue()
+        self.server_control_queue = multiprocessing.Queue()
+
+        # UI Setup
         self.window = Toplevel()
         self.window.title("Llama.cpp Server Settings")
         self.window.geometry("800x600")
@@ -33,6 +51,8 @@ class LlamaCppServerManager:
         self.port = read_config_parameter("options.llama_cpp.port")
         self.model_path = read_config_parameter("options.llama_cpp.model_path")
         self.available_models = []
+
+        self.output_queue = multiprocessing.Queue()
 
         # Advanced settings with defaults
         self.settings = {
@@ -46,38 +66,109 @@ class LlamaCppServerManager:
         self.notebook = Notebook(self.window)
         self.notebook.pack(expand=True, fill="both", padx=5, pady=5)
 
+
         # Create tabs
         self.create_server_tab()
         self.create_models_tab()
         self.create_advanced_tab()
         self.create_monitoring_tab()
 
-        # Start automatic model detection
+        # Start model and output processing
         self.scan_for_models()
-
-        # Start output processing
-        self.process_output()
+        self.start_output_processing()
 
         # Check if we should autostart
         if read_config_parameter("options.llama_cpp.autostart") == "true":
             self.window.after(1000, self.autostart_server)
 
-    def safe_decode(self, bytes_str):
-        """Safely decode bytes to string, handling any encoding issues"""
+    def start_output_processing(self):
+        """Start background threads for processing server output"""
+
+        def process_server_output():
+            """Continuously process server output"""
+            while True:
+                try:
+                    # Non-blocking check for output
+                    try:
+                        message = self.server_output_queue.get_nowait()
+                        self.handle_server_output(message)
+                    except queue.Empty:
+                        pass
+
+                    # Check for control messages
+                    try:
+                        control_msg = self.server_control_queue.get_nowait()
+                        self.handle_control_message(control_msg)
+                    except queue.Empty:
+                        pass
+
+                    # Small sleep to prevent tight loop
+                    time.sleep(0.1)
+                except Exception as e:
+                    print(f"Error in output processing: {e}")
+
+        # Start output processing thread
+        output_thread = Thread(target=process_server_output, daemon=True)
+        output_thread.start()
+
+    def handle_server_output(self, message):
+        """
+        Handle server output messages
+
+        Args:
+            message (dict): Message containing output details
+        """
+        # Update status text
+        self.update_status(message.get('text', ''))
+
+        # Update UI based on message type
+        if message.get('type') == 'status':
+            status = message.get('status', '')
+            if status == 'starting':
+                status_label_var.set("Starting Server")
+                self.start_button.config(state="disabled")
+            elif status == 'running':
+                status_label_var.set("Server Running")
+                self.start_button.config(state="disabled")
+                self.stop_button.config(state="normal")
+            elif status == 'stopped':
+                status_label_var.set("Server Stopped")
+                self.start_button.config(state="normal")
+                self.stop_button.config(state="disabled")
+            elif status == 'error':
+                status_label_var.set("Server Error")
+
+        # Optionally send message to global message queue
+        self.message_queue.put({
+            'source': 'llama_cpp_server',
+            'type': 'output',
+            **message
+        })
+
+    def handle_control_message(self, message):
+        """
+        Handle control messages from the server process
+
+        Args:
+            message (dict): Control message details
+        """
+        if message.get('action') == 'stop':
+            self.stop_server()
+
+    def safe_decode(self, input_data):
+        """Safely decode bytes to string, handling any encoding issues."""
+        if isinstance(input_data, str):
+            return input_data  # Already a string
         try:
-            # Try UTF-8 first
-            return bytes_str.decode('utf-8')
+            return input_data.decode('utf-8')  # Try UTF-8 first
         except UnicodeDecodeError:
             try:
-                # Try system default encoding
-                return bytes_str.decode(sys.getdefaultencoding())
+                return input_data.decode(sys.getdefaultencoding())  # Try system default encoding
             except UnicodeDecodeError:
                 try:
-                    # Fall back to latin-1 (will always work but might mangle characters)
-                    return bytes_str.decode('latin-1')
+                    return input_data.decode('latin-1')  # Fall back to latin-1
                 except Exception:
-                    # Last resort - replace invalid characters
-                    return bytes_str.decode('utf-8', errors='replace')
+                    return input_data.decode('utf-8', errors='replace')  # Last resort
 
     def process_output(self):
         """Process server output from the queue and update UI"""
@@ -421,126 +512,224 @@ class LlamaCppServerManager:
             self.start_server()
 
     def start_server(self):
+        """
+        Launch Llama.cpp server with robust path and environment handling
+        """
+        # Detect virtual environment Python interpreter
+        venv_python = sys.executable  # Typically points to venv Python
+
+        # Construct absolute paths
+        model_path = os.path.abspath(self.model_path_var.get())
+
+        # Validate model and port
+        if not self.validate_server_start():
+            return
+
+        # Construct server launch command
+        cmd = [
+            venv_python,
+            "-m", "llama_cpp.server",
+            "--port", self.port_var.get(),
+            "--model", model_path
+        ]
+
+        # Add optional parameters from advanced settings
+        optional_params = {
+            '--n_ctx': self.settings.get('n_ctx'),
+            '--n_threads': self.settings.get('n_threads'),
+            '--n_batch': self.settings.get('n_batch'),
+            '--n_gpu_layers': self.settings.get('n_gpu_layers')
+        }
+
+        for param, value in optional_params.items():
+            if value and value.strip():  # Ensure value is not empty or just whitespace
+                cmd.extend([param, value])
+
+        try:
+            # Launch server process
+            self.server_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1
+            )
+
+            # Update UI to reflect server status
+            self.start_button.config(state="disabled")
+            self.stop_button.config(state="normal")
+            status_label_var.set("Server Starting")
+
+            # Start monitoring output
+            self.monitor_output()
+
+        except Exception as e:
+            messagebox.showerror("Server Launch Error", f"Could not start server: {e}")
+            self.update_status(f"Server launch failed: {e}")
+
+    def validate_server_start(self):
+        """
+        Validate server start conditions
+
+        Returns:
+            bool: True if validation passes, False otherwise
+        """
         if not self.model_path_var.get():
             messagebox.showerror("Error", "Please select a model file first.")
-            return
+            return False
 
         if not os.path.exists(self.model_path_var.get()):
             messagebox.showerror("Error", "Selected model file does not exist.")
-            return
+            return False
 
         port = self.port_var.get()
         if not port.isdigit():
             messagebox.showerror("Error", "Port must be a number.")
-            return
+            return False
 
         # Save settings
         write_config_parameter("options.llama_cpp.port", port)
         write_config_parameter("options.llama_cpp.model_path", self.model_path_var.get())
 
-        # Build command with advanced settings
-        cmd = [
-            os.path.join("venv", "Scripts", "python.exe"),
-            "-m", "llama_cpp.server",
-            "--port", port,
-            "--model", self.model_path_var.get(),
-            "--n_ctx", self.settings["n_ctx"],
-            "--n_threads", self.settings["n_threads"],
-            "--n_batch", self.settings["n_batch"],
-            "--n_gpu_layers", self.settings["n_gpu_layers"]
-        ]
+        return True
 
+    def monitor_process(self):
+        """
+        Monitor the overall server process lifecycle.
+        """
         try:
-            # Clear previous output
-            self.status_text.delete(1.0, "end")
+            # Wait for process to complete
+            return_code = self.server_process.wait()
 
-            # Start server process with pipe for output
-            startupinfo = None
-            if os.name == 'nt':
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
-            self.server_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                startupinfo=startupinfo,
-                universal_newlines=False,  # Use binary mode
-                bufsize=0  # Unbuffered output
-            )
-
-            self.start_button.config(state="disabled")
-            self.stop_button.config(state="normal")
-            status_label_var.set("Starting Server")
-            self.update_status("Starting server...")
-
-            # Start output monitoring
-            self.monitor_output()
+            # Update UI to reflect server termination
+            status_msg = f"Server stopped with return code: {return_code}"
+            self.window.after(0, self.update_status, status_msg)
+            self.window.after(0, self.update_server_buttons)
 
         except Exception as e:
-            self.update_status(f"Error starting server: {str(e)}")
-            status_label_var.set("Server Error")
+            error_msg = f"Process monitoring error: {e}"
+            self.window.after(0, self.update_status, error_msg)
+
+    def update_server_buttons(self):
+        """
+        Reset the UI buttons after the server stops.
+        """
+        self.start_button.config(state="normal")
+        self.stop_button.config(state="disabled")
+        status_label_var.set("Server Stopped")
 
     def monitor_output(self):
-        """Monitor server process output and put it in the queue"""
-        if not self.server_process:
-            return
+        """
+        Continuously monitor server process output and update UI in real-time
+        """
+        def capture_output(pipe, output_type):
+            """
+            Capture and process output from server process
 
-        def monitor_pipe(pipe, prefix=""):
-            while True:
-                try:
-                    # Read a chunk of data (up to 1024 bytes)
-                    chunk = pipe.read(1024)
-                    if not chunk:
-                        break
-
-                    # Decode and process the chunk
-                    text = self.safe_decode(chunk)
-                    lines = text.splitlines()
-
-                    # Add each non-empty line to the queue
-                    for line in lines:
-                        cleaned_line = line.strip()
-                        if cleaned_line:
-                            self.output_queue.put(f"{prefix}{cleaned_line}")
-                except Exception as e:
-                    self.output_queue.put(f"Error processing output: {str(e)}")
-                    break
-
+            Args:
+                pipe (io.TextIOWrapper): Process pipe (stdout or stderr)
+                output_type (str): Type of output stream ('stdout' or 'stderr')
+            """
             try:
-                pipe.close()
-            except Exception:
-                pass
+                for line in iter(pipe.readline, ''):
+                    # Clean and process the line
+                    cleaned_line = line.strip()
+                    if cleaned_line:
+                        # Update status text widget
+                        self.window.after(0, self.update_status,
+                                          f"[{output_type.upper()}] {cleaned_line}")
 
-        # Start threads to monitor stdout and stderr
-        Thread(target=monitor_pipe, args=(self.server_process.stdout,), daemon=True).start()
-        Thread(target=monitor_pipe, args=(self.server_process.stderr, ""), daemon=True).start()
+                        # Optional: Log to console for debugging
+                        print(f"[Server {output_type}] {cleaned_line}")
+
+                        # Optional: Send to message queue for broader application logging
+                        self.message_queue.put({
+                            'source': 'llama_cpp_server',
+                            'type': output_type,
+                            'message': cleaned_line
+                        })
+            except Exception as e:
+                error_msg = f"Error capturing {output_type} output: {e}"
+                self.window.after(0, self.update_status, error_msg)
+                print(error_msg)
+            finally:
+                pipe.close()
+
+        # Capture stdout and stderr in separate threads
+        stdout_thread = Thread(
+            target=capture_output,
+            args=(self.server_process.stdout, 'stdout'),
+            daemon=True
+        )
+        stderr_thread = Thread(
+            target=capture_output,
+            args=(self.server_process.stderr, 'stderr'),
+            daemon=True
+        )
+        process_monitor_thread = Thread(
+            target=self.monitor_process,
+            daemon=True
+        )
+
+        # Start monitoring threads
+        stdout_thread.start()
+        stderr_thread.start()
+        process_monitor_thread.start()
+
+
 
     def stop_server(self):
-        """Stop the server process."""
+        """Stop the server process"""
         if self.server_process:
             try:
+                # Send stop signal
+                self.server_control_queue.put({'action': 'stop'})
+
+                # Additional termination methods
                 if os.name == 'nt':
                     subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.server_process.pid)])
                 else:
                     os.kill(self.server_process.pid, signal.SIGTERM)
+
+                # Reset UI and state
+                self.server_process = None
+                self.start_button.config(state="normal")
+                self.stop_button.config(state="disabled")
+                status_label_var.set("Server Stopped")
+                self.update_status("Server stopped")
+
             except Exception as e:
                 self.update_status(f"Error stopping server: {str(e)}")
 
-            self.server_process = None
-            self.start_button.config(state="normal")
-            self.stop_button.config(state="disabled")
-            status_label_var.set("Server Stopped")
-            self.update_status("Server stopped")
-
     def update_status(self, message):
-        """Update status text widget with server output."""
+        """
+        Thread-safe method to update status text widget
+
+        Args:
+            message (str): Message to display in status widget
+        """
         try:
-            self.status_text.insert("end", f"{message}\n")
-            self.status_text.see("end")
-            self.status_text.update_idletasks()
+            # Ensure UI updates happen on main thread
+            self.window.after(0, self._insert_status_message, message)
         except Exception as e:
-            print(f"Error updating status: {str(e)}")
+            print(f"Status update error: {e}")
+
+    def _insert_status_message(self, message):
+        """
+        Internal method to insert message into text widget
+
+        Args:
+            message (str): Message to insert
+        """
+        try:
+            # Insert message with timestamp
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            full_message = f"[{timestamp}] {message}\n"
+
+            self.status_text.insert("end", full_message)
+            self.status_text.see("end")  # Auto-scroll to bottom
+        except Exception as e:
+            print(f"Message insertion error: {e}")
     
 
 def create_llama_cpp_menu(menu_bar):
