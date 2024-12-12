@@ -44,6 +44,7 @@ class AIResponseParser:
 
             # Basic structure extraction
             structure_match = re.findall(r'Project Structure:(.*?)(?=Test Cases:|$)', response, re.DOTALL)
+            print("HOLAAAAAAAA")
             if structure_match:
                 parsed_data['project_structure'] = [
                     dir.strip() for dir in structure_match[0].split('\n') if dir.strip()
@@ -109,17 +110,31 @@ class RedGreenRefactorIDE:
         self.root.title("Red-Green-Refactor IDE")
         self.root.geometry("1400x900")
 
-        self.current_project = None
-        self.current_project_files = {}
-        self.current_file_path = None
         self.ai_task_queue = queue.Queue()
         self.ai_response_queue = queue.Queue()
-
         self.setup_logging()
         self.setup_menu()
         self.create_main_layout()
+        self.poll_queue()  # Start polling the queue
         self.projects_base_dir = os.path.join('data', 'projects')
+        self.current_project_files = {}
         os.makedirs(self.projects_base_dir, exist_ok=True)
+
+    def poll_queue(self):
+        """
+        Process AI responses from the queue on the main thread.
+        """
+        try:
+            while not self.ai_response_queue.empty():
+                status, data = self.ai_response_queue.get_nowait()
+                if status == "success":
+                    self.finalize_project_generation(data)
+                elif status == "error":
+                    self.handle_generation_failure(error_message=data)
+        except queue.Empty:
+            pass
+        finally:
+            self.root.after(100, self.poll_queue)  # Poll the queue every 100ms
 
     def setup_menu(self):
         menubar = tk.Menu(self.root)
@@ -294,16 +309,18 @@ class RedGreenRefactorIDE:
                 )
 
     def generate_project_with_ai(self):
+        """
+        Validate prompt and start AI generation in a new thread.
+        """
         prompt = self.prompt_entry.get().strip()
 
         if not AIResponseParser.validate_prompt(prompt):
             messagebox.showwarning("Invalid Prompt", "Please provide a clear, meaningful project description.")
             return
 
-        # Disable UI during generation
         self.toggle_generation_ui(False)
 
-        # Threaded AI generation to prevent UI freeze
+        # Start AI generation in a background thread
         threading.Thread(
             target=self.threaded_ai_generation,
             args=(prompt,),
@@ -311,43 +328,54 @@ class RedGreenRefactorIDE:
         ).start()
 
     def threaded_ai_generation(self, prompt):
+        """
+        Run AI generation logic in a separate thread and enqueue results.
+        """
         try:
-            # AI generation logic with timeout mechanism
             ai_response = self.process_prompt_with_ai(prompt)
-
             if ai_response:
                 parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
-
-                # Thread-safe UI update
-                self.root.after(0, self.finalize_project_generation, parsed_metadata)
+                self.ai_response_queue.put(("success", parsed_metadata))
             else:
-                self.root.after(0, self.handle_generation_failure)
-
+                self.ai_response_queue.put(("error", "AI response is empty."))
         except Exception as e:
             logging.error(f"AI generation thread error: {e}")
-            self.root.after(0, self.handle_generation_failure)
+            self.ai_response_queue.put(("error", str(e)))
 
     def finalize_project_generation(self, parsed_metadata):
+        """
+        Finalize the project generation and update UI.
+        """
         try:
-            project_id = str(uuid.uuid4())
-            project_path = os.path.join(self.projects_base_dir, project_id)
+            # Generate a sanitized project ID
+            project_id = str(uuid.uuid4()).replace("-", "")
+            project_path = os.path.normpath(os.path.join(self.projects_base_dir, project_id))
 
+            # Create the project structure
             ProjectManager.create_project_structure(project_path, parsed_metadata)
 
+            # Set the current project and refresh the UI
             self.current_project = project_path
             self.populate_project_tree()
 
-            self.update_ai_plan(parsed_metadata.get('project_structure', []))
-            self.log_output(f"Project {project_id} generated successfully!")
+            # Format project structure for AI Plan
+            project_structure = parsed_metadata.get('project_structure', [])
+            formatted_structure = '\n'.join(project_structure)  # Convert list to string
+            self.update_ai_plan(formatted_structure)
 
-            self.toggle_generation_ui(True)
+            self.log_output(f"Project {project_id} generated successfully at {project_path}!")
+
         except Exception as e:
             logging.error(f"Project finalization error: {e}")
             messagebox.showerror("Generation Error", str(e))
+        finally:
             self.toggle_generation_ui(True)
 
-    def handle_generation_failure(self):
-        messagebox.showerror("AI Generation Failed", "Unable to generate project. Please try again.")
+    def handle_generation_failure(self, error_message="AI generation failed. Please try again."):
+        """
+        Handle AI generation failure and update UI.
+        """
+        messagebox.showerror("AI Generation Failed", error_message)
         self.toggle_generation_ui(True)
 
     def toggle_generation_ui(self, enabled: bool):
@@ -358,25 +386,28 @@ class RedGreenRefactorIDE:
         self.stop_btn.config(state=tk.DISABLED)
 
     def populate_project_tree(self):
-        self.project_tree.delete(*self.project_tree.get_children())
-        self.current_project_files.clear()
+        try:
+            self.project_tree.delete(*self.project_tree.get_children())
+            self.current_project_files.clear()
 
-        for root, dirs, files in os.walk(self.current_project):
-            parent = self.project_tree.insert(
-                '',
-                'end',
-                text=os.path.basename(root),
-                values=(root,)
-            )
-            for file in files:
-                file_path = os.path.join(root, file)
-                file_id = self.project_tree.insert(
-                    parent,
+            for root, dirs, files in os.walk(self.current_project):
+                parent = self.project_tree.insert(
+                    '',
                     'end',
-                    text=file,
-                    values=(file_path,)
+                    text=os.path.basename(root),
+                    values=(root,)
                 )
-                self.current_project_files[file_id] = file_path
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    file_id = self.project_tree.insert(
+                        parent,
+                        'end',
+                        text=file,
+                        values=(file_path,)
+                    )
+                    self.current_project_files[file_id] = file_path
+        except Exception as e:
+            logging.error(f"Error in populate_project_tree: {e}")
 
     def on_file_select(self, event):
         selected_item = self.project_tree.selection()
@@ -453,3 +484,4 @@ if __name__ == '__main__':
     root = tk.Tk()
     app = RedGreenRefactorIDE(root)
     root.mainloop()
+
