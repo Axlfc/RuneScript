@@ -29,6 +29,7 @@ from src.controllers.scheduled_tasks import (
 )
 from src.models.ClockWindow import ClockWindow
 from src.models.FindInFilesWindow import FindInFilesWindow
+from src.models.GraphicEngineWindow import GraphicEngineWindow
 from src.models.ProjectWindow import RedGreenRefactorIDE
 from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
 from src.models.SystemInfoWindow import SystemInfoWindow
@@ -176,6 +177,10 @@ def create_settings_window(event=None):
 
 def create_web3_window(event=None):
     return Web3DevStudio()
+
+
+def create_graphic_engine_window(event=None):
+    return GraphicEngineWindow()
 
 
 def open_system_info_window(event=None):
@@ -1379,6 +1384,13 @@ def create_menu():
         accelerator="Ctrl+,",
     )
     root.bind("<Control-,>", create_settings_window)
+
+    tool_menu.add_command(
+        label="Graphic Engine",
+        command=create_graphic_engine_window,
+        accelerator="Ctrl+W+3",
+    )
+    # root.bind("<Control-W-3>", create_web3_window)
 
     tool_menu.add_command(
         label="Web3",

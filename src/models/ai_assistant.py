@@ -9,6 +9,9 @@ from colorama import Fore, Back, Style
 import time
 import json
 from datetime import datetime
+# from google import genai
+# from google.genai.types import GenerateContentConfig, Part, SafetySetting
+
 from dotenv import load_dotenv
 # import anthropic
 from src.controllers.parameters import read_config_parameter
@@ -106,13 +109,19 @@ def load_agent_from_json(agent_name):
     raise ValueError(f"No agent found with the name: {agent_name}")
 
 
-def initialize_gemini_client():
+def initialize_gemini15_client():
     load_dotenv()
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     return {
         "api_key": GEMINI_API_KEY,
         "base_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
     }
+
+
+def initialize_gemini20_client():
+    load_dotenv()
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 
 def process_gemini_chat(client, prompt):
@@ -142,6 +151,44 @@ def process_gemini_chat(client, prompt):
         return "Error: Invalid response received from Gemini API."
     except Exception as e:
         return f"Error: An unexpected error occurred. Details: {str(e)}"
+
+
+def process_gemini20_chat(client, prompt, system_prompt=None, temperature=0.7, max_tokens=300):
+    try:
+        # Configure the system instructions
+        config = GenerateContentConfig(
+            system_instruction=system_prompt or "You are a helpful assistant.",
+            temperature=temperature,
+            max_output_tokens=max_tokens
+        )
+
+        # Send the request to Gemini 2.0
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=Part.from_text(prompt),
+            config=config
+        )
+
+        # Return the text response
+        return response.text
+    except Exception as e:
+        return f"Error while communicating with Gemini 2.0: {str(e)}"
+
+
+def chat_loop_gemini20(prompt, client, system_prompt, session_id):
+    conversation = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+    full_prompt = "\n".join(
+        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in conversation]
+    )
+    response = process_gemini20_chat(client, full_prompt, system_prompt)
+    if response.startswith("Error:"):
+        print(f"An error occurred: {response}")
+    else:
+        print(response)
+
 
 
 def chat_loop_gemini(prompt, client, system_prompt, session_id):
@@ -189,13 +236,54 @@ Assistant:""",
         return f"Error: An unexpected error occurred. Details: {str(e)}"
 
 
-def chat_loop_claude(prompt, client, system_prompt, session_id):
-    full_prompt = f"{system_prompt}\n\nHuman: {prompt}\n\nAssistant:"
-    response = process_claude_chat(client, full_prompt)
-    if response.startswith("Error:"):
-        print(f"An error occurred: {response}")
-    else:
-        print("Claude:", response)
+def initialize_ollama_client():
+    # No specific client initialization needed for basic HTTP requests
+    pass
+
+
+def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "model": model_name,
+        "prompt": prompt,
+        "stream": False,
+        "system": system_prompt
+    }
+    try:
+        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data)
+        response.raise_for_status()
+        result = response.json()
+        return result.get("response", "Error: No response received from Ollama.")
+    except requests.exceptions.RequestException as e:
+        return f"Error: Request to Ollama API failed. Details: {str(e)}"
+    except json.JSONDecodeError:
+        return "Error: Invalid response received from Ollama."
+    except Exception as e:
+        return f"Error: An unexpected error occurred. Details: {str(e)}"
+
+
+def chat_loop_ollama(prompt, system_prompt, session_id):
+    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
+    ollama_model = read_config_parameter("options.network_settings.ollama_model")
+    if not ollama_model:
+        print("Error: Ollama model not specified in the configuration.")
+        return
+    response = process_ollama_chat(prompt, system_prompt, ollama_url, ollama_model)
+    try:
+        parsed = json.loads(response)
+        print(json.dumps(parsed))  # Send clean JSON stdout
+    except json.JSONDecodeError:
+        # Attempt regex salvage (or fail cleanly)
+        import re
+        match = re.search(r"\{[\s\S]+\}", response)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                print(json.dumps(parsed))
+            except json.JSONDecodeError:
+                print(json.dumps({"error": "Failed to parse embedded JSON"}))
+        else:
+            print(json.dumps({"error": "No JSON found in response", "raw": response}))
     print("\n> ")
     print()
     print("> ")
@@ -230,11 +318,13 @@ def main():
         model_path = find_gguf_file()
         chat_loop(user_input, client, model_path, system_prompt, session_id)
     elif selected_llm_server_provider == "gemini":
-        client = initialize_gemini_client()
-        chat_loop_gemini(user_input, client, system_prompt, session_id)
+        client = initialize_gemini20_client()
+        chat_loop_gemini20(user_input, client, system_prompt, session_id)
     elif selected_llm_server_provider == "claude":
         client = initialize_claude_client()
         chat_loop_claude(user_input, client, system_prompt, session_id)
+    elif selected_llm_server_provider == "ollama":
+        chat_loop_ollama(user_input, system_prompt, session_id)
     else:
         print("UNSUPPORTED LLM SERVER PROVIDER")
 

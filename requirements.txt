@@ -34,3 +34,7 @@ starlette_context
 py-solc-x
 web3
 aria2p
+google
+google-genai
+google-generativeai
+ttkbootstrap

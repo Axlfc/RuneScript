@@ -2,6 +2,7 @@ import os
 import platform
 import re
 import subprocess
+import sys
 from time import sleep
 from tkinter import messagebox, Toplevel, Text
 from src.controllers.utility_functions import validate_time
@@ -136,6 +137,89 @@ def run_script_windows():
             p.write(stderr_data)
 
 
+def find_python_venv(project_dir):
+    venv_names = ['.venv', 'venv']
+    venv_python_paths = {
+        'windows': [
+            r'{}/Scripts/python.exe',
+            r'{}/Scripts/python3.exe',
+            r'{}/.venv/Scripts/python.exe',
+            r'{}/.venv/Scripts/python3.exe'
+        ],
+        'unix': [
+            '{}/bin/python3',
+            '{}/bin/python',
+            '{}/.venv/bin/python3',
+            '{}/.venv/bin/python'
+        ]
+    }
+
+    # Determinar el sistema operativo
+    is_windows = os.name == 'nt'
+    paths_to_check = venv_python_paths['windows'] if is_windows else venv_python_paths['unix']
+
+    # Verificar rutas directas
+    for venv_name in venv_names:
+        for path_template in paths_to_check:
+            venv_path = path_template.format(os.path.join(project_dir, venv_name))
+            if os.path.exists(venv_path):
+                return venv_path
+
+    # Búsqueda recursiva más profunda
+    for root, dirs, files in os.walk(project_dir):
+        for dir_name in dirs:
+            if dir_name in venv_names or 'venv' in dir_name.lower():
+                for path_template in paths_to_check:
+                    venv_path = path_template.format(os.path.join(root, dir_name))
+                    if os.path.exists(venv_path):
+                        return venv_path
+
+    return None
+
+
+def run_script_with_venv(script_path, arguments=None, project_dir=None):
+    """
+    Ejecuta un script de Python utilizando un entorno virtual si está disponible.
+
+    Args:
+        script_path (str): Ruta al script a ejecutar
+        arguments (list, optional): Argumentos para el script
+        project_dir (str, optional): Directorio del proyecto
+
+    Returns:
+        subprocess.CompletedProcess: Resultado de la ejecución del script
+    """
+    if project_dir is None:
+        project_dir = os.path.dirname(script_path)
+
+    # Buscar ejecutable de Python del entorno virtual
+    venv_python = find_python_venv(project_dir)
+
+    # Preparar comando de ejecución
+    if venv_python:
+        cmd = [venv_python, script_path]
+    else:
+        cmd = [sys.executable, script_path]
+
+    # Añadir argumentos si están presentes
+    if arguments:
+        cmd.extend(arguments)
+
+    try:
+        # Ejecutar el script
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result
+    except subprocess.CalledProcessError as e:
+        print(f"Error al ejecutar el script: {e}")
+        print(f"Salida de error: {e.stderr}")
+        raise
+
+
 def run_script():
     """ ""\"
     Executes the script present in the script_text widget.
@@ -149,11 +233,15 @@ def run_script():
     Returns:
     None
     ""\" """
+    print("HOLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     script = script_text.get("1.0", "end-1c")
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
     generate_stderr = generate_stdin_err.get()
     try:
+        print("WE ARE IN!!")
+        print(script_name_label.cget("text"))
+        print("YEAH!!")
         process = subprocess.Popen(
             ["bash"]
             + [directory_label.cget("text") + "/" + script_name_label.cget("text")]

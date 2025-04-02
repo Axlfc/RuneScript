@@ -69,6 +69,7 @@
         },
         "network_settings": {
             "last_selected_llm_server_provider": "llama-cpp-python",
+            "ollama_model": "qwen2.5-coder",
             "server_url": "http://localhost:8004/v1/",
             "api_key": "not-needed",
             "last_selected_session_id": 0

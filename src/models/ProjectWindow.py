@@ -13,6 +13,25 @@ from typing import Dict, Optional, Any, List, Callable, Union
 from datetime import datetime
 
 
+def create_default_metadata(name, error_message):
+    """Helper function to create default metadata with error information"""
+    return {
+        'project_name': name,
+        'project_description': error_message,
+        'project_structure': [],
+        'key_features': [],
+        'project_tasks': ['Resolve AI response parsing error'],
+        'implemented_features': [],
+        'planned_features': [],
+        'feature_priorities': {
+            'high': [],
+            'medium': [],
+            'low': []
+        },
+        'validation_notes': [error_message]
+    }
+
+
 class AIResponseParser:
     @staticmethod
     def validate_prompt(prompt):
@@ -25,52 +44,48 @@ class AIResponseParser:
         return prompt and len(prompt.split()) >= 3
 
     @staticmethod
-    def parse_ai_response(ai_response):
+    def parse_ai_response(response):
         """
-        Parse the AI-generated project metadata.
+        Parse the AI response into a structured format.
 
-        :param ai_response: JSON or structured response from AI
-        :return: Parsed project metadata dictionary
+        Args:
+            response (str): The raw AI response
+
+        Returns:
+            dict: Parsed metadata or empty dict if parsing fails
         """
         try:
-            # If AI response is a JSON string, parse it
-            if isinstance(ai_response, str):
-                parsed_data = json.loads(ai_response)
-            else:
-                parsed_data = ai_response
+            # Clean the response to extract only the JSON part
+            # Find where the JSON content begins and ends
+            response = response.strip()
 
-            # Ensure all required fields are present with default values
-            metadata = {
-                'project_name': parsed_data.get('project_name', 'Unnamed Project'),
-                'project_description': parsed_data.get('project_description', 'No description provided'),
-                'project_structure': parsed_data.get('project_structure', []),
-                'key_features': parsed_data.get('key_features', []),
-                'project_tasks': parsed_data.get('project_tasks', []),
-                'implemented_features': parsed_data.get('implemented_features', []),
-                'planned_features': parsed_data.get('planned_features', []),
-                'feature_priorities': parsed_data.get('feature_priorities', {
-                    'high': [],
-                    'medium': [],
-                    'low': []
-                }),
-                'validation_notes': parsed_data.get('validation_notes', [])
-            }
+            # Find the first occurrence of '{' which should be the start of JSON
+            json_start = response.find('{')
+            if json_start == -1:
+                logging.error("No JSON object found in AI response")
+                return {}
 
-            return metadata
+            # Extract just the JSON part
+            json_content = response[json_start:]
 
-        except (json.JSONDecodeError, TypeError) as e:
+            # Strip any trailing non-JSON content
+            # Find the last occurrence of '}'
+            json_end = json_content.rfind('}')
+            if json_end == -1:
+                logging.error("No closing brace found in AI response JSON")
+                return {}
+
+            json_content = json_content[:json_end + 1]
+
+            # Parse the cleaned JSON content
+            parsed_data = json.loads(json_content)
+            return parsed_data
+        except json.JSONDecodeError as e:
             logging.error(f"Error parsing AI response: {e}")
-            return {
-                'project_name': 'Error Project',
-                'project_description': 'Failed to parse AI response',
-                'project_structure': [],
-                'key_features': [],
-                'project_tasks': ['Resolve AI response parsing error'],
-                'implemented_features': [],
-                'planned_features': [],
-                'feature_priorities': {},
-                'validation_notes': [str(e)]
-            }
+            return {}
+        except Exception as e:
+            logging.error(f"Unexpected error when parsing AI response: {e}")
+            return {}
 
 
 class ProjectManager:
@@ -235,20 +250,258 @@ class ProjectManager:
             return False
 
 
-class AutonomousProjectAgent:
-    def __init__(self, project_path: str):
-        """
-        Initialize the Autonomous Project Agent for managing project development.
+class RequirementAgent:
+    def __init__(self, agent):  # takes in AutonomousProjectAgent
+        self.agent = agent
 
-        :param project_path: Base directory for the project
+    def analyze(self, requirements: str) -> Dict:
+        logging.info(f"Analyzing requirements: {requirements}")
+        context = {
+            "requirements": requirements,
+            "project_name": self.agent._generate_project_name()
+        }
+        ai_response = self.agent.process_prompt_with_ai("requirement_analysis", context)
+        # Parse AI response or use default
+        try:
+            project_scope = json.loads(ai_response) if ai_response else {
+                "project_name": context["project_name"],
+                "key_features": ["Core Functionality"],
+                "constraints": []
+            }
+        except json.JSONDecodeError:
+            project_scope = {
+                "project_name": context["project_name"],
+                "key_features": ["Core Functionality"],
+                "constraints": []
+            }
+        return project_scope
+
+
+class ArchitectureAgent:
+    def __init__(self, agent):  # takes in AutonomousProjectAgent
+        self.agent = agent
+
+    def design(self, project_scope: Dict) -> Dict:
         """
+        Design initial project architecture and structure.
+        :param project_scope: Analyzed project requirements
+        :return: Project architecture blueprint
+        """
+        logging.info("Designing project architecture")
+        context = {
+            "project_scope": project_scope,
+            "default_structure": [
+                "src/",
+                "tests/",
+                "docs/",
+                "README.md"
+            ]
+        }
+        ai_response = self.agent.process_prompt_with_ai("architecture_design", context)
+        # Parse AI response or use default
+        try:
+            architecture = json.loads(ai_response) if ai_response else {
+                "project_name": project_scope.get("project_name", "Unnamed Project"),
+                "directory_structure": context["default_structure"],
+                "initial_modules": [],
+                "testing_framework": "pytest"
+            }
+        except json.JSONDecodeError:
+            architecture = {
+                "project_name": project_scope.get("project_name", "Unnamed Project"),
+                "directory_structure": context["default_structure"],
+                "initial_modules": [],
+                "testing_framework": "pytest"
+            }
+        return architecture
+
+
+class TestGenerationAgent:
+    def __init__(self, agent):  # takes in AutonomousProjectAgent
+        self.agent = agent
+
+    def generate_tests(self, architecture: Dict) -> List[Dict]:
+        """
+        Generate initial test cases for the project.
+        :param architecture: Project architecture blueprint
+        :return: List of initial test cases
+        """
+        logging.info("Generating initial test cases")
+        context = {
+            "architecture": architecture
+        }
+        ai_response = self.agent.process_prompt_with_ai("test_generation", context)
+        # Parse AI response or use default
+        try:
+            initial_tests = json.loads(ai_response) if ai_response else [
+                {
+                    "name": "test_project_initialization",
+                    "description": "Verify project initializes correctly",
+                    "module": "test_core.py"
+                }
+            ]
+        except json.JSONDecodeError:
+            initial_tests = [
+                {
+                    "name": "test_project_initialization",
+                    "description": "Verify project initializes correctly",
+                    "module": "test_core.py"
+                }
+            ]
+        return initial_tests
+
+
+class FeatureImplementationAgent:
+
+    def __init__(self, agent):  # takes in AutonomousProjectAgent
+        self.agent = agent
+
+    def implement_features(self, tests: List[Dict]) -> Dict:
+        """
+        Implement features based on generated test cases.
+        :param tests: List of test cases
+        :return: Implementation results
+        """
+        logging.info("Implementing features")
+        context = {
+            "tests": tests
+        }
+        ai_response = self.agent.process_prompt_with_ai("feature_implementation", context)
+        # Parse AI response or use default
+        try:
+            implementation_results = json.loads(ai_response) if ai_response else {
+                "implemented_modules": [],
+                "test_coverage": {}
+            }
+        except json.JSONDecodeError:
+            implementation_results = {
+                "implemented_modules": [],
+                "test_coverage": {}
+            }
+        return implementation_results
+
+
+class RefactoringAgent:
+
+    def __init__(self, agent):  # takes in AutonomousProjectAgent
+        self.agent = agent
+
+    def refactor_code(self, implementation_results: Dict):
+        """
+        Refactor implemented code to improve quality and maintainability.
+        :param implementation_results: Results from feature implementation
+        """
+        logging.info("Performing code refactoring")
+        context = {
+            "implementation_results": implementation_results
+        }
+        self.agent.process_prompt_with_ai("code_refactoring", context)
+
+
+class ValidationAgent:
+
+    def __init__(self, agent):  # takes in AutonomousProjectAgent
+        self.agent = agent
+
+    def validate_project(self) -> Dict:
+        """
+        Validate the overall project quality and completeness.
+        :return: Validation results
+        """
+        logging.info("Validating project")
+        validation_results = {
+            "test_success_rate": self.agent._run_tests(),
+            "code_quality_score": self.agent._analyze_code_quality()
+        }
+        return validation_results
+
+
+class StateManagementSystem:
+    def __init__(self):
+        self.state = {
+            "tasks": [],
+            "completed_tasks": [],
+            "code_files": {},
+            "test_results": {},
+            "errors": [],
+            "dependencies": []
+        }
+
+    def log_task(self, task):
+        self.state["tasks"].append(task)
+
+    def complete_task(self, task):
+        if task in self.state["tasks"]:
+            self.state["tasks"].remove(task)
+        self.state["completed_tasks"].append(task)
+
+    def add_code_file(self, filename, content):
+        self.state["code_files"][filename] = content
+
+    def add_test_result(self, test_name, result):
+        self.state["test_results"][test_name] = result
+
+    def log_error(self, error):
+        self.state["errors"].append(str(error))
+
+    def add_dependency(self, dependency):
+        if dependency not in self.state["dependencies"]:
+            self.state["dependencies"].append(dependency)
+
+    def export_state(self, path):
+        import json
+        with open(path, 'w') as f:
+            json.dump(self.state, f, indent=4)
+
+    def load_state(self, path):
+        import json
+        with open(path, 'r') as f:
+            self.state = json.load(f)
+
+
+class DependencyManagementUnit:
+    def __init__(self, project_path):
         self.project_path = project_path
 
-        # Queues for managing asynchronous tasks
+    def install_dependencies(self, dependencies):
+        for dep in dependencies:
+            try:
+                subprocess.run(["pip", "install", dep], check=True)
+            except subprocess.CalledProcessError as e:
+                logging.error(f"Failed to install dependency: {dep}: {e}")
+
+    def save_requirements(self, dependencies):
+        req_path = os.path.join(self.project_path, "requirements.txt")
+        with open(req_path, "w") as f:
+            for dep in dependencies:
+                f.write(f"{dep}\n")
+
+
+class AutomatedTestingFramework:
+    def __init__(self, project_path):
+        self.project_path = project_path
+
+    def run_tests(self):
+        try:
+            result = subprocess.run([
+                "pytest", "--maxfail=5", "--disable-warnings", "--tb=short"
+            ], cwd=self.project_path, capture_output=True, text=True)
+
+            logging.info(result.stdout)
+            if result.stderr:
+                logging.warning(result.stderr)
+            return result.returncode == 0
+
+        except Exception as e:
+            logging.error(f"Automated testing failed: {e}")
+            return False
+
+
+class AutonomousProjectAgent:
+    def __init__(self, project_path: str):
+        self.project_path = project_path
         self.task_queue = queue.Queue()
         self.result_queue = queue.Queue()
-
-        # Project development state tracking
         self.current_phase = "idle"
         self.development_stages = [
             "requirement_analysis",
@@ -259,8 +512,19 @@ class AutonomousProjectAgent:
             "validation"
         ]
 
-        # Logging setup
         self.setup_logging()
+
+        # New components
+        self.state = StateManagementSystem()
+        self.dependency_manager = DependencyManagementUnit(self.project_path)
+        self.testing_framework = AutomatedTestingFramework(self.project_path)
+
+        self.requirement_agent = RequirementAgent(self)
+        self.architecture_agent = ArchitectureAgent(self)
+        self.test_generation_agent = TestGenerationAgent(self)
+        self.feature_implementation_agent = FeatureImplementationAgent(self)
+        self.refactoring_agent = RefactoringAgent(self)
+        self.validation_agent = ValidationAgent(self)
 
     def setup_logging(self):
         """Configure logging for the autonomous project agent."""
@@ -274,12 +538,13 @@ class AutonomousProjectAgent:
             ]
         )
 
-    def process_prompt_with_ai(self, stage: str, context: Dict) -> Optional[str]:
+
+    def process_prompt_with_ai(self, stage: str, context: Dict, is_meta_prompt=False) -> Optional[str]:
         """
-        Process AI prompt for a specific development stage.
+        Process AI prompt for a specific development stage, with meta-prompting.
         """
         try:
-            combined_input = json.dumps({"stage": stage, "context": context})
+            combined_input = json.dumps({"stage": stage, "context": context, "meta_prompt": is_meta_prompt})
             ai_script_path = "src/models/ai_assistant.py"
             command = ["python", ai_script_path, combined_input]
 
@@ -305,7 +570,6 @@ class AutonomousProjectAgent:
     def start_autonomous_development(self, initial_requirements: str):
         """
         Initiate the autonomous project development process.
-
         :param initial_requirements: Initial project requirements or description
         """
         threading.Thread(
@@ -315,42 +579,45 @@ class AutonomousProjectAgent:
         ).start()
 
     def _development_workflow(self, initial_requirements: str):
-        """
-        Core development workflow orchestrating project creation.
-
-        :param initial_requirements: Initial project requirements or description
-        """
         try:
-            # Phase 1: Requirement Analysis
             self.current_phase = "requirement_analysis"
-            project_scope = self._analyze_requirements(initial_requirements)
+            project_scope = self.requirement_agent.analyze(initial_requirements)
+            feedback = project_scope
+            self.state.log_task("Analyzed Requirements")
 
-            # Phase 2: Architecture Design
-            self.current_phase = "architecture_design"
-            project_architecture = self._design_project_architecture(project_scope)
+            for _ in range(3):
+                self.current_phase = "architecture_design"
+                project_architecture = self.architecture_agent.design(feedback)
+                self.state.log_task("Designed Architecture")
 
-            # Phase 3: Test-Driven Development
-            self.current_phase = "test_driven_development"
-            initial_tests = self._generate_initial_tests(project_architecture)
+                self.current_phase = "test_driven_development"
+                initial_tests = self.test_generation_agent.generate_tests(project_architecture)
+                for test in initial_tests:
+                    self.state.log_task(f"Generated test: {test.get('name')}")
 
-            # Phase 4: Implementation
-            self.current_phase = "implementation"
-            implementation_results = self._implement_features(initial_tests)
+                self.current_phase = "implementation"
+                implementation_results = self.feature_implementation_agent.implement_features(initial_tests)
+                for mod in implementation_results.get("implemented_modules", []):
+                    self.state.add_code_file(mod.get("filename", "unknown"), mod.get("content", ""))
 
-            # Phase 5: Refactoring
-            self.current_phase = "refactoring"
-            self._perform_code_refactoring(implementation_results)
+                self.current_phase = "refactoring"
+                self.refactoring_agent.refactor_code(implementation_results)
 
-            # Phase 6: Validation
-            self.current_phase = "validation"
-            validation_results = self._validate_project()
+                self.current_phase = "validation"
+                success = self.testing_framework.run_tests()
+                self.state.add_test_result("iteration_validation", success)
+
+                feedback = {"success": success}
 
             self.current_phase = "completed"
-            logging.info(f"Autonomous project development completed: {validation_results}")
+            logging.info("Autonomous project development completed.")
+            self.state.export_state(os.path.join(self.project_path, "project_state.json"))
 
         except Exception as e:
             logging.error(f"Autonomous development failed: {e}")
+            self.state.log_error(str(e))
             self.current_phase = "error"
+            self.state.export_state(os.path.join(self.project_path, "project_state_error.json"))
 
     def _analyze_requirements(self, requirements: str) -> Dict:
         """
@@ -519,7 +786,6 @@ class AutonomousProjectAgent:
     def _run_tests(self) -> float:
         """
         Run project tests and calculate success rate.
-
         :return: Percentage of tests passed
         """
         try:
@@ -529,14 +795,12 @@ class AutonomousProjectAgent:
                 text=True,
                 cwd=self.project_path
             )
-
             # Basic test success rate calculation
             total_tests = result.stdout.count('collected')
             passed_tests = result.stdout.count('passed')
 
             success_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
             return success_rate
-
         except Exception as e:
             logging.error(f"Test execution failed: {e}")
             return 0.0
@@ -544,7 +808,6 @@ class AutonomousProjectAgent:
     def _analyze_code_quality(self) -> float:
         """
         Perform basic code quality analysis.
-
         :return: Code quality score (0-100)
         """
         try:
@@ -553,12 +816,10 @@ class AutonomousProjectAgent:
                 capture_output=True,
                 text=True
             )
-
             # Parse pylint output and convert to quality score
             # This is a simplistic implementation and can be enhanced
             quality_score = 100 - result.stdout.count('issue')
             return max(0, min(quality_score, 100))
-
         except Exception as e:
             logging.error(f"Code quality analysis failed: {e}")
             return 50.0  # Default neutral score
@@ -566,7 +827,6 @@ class AutonomousProjectAgent:
     def _generate_project_name(self) -> str:
         """
         Generate a unique project name.
-
         :return: Generated project name
         """
         project_prefixes = [
@@ -576,17 +836,14 @@ class AutonomousProjectAgent:
         project_suffixes = [
             "system", "framework", "solution", "engine", "platform"
         ]
-
         prefix = random.choice(project_prefixes)
         suffix = random.choice(project_suffixes)
         unique_id = str(uuid.uuid4())[:8]
-
         return f"{prefix}_{suffix}_{unique_id}"
 
     def get_current_status(self) -> Dict:
         """
         Retrieve the current status of the autonomous project development.
-
         :return: Current development status
         """
         return {
@@ -965,14 +1222,34 @@ class RedGreenRefactorIDE:
 
         # Initialize Autonomous Project Agent
         ai_agent = AutonomousProjectAgent(self.current_project)
-        ai_response = ai_agent.process_prompt_with_ai("initial_project_setup", {"prompt": prompt})
+        ai_response = ai_agent.process_prompt_with_ai("initial_project_setup", {
+            "prompt": prompt,
+            "expected_output": ["index.html", "style.css", "script.js"],
+            "format": "Return JSON with initial_files, project_tasks, and project_structure"
+        })
 
-        if ai_response:
-            parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
-            self.run_project_generation(parsed_metadata)
-        else:
-            self.log_output("Failed to initialize the project with AI.")
-            self.toggle_generation_ui(True)
+        if not ai_response:
+            self.handle_generation_failure("AI returned no response.")
+            return
+
+        # Attempt to parse AI response
+        parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
+
+        print("!!!!!!!!!!!!!!!!AI RESPONSE HERE:\n", ai_response)
+
+        # Sanity check: initial_files must be present
+        if not parsed_metadata.get("initial_files"):
+            self.handle_generation_failure("AI did not return any files to generate.")
+            return
+
+        self.run_project_generation(parsed_metadata)
+
+        # ✅ Fix: refresh UI file tree after file creation
+        self.populate_tree_view()
+
+        # ✅ Bonus: show initial AI tasks in right panel
+        project_tasks = parsed_metadata.get("project_tasks", [])
+        self.update_ai_plan('\n'.join(project_tasks))
 
     def threaded_ai_generation(self, prompt):
         """

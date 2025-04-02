@@ -84,11 +84,10 @@ def open_file(file_path):
     print("SAVING FILE CONTENT HERE TO LAST_SAVED_CONTENT")
     last_saved_content = script_content
     ext = os.path.splitext(file_path)[1]
-    print("EXT IS:\t", ext)
+    print("EXT of Opened File IS:\t", ext)
     update_menu_based_on_extension(ext)
     is_modified = False
     update_title()
-
 
 def update_menu_based_on_extension(ext):
     menu_creators = {
