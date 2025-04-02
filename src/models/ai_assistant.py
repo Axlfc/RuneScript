@@ -262,7 +262,7 @@ def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
         return f"Error: An unexpected error occurred. Details: {str(e)}"
 
 
-def chat_loop_ollama(prompt, system_prompt, session_id):
+"""def chat_loop_ollama(prompt, system_prompt, session_id):
     ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
     ollama_model = read_config_parameter("options.network_settings.ollama_model")
     if not ollama_model:
@@ -287,6 +287,66 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
     print("\n> ")
     print()
     print("> ")
+"""
+
+
+def chat_loop_ollama(prompt, system_prompt, session_id):
+    import re
+    from datetime import datetime
+
+    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
+    ollama_model = read_config_parameter("options.network_settings.ollama_model")
+    if not ollama_model:
+        print("Error: Ollama model not specified in the configuration.")
+        return
+
+    # 💡 Enforce strict JSON output instruction
+    system_prompt += "\n\nIMPORTANT: Respond ONLY with a valid JSON object. Do NOT include explanations or text outside the JSON. Do NOT use markdown. The entire response must be pure JSON."
+
+    # Prepare and send the request
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "model": ollama_model,
+        "prompt": prompt,
+        "stream": False,
+        "system": system_prompt
+    }
+
+    try:
+        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data)
+        response.raise_for_status()
+        raw_response = response.json().get("response", "")
+
+        # Save raw response to log for debugging
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.makedirs("logs", exist_ok=True)
+        with open(f"logs/ollama_raw_{timestamp}.txt", "w", encoding="utf-8") as f:
+            f.write(raw_response)
+
+        # Try direct JSON parse
+        try:
+            parsed = json.loads(raw_response)
+        except json.JSONDecodeError:
+            # Salvage via regex
+            match = re.search(r"\{.*\}", raw_response, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group(0))
+                except json.JSONDecodeError:
+                    parsed = {"error": "Failed to parse embedded JSON", "raw": raw_response}
+            else:
+                parsed = {"error": "No JSON found in response", "raw": raw_response}
+
+        # Output clean JSON for consumption by main app
+        print(json.dumps(parsed))
+        print("\n> ")
+        print()
+        print("> ")
+
+    except requests.exceptions.RequestException as e:
+        print(json.dumps({"error": f"Request to Ollama API failed: {str(e)}"}))
+    except Exception as e:
+        print(json.dumps({"error": f"Unexpected error: {str(e)}"}))
 
 
 def main():

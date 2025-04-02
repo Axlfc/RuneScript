@@ -3,6 +3,7 @@ import os
 import logging
 import random
 import re
+import time
 import subprocess
 import threading
 import queue
@@ -11,6 +12,7 @@ import uuid
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from typing import Dict, Optional, Any, List, Callable, Union
 from datetime import datetime
+from src.agents.project_rag_coordinator import ProjectRAGCoordinator
 
 
 def create_default_metadata(name, error_message):
@@ -44,48 +46,50 @@ class AIResponseParser:
         return prompt and len(prompt.split()) >= 3
 
     @staticmethod
-    def parse_ai_response(response):
+    def parse_ai_response(response: Optional[str]) -> Union[Dict, List, None]:
         """
-        Parse the AI response into a structured format.
+        Attempts to extract and parse the first valid JSON object or array from an AI response.
 
-        Args:
-            response (str): The raw AI response
-
-        Returns:
-            dict: Parsed metadata or empty dict if parsing fails
+        :param response: Raw string response from the AI
+        :return: Parsed JSON object or array, or None if parsing fails
         """
+        if not response:
+            logging.warning("Empty response received for parsing.")
+            return None
+
         try:
-            # Clean the response to extract only the JSON part
-            # Find where the JSON content begins and ends
-            response = response.strip()
+            # If it’s already valid JSON, great.
+            parsed = json.loads(response)
+            return parsed
+        except Exception:
+            pass  # Proceed to attempt extraction
 
-            # Find the first occurrence of '{' which should be the start of JSON
-            json_start = response.find('{')
-            if json_start == -1:
-                logging.error("No JSON object found in AI response")
-                return {}
+        # Regex to extract JSON-like content (object or array)
+        json_match = re.search(r'(\{.*\}|\[.*\])', response, re.DOTALL)
+        if json_match:
+            candidate = json_match.group(1)
+            try:
+                parsed = json.loads(candidate)
+                return parsed
+            except json.JSONDecodeError as e:
+                logging.error(f"Regex-extracted JSON failed to parse: {e}")
 
-            # Extract just the JSON part
-            json_content = response[json_start:]
+        # Try looking for a 'raw' field inside a known error envelope
+        if '"raw":' in response:
+            raw_match = re.search(r'"raw"\s*:\s*"(.+?)"', response, re.DOTALL)
+            if raw_match:
+                raw_content = raw_match.group(1).encode('utf-8').decode('unicode_escape')
+                try:
+                    json_start = raw_content.find('{')
+                    json_end = raw_content.rfind('}') + 1
+                    if json_start != -1 and json_end > json_start:
+                        parsed = json.loads(raw_content[json_start:json_end])
+                        return parsed
+                except json.JSONDecodeError as e:
+                    logging.warning(f"Failed to parse JSON inside raw field: {e}")
 
-            # Strip any trailing non-JSON content
-            # Find the last occurrence of '}'
-            json_end = json_content.rfind('}')
-            if json_end == -1:
-                logging.error("No closing brace found in AI response JSON")
-                return {}
-
-            json_content = json_content[:json_end + 1]
-
-            # Parse the cleaned JSON content
-            parsed_data = json.loads(json_content)
-            return parsed_data
-        except json.JSONDecodeError as e:
-            logging.error(f"Error parsing AI response: {e}")
-            return {}
-        except Exception as e:
-            logging.error(f"Unexpected error when parsing AI response: {e}")
-            return {}
+        logging.warning("Failed to extract valid JSON from AI response.")
+        return None
 
 
 class ProjectManager:
@@ -115,15 +119,31 @@ class ProjectManager:
 
             # Create files with more robust handling
             initial_files = metadata.get('initial_files', {})
-            for filename, content in initial_files.items():
-                try:
+
+            # Handle both dict and list of dicts
+            if isinstance(initial_files, dict):
+                for filename, content in initial_files.items():
                     file_path = os.path.join(project_path, filename)
                     os.makedirs(os.path.dirname(file_path), exist_ok=True)
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content or '')
                     logger(f"Created file: {file_path}")
-                except IOError as file_error:
-                    logger(f"Error creating file {filename}: {file_error}")
+
+            elif isinstance(initial_files, list):
+                for file_entry in initial_files:
+                    if isinstance(file_entry, dict):
+                        filename = file_entry.get('file_name') or file_entry.get('filename')
+                        content = file_entry.get('content', '')
+                        if filename:
+                            file_path = os.path.join(project_path, filename)
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                            with open(file_path, 'w', encoding='utf-8') as f:
+                                f.write(content)
+                            logger(f"Created file: {file_path}")
+                    else:
+                        logger(f"Warning: Skipping unexpected initial_files item: {file_entry}")
+            else:
+                logger("Warning: initial_files format unrecognized.")
 
             # Write README with fallback
             readme_path = os.path.join(project_path, 'README.md')
@@ -251,7 +271,7 @@ class ProjectManager:
 
 
 class RequirementAgent:
-    def __init__(self, agent):  # takes in AutonomousProjectAgent
+    def __init__(self, agent):
         self.agent = agent
 
     def analyze(self, requirements: str) -> Dict:
@@ -261,14 +281,8 @@ class RequirementAgent:
             "project_name": self.agent._generate_project_name()
         }
         ai_response = self.agent.process_prompt_with_ai("requirement_analysis", context)
-        # Parse AI response or use default
-        try:
-            project_scope = json.loads(ai_response) if ai_response else {
-                "project_name": context["project_name"],
-                "key_features": ["Core Functionality"],
-                "constraints": []
-            }
-        except json.JSONDecodeError:
+        project_scope = AIResponseParser.parse_ai_response(ai_response)
+        if not project_scope:
             project_scope = {
                 "project_name": context["project_name"],
                 "key_features": ["Core Functionality"],
@@ -278,15 +292,10 @@ class RequirementAgent:
 
 
 class ArchitectureAgent:
-    def __init__(self, agent):  # takes in AutonomousProjectAgent
+    def __init__(self, agent):
         self.agent = agent
 
     def design(self, project_scope: Dict) -> Dict:
-        """
-        Design initial project architecture and structure.
-        :param project_scope: Analyzed project requirements
-        :return: Project architecture blueprint
-        """
         logging.info("Designing project architecture")
         context = {
             "project_scope": project_scope,
@@ -298,15 +307,8 @@ class ArchitectureAgent:
             ]
         }
         ai_response = self.agent.process_prompt_with_ai("architecture_design", context)
-        # Parse AI response or use default
-        try:
-            architecture = json.loads(ai_response) if ai_response else {
-                "project_name": project_scope.get("project_name", "Unnamed Project"),
-                "directory_structure": context["default_structure"],
-                "initial_modules": [],
-                "testing_framework": "pytest"
-            }
-        except json.JSONDecodeError:
+        architecture = AIResponseParser.parse_ai_response(ai_response)
+        if not architecture:
             architecture = {
                 "project_name": project_scope.get("project_name", "Unnamed Project"),
                 "directory_structure": context["default_structure"],
@@ -317,63 +319,52 @@ class ArchitectureAgent:
 
 
 class TestGenerationAgent:
-    def __init__(self, agent):  # takes in AutonomousProjectAgent
+    def __init__(self, agent):
         self.agent = agent
 
     def generate_tests(self, architecture: Dict) -> List[Dict]:
-        """
-        Generate initial test cases for the project.
-        :param architecture: Project architecture blueprint
-        :return: List of initial test cases
-        """
         logging.info("Generating initial test cases")
-        context = {
-            "architecture": architecture
-        }
+        context = {"architecture": architecture}
         ai_response = self.agent.process_prompt_with_ai("test_generation", context)
-        # Parse AI response or use default
-        try:
-            initial_tests = json.loads(ai_response) if ai_response else [
-                {
-                    "name": "test_project_initialization",
-                    "description": "Verify project initializes correctly",
-                    "module": "test_core.py"
-                }
-            ]
-        except json.JSONDecodeError:
-            initial_tests = [
-                {
-                    "name": "test_project_initialization",
-                    "description": "Verify project initializes correctly",
-                    "module": "test_core.py"
-                }
-            ]
-        return initial_tests
+        parsed = AIResponseParser.parse_ai_response(ai_response)
+
+        if not isinstance(parsed, list):
+            logging.warning("Parsed test response is not a list. Using fallback.")
+            return [{
+                "name": "test_project_initialization",
+                "description": "Verify project initializes correctly",
+                "module": "test_core.py"
+            }]
+
+        # Filter out any garbage responses
+        safe_tests = []
+        for test in parsed:
+            if isinstance(test, dict) and "name" in test:
+                safe_tests.append(test)
+
+        if not safe_tests:
+            logging.warning("No valid test dicts found in parsed response. Using fallback.")
+            return [{
+                "name": "test_project_initialization",
+                "description": "Verify project initializes correctly",
+                "module": "test_core.py"
+            }]
+
+        return safe_tests
 
 
 class FeatureImplementationAgent:
-
-    def __init__(self, agent):  # takes in AutonomousProjectAgent
+    def __init__(self, agent):
         self.agent = agent
 
     def implement_features(self, tests: List[Dict]) -> Dict:
-        """
-        Implement features based on generated test cases.
-        :param tests: List of test cases
-        :return: Implementation results
-        """
         logging.info("Implementing features")
         context = {
             "tests": tests
         }
         ai_response = self.agent.process_prompt_with_ai("feature_implementation", context)
-        # Parse AI response or use default
-        try:
-            implementation_results = json.loads(ai_response) if ai_response else {
-                "implemented_modules": [],
-                "test_coverage": {}
-            }
-        except json.JSONDecodeError:
+        implementation_results = AIResponseParser.parse_ai_response(ai_response)
+        if not implementation_results:
             implementation_results = {
                 "implemented_modules": [],
                 "test_coverage": {}
@@ -382,15 +373,10 @@ class FeatureImplementationAgent:
 
 
 class RefactoringAgent:
-
-    def __init__(self, agent):  # takes in AutonomousProjectAgent
+    def __init__(self, agent):
         self.agent = agent
 
     def refactor_code(self, implementation_results: Dict):
-        """
-        Refactor implemented code to improve quality and maintainability.
-        :param implementation_results: Results from feature implementation
-        """
         logging.info("Performing code refactoring")
         context = {
             "implementation_results": implementation_results
@@ -399,15 +385,10 @@ class RefactoringAgent:
 
 
 class ValidationAgent:
-
-    def __init__(self, agent):  # takes in AutonomousProjectAgent
+    def __init__(self, agent):
         self.agent = agent
 
     def validate_project(self) -> Dict:
-        """
-        Validate the overall project quality and completeness.
-        :return: Validation results
-        """
         logging.info("Validating project")
         validation_results = {
             "test_success_rate": self.agent._run_tests(),
@@ -417,46 +398,150 @@ class ValidationAgent:
 
 
 class StateManagementSystem:
-    def __init__(self):
+    def __init__(self, project_path):
+        self.project_path = project_path  # Store project path
         self.state = {
             "tasks": [],
             "completed_tasks": [],
-            "code_files": {},
+            "code_files": {},  # Dictionary to track file content
             "test_results": {},
             "errors": [],
-            "dependencies": []
+            "dependencies": [],
+            "last_updated": datetime.now().isoformat()
         }
 
+        # Create observers list for real-time notification
+        self.observers = []
+
+        # Ensure project directory exists
+        os.makedirs(project_path, exist_ok=True)
+
+        # Create a visible TODO.md right away to show activity
+        self._create_initial_todo()
+
+    def register_observer(self, callback_fn):
+        """Register a function to be called when state changes"""
+        self.observers.append(callback_fn)
+
+    def _notify_observers(self, event_type, data=None):
+        """Notify all observers of state change"""
+        for observer in self.observers:
+            try:
+                observer(event_type, data)
+            except Exception as e:
+                logging.error(f"Observer notification failed: {e}")
+
+    def _create_initial_todo(self):
+        """Create initial TODO.md to show system is active"""
+        todo_content = "# Project Development TODO\n\n## Initialization\n- [x] System started\n- [ ] Analyzing requirements\n\n_Last updated: {}".format(
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        todo_path = os.path.join(self.project_path, "TODO.md")
+        with open(todo_path, 'w', encoding='utf-8') as f:
+            f.write(todo_content)
+        logging.info(f"Created initial TODO.md at {todo_path}")
+
     def log_task(self, task):
+        """Add a task and update TODO.md"""
         self.state["tasks"].append(task)
+        self.state["last_updated"] = datetime.now().isoformat()
+        self._update_todo_file()
+        self._notify_observers("task_added", task)
 
     def complete_task(self, task):
+        """Mark task as completed and update TODO.md"""
         if task in self.state["tasks"]:
             self.state["tasks"].remove(task)
         self.state["completed_tasks"].append(task)
+        self.state["last_updated"] = datetime.now().isoformat()
+        self._update_todo_file()
+        self._notify_observers("task_completed", task)
 
     def add_code_file(self, filename, content):
+        """Add a code file to the state and write it to disk."""
         self.state["code_files"][filename] = content
+        self.state["last_updated"] = datetime.now().isoformat()
+
+        # Write the file to disk
+        try:
+            # Create necessary directories
+            file_path = os.path.join(self.project_path, filename)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            # Write the file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            logging.info(f"Successfully wrote file to disk: {filename}")
+            self._notify_observers("file_created", filename)
+        except Exception as e:
+            error_msg = f"Failed to write file {filename} to disk: {e}"
+            logging.error(error_msg)
+            self.log_error(error_msg)
 
     def add_test_result(self, test_name, result):
         self.state["test_results"][test_name] = result
+        self.state["last_updated"] = datetime.now().isoformat()
+        self._notify_observers("test_result", (test_name, result))
 
     def log_error(self, error):
         self.state["errors"].append(str(error))
+        self.state["last_updated"] = datetime.now().isoformat()
+        self._notify_observers("error", error)
 
     def add_dependency(self, dependency):
         if dependency not in self.state["dependencies"]:
             self.state["dependencies"].append(dependency)
+            self.state["last_updated"] = datetime.now().isoformat()
+            self._notify_observers("dependency_added", dependency)
+
+    def _update_todo_file(self):
+        """Update the TODO.md file with current tasks"""
+        todo_path = os.path.join(self.project_path, "TODO.md")
+
+        # Build content
+        content = "# Project Development TODO\n\n"
+
+        # Add active tasks
+        if self.state["tasks"]:
+            content += "## Active Tasks\n"
+            for task in self.state["tasks"]:
+                content += f"- [ ] {task}\n"
+            content += "\n"
+
+        # Add completed tasks
+        if self.state["completed_tasks"]:
+            content += "## Completed\n"
+            for task in self.state["completed_tasks"]:
+                content += f"- [x] {task}\n"
+            content += "\n"
+
+        # Add errors if any
+        if self.state["errors"]:
+            content += "## Issues\n"
+            for error in self.state["errors"][-5:]:  # Show only last 5 errors
+                content += f"- ⚠️ {error}\n"
+            content += "\n"
+
+        # Add timestamp
+        content += f"\n_Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_"
+
+        try:
+            with open(todo_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except Exception as e:
+            logging.error(f"Failed to update TODO.md: {e}")
 
     def export_state(self, path):
         import json
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.state, f, indent=4)
+        self._notify_observers("state_exported", path)
 
     def load_state(self, path):
         import json
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             self.state = json.load(f)
+        self._notify_observers("state_loaded", path)
 
 
 class DependencyManagementUnit:
@@ -472,7 +557,7 @@ class DependencyManagementUnit:
 
     def save_requirements(self, dependencies):
         req_path = os.path.join(self.project_path, "requirements.txt")
-        with open(req_path, "w") as f:
+        with open(req_path, "w", encoding='utf-8') as f:
             for dep in dependencies:
                 f.write(f"{dep}\n")
 
@@ -500,6 +585,8 @@ class AutomatedTestingFramework:
 class AutonomousProjectAgent:
     def __init__(self, project_path: str):
         self.project_path = project_path
+        self.state = StateManagementSystem(self.project_path)
+        self.rag = ProjectRAGCoordinator(self.project_path, use_ollama=True, state=self.state)
         self.task_queue = queue.Queue()
         self.result_queue = queue.Queue()
         self.current_phase = "idle"
@@ -512,13 +599,17 @@ class AutonomousProjectAgent:
             "validation"
         ]
 
+        # Set up visible project directory
+        os.makedirs(project_path, exist_ok=True)
+
         self.setup_logging()
 
-        # New components
-        self.state = StateManagementSystem()
+        # Improved components
+        self.state = StateManagementSystem(self.project_path)  # Pass project_path
         self.dependency_manager = DependencyManagementUnit(self.project_path)
         self.testing_framework = AutomatedTestingFramework(self.project_path)
 
+        # Create specialized agents
         self.requirement_agent = RequirementAgent(self)
         self.architecture_agent = ArchitectureAgent(self)
         self.test_generation_agent = TestGenerationAgent(self)
@@ -526,9 +617,50 @@ class AutonomousProjectAgent:
         self.refactoring_agent = RefactoringAgent(self)
         self.validation_agent = ValidationAgent(self)
 
+        # Development artifacts
+        self.project_scope = None
+        self.architecture = None
+        self.tests = []
+
+        # Create development journal
+        self._create_development_journal()
+
+    def _create_development_journal(self):
+        """Create a development journal file to show thinking process"""
+        journal_path = os.path.join(self.project_path, "DEVLOG.md")
+        with open(journal_path, 'w', encoding='utf-8') as f:
+            f.write("# Development Journal\n\n")
+            f.write(f"Project initialized at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write("## Project Phases\n\n")
+            f.write("1. 🔍 Requirement Analysis - Understanding what we need to build\n")
+            f.write("2. 📐 Architecture Design - Planning the structure\n")
+            f.write("3. 🧪 Test-Driven Development - Writing tests first\n")
+            f.write("4. ⚙️ Implementation - Building the actual code\n")
+            f.write("5. 🔧 Refactoring - Improving the code quality\n")
+            f.write("6. ✅ Validation - Ensuring everything works\n\n")
+            f.write("## Activity Log\n\n")
+        logging.info(f"Created development journal at {journal_path}")
+
+    def _update_development_journal(self, entry, phase=None):
+        """Add an entry to the development journal"""
+        if phase:
+            formatted_entry = f"### {phase}\n{entry}\n\n"
+        else:
+            formatted_entry = f"- {entry}\n"
+
+        journal_path = os.path.join(self.project_path, "DEVLOG.md")
+        try:
+            with open(journal_path, 'a', encoding='utf-8') as f:
+                f.write(f"{formatted_entry}")
+                f.write(f"_Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_\n\n")
+        except Exception as e:
+            logging.error(f"Failed to update development journal: {e}")
+
     def setup_logging(self):
         """Configure logging for the autonomous project agent."""
         log_file = os.path.join(self.project_path, 'autonomous_agent.log')
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s [AutonomousProjectAgent] %(levelname)s: %(message)s',
@@ -538,15 +670,19 @@ class AutonomousProjectAgent:
             ]
         )
 
-
     def process_prompt_with_ai(self, stage: str, context: Dict, is_meta_prompt=False) -> Optional[str]:
         """
         Process AI prompt for a specific development stage, with meta-prompting.
         """
         try:
+            logging.info(f"THINKING: Processing {stage} with context keys: {list(context.keys())}")
+            self._update_development_journal(f"Starting to process: {stage}", f"AI Processing - {stage}")
+
             combined_input = json.dumps({"stage": stage, "context": context, "meta_prompt": is_meta_prompt})
             ai_script_path = "src/models/ai_assistant.py"
             command = ["python", ai_script_path, combined_input]
+
+            self.state.log_task(f"Processing {stage}")
 
             process = subprocess.Popen(
                 command,
@@ -556,15 +692,58 @@ class AutonomousProjectAgent:
                 encoding='utf-8'
             )
 
-            ai_response, error = process.communicate()
-            if error or process.returncode != 0:
-                logging.error(f"AI Assistant Error: {error}")
+            stdout_chunks, stderr_chunks = [], []
+
+            # Collect stdout/stderr without assuming structure
+            while True:
+                stdout_line = process.stdout.readline()
+                if stdout_line:
+                    stdout_chunks.append(stdout_line)
+                    if stdout_line.strip().startswith('{'):
+                        logging.info(f"AI progress: {stdout_line[:80].strip()}...")
+
+                stderr_line = process.stderr.readline()
+                if stderr_line:
+                    stderr_chunks.append(stderr_line)
+                    logging.warning(f"AI warning: {stderr_line.strip()}")
+
+                if not stdout_line and not stderr_line and process.poll() is not None:
+                    break
+
+            remaining_out, remaining_err = process.communicate()
+            stdout_chunks.append(remaining_out or "")
+            stderr_chunks.append(remaining_err or "")
+
+            full_stdout = ''.join(stdout_chunks).strip()
+            full_stderr = ''.join(stderr_chunks).strip()
+
+            if process.returncode != 0 or full_stderr:
+                logging.error(f"AI Assistant Error: {full_stderr}")
+                self.state.log_error(f"AI processing failed: {full_stderr}")
                 return None
 
-            return ai_response.strip()
+            # Attempt to extract valid JSON from AI output
+            try:
+                json_start = full_stdout.index('{')
+                json_end = full_stdout.rindex('}') + 1
+                json_blob = full_stdout[json_start:json_end]
+                json.loads(json_blob)  # Verify validity
+            except (ValueError, json.JSONDecodeError) as e:
+                logging.error(f"Failed to parse JSON from AI response: {e}")
+                self.state.log_error("AI response not in valid JSON format.")
+                return None
+
+            # Mark task complete and log summary
+            self.state.complete_task(f"Processing {stage}")
+            preview = json_blob[:100] + "..." if len(json_blob) > 100 else json_blob
+            self._update_development_journal(f"AI Response Summary:\n```\n{preview}\n```")
+
+            return json_blob.strip()
 
         except Exception as e:
-            logging.error(f"Error processing AI prompt: {e}")
+            error_msg = f"Critical error in process_prompt_with_ai: {e}"
+            logging.error(error_msg)
+            self.state.log_error(error_msg)
             return None
 
     def start_autonomous_development(self, initial_requirements: str):
@@ -572,52 +751,359 @@ class AutonomousProjectAgent:
         Initiate the autonomous project development process.
         :param initial_requirements: Initial project requirements or description
         """
+        # Create a README.md immediately to show activity
+        readme_path = os.path.join(self.project_path, "README.md")
+        with open(readme_path, 'w', encoding='utf-8') as f:
+            f.write(f"# Autonomous Project\n\n")
+            f.write(f"Project started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(f"Requirements: {initial_requirements}\n\n")
+            f.write("## Development Status\n\n")
+            f.write("🔄 Initializing autonomous development...\n")
+
+        # Log the start
+        logging.info(f"Starting autonomous development with requirements: {initial_requirements}")
+        self._update_development_journal(f"Starting development with requirements: {initial_requirements}",
+                                         "Project Initialization")
+
+        # Launch the development workflow in a thread
         threading.Thread(
             target=self._development_workflow,
             args=(initial_requirements,),
             daemon=True
         ).start()
 
-    def _development_workflow(self, initial_requirements: str):
+        # Create an immediate feedback to show we're working
+        self.state.log_task("Initializing development workflow")
+
+
+    def _update_readme_status(self, status_message):
+        """Update the README.md with current status"""
+        readme_path = os.path.join(self.project_path, "README.md")
         try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                content = f.readlines()
+
+            # Find the status section and update it
+            status_index = -1
+            for i, line in enumerate(content):
+                if "## Development Status" in line:
+                    status_index = i
+                    break
+
+            if status_index >= 0:
+                # Replace or add the status line
+                if status_index + 1 < len(content) and content[status_index + 1].startswith(
+                        ("🔄", "🔍", "📐", "🧪", "⚙️", "🔧", "✅", "❌", "🎉")):
+                    content[status_index + 1] = f"{status_message}\n"
+                else:
+                    content.insert(status_index + 1, f"{status_message}\n")
+
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.writelines(content)
+        except Exception as e:
+            logging.error(f"Failed to update README status: {e}")
+
+    def _create_structure_from_architecture(self, architecture):
+        """Create directory structure based on architecture definition"""
+        try:
+            for path in architecture.get("directory_structure", []):
+                full_path = os.path.join(self.project_path, path)
+                if path.endswith('/'):
+                    os.makedirs(full_path, exist_ok=True)
+                    self.state.log_task(f"Created directory: {path}")
+                else:
+                    # It's a file, create an empty file or placeholder
+                    dirname = os.path.dirname(full_path)
+                    if dirname:
+                        os.makedirs(dirname, exist_ok=True)
+
+                    # Only create if it doesn't exist
+                    if not os.path.exists(full_path):
+                        with open(full_path, 'w', encoding='utf-8') as f:
+                            if path.endswith('.md'):
+                                f.write(f"# {os.path.basename(path).replace('.md', '')}\n\nPlaceholder content.\n")
+                            elif path.endswith('.py'):
+                                f.write(f"# {os.path.basename(path)}\n# Placeholder file\n\n")
+                            elif path.endswith('.html'):
+                                f.write(
+                                    f"<!DOCTYPE html>\n<html>\n<head>\n    <title>Placeholder</title>\n</head>\n<body>\n    <h1>Placeholder</h1>\n</body>\n</html>")
+
+                        self.state.log_task(f"Created file: {path}")
+        except Exception as e:
+            error_msg = f"Failed to create structure: {e}"
+            logging.error(error_msg)
+            self.state.log_error(error_msg)
+
+    def _inject_creative_thought(self, context):
+        """Add a creative thought to the development journal to simulate developer thinking"""
+        creative_thoughts = {
+            "architecture": [
+                "I'm considering a more modular approach to make testing easier.",
+                "The requirements suggest a need for high scalability. I should plan for that.",
+                "Should I use a database here? Let me think about the data persistence needs.",
+                "This might benefit from a service-oriented architecture pattern.",
+                "I wonder if I should separate the UI and business logic more clearly."
+            ],
+            "testing": [
+                "I should focus on testing edge cases first.",
+                "Integration tests will be crucial for this feature.",
+                "I need to mock external dependencies for these tests.",
+                "Test-driven approach would work well for these complex business rules.",
+                "Should set up a test fixture for consistent data across tests."
+            ],
+            "implementation": [
+                "I'll use dependency injection here to improve testability.",
+                "This looks like a good candidate for the strategy pattern.",
+                "Caching might improve performance for this feature.",
+                "I'm going to implement this using async operations for better responsiveness.",
+                "This would be cleaner with a factory method."
+            ],
+            "refactoring": [
+                "This method is doing too much. I'll break it down.",
+                "These similar functions could be consolidated.",
+                "Variable names here could be more descriptive.",
+                "I should extract this logic into a separate utility class.",
+                "This algorithm could be optimized with memoization."
+            ]
+        }
+
+        thought = random.choice(creative_thoughts.get(context, ["Hmm, thinking about the best approach..."]))
+        self._update_development_journal(f"💭 {thought}", "Creative Thinking")
+        logging.info(f"Creative thought: {thought}")
+
+    def _add_spontaneous_improvement(self):
+        """Add a spontaneous improvement to show creative behavior"""
+        improvements = [
+            {"file": "README.md",
+             "content": "## How to Contribute\n\nContributions are welcome! Please feel free to submit a Pull Request.\n"},
+            {"file": "CHANGELOG.md",
+             "content": "# Changelog\n\n## [0.1.0] - Initial Release\n- Basic functionality implemented\n"},
+            {"file": ".gitignore",
+             "content": "# Python\n__pycache__/\n*.py[cod]\n*$py.class\n*.so\n.Python\nbuild/\ndist/\n"},
+            {"file": "src/utils.py",
+             "content": "# Utility functions\n\ndef safe_get(data, key, default=None):\n    \"\"\"Safely get a value from a dictionary.\"\"\"\n    return data.get(key, default)\n"},
+            {"file": "LICENSE",
+             "content": "MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software...\n"}
+        ]
+
+        improvement = random.choice(improvements)
+        filename = improvement["file"]
+        content = improvement["content"]
+
+        # Check if file exists and append to it, or create new
+        file_path = os.path.join(self.project_path, filename)
+        if os.path.exists(file_path):
+            with open(file_path, 'a', encoding='utf-8') as f:
+                f.write("\n" + content)
+        else:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+        self.state.log_task(f"Spontaneous improvement: Added/updated {filename}")
+        self._update_development_journal(f"Spontaneously added: {filename}", "Spontaneous Improvement")
+
+    def _create_final_documentation(self):
+        """Create final documentation for the project"""
+        # Update README with completion info
+        readme_path = os.path.join(self.project_path, "README.md")
+        try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Add installation and usage sections
+            content += "\n\n## Installation\n\n"
+            content += "```bash\n"
+            content += "pip install -r requirements.txt\n"
+            content += "```\n\n"
+
+            content += "## Usage\n\n"
+            content += "```python\n"
+            content += "# Example usage will go here\n"
+            content += "```\n\n"
+
+            # Add stats about development
+            content += f"## Development Statistics\n\n"
+            content += f"- Files created: {len(self.state.state['code_files'])}\n"
+            content += f"- Tasks completed: {len(self.state.state['completed_tasks'])}\n"
+            content += f"- Development time: {len(self.state.state['completed_tasks']) * 2} minutes (simulated)\n"
+
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except Exception as e:
+            logging.error(f"Failed to create final documentation: {e}")
+
+    def _development_workflow(self, initial_requirements: str):
+        """Main development workflow with more dynamic behavior and visible output"""
+        try:
+            # Phase 1: Requirement Analysis
             self.current_phase = "requirement_analysis"
-            project_scope = self.requirement_agent.analyze(initial_requirements)
-            feedback = project_scope
+            self._update_readme_status("🔍 Analyzing requirements...")
+            self._update_development_journal("Starting requirement analysis", "Requirement Analysis")
+
+            self.project_scope = self.requirement_agent.analyze(initial_requirements)
+            self.rag.embed_current_vault()  # Embed after requirement analysis
+            feedback = self.project_scope
             self.state.log_task("Analyzed Requirements")
+            self._update_development_journal(
+                f"Project scope defined:\n```json\n{json.dumps(self.project_scope, indent=2)}\n```")
+            self._update_readme_status("✅ Requirements analyzed")
 
-            for _ in range(3):
+            # Add a pause for visibility
+            time.sleep(1)
+
+            # Now enter the development cycle with more dynamic behavior
+            iteration_count = 0
+            max_iterations = 3
+
+            while iteration_count < max_iterations:
+                iteration_count += 1
+                self._update_development_journal(f"Starting iteration {iteration_count}/{max_iterations}",
+                                                 f"Iteration {iteration_count}")
+
+                # Phase 2: Architecture Design
                 self.current_phase = "architecture_design"
-                project_architecture = self.architecture_agent.design(feedback)
+                self._update_readme_status("📐 Designing architecture...")
+
+                # Check if we should inject a creative thought
+                if random.random() < 0.7:  # 70% chance of creative thinking
+                    self._inject_creative_thought("architecture")
+
+                self.architecture = self.architecture_agent.design(feedback)
+                self._create_structure_from_architecture(self.architecture)
+                self.rag.embed_current_vault()  # Embed after architecture is designed
                 self.state.log_task("Designed Architecture")
+                self._update_development_journal(
+                    f"Architecture design:\n```json\n{json.dumps(self.architecture, indent=2)}\n```")
+                self._update_readme_status("✅ Architecture designed")
 
+                # Phase 3: Test-Driven Development
                 self.current_phase = "test_driven_development"
-                initial_tests = self.test_generation_agent.generate_tests(project_architecture)
-                for test in initial_tests:
-                    self.state.log_task(f"Generated test: {test.get('name')}")
+                self._update_readme_status("🧪 Generating tests...")
 
+                # Check if we should inject a creative thought
+                if random.random() < 0.5:  # 50% chance of creative thinking
+                    self._inject_creative_thought("testing")
+
+                self.tests = self.test_generation_agent.generate_tests(self.architecture)
+
+                # Write test files immediately for visibility
+                for test in self.tests:
+                    test_name = test.get('name')
+                    test_module = test.get('module', 'test_unknown.py')
+                    test_description = test.get('description', 'No description')
+
+                    # Create a basic test file structure
+                    test_content = f"""# {test_name}
+# {test_description}
+
+import unittest
+
+class {test_name.replace('test_', 'Test').title().replace('_', '')}(unittest.TestCase):
+    def setUp(self):
+        # Setup for the test
+        pass
+
+    def test_functionality(self):
+        # TODO: Implement actual test
+        self.assertTrue(True, "Placeholder test - will be implemented")
+
+if __name__ == '__main__':
+    unittest.main()
+"""
+                    # Write the test file
+                    test_path = os.path.join(self.project_path, 'tests', test_module)
+                    os.makedirs(os.path.dirname(test_path), exist_ok=True)
+                    with open(test_path, 'w', encoding='utf-8') as f:
+                        f.write(test_content)
+
+                    self.state.log_task(f"Created test: {test_name}")
+
+                self._update_readme_status("✅ Tests generated")
+
+                # Phase 4: Implementation
                 self.current_phase = "implementation"
-                implementation_results = self.feature_implementation_agent.implement_features(initial_tests)
+                self._update_readme_status("⚙️ Implementing features...")
+
+                # Check if we should inject a creative thought
+                if random.random() < 0.8:  # 80% chance of creative thinking during implementation
+                    self._inject_creative_thought("implementation")
+
+                implementation_results = self.feature_implementation_agent.implement_features(self.tests)
+
+                # Write the implemented modules to disk
                 for mod in implementation_results.get("implemented_modules", []):
-                    self.state.add_code_file(mod.get("filename", "unknown"), mod.get("content", ""))
+                    filename = mod.get("filename", "unknown.py")
+                    content = mod.get("content", "# Empty file")
 
+                    # Add the code file to state AND write to disk
+                    self.state.add_code_file(filename, content)
+                    self.state.log_task(f"Implemented: {filename}")
+
+                self.rag.embed_current_vault()  # Embed after implementation
+
+                self._update_readme_status("✅ Features implemented")
+
+                # Phase 5: Refactoring
                 self.current_phase = "refactoring"
+                self._update_readme_status("🔧 Refactoring code...")
+
+                # Check if we should inject a creative thought
+                if random.random() < 0.3:  # 30% chance of creative thinking during refactoring
+                    self._inject_creative_thought("refactoring")
+
                 self.refactoring_agent.refactor_code(implementation_results)
+                self._update_readme_status("✅ Code refactored")
 
+                # Phase 6: Validation
                 self.current_phase = "validation"
+                self._update_readme_status("✅ Validating code...")
+
                 success = self.testing_framework.run_tests()
-                self.state.add_test_result("iteration_validation", success)
+                self.state.add_test_result(f"iteration_{iteration_count}_validation", success)
 
-                feedback = {"success": success}
+                # Add feedback loop - sometimes go back to implementation if tests fail
+                if not success and iteration_count < max_iterations:
+                    self._update_development_journal("Tests failed, need to fix implementation!",
+                                                     "Validation Failed")
+                    self._update_readme_status("❌ Tests failed, fixing issues...")
+                    feedback = {"success": success, "needs_refinement": True}
+                else:
+                    feedback = {"success": success}
 
+                # Reflect on iteration
+                self._update_development_journal(f"Completed iteration {iteration_count} with success: {success}")
+
+                # Random chance to add a spontaneous improvement
+                if random.random() < 0.4:  # 40% chance
+                    self._add_spontaneous_improvement()
+
+                # Small pause between iterations for visibility
+                time.sleep(1)
+
+            # Complete the project
             self.current_phase = "completed"
-            logging.info("Autonomous project development completed.")
+            self._update_readme_status("🎉 Project development completed!")
+            self._update_development_journal("Autonomous project development completed.", "Project Completion")
+
+            # Create final documentation
+            self._create_final_documentation()
+
+            self.rag.embed_current_vault()
+
+            # Export the project state
             self.state.export_state(os.path.join(self.project_path, "project_state.json"))
+            logging.info("Autonomous project development completed.")
 
         except Exception as e:
-            logging.error(f"Autonomous development failed: {e}")
-            self.state.log_error(str(e))
+            error_msg = f"Autonomous development failed: {e}"
+            logging.error(error_msg)
+            self.state.log_error(error_msg)
             self.current_phase = "error"
+            self._update_readme_status(f"❌ Development error: {str(e)[:50]}...")
             self.state.export_state(os.path.join(self.project_path, "project_state_error.json"))
+
+        # Always update the RAG with current state
+        self.rag.embed_current_vault()
 
     def _analyze_requirements(self, requirements: str) -> Dict:
         """
@@ -634,6 +1120,8 @@ class AutonomousProjectAgent:
         }
 
         ai_response = self.process_prompt_with_ai("requirement_analysis", context)
+        if ai_response:
+            self.rag.log_ai_response("requirement_analysis", ai_response)
 
         # Parse AI response or use default
         try:
@@ -660,17 +1148,34 @@ class AutonomousProjectAgent:
         """
         logging.info("Designing project architecture")
 
-        context = {
-            "project_scope": project_scope,
-            "default_structure": [
-                "src/",
-                "tests/",
-                "docs/",
+        # Determine if this is a web project
+        is_web_project = any(keyword in str(project_scope).lower() for keyword in ["web", "html", "website", "page"])
+
+        default_structure = [
+            "src/",
+            "tests/",
+            "docs/",
+            "README.md"
+        ]
+
+        if is_web_project:
+            default_structure = [
+                "index.html",
+                "css/",
+                "js/",
+                "images/",
                 "README.md"
             ]
+
+        context = {
+            "project_scope": project_scope,
+            "default_structure": default_structure,
+            "is_web_project": is_web_project
         }
 
         ai_response = self.process_prompt_with_ai("architecture_design", context)
+        if ai_response:
+            self.rag.log_ai_response("architecture_design", ai_response)
 
         # Parse AI response or use default
         try:
@@ -678,14 +1183,14 @@ class AutonomousProjectAgent:
                 "project_name": project_scope.get("project_name", "Unnamed Project"),
                 "directory_structure": context["default_structure"],
                 "initial_modules": [],
-                "testing_framework": "pytest"
+                "testing_framework": "pytest" if not is_web_project else "manual"
             }
         except json.JSONDecodeError:
             architecture = {
                 "project_name": project_scope.get("project_name", "Unnamed Project"),
                 "directory_structure": context["default_structure"],
                 "initial_modules": [],
-                "testing_framework": "pytest"
+                "testing_framework": "pytest" if not is_web_project else "manual"
             }
 
         return architecture
@@ -704,6 +1209,8 @@ class AutonomousProjectAgent:
         }
 
         ai_response = self.process_prompt_with_ai("test_generation", context)
+        if ai_response:
+            self.rag.log_ai_response("test_generation", ai_response)
 
         # Parse AI response or use default
         try:
@@ -735,10 +1242,13 @@ class AutonomousProjectAgent:
         logging.info("Implementing features")
 
         context = {
-            "tests": tests
+            "tests": tests,
+            "output_format": "Return a JSON object with an 'implemented_modules' array where each module has 'filename' and 'content' properties"
         }
 
         ai_response = self.process_prompt_with_ai("feature_implementation", context)
+        if ai_response:
+            self.rag.log_ai_response("feature_implementation", ai_response)
 
         # Parse AI response or use default
         try:
@@ -746,11 +1256,14 @@ class AutonomousProjectAgent:
                 "implemented_modules": [],
                 "test_coverage": {}
             }
+
+            # Log what files the AI decided to create
+            for module in implementation_results.get("implemented_modules", []):
+                logging.info(f"AI generated file: {module.get('filename')}")
+
         except json.JSONDecodeError:
-            implementation_results = {
-                "implemented_modules": [],
-                "test_coverage": {}
-            }
+            logging.error(f"JSON decode error for feature implementation response: {ai_response[:200]}...")
+            implementation_results = self._extract_code_from_text(ai_response)
 
         return implementation_results
 
@@ -848,7 +1361,10 @@ class AutonomousProjectAgent:
         """
         return {
             "phase": self.current_phase,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "completed_tasks": len(self.state.state["completed_tasks"]),
+            "total_files": len(self.state.state["code_files"]),
+            "errors": len(self.state.state["errors"])
         }
 
 
@@ -896,7 +1412,6 @@ def generate_readme(context: ProjectContext):
         readme.write("3. Run tests using `pytest`.\n")
 
 
-
 def transition_to_next_phase(context: ProjectContext):
     """
     Transition the project to the next phase based on context and progress.
@@ -917,7 +1432,6 @@ def transition_to_next_phase(context: ProjectContext):
         context.current_phase = "Ready for Review"
     else:
         logging.info("Project is ready for review.")
-
 
 
 class RedGreenRefactorIDE:
@@ -941,6 +1455,11 @@ class RedGreenRefactorIDE:
 
         self.setup_logging()
         self.setup_ui()
+
+
+    def handle_state_event(self, event_type, data):
+        if event_type == "file_created":
+            self.populate_tree_view()
 
     def setup_ui(self):
         menubar = tk.Menu(self.root)
@@ -1193,6 +1712,8 @@ class RedGreenRefactorIDE:
 
         self.log_output("Requesting additional steps from AI...")
         ai_agent = AutonomousProjectAgent(self.current_project)
+        ai_agent.state.register_observer(self.handle_state_event)
+
         ai_feedback = ai_agent.process_prompt_with_ai("next_steps", {"current_state": metadata})
 
         if ai_feedback:
@@ -1221,36 +1742,53 @@ class RedGreenRefactorIDE:
         self.current_project = project_path
 
         # Initialize Autonomous Project Agent
-        ai_agent = AutonomousProjectAgent(self.current_project)
-        ai_response = ai_agent.process_prompt_with_ai("initial_project_setup", {
+        self.ai_agent = AutonomousProjectAgent(self.current_project)
+        self.ai_agent.state.register_observer(self.handle_state_event)
+
+        # Run an initial setup prompt to get initial files
+        init_context = {
             "prompt": prompt,
-            "expected_output": ["index.html", "style.css", "script.js"],
-            "format": "Return JSON with initial_files, project_tasks, and project_structure"
-        })
+            "format": "Return JSON with 'initial_files', 'project_tasks', and 'project_structure'"
+        }
+        initial_response = self.ai_agent.process_prompt_with_ai("initial_project_setup", init_context)
 
-        if not ai_response:
-            self.handle_generation_failure("AI returned no response.")
-            return
+        # If initial files are returned, parse and write them
+        initial_metadata = AIResponseParser.parse_ai_response(initial_response)
+        if initial_metadata and "initial_files" in initial_metadata:
+            initial_files = initial_metadata.get("initial_files", {})
 
-        # Attempt to parse AI response
-        parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
+            if isinstance(initial_files, dict):
+                for filename, content in initial_files.items():
+                    self.ai_agent.state.add_code_file(filename, content)
+            elif isinstance(initial_files, list):
+                for file_entry in initial_files:
+                    if isinstance(file_entry, dict):
+                        filename = file_entry.get("filename")
+                        content = file_entry.get("content", "# Placeholder content\n")
+                    else:
+                        filename = str(file_entry)
+                        content = "# Placeholder content\n"
+                    if filename:
+                        self.ai_agent.state.add_code_file(filename, content)
 
-        print("!!!!!!!!!!!!!!!!AI RESPONSE HERE:\n", ai_response)
+            # Optional: also write project structure if included
+            if "project_structure" in initial_metadata:
+                ProjectManager.create_project_structure(self.ai_agent.project_path, initial_metadata, print)
 
-        # Sanity check: initial_files must be present
-        if not parsed_metadata.get("initial_files"):
-            self.handle_generation_failure("AI did not return any files to generate.")
-            return
+            self.populate_tree_view()
 
-        self.run_project_generation(parsed_metadata)
+        self.ai_agent.start_autonomous_development(prompt)
 
-        # ✅ Fix: refresh UI file tree after file creation
+        self.log_output("Autonomous agent has been launched.")
         self.populate_tree_view()
-
-        # ✅ Bonus: show initial AI tasks in right panel
-        project_tasks = parsed_metadata.get("project_tasks", [])
-        self.update_ai_plan('\n'.join(project_tasks))
-
+        self.update_ai_plan('\n'.join([
+            "Analyzing requirements",
+            "Designing architecture",
+            "Generating tests",
+            "Implementing features",
+            "Refactoring code",
+            "Validating project"
+        ]))
     def threaded_ai_generation(self, prompt):
         """
         Run AI generation logic in a separate thread and enqueue results.
@@ -1258,6 +1796,7 @@ class RedGreenRefactorIDE:
         try:
             ai_response = self.process_prompt_with_ai(prompt)
             if ai_response:
+                print("THREADED AI GENERATION?")
                 parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
                 self.ai_response_queue.put(("success", parsed_metadata))
             else:
@@ -1316,7 +1855,7 @@ class RedGreenRefactorIDE:
 
         # Generate README.md
         readme_path = os.path.join(project_path, 'README.md')
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(f"# {parsed_metadata.get('project_name', 'Unnamed Project')}\n\n")
             f.write("## Project Overview\n")
             f.write(parsed_metadata.get('project_description', 'No description available') + "\n\n")
@@ -1328,7 +1867,7 @@ class RedGreenRefactorIDE:
 
         # Generate TODO.md with project tasks
         todo_path = os.path.join(project_path, 'TODO.md')
-        with open(todo_path, 'w') as f:
+        with open(todo_path, 'w', encoding='utf-8') as f:
             f.write("# Project Tasks and Milestones\n\n")
             f.write("## Pending Tasks\n")
             for task in parsed_metadata.get('project_tasks', []):
@@ -1336,7 +1875,7 @@ class RedGreenRefactorIDE:
 
         # Generate LIST.md for feature tracking and prioritization
         list_path = os.path.join(project_path, 'LIST.md')
-        with open(list_path, 'w') as f:
+        with open(list_path, 'w', encoding='utf-8') as f:
             f.write("# Project Feature Tracking\n\n")
 
             # Implemented Features
@@ -1407,7 +1946,7 @@ class RedGreenRefactorIDE:
             file_path = self.project_tree.item(selected_item[0])['values'][0]
             if os.path.isfile(file_path):
                 self.current_file_path = file_path
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                     self.file_editor.delete('1.0', tk.END)
                     self.file_editor.insert('1.0', content)

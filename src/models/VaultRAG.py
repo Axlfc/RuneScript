@@ -10,10 +10,10 @@ import json
 from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-
+import requests
 
 class VaultRAG:
-    def __init__(self, session_id: str, base_path: str = "data"):
+    def __init__(self, session_id: str, base_path: str = "data", use_ollama: bool = False):
         """
         Initialize VaultRAG with improved error handling and organization.
 
@@ -21,6 +21,7 @@ class VaultRAG:
             session_id: Unique identifier for the session
             base_path: Base directory for storing data
         """
+        self.use_ollama = use_ollama
         self.session_id = session_id
         self.base_path = base_path
         self.vector_store_path = os.path.join(base_path, "conversations", session_id, "vector_store")
@@ -51,6 +52,23 @@ class VaultRAG:
             chunk_size=512,
             chunk_overlap=256
         )
+
+    def _ollama_embed(self, text: str) -> np.ndarray:
+        try:
+            response = requests.post(
+                "http://localhost:11434/api/embeddings",
+                json={
+                    "model": "nomic-embed-text",
+                    "prompt": text
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            vector = np.array(data["embedding"], dtype=np.float32)
+            return vector.reshape(1, -1)
+        except Exception as e:
+            logging.error(f"Ollama embedding failed: {e}")
+            raise
 
     def _load_or_create_index(self) -> faiss.Index:
         """Load existing FAISS index or create a new one."""
@@ -153,7 +171,10 @@ class VaultRAG:
                 content = ' '.join(map(str, content))
 
             # Generate embedding as numpy array
-            embedding = self.model.encode([content], convert_to_numpy=True)[0]
+            if self.use_ollama:
+                embedding = self._ollama_embed(content)[0]
+            else:
+                embedding = self.model.encode([content], convert_to_numpy=True)[0]
 
             # Reshape embedding for FAISS compatibility and add to index
             self.index.add(embedding.reshape(1, -1))
@@ -185,7 +206,6 @@ class VaultRAG:
 
         except Exception as e:
             print(f"ERROR: Failed to store embedding: {str(e)}")
-
 
     def save_pickle_data(self) -> None:
         """Save document data to pickle file."""
