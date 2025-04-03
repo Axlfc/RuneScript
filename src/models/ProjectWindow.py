@@ -622,8 +622,19 @@ class AutonomousProjectAgent:
         self.architecture = None
         self.tests = []
 
+        # Feedback integration
+        self.feedback_buffer = None
+
         # Create development journal
         self._create_development_journal()
+
+
+    def add_feedback(self, feedback: Dict[str, Any]):
+        """
+        Add feedback to be considered in the next iteration.
+        """
+        self.feedback_buffer = feedback
+
 
     def _create_development_journal(self):
         """Create a development journal file to show thinking process"""
@@ -933,7 +944,6 @@ class AutonomousProjectAgent:
             logging.error(f"Failed to create final documentation: {e}")
 
     def _development_workflow(self, initial_requirements: str):
-        """Main development workflow with more dynamic behavior and visible output"""
         try:
             # Phase 1: Requirement Analysis
             self.current_phase = "requirement_analysis"
@@ -941,17 +951,15 @@ class AutonomousProjectAgent:
             self._update_development_journal("Starting requirement analysis", "Requirement Analysis")
 
             self.project_scope = self.requirement_agent.analyze(initial_requirements)
-            self.rag.embed_current_vault()  # Embed after requirement analysis
+            self.rag.embed_current_vault()
             feedback = self.project_scope
             self.state.log_task("Analyzed Requirements")
             self._update_development_journal(
                 f"Project scope defined:\n```json\n{json.dumps(self.project_scope, indent=2)}\n```")
             self._update_readme_status("✅ Requirements analyzed")
 
-            # Add a pause for visibility
             time.sleep(1)
 
-            # Now enter the development cycle with more dynamic behavior
             iteration_count = 0
             max_iterations = 3
 
@@ -964,13 +972,19 @@ class AutonomousProjectAgent:
                 self.current_phase = "architecture_design"
                 self._update_readme_status("📐 Designing architecture...")
 
-                # Check if we should inject a creative thought
-                if random.random() < 0.7:  # 70% chance of creative thinking
+                if random.random() < 0.7:
                     self._inject_creative_thought("architecture")
 
-                self.architecture = self.architecture_agent.design(feedback)
+                context = {
+                    "project_scope": feedback,
+                    "default_structure": ["src/", "tests/", "docs/", "README.md"]
+                }
+                if self.feedback_buffer:
+                    context["previous_feedback"] = self.feedback_buffer
+
+                self.architecture = self.architecture_agent.design(context)
                 self._create_structure_from_architecture(self.architecture)
-                self.rag.embed_current_vault()  # Embed after architecture is designed
+                self.rag.embed_current_vault()
                 self.state.log_task("Designed Architecture")
                 self._update_development_journal(
                     f"Architecture design:\n```json\n{json.dumps(self.architecture, indent=2)}\n```")
@@ -980,37 +994,37 @@ class AutonomousProjectAgent:
                 self.current_phase = "test_driven_development"
                 self._update_readme_status("🧪 Generating tests...")
 
-                # Check if we should inject a creative thought
-                if random.random() < 0.5:  # 50% chance of creative thinking
+                if random.random() < 0.5:
                     self._inject_creative_thought("testing")
 
-                self.tests = self.test_generation_agent.generate_tests(self.architecture)
+                test_context = {"architecture": self.architecture}
+                if self.feedback_buffer:
+                    test_context["previous_feedback"] = self.feedback_buffer
 
-                # Write test files immediately for visibility
+                self.tests = self.test_generation_agent.generate_tests(test_context)
+
                 for test in self.tests:
                     test_name = test.get('name')
                     test_module = test.get('module', 'test_unknown.py')
                     test_description = test.get('description', 'No description')
 
-                    # Create a basic test file structure
                     test_content = f"""# {test_name}
-# {test_description}
+    # {test_description}
 
-import unittest
+    import unittest
 
-class {test_name.replace('test_', 'Test').title().replace('_', '')}(unittest.TestCase):
-    def setUp(self):
-        # Setup for the test
-        pass
+    class {test_name.replace('test_', 'Test').title().replace('_', '')}(unittest.TestCase):
+        def setUp(self):
+            # Setup for the test
+            pass
 
-    def test_functionality(self):
-        # TODO: Implement actual test
-        self.assertTrue(True, "Placeholder test - will be implemented")
+        def test_functionality(self):
+            # TODO: Implement actual test
+            self.assertTrue(True, "Placeholder test - will be implemented")
 
-if __name__ == '__main__':
-    unittest.main()
-"""
-                    # Write the test file
+    if __name__ == '__main__':
+        unittest.main()
+    """
                     test_path = os.path.join(self.project_path, 'tests', test_module)
                     os.makedirs(os.path.dirname(test_path), exist_ok=True)
                     with open(test_path, 'w', encoding='utf-8') as f:
@@ -1024,34 +1038,37 @@ if __name__ == '__main__':
                 self.current_phase = "implementation"
                 self._update_readme_status("⚙️ Implementing features...")
 
-                # Check if we should inject a creative thought
-                if random.random() < 0.8:  # 80% chance of creative thinking during implementation
+                if random.random() < 0.8:
                     self._inject_creative_thought("implementation")
 
-                implementation_results = self.feature_implementation_agent.implement_features(self.tests)
+                impl_context = {"tests": self.tests}
+                if self.feedback_buffer:
+                    impl_context["previous_feedback"] = self.feedback_buffer
 
-                # Write the implemented modules to disk
+                implementation_results = self.feature_implementation_agent.implement_features(impl_context)
+
                 for mod in implementation_results.get("implemented_modules", []):
                     filename = mod.get("filename", "unknown.py")
                     content = mod.get("content", "# Empty file")
 
-                    # Add the code file to state AND write to disk
                     self.state.add_code_file(filename, content)
                     self.state.log_task(f"Implemented: {filename}")
 
-                self.rag.embed_current_vault()  # Embed after implementation
-
+                self.rag.embed_current_vault()
                 self._update_readme_status("✅ Features implemented")
 
                 # Phase 5: Refactoring
                 self.current_phase = "refactoring"
                 self._update_readme_status("🔧 Refactoring code...")
 
-                # Check if we should inject a creative thought
-                if random.random() < 0.3:  # 30% chance of creative thinking during refactoring
+                if random.random() < 0.3:
                     self._inject_creative_thought("refactoring")
 
-                self.refactoring_agent.refactor_code(implementation_results)
+                refactor_context = {"implementation_results": implementation_results}
+                if self.feedback_buffer:
+                    refactor_context["previous_feedback"] = self.feedback_buffer
+
+                self.refactoring_agent.refactor_code(refactor_context)
                 self._update_readme_status("✅ Code refactored")
 
                 # Phase 6: Validation
@@ -1061,36 +1078,29 @@ if __name__ == '__main__':
                 success = self.testing_framework.run_tests()
                 self.state.add_test_result(f"iteration_{iteration_count}_validation", success)
 
-                # Add feedback loop - sometimes go back to implementation if tests fail
                 if not success and iteration_count < max_iterations:
-                    self._update_development_journal("Tests failed, need to fix implementation!",
-                                                     "Validation Failed")
+                    self._update_development_journal("Tests failed, need to fix implementation!", "Validation Failed")
                     self._update_readme_status("❌ Tests failed, fixing issues...")
                     feedback = {"success": success, "needs_refinement": True}
+
+                    # Save feedback for next iteration
+                    self.feedback_buffer = feedback
                 else:
                     feedback = {"success": success}
+                    self.feedback_buffer = None  # Reset buffer
 
-                # Reflect on iteration
                 self._update_development_journal(f"Completed iteration {iteration_count} with success: {success}")
 
-                # Random chance to add a spontaneous improvement
-                if random.random() < 0.4:  # 40% chance
+                if random.random() < 0.4:
                     self._add_spontaneous_improvement()
 
-                # Small pause between iterations for visibility
                 time.sleep(1)
 
-            # Complete the project
             self.current_phase = "completed"
             self._update_readme_status("🎉 Project development completed!")
             self._update_development_journal("Autonomous project development completed.", "Project Completion")
-
-            # Create final documentation
             self._create_final_documentation()
-
             self.rag.embed_current_vault()
-
-            # Export the project state
             self.state.export_state(os.path.join(self.project_path, "project_state.json"))
             logging.info("Autonomous project development completed.")
 
@@ -1102,7 +1112,6 @@ if __name__ == '__main__':
             self._update_readme_status(f"❌ Development error: {str(e)[:50]}...")
             self.state.export_state(os.path.join(self.project_path, "project_state_error.json"))
 
-        # Always update the RAG with current state
         self.rag.embed_current_vault()
 
     def _analyze_requirements(self, requirements: str) -> Dict:
@@ -1486,20 +1495,17 @@ class RedGreenRefactorIDE:
         main_container.add(right_panel)
 
     def poll_queue(self):
-        """
-        Process AI responses from the queue on the main thread.
-        """
         try:
             while not self.ai_response_queue.empty():
                 status, data = self.ai_response_queue.get_nowait()
                 if status == "success":
-                    self.finalize_project_generation(data)
+                    self.root.after(0, lambda d=data: self.finalize_project_generation(d))
                 elif status == "error":
-                    self.handle_generation_failure(error_message=data)
+                    self.root.after(0, lambda msg=data: self.handle_generation_failure(error_message=msg))
         except queue.Empty:
             pass
         finally:
-            self.root.after(100, self.poll_queue)  # Poll the queue every 100ms
+            self.root.after(100, self.poll_queue)
 
     def setup_menu(self):
         menubar = tk.Menu(self.root)
@@ -1789,6 +1795,7 @@ class RedGreenRefactorIDE:
             "Refactoring code",
             "Validating project"
         ]))
+
     def threaded_ai_generation(self, prompt):
         """
         Run AI generation logic in a separate thread and enqueue results.
@@ -1796,7 +1803,6 @@ class RedGreenRefactorIDE:
         try:
             ai_response = self.process_prompt_with_ai(prompt)
             if ai_response:
-                print("THREADED AI GENERATION?")
                 parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
                 self.ai_response_queue.put(("success", parsed_metadata))
             else:

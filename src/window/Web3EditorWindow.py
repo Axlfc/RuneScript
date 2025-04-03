@@ -306,9 +306,9 @@ class Web3DevStudio:
             widget.destroy()
 
     def setup_project_structure(self):
-        os.makedirs("contracts", exist_ok=True)
-        os.makedirs("tests", exist_ok=True)
-        os.makedirs("deployments", exist_ok=True)
+        os.makedirs("../web3/contracts", exist_ok=True)
+        os.makedirs("../web3/tests", exist_ok=True)
+        os.makedirs("../web3/deployments", exist_ok=True)
 
     def show_contracts_view(self):
         self.clear_workspace()

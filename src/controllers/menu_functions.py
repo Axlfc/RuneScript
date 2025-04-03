@@ -7,7 +7,6 @@ import subprocess
 import threading
 import webbrowser
 from tkinter import (
-    Menu,
     Button,
     messagebox,
     filedialog,
@@ -15,8 +14,7 @@ from tkinter import (
     Label,
     Checkbutton,
     Entry,
-    Text,
-    BooleanVar, INSERT, TclError,
+    BooleanVar, TclError,
 )
 
 from PIL import Image, ImageTk
@@ -27,13 +25,16 @@ from src.controllers.scheduled_tasks import (
     open_new_at_task_window,
     open_new_crontab_task_window,
 )
-from src.models.ClockWindow import ClockWindow
-from src.models.FindInFilesWindow import FindInFilesWindow
-from src.models.GraphicEngineWindow import GraphicEngineWindow
+from src.window.ClockWindow import ClockWindow
+from src.window.FindInFilesWindow import FindInFilesWindow
+from src.window.GraphicEngineWindow import GraphicEngineWindow
+from src.window.PromptLookup import PromptLookup, PromptInterpreter
+from src.window.SystemInfoWindow import SystemInfoWindow
+from src.window.Web3EditorWindow import Web3DevStudio
+
+# REFACTOR
 from src.models.ProjectWindow import RedGreenRefactorIDE
-from src.models.PromptLookup import PromptLookup, setup_prompt_completion, PromptInterpreter
-from src.models.SystemInfoWindow import SystemInfoWindow
-from src.models.Web3EditorWindow import Web3DevStudio
+
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import (
     get_operative_system,
@@ -47,31 +48,18 @@ from src.views.edit_operations import undo, redo, duplicate, copy, cut, paste
 from src.views.tk_utils import (
     localization_data,
     toolbar,
-    menu,
     root,
     script_name_label,
     script_text,
-    is_modified,
-    file_name,
-    last_saved_content,
-    local_python_var,
-    show_directory_view_var,
-    show_file_view_var,
     frm,
-    directory_label,
     script_frm,
     content_frm,
     entry_arguments_entry,
     generate_stdin,
     generate_stdin_err,
-    show_arguments_view_var,
-    show_run_view_var,
     run_frm,
     line_frm,
-    show_timeout_view_var,
-    show_interactive_view_var,
     interactive_frm,
-    show_filesystem_view_var,
     filesystem_frm, my_font, persistent_agent_selection_var,
 )
 from src.controllers.tool_functions import (
@@ -85,8 +73,6 @@ from src.views.ui_elements import Tooltip
 from src.controllers.file_operations import (
     open_file,
     open_script,
-    update_title,
-    file_types,
     new,
     save,
     save_script,
@@ -94,26 +80,26 @@ from src.controllers.file_operations import (
     close,
 )
 
-from src.models.AboutWindow import AboutWindow
-from src.models.AudioGenerationWindow import AudioGenerationWindow
-from src.models.FindInFilesWindow import FindInFilesWindow
-from src.models.GitWindow import GitWindow
-from src.models.HelpWindow import HelpWindow
-from src.models.IPythonNotebookTerminal import IPythonNotebookTerminal
-from src.models.ImageGenerationWindow import ImageGenerationWindow
-from src.models.KanbanWindow import KanbanWindow
-from src.models.LaTeXMarkdownEditor import LaTeXMarkdownEditor
-from src.models.MnemonicsWindow import MnemonicsWindow
-from src.models.PromptEnhancementWindow import PromptEnhancementWindow
-from src.models.PythonTerminalWindow import PythonTerminalWindow
-from src.models.CalculatorWindow import CalculatorWindow
-from src.models.SearchAndReplaceWindow import SearchAndReplaceWindow
-from src.models.SearchWindow import SearchWindow
-from src.models.ShortcutsWindow import ShortcutsWindow
-from src.models.SettingsWindow import SettingsWindow
-from src.models.TerminalWindow import TerminalWindow
-from src.models.TranslatorWindow import TranslatorWindow
-from src.models.WingetWindow import WingetWindow
+from src.window.AboutWindow import AboutWindow
+from src.window.AudioGenerationWindow import AudioGenerationWindow
+from src.window.FindInFilesWindow import FindInFilesWindow
+from src.window.GitWindow import GitWindow
+from src.window.HelpWindow import HelpWindow
+from src.window.IPythonNotebookTerminal import IPythonNotebookTerminal
+from src.window.ImageGenerationWindow import ImageGenerationWindow
+from src.window.KanbanWindow import KanbanWindow
+from src.window.LaTeXMarkdownEditor import LaTeXMarkdownEditor
+from src.window.MnemonicsWindow import MnemonicsWindow
+from src.window.PromptEnhancementWindow import PromptEnhancementWindow
+from src.window.PythonTerminalWindow import PythonTerminalWindow
+from src.window.CalculatorWindow import CalculatorWindow
+from src.window.SearchAndReplaceWindow import SearchAndReplaceWindow
+from src.window.SearchWindow import SearchWindow
+from src.window.ShortcutsWindow import ShortcutsWindow
+from src.window.SettingsWindow import SettingsWindow
+from src.window.TerminalWindow import TerminalWindow
+from src.window.TranslatorWindow import TranslatorWindow
+from src.window.WingetWindow import WingetWindow
 
 
 git_console_instance = None
@@ -988,7 +974,7 @@ def update_config(option_name, value):
 
 
 from tkinter import Menu
-
+from src.views.tk_utils import *
 
 def create_menu():
     global show_directory_view_var

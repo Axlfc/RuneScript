@@ -2,7 +2,6 @@ import csv
 import json
 import os
 import platform
-import queue
 import re
 import shutil
 import subprocess
@@ -27,23 +26,14 @@ from tkinter import (
     Scrollbar,
     Canvas,
     Frame,
-    font,
     filedialog,
     Listbox,
     simpledialog,
-    BOTH,
-    LEFT,
-    X,
     RAISED,
-    BooleanVar,
-    BOTTOM,
     FLAT
 )
 from tkinter.ttk import (
-    Separator,
-    Treeview,
-    Notebook,
-    Combobox
+    Separator
 )
 
 import yaml
@@ -51,18 +41,17 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
-from src.models.LlamaCppServerManager import LlamaCppServerManager
-from src.models.PromptLookup import PromptLookup, PromptInterpreter
+from src.window.LlamaCppServerManager import LlamaCppServerManager
+from src.window.PromptLookup import PromptLookup, PromptInterpreter
 
 from src.models.TTSManager import TTSManager
 from src.models.VaultRAG import VaultRAG
 
 from src.models.convert_pdf_to_text import process_pdf_to_text
 from src.models.embeddings import generate_embedding
-from src.views.tk_utils import text, script_text, root, current_session, menu, SIMILARITY_THRESHOLD, status_label_var, \
-    localization_data, persistent_agent_selection_var
-from src.views.ui_elements import Tooltip, ScrollableFrame
-from src.models.ai_assistant import find_gguf_file
+from src.views.tk_utils import script_text, root, SIMILARITY_THRESHOLD, status_label_var, \
+    localization_data, persistent_agent_selection_var, current_session
+from src.views.ui_elements import Tooltip
 from difflib import SequenceMatcher
 from datetime import datetime
 from typing import List, Dict, Optional
