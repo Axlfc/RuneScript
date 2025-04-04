@@ -1009,22 +1009,22 @@ class AutonomousProjectAgent:
                     test_description = test.get('description', 'No description')
 
                     test_content = f"""# {test_name}
-    # {test_description}
+# {test_description}
 
-    import unittest
+import unittest
 
-    class {test_name.replace('test_', 'Test').title().replace('_', '')}(unittest.TestCase):
-        def setUp(self):
-            # Setup for the test
-            pass
+class {test_name.replace('test_', 'Test').title().replace('_', '')}(unittest.TestCase):
+    def setUp(self):
+        # Setup for the test
+        pass
 
-        def test_functionality(self):
-            # TODO: Implement actual test
-            self.assertTrue(True, "Placeholder test - will be implemented")
+    def test_functionality(self):
+        # TODO: Implement actual test
+        self.assertTrue(True, "Placeholder test - will be implemented")
 
-    if __name__ == '__main__':
-        unittest.main()
-    """
+if __name__ == '__main__':
+    unittest.main()
+"""
                     test_path = os.path.join(self.project_path, 'tests', test_module)
                     os.makedirs(os.path.dirname(test_path), exist_ok=True)
                     with open(test_path, 'w', encoding='utf-8') as f:
@@ -1465,6 +1465,8 @@ class RedGreenRefactorIDE:
         self.setup_logging()
         self.setup_ui()
 
+    def safe_ui_call(self, func: Callable, *args, **kwargs):
+        self.root.after(0, lambda: func(*args, **kwargs))
 
     def handle_state_event(self, event_type, data):
         if event_type == "file_created":
@@ -1637,7 +1639,7 @@ class RedGreenRefactorIDE:
                 raise Exception(f"AI Assistant Error: {error.strip()}")
             return ai_response.strip()
         except Exception as e:
-            self.log_output(f"Failed to communicate with AI: {e}")
+            self.safe_ui_call(self.log_output, f"Failed to communicate with AI: {e}")
             return None
 
     def new_project(self):
@@ -1645,13 +1647,14 @@ class RedGreenRefactorIDE:
         project_path = os.path.join(self.projects_base_dir, project_id)
         os.makedirs(project_path, exist_ok=True)
         self.current_project = project_path
-        self.log_output(f"New project created: {project_path}")
+        self.safe_ui_call(self.log_output, f"New project created: {project_path}")
 
     def open_project(self):
         project_path = filedialog.askdirectory(initialdir=self.projects_base_dir)
         if project_path:
             self.current_project = project_path
-            self.log_output(f"Opened project: {project_path}")
+            self.safe_ui_call(self.log_output, f"Opened project: {project_path}")
+
             self.populate_tree_view()
 
     def populate_tree_view(self):
@@ -1669,10 +1672,11 @@ class RedGreenRefactorIDE:
         Run project generation and ensure tasks are processed.
         """
         if not self.current_project:
-            self.log_output("No project selected. Create or open a project first.")
+            self.safe_ui_call(self.log_output, "No project selected. Create or open a project first.")
+
             return
 
-        self.log_output("Starting project generation...")
+        self.safe_ui_call(self.log_output, "Starting project generation...")
 
         # Initialize project context
         context = ProjectContext(
@@ -1697,13 +1701,14 @@ class RedGreenRefactorIDE:
         # Run tests
         if ProjectManager.run_tests(self.current_project, self.log_output):
             context.complete_task("Run all tests")
-            self.log_output("All tests passed successfully!")
+            self.safe_ui_call(self.log_output, "All tests passed successfully!")
 
         # Update project phase
         transition_to_next_phase(context)
 
         if context.current_phase == "Ready for Review":
-            self.log_output("Project development is complete and ready for review.")
+            self.safe_ui_call(self.log_output, "Project development is complete and ready for review.")
+
         else:
             # Continue autonomous workflow
             self.continue_autonomous_workflow(metadata)
@@ -1713,10 +1718,12 @@ class RedGreenRefactorIDE:
         Continue the workflow based on AI feedback and project state.
         """
         if not metadata.get("next_steps"):
-            self.log_output("Project development is complete.")
+            self.safe_ui_call(self.log_output, "Project development is complete.")
+
             return
 
-        self.log_output("Requesting additional steps from AI...")
+        self.safe_ui_call(self.log_output, "Requesting additional steps from AI...")
+
         ai_agent = AutonomousProjectAgent(self.current_project)
         ai_agent.state.register_observer(self.handle_state_event)
 
@@ -1726,7 +1733,7 @@ class RedGreenRefactorIDE:
             parsed_metadata = AIResponseParser.parse_ai_response(ai_feedback)
             self.run_project_generation(parsed_metadata)
         else:
-            self.log_output("No further steps provided by AI.")
+            self.safe_ui_call(self.log_output, "No further steps provided by AI.")
 
     def generate_project_with_ai(self):
         """
@@ -1738,7 +1745,8 @@ class RedGreenRefactorIDE:
             messagebox.showwarning("Invalid Prompt", "Please provide a clear, meaningful project description.")
             return
 
-        self.log_output("Starting AI-based autonomous project generation...")
+        self.safe_ui_call(self.log_output, "Starting AI-based autonomous project generation...")
+
         self.toggle_generation_ui(False)
 
         # Create project directory
@@ -1785,7 +1793,8 @@ class RedGreenRefactorIDE:
 
         self.ai_agent.start_autonomous_development(prompt)
 
-        self.log_output("Autonomous agent has been launched.")
+        self.safe_ui_call(self.log_output, "Autonomous agent has been launched.")
+
         self.populate_tree_view()
         self.update_ai_plan('\n'.join([
             "Analyzing requirements",
@@ -1840,7 +1849,8 @@ class RedGreenRefactorIDE:
             formatted_tasks = '\n'.join(project_tasks)
             self.update_ai_plan(formatted_tasks)
 
-            self.log_output(f"Project {project_id} generated successfully at {project_path}!")
+            self.safe_ui_call(self.log_output, f"Project {project_id} generated successfully at {project_path}!")
+
 
         except Exception as e:
             logging.error(f"Project finalization error: {e}")
@@ -1976,13 +1986,16 @@ class RedGreenRefactorIDE:
                 text=True,
                 cwd=self.current_project
             )
-            self.log_output(result.stdout)
+            self.safe_ui_call(self.log_output, result.stdout)
+
             if result.returncode == 0:
-                self.log_output("Tests passed successfully!")
+                self.safe_ui_call(self.log_output, "Tests passed successfully!")
+
             else:
-                self.log_output("Tests failed:\n" + result.stderr)
+                self.safe_ui_call(self.log_output, "Tests failed:\n" + result.stderr)
+
         except Exception as e:
-            self.log_output(f"Test execution error: {e}")
+            self.safe_ui_call(self.log_output, f"Test execution error: {e}")
 
     def log_output(self, message: str):
         self.output_console.config(state='normal')
@@ -2005,10 +2018,11 @@ class RedGreenRefactorIDE:
         )
 
     def pause_project(self):
-        self.log_output("Project generation paused.")
+        self.safe_ui_call(self.log_output, "Project generation paused.")
 
     def stop_project(self):
-        self.log_output("Project generation stopped.")
+        self.safe_ui_call(self.log_output, "Project generation stopped.")
+
         self.prompt_entry.config(state=tk.NORMAL)
         self.generate_btn.config(state=tk.NORMAL)
         self.pause_btn.config(state=tk.DISABLED)
