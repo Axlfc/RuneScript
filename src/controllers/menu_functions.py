@@ -241,7 +241,7 @@ def open_prompt_enhancement_window(event=None):
     return PromptEnhancementWindow()
 
 
-def open_project_window(event=None):
+def open_new_project_window(event=None):
     return RedGreenRefactorIDE()
 
 
@@ -989,6 +989,32 @@ def create_menu():
     # menu = Menu(root)
     root.config(menu=menu)
 
+    # ----- Project Menu -----
+    project_menu = Menu(menu, tearoff=0)
+    menu.add_cascade(label=localization_data["project"],
+                     menu=project_menu,
+                     underline=0)
+    project_menu.add_command(
+        label=localization_data["new_project"],
+        command=open_new_project_window,
+        compound="left",
+        image=image_new,
+        accelerator="Ctrl+M",
+        underline=0,
+    )
+    root.bind('<Control-m>', new)
+
+    # Refactor this so we can update the tree view with the project and we can
+    project_menu.add_command(
+        label=localization_data["open_project"],
+        command=open_new_project_window,
+        compound="left",
+        image=image_new,
+        accelerator="Ctrl+M",
+        underline=0,
+    )
+    root.bind('<Control-m>', new)
+
     # ----- File Menu -----
     file_menu = Menu(menu, tearoff=0)
     menu.add_cascade(label=localization_data["file"],
@@ -996,15 +1022,6 @@ def create_menu():
                      underline=0)
 
     # File Operations
-    file_menu.add_command(
-        label=localization_data["new_project"],
-        command=open_project_window,
-        compound="left",
-        image=image_new,
-        accelerator="Ctrl+M",
-        underline=0,
-    )
-    root.bind('<Control-m>', new)
     file_menu.add_command(
         label=localization_data["new_file"],
         command=new,

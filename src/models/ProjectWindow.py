@@ -12,6 +12,9 @@ import uuid
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from typing import Dict, Optional, Any, List, Callable, Union
 from datetime import datetime
+
+import unicodedata
+
 from src.agents.project_rag_coordinator import ProjectRAGCoordinator
 
 
@@ -36,14 +39,29 @@ def create_default_metadata(name, error_message):
 
 class AIResponseParser:
     @staticmethod
-    def validate_prompt(prompt):
-        """
-        Validate the project generation prompt.
+    def sanitize_prompt(prompt: str) -> str:
+        """Normalize and strip unsafe characters from user prompt."""
+        if not isinstance(prompt, str):
+            return ""
+        clean = ''.join(
+            c for c in unicodedata.normalize('NFKD', prompt)
+            if unicodedata.category(c)[0] != 'C'  # Remove control chars
+        )
+        return clean.strip()
 
-        :param prompt: User-provided project description
-        :return: Boolean indicating prompt validity
-        """
-        return prompt and len(prompt.split()) >= 3
+    @staticmethod
+    def validate_prompt(prompt: str) -> bool:
+        """Ensure the prompt is descriptive enough for generation."""
+        if not prompt or len(prompt) < 10:
+            return False
+
+        lowered = prompt.lower()
+        has_keyword = any(word in lowered for word in (
+            'create', 'build', 'design', 'develop', 'generate', 'html', 'website',
+            'app', 'api', 'tool', 'script', 'python', 'js', 'game', 'component'
+        ))
+
+        return has_keyword
 
     @staticmethod
     def parse_ai_response(response: Optional[str]) -> Union[Dict, List, None]:
@@ -1739,7 +1757,8 @@ class RedGreenRefactorIDE:
         """
         Start autonomous project generation with AI.
         """
-        prompt = self.prompt_entry.get().strip()
+        raw_prompt = self.prompt_entry.get()
+        prompt = AIResponseParser.sanitize_prompt(raw_prompt)
 
         if not AIResponseParser.validate_prompt(prompt):
             messagebox.showwarning("Invalid Prompt", "Please provide a clear, meaningful project description.")
