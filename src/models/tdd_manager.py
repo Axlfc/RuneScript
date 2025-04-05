@@ -119,6 +119,22 @@ class TDDManager:
         except Exception as e:
             self.logger.error(f"Failed to save TDD history: {e}")
 
+    def get_test_content(self, cycle_id: int) -> Optional[str]:
+        """
+        Retrieve the test content for a specific TDD cycle.
+
+        Args:
+            cycle_id: The ID of the cycle
+
+        Returns:
+            The test content string if found, else None
+        """
+        if cycle_id not in self.cycles:
+            self.logger.error(f"Cycle {cycle_id} not found in get_test_content")
+            return None
+
+        return self.cycles[cycle_id].test_content
+
     def start_cycle(self, feature_name: str) -> int:
         """
         Start a new TDD cycle for a feature
