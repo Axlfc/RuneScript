@@ -12,6 +12,7 @@ class TestGenerationAgent:
 
     def generate_tests(self, architecture: Dict) -> List[Dict]:
         logging.info("Generating RED-phase test cases")
+
         # Skip tests if project looks purely visual
         if any(k in str(architecture).lower() for k in ["html", "css", "web", "landing", "portfolio"]):
             logging.info("Skipping test generation — visual/static project.")
@@ -19,7 +20,8 @@ class TestGenerationAgent:
 
         context = {"architecture": architecture}
         related_chunks = self.agent.get_relevant_rag_context(
-            f"What kinds of tests are common for systems like: {architecture.get('project_name')}")
+            f"What kinds of tests are common for systems like: {architecture.get('project_name')}"
+        )
         context["retrieved_context"] = related_chunks
         ai_response = self.agent.process_prompt_with_ai("test_generation", context)
         parsed = AIResponseParser.parse_ai_response(ai_response)
@@ -40,19 +42,9 @@ class TestGenerationAgent:
             name = test["name"]
             description = test.get("description", "No description provided")
             module = test.get("module", "test_misc.py")
+            test_code = test.get("content") or self._generate_red_test(name, description)
 
-            # test_code = self._generate_red_test(name, description)
-
-            # Track the full TDD cycle from RED
             cycle_id = self.tdd.start_cycle(name)
-
-            test_code = self.tdd.get_test_content(cycle_id)
-            context = {
-                "test_name": test["name"],
-                "test_code": test_code,
-                "requirements": self.project_scope or {},
-            }
-
             self.tdd.add_test_content(cycle_id, test_code)
             self.tdd.set_stage(cycle_id, TDDStage.RED)
 

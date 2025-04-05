@@ -4,6 +4,7 @@ from src.agents.project_rag_coordinator import ProjectRAGCoordinator
 from src.core.state_management import StateManagementSystem
 from src.core.dependency_manager import DependencyManagementUnit
 from src.core.automated_testing import AutomatedTestingFramework
+from src.core.subtask_manager import SubtaskManager
 from src.models.tdd_manager import TDDManager, TDDStage
 from src.agents.architecture_agent import ArchitectureAgent
 from src.agents.feature_implementation_agent import FeatureImplementationAgent
@@ -28,6 +29,10 @@ class AutonomousProjectAgent:
         self.project_path = project_path
         self.ide_instance = ide_instance
         self.state = StateManagementSystem(self.project_path)
+        self.subtask_manager = SubtaskManager(
+            state=self.state,
+            log_fn=self._update_development_journal
+        )
         self.rag = ProjectRAGCoordinator(self.project_path, use_ollama=True, state=self.state)
         self.tdd = TDDManager(self.project_path)
         self.task_queue = queue.Queue()
@@ -67,6 +72,12 @@ class AutonomousProjectAgent:
 
         # Feedback integration
         self.feedback_buffer = None
+
+        # Prompt recursion tracking
+        self.recursion_depth = 0
+        self.recursion_history = []
+        self.max_recursion_depth = 3
+        self.prompt_cache = {}
 
         # Create development journal
         self._create_development_journal()
@@ -125,10 +136,136 @@ class AutonomousProjectAgent:
             ]
         )
 
+    def create_subtask(self, *args, **kwargs):
+        return self.subtask_manager.create_subtask(*args, **kwargs)
+
+    def start_subtask(self, *args, **kwargs):
+        return self.subtask_manager.start_subtask(*args, **kwargs)
+
+    def complete_subtask(self, *args, **kwargs):
+        return self.subtask_manager.complete_subtask(*args, **kwargs)
+
+    def fail_subtask(self, *args, **kwargs):
+        return self.subtask_manager.fail_subtask(*args, **kwargs)
+
+    def get_subtask_status(self, *args, **kwargs):
+        return self.subtask_manager.get_subtask_status(*args, **kwargs)
+
+    def get_subtask_result(self, *args, **kwargs):
+        return self.subtask_manager.get_subtask_result(*args, **kwargs)
+
+    def process_prompt_with_recursion(self, stage: str, context: Dict, depth: int = 0) -> Optional[str]:
+        """
+        Process AI prompt with support for recursive decomposition of complex problems.
+
+        :param stage: The development stage for this prompt
+        :param context: The context for the prompt
+        :param depth: Current recursion depth
+        :return: AI response or None on failure
+        """
+        if depth >= self.max_recursion_depth:
+            logging.warning(f"Maximum recursion depth reached for {stage}")
+            return None
+
+        # Create a cache key based on the stage and essential context
+        cache_key = f"{stage}:{hash(json.dumps(context, sort_keys=True, default=str))}"
+
+        # Check cache first
+        if cache_key in self.prompt_cache:
+            logging.info(f"Using cached response for {stage} at depth {depth}")
+            return self.prompt_cache[cache_key]
+
+        # Track recursion
+        self.recursion_depth = depth
+        self.recursion_history.append((stage, datetime.now().isoformat()))
+
+        # Add recursion context
+        context["recursion_depth"] = depth
+        context["recursion_history"] = self.recursion_history.copy()
+
+        # Process original prompt with AI
+        logging.info(f"Processing prompt with recursion depth {depth} for stage {stage}")
+
+        if depth > 0:
+            # For recursive calls, mark this as a meta-prompt
+            response = self.process_prompt_with_ai(stage, context, is_meta_prompt=True)
+        else:
+            response = self.process_prompt_with_ai(stage, context)
+
+        if not response:
+            return None
+
+        try:
+            # Parse response
+            response_data = json.loads(response)
+
+            # Check if response suggests decomposition
+            if "requires_decomposition" in response_data and response_data[
+                "requires_decomposition"] and depth < self.max_recursion_depth - 1:
+                logging.info(f"Decomposing complex task at depth {depth} for {stage}")
+
+                # Decompose into subtasks
+                subtasks = response_data.get("subtasks", [])
+                subtask_results = {}
+
+                # Process each subtask recursively
+                for i, subtask in enumerate(subtasks):
+                    subtask_name = subtask.get("name", f"subtask_{i}")
+                    subtask_context = subtask.get("context", {})
+
+                    # Combine original context with subtask-specific context
+                    combined_context = context.copy()
+                    combined_context.update(subtask_context)
+
+                    # Process recursively
+                    subtask_result = self.process_prompt_with_recursion(
+                        f"{stage}_{subtask_name}",
+                        combined_context,
+                        depth + 1
+                    )
+
+                    if subtask_result:
+                        try:
+                            subtask_results[subtask_name] = json.loads(subtask_result)
+                        except json.JSONDecodeError:
+                            subtask_results[subtask_name] = subtask_result
+
+                # Re-integrate results
+                integration_context = context.copy()
+                integration_context["subtask_results"] = subtask_results
+
+                # Final integration prompt
+                final_response = self.process_prompt_with_ai(
+                    f"{stage}_integration",
+                    integration_context,
+                    is_meta_prompt=True
+                )
+
+                if final_response:
+                    # Cache the integrated result
+                    self.prompt_cache[cache_key] = final_response
+                    return final_response
+
+            # No decomposition needed or possible, return original response
+            self.prompt_cache[cache_key] = response
+            return response
+
+        except json.JSONDecodeError:
+            logging.error(f"Failed to parse JSON in recursive prompt at depth {depth}")
+            return response
+        finally:
+            # Reset recursion tracking when returning from a recursive call
+            if len(self.recursion_history) > 0:
+                self.recursion_history.pop()
+
+            if depth == 0:
+                self.recursion_depth = 0
+
     def process_prompt_with_ai(self, stage: str, context: Dict, is_meta_prompt=False) -> Optional[str]:
         """
         Process AI prompt for a specific development stage, with meta-prompting.
         """
+        subtask_id = None
         try:
             logging.info(f"THINKING: Processing {stage} with context keys: {list(context.keys())}")
             # Inject relevant files if this stage modifies or writes code
@@ -158,7 +295,14 @@ class AutonomousProjectAgent:
             ai_script_path = "src/models/ai_assistant.py"
             command = ["python", ai_script_path, combined_input]
 
-            self.state.log_task(f"Processing {stage}")
+            subtask_id = None
+            if stage not in self.development_stages:
+                # This is likely a subtask, create tracking for it
+                subtask_id = f"{stage}_{uuid.uuid4().hex[:8]}"
+                self.create_subtask(subtask_id, f"Processing AI prompt for {stage}", context=context)
+                self.start_subtask(subtask_id)
+            else:
+                self.state.log_task(f"Processing {stage}")
 
             process = subprocess.Popen(
                 command,
@@ -194,8 +338,14 @@ class AutonomousProjectAgent:
             full_stderr = ''.join(stderr_chunks).strip()
 
             if process.returncode != 0 or full_stderr:
-                logging.error(f"AI Assistant Error: {full_stderr}")
-                self.state.log_error(f"AI processing failed: {full_stderr}")
+                error_msg = f"AI Assistant Error: {full_stderr}"
+                logging.error(error_msg)
+
+                if subtask_id:
+                    self.fail_subtask(subtask_id, error_msg)
+                else:
+                    self.state.log_error(f"AI processing failed: {full_stderr}")
+
                 return None
 
             # Attempt to extract valid JSON from AI output
@@ -205,12 +355,22 @@ class AutonomousProjectAgent:
                 json_blob = full_stdout[json_start:json_end]
                 json.loads(json_blob)  # Verify validity
             except (ValueError, json.JSONDecodeError) as e:
-                logging.error(f"Failed to parse JSON from AI response: {e}")
-                self.state.log_error("AI response not in valid JSON format.")
+                error_msg = f"Failed to parse JSON from AI response: {e}"
+                logging.error(error_msg)
+
+                if subtask_id:
+                    self.fail_subtask(subtask_id, error_msg)
+                else:
+                    self.state.log_error("AI response not in valid JSON format.")
+
                 return None
 
             # Mark task complete and log summary
-            self.state.complete_task(f"Processing {stage}")
+            if subtask_id:
+                self.complete_subtask(subtask_id, json_blob)
+            else:
+                self.state.complete_task(f"Processing {stage}")
+
             preview = json_blob[:100] + "..." if len(json_blob) > 100 else json_blob
             self._update_development_journal(f"AI Response Summary:\n```\n{preview}\n```")
 
@@ -219,7 +379,12 @@ class AutonomousProjectAgent:
         except Exception as e:
             error_msg = f"Critical error in process_prompt_with_ai: {e}"
             logging.error(error_msg)
-            self.state.log_error(error_msg)
+
+            if subtask_id:
+                self.fail_subtask(subtask_id, error_msg)
+            else:
+                self.state.log_error(error_msg)
+
             return None
 
     def start_autonomous_development(self, initial_requirements: str):
@@ -235,22 +400,110 @@ class AutonomousProjectAgent:
             f.write(f"Requirements: {initial_requirements}\n\n")
             f.write("## Development Status\n\n")
             f.write("🔄 Initializing autonomous development...\n")
+            f.write("\n## Subtasks\n\n")
+            f.write("| Task ID | Description | Status | Created | Updated |\n")
+            f.write("|---------|-------------|--------|---------|--------|\n")
 
         # Log the start
         logging.info(f"Starting autonomous development with requirements: {initial_requirements}")
         self._update_development_journal(f"Starting development with requirements: {initial_requirements}",
                                          "Project Initialization")
 
+        # Create initial subtask
+        init_task_id = self.create_subtask(
+            "init_development",
+            "Initialize development workflow",
+            context={"requirements": initial_requirements}
+        )
+        self.start_subtask(init_task_id)
+
         # Launch the development workflow in a thread
         threading.Thread(
             target=self._development_workflow,
-            args=(initial_requirements,),
+            args=(initial_requirements, init_task_id),
             daemon=True
         ).start()
 
         # Create an immediate feedback to show we're working
         self.state.log_task("Initializing development workflow")
 
+    def _update_readme_subtasks(self):
+        """Update the README.md with current subtask status"""
+        readme_path = os.path.join(self.project_path, "README.md")
+        try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                content = f.readlines()
+
+            # Find the subtasks section and update it
+            subtasks_index = -1
+            for i, line in enumerate(content):
+                if "## Subtasks" in line:
+                    subtasks_index = i
+                    break
+
+            if subtasks_index >= 0:
+                # Clear existing subtask table (keep the header)
+                new_content = content[:subtasks_index + 3]  # Keep up to the table header
+
+                # Add the table headers
+                if len(new_content) < subtasks_index + 3:
+                    new_content.append("## Subtasks\n\n")
+                    new_content.append("| Task ID | Description | Status | Created | Updated |\n")
+                    new_content.append("|---------|-------------|--------|---------|--------|\n")
+
+                # Add subtask rows
+                for task_id, task in self.subtask_manager.subtasks.items():
+                    status = task["status"]
+                    status_emoji = {
+                        "pending": "⏳",
+                        "in_progress": "🔄",
+                        "completed": "✅",
+                        "failed": "❌"
+                    }.get(status, "❓")
+
+                    created = datetime.fromisoformat(task["created_at"]).strftime("%H:%M:%S")
+                    updated = datetime.fromisoformat(task["updated_at"]).strftime("%H:%M:%S")
+
+                    new_content.append(
+                        f"| {task_id[:10]}... | {task['description'][:30]}... | {status_emoji} {status} | {created} | {updated} |\n"
+                    )
+
+                # Add the rest of the content
+                found_next_section = False
+                for i in range(subtasks_index + 3, len(content)):
+                    if content[i].startswith("## "):
+                        found_next_section = True
+
+                    if found_next_section:
+                        new_content.append(content[i])
+
+                with open(readme_path, 'w', encoding='utf-8') as f:
+                    f.writelines(new_content)
+
+            else:
+                # Add subtasks section if it doesn't exist
+                with open(readme_path, 'a', encoding='utf-8') as f:
+                    f.write("\n## Subtasks\n\n")
+                    f.write("| Task ID | Description | Status | Created | Updated |\n")
+                    f.write("|---------|-------------|--------|---------|--------|\n")
+
+                    for task_id, task in self.subtask_manager.subtasks.items():
+                        status = task["status"]
+                        status_emoji = {
+                            "pending": "⏳",
+                            "in_progress": "🔄",
+                            "completed": "✅",
+                            "failed": "❌"
+                        }.get(status, "❓")
+
+                        created = datetime.fromisoformat(task["created_at"]).strftime("%H:%M:%S")
+                        updated = datetime.fromisoformat(task["updated_at"]).strftime("%H:%M:%S")
+
+                        f.write(
+                            f"| {task_id[:10]}... | {task['description'][:30]}... | {status_emoji} {status} | {created} | {updated} |\n"
+                        )
+        except Exception as e:
+            logging.error(f"Failed to update README subtasks: {e}")
 
     def _update_readme_status(self, status_message):
         """Update the README.md with current status"""
@@ -276,16 +529,32 @@ class AutonomousProjectAgent:
 
             with open(readme_path, 'w', encoding='utf-8') as f:
                 f.writelines(content)
+
+            # Also update subtasks
+            self._update_readme_subtasks()
+
         except Exception as e:
             logging.error(f"Failed to update README status: {e}")
 
     def _create_structure_from_architecture(self, architecture):
         """Create directory structure based on architecture definition"""
+        task_id = None
         try:
+            task_id = self.create_subtask(
+                "create_structure",
+                "Create initial project structure",
+                context={"architecture": architecture}
+            )
+            self.start_subtask(task_id)
+
+            created_dirs = []
+            created_files = []
+
             for path in architecture.get("directory_structure", []):
                 full_path = os.path.join(self.project_path, path)
                 if path.endswith('/'):
                     os.makedirs(full_path, exist_ok=True)
+                    created_dirs.append(path)
                     self.state.log_task(f"Created directory: {path}")
                 else:
                     # It's a file, create an empty file or placeholder
@@ -304,11 +573,21 @@ class AutonomousProjectAgent:
                                 f.write(
                                     f"<!DOCTYPE html>\n<html>\n<head>\n    <title>Placeholder</title>\n</head>\n<body>\n    <h1>Placeholder</h1>\n</body>\n</html>")
 
+                        created_files.append(path)
                         self.state.log_task(f"Created file: {path}")
+
+            self.complete_subtask(task_id, {
+                "created_directories": created_dirs,
+                "created_files": created_files
+            })
+
         except Exception as e:
             error_msg = f"Failed to create structure: {e}"
             logging.error(error_msg)
             self.state.log_error(error_msg)
+
+            if task_id:
+                self.fail_subtask(task_id, error_msg)
 
     def _inject_creative_thought(self, context):
         """Add a creative thought to the development journal to simulate developer thinking"""
@@ -408,7 +687,7 @@ class AutonomousProjectAgent:
         except Exception as e:
             logging.error(f"Failed to create final documentation: {e}")
 
-    def _development_workflow(self, initial_requirements: str):
+    def _development_workflow(self, initial_requirements: str, init_task_id: str):
         try:
             # Phase 1: Requirement Analysis
             self.current_phase = "requirement_analysis"
@@ -595,8 +874,9 @@ class AutonomousProjectAgent:
         self.rag.embed_current_vault()
 
         # 🔓 FIX: Re-enable prompt input at the end of dev
-        """if hasattr(self, 'ide_instance') and self.ide_instance:
-            self.ide_instance.safe_ui_call(self.ide_instance.toggle_generation_ui, True)"""
+        if hasattr(self, 'ide_instance') and self.ide_instance:
+            if hasattr(self.ide_instance, "ai_response_queue"):
+                self.ide_instance.ai_response_queue.put(("completed", "Autonomous development finished"))
 
     def _analyze_requirements(self, requirements: str) -> Dict:
         """

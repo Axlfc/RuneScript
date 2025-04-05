@@ -11,6 +11,18 @@ from src.agents.AutonomousProjectAgent import AutonomousProjectAgent
 from src.core.project_context import ProjectContext, generate_readme, transition_to_next_phase
 from src.utils.parser_utils import AIResponseParser
 from src.utils.project_io import ProjectIO
+from src.core.ai_runner import run_ai_prompt
+
+
+from src.ui.project_file_manager import ProjectFileManager
+from src.ui.ui_components import (
+    create_project_tree,
+    create_output_console,
+    create_ai_plan,
+    create_file_editor,
+    create_command_bar
+)
+from src.utils.test_runner import run_pytest
 
 
 class RedGreenRefactorIDE:
@@ -21,7 +33,6 @@ class RedGreenRefactorIDE:
 
         self.ai_task_queue = queue.Queue()
         self.ai_response_queue = queue.Queue()
-        self.setup_logging()
         self.setup_menu()
         self.create_main_layout()
         self.poll_queue()  # Start polling the queue
@@ -35,12 +46,39 @@ class RedGreenRefactorIDE:
         self.setup_logging()
         self.setup_ui()
 
+    @property
+    def current_project(self):
+        return self._current_project
+
+    @current_project.setter
+    def current_project(self, value):
+        self._current_project = value
+
+        # Sync into file manager
+        if hasattr(self, "file_manager") and self.file_manager:
+            self.file_manager.project_path = value
+
+        # Log assignment
+        if value:
+            logging.info(f"Current project set to: {value}")
+        else:
+            logging.info("Current project cleared.")
+
     def safe_ui_call(self, func: Callable, *args, **kwargs):
-        self.root.after(0, lambda: func(*args, **kwargs))
+        if self.root and self.root.winfo_exists():
+            try:
+                self.root.after(0, lambda: func(*args, **kwargs))
+            except RuntimeError as e:
+                logging.warning(f"safe_ui_call failed: {e}")
+        else:
+            logging.warning("safe_ui_call skipped: root window no longer exists.")
 
     def handle_state_event(self, event_type, data):
+        if not self.current_project:
+            logging.info("No project loaded.")
+            return
         if event_type == "file_created":
-            self.populate_tree_view()
+            self.file_manager.populate_tree_view()
 
     def setup_ui(self):
         menubar = tk.Menu(self.root)
@@ -106,108 +144,55 @@ class RedGreenRefactorIDE:
             logging.error(f"Project open failed: {e}")
 
     def create_main_layout(self):
-        # Existing main layout with enhanced error handling
         try:
             main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
             main_container.pack(fill=tk.BOTH, expand=True)
 
-            # Layout components with extensive error handling
-            left_panel = self.create_left_panel(main_container)
-            right_panel = self.create_right_panel(main_container)
-
+            left_panel = ttk.Frame(main_container)
+            self.project_tree = create_project_tree(left_panel, self.on_file_select)
+            self.output_console = create_output_console(left_panel)
             main_container.add(left_panel)
+
+            right_panel = ttk.PanedWindow(main_container, orient=tk.VERTICAL)
+            self.ai_plan_listbox = create_ai_plan(right_panel)
+            self.file_editor = create_file_editor(right_panel, self.on_file_modified)
             main_container.add(right_panel)
 
-            self.create_command_bar(self.root)
+            # ✅ safe to initialize file_manager now
+            self.file_manager = ProjectFileManager(
+                tree_widget=self.project_tree,
+                file_editor=self.file_editor,
+                log_fn=self.log_output
+            )
+
+            self.prompt_entry, self.generate_btn, self.pause_btn, self.stop_btn = create_command_bar(
+                self.root,
+                on_generate=self.generate_project_with_ai,
+                on_pause=self.pause_project,
+                on_stop=self.stop_project
+            )
+
         except Exception as e:
             messagebox.showerror("Layout Initialization Error", str(e))
             logging.critical(f"Layout creation failed: {e}")
 
     def create_left_panel(self, parent):
         left_panel = ttk.Frame(parent)
-        self.project_tree = self.create_project_tree(left_panel)
-        self.output_console = self.create_output_console(left_panel)
+        self.project_tree = create_project_tree(left_panel)
+        self.output_console = create_output_console(left_panel)
         return left_panel
 
     def create_right_panel(self, parent):
         right_panel = ttk.PanedWindow(parent, orient=tk.VERTICAL)
-        self.ai_plan_listbox = self.create_ai_plan(right_panel)
-        self.file_editor = self.create_file_editor(right_panel)
+        self.ai_plan_listbox = create_ai_plan(right_panel)
+        self.file_editor = create_file_editor(right_panel)
         return right_panel
 
-    def create_project_tree(self, parent):
-        tree = ttk.Treeview(parent, columns=('path',), show='tree')
-        tree.pack(fill=tk.BOTH, expand=True)
-        tree.bind('<<TreeviewSelect>>', self.on_file_select)
-        return tree
-
-    def create_output_console(self, parent):
-        console = scrolledtext.ScrolledText(
-            parent, height=15, wrap=tk.WORD, state='disabled'
-        )
-        console.pack(fill=tk.X, side=tk.BOTTOM)
-        return console
-
-    def create_ai_plan(self, parent):
-        plan_frame = ttk.LabelFrame(parent, text="AI Project Plan")
-        listbox = tk.Listbox(plan_frame, height=10)
-        listbox.pack(fill=tk.BOTH, expand=True)
-        parent.add(plan_frame)
-        return listbox
-
-    def create_file_editor(self, parent):
-        editor_frame = ttk.LabelFrame(parent, text="File Contents")
-        editor = scrolledtext.ScrolledText(
-            editor_frame, wrap=tk.WORD, undo=True
-        )
-        editor.pack(fill=tk.BOTH, expand=True)
-        editor.bind('<<Modified>>', self.on_file_modified)
-        parent.add(editor_frame)
-        return editor
-
-    def create_command_bar(self, parent):
-        command_bar = ttk.Frame(parent)
-        command_bar.pack(fill=tk.X, padx=5, pady=5)
-
-        ttk.Label(command_bar, text="Project Prompt:").pack(side=tk.LEFT, padx=(0, 5))
-        self.prompt_entry = ttk.Entry(command_bar, width=50)
-        self.prompt_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-
-        button_frame = ttk.Frame(command_bar)
-        button_frame.pack(side=tk.LEFT, padx=5)
-
-        self.generate_btn = ttk.Button(
-            button_frame, text="Generate Project", command=self.generate_project_with_ai
-        )
-        self.generate_btn.pack(side=tk.LEFT, padx=2)
-
-        self.pause_btn = ttk.Button(
-            button_frame, text="Pause", command=self.pause_project, state=tk.DISABLED
-        )
-        self.pause_btn.pack(side=tk.LEFT, padx=2)
-
-        self.stop_btn = ttk.Button(
-            button_frame, text="Stop", command=self.stop_project, state=tk.DISABLED
-        )
-        self.stop_btn.pack(side=tk.LEFT, padx=2)
-
     def process_prompt_with_ai(self, combined_input: str) -> Optional[str]:
-        ai_script_path = "src/models/ai_assistant.py"
-        python_executable = 'python'
-
         try:
-            command = [python_executable, ai_script_path, combined_input]
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8'
-            )
-            ai_response, error = process.communicate()
-            if process.returncode != 0 or error:
-                raise Exception(f"AI Assistant Error: {error.strip()}")
-            return ai_response.strip()
+            ai_script_path = "src/models/ai_assistant.py"
+            result = run_ai_prompt(ai_script_path, combined_input)
+            return result
         except Exception as e:
             self.safe_ui_call(self.log_output, f"Failed to communicate with AI: {e}")
             return None
@@ -216,26 +201,16 @@ class RedGreenRefactorIDE:
         project_id = str(uuid.uuid4())
         project_path = os.path.join(self.projects_base_dir, project_id)
         os.makedirs(project_path, exist_ok=True)
-        self.current_project = project_path
+        self.safe_ui_call(lambda: setattr(self, 'current_project', project_path))
         self.safe_ui_call(self.log_output, f"New project created: {project_path}")
 
     def open_project(self):
         project_path = filedialog.askdirectory(initialdir=self.projects_base_dir)
         if project_path:
-            self.current_project = project_path
+            self.safe_ui_call(lambda: setattr(self, 'current_project', project_path))
             self.safe_ui_call(self.log_output, f"Opened project: {project_path}")
 
-            self.populate_tree_view()
-
-    def populate_tree_view(self):
-        if not self.current_project:
-            return
-
-        self.project_tree.delete(*self.project_tree.get_children())
-        for root, dirs, files in os.walk(self.current_project):
-            parent = self.project_tree.insert('', 'end', text=os.path.basename(root), values=(root,))
-            for file in files:
-                self.project_tree.insert(parent, 'end', text=file, values=(os.path.join(root, file),))
+            self.file_manager.populate_tree_view()
 
     def run_project_generation(self, metadata: Dict[str, Any]):
         """
@@ -317,64 +292,66 @@ class RedGreenRefactorIDE:
             return
 
         self.safe_ui_call(self.log_output, "Starting AI-based autonomous project generation...")
-
         self.toggle_generation_ui(False)
 
-        # Create project directory
-        project_id = str(uuid.uuid4())
-        project_path = os.path.join(self.projects_base_dir, project_id)
-        os.makedirs(project_path, exist_ok=True)
-        self.current_project = project_path
+        try:
+            # ✅ Create and assign project path before using it
+            project_id = str(uuid.uuid4())
+            project_path = os.path.join(self.projects_base_dir, project_id)
+            os.makedirs(project_path, exist_ok=True)
+            self.current_project = project_path  # Set BEFORE using it
 
-        # Initialize Autonomous Project Agent
-        self.ai_agent = AutonomousProjectAgent(self.current_project, ide_instance=self)
-        self.ai_agent.state.register_observer(self.handle_state_event)
+            # ✅ Safe to initialize agent now
+            self.ai_agent = AutonomousProjectAgent(self.current_project, ide_instance=self)
+            self.ai_agent.state.register_observer(self.handle_state_event)
 
-        # Run an initial setup prompt to get initial files
-        init_context = {
-            "prompt": prompt,
-            "format": "Return JSON with 'initial_files', 'project_tasks', and 'project_structure'"
-        }
-        initial_response = self.ai_agent.process_prompt_with_ai("initial_project_setup", init_context)
+            # Initial prompt to bootstrap structure/files
+            init_context = {
+                "prompt": prompt,
+                "format": "Return JSON with 'initial_files', 'project_tasks', and 'project_structure'"
+            }
+            initial_response = self.ai_agent.process_prompt_with_ai("initial_project_setup", init_context)
+            initial_metadata = AIResponseParser.parse_ai_response(initial_response)
 
-        # If initial files are returned, parse and write them
-        initial_metadata = AIResponseParser.parse_ai_response(initial_response)
-        if initial_metadata and "initial_files" in initial_metadata:
-            initial_files = initial_metadata.get("initial_files", {})
+            if initial_metadata and "initial_files" in initial_metadata:
+                initial_files = initial_metadata.get("initial_files", {})
 
-            if isinstance(initial_files, dict):
-                for filename, content in initial_files.items():
-                    self.ai_agent.state.add_code_file(filename, content)
-            elif isinstance(initial_files, list):
-                for file_entry in initial_files:
-                    if isinstance(file_entry, dict):
-                        filename = file_entry.get("filename")
-                        content = file_entry.get("content", "# Placeholder content\n")
-                    else:
-                        filename = str(file_entry)
-                        content = "# Placeholder content\n"
-                    if filename:
+                if isinstance(initial_files, dict):
+                    for filename, content in initial_files.items():
                         self.ai_agent.state.add_code_file(filename, content)
+                elif isinstance(initial_files, list):
+                    for file_entry in initial_files:
+                        if isinstance(file_entry, dict):
+                            filename = file_entry.get("filename")
+                            content = file_entry.get("content", "# Placeholder content\n")
+                        else:
+                            filename = str(file_entry)
+                            content = "# Placeholder content\n"
+                        if filename:
+                            self.ai_agent.state.add_code_file(filename, content)
 
-            # Optional: also write project structure if included
-            if "project_structure" in initial_metadata:
+            if initial_metadata and "project_structure" in initial_metadata:
                 ProjectIO.create_structure(self.ai_agent.project_path, initial_metadata, print)
 
-            self.populate_tree_view()
+            self.file_manager.populate_tree_view()
+            self.ai_agent.start_autonomous_development(prompt)
 
-        self.ai_agent.start_autonomous_development(prompt)
+            self.safe_ui_call(self.log_output, "Autonomous agent has been launched.")
+            self.file_manager.populate_tree_view()
 
-        self.safe_ui_call(self.log_output, "Autonomous agent has been launched.")
+            self.update_ai_plan('\n'.join([
+                "Analyzing requirements",
+                "Designing architecture",
+                "Generating tests",
+                "Implementing features",
+                "Refactoring code",
+                "Validating project"
+            ]))
 
-        self.populate_tree_view()
-        self.update_ai_plan('\n'.join([
-            "Analyzing requirements",
-            "Designing architecture",
-            "Generating tests",
-            "Implementing features",
-            "Refactoring code",
-            "Validating project"
-        ]))
+        except Exception as e:
+            logging.error(f"Project generation failed: {e}")
+            self.safe_ui_call(self.handle_generation_failure, f"Project generation failed: {e}")
+            self.toggle_generation_ui(True)
 
     def threaded_ai_generation(self, prompt):
         """
@@ -409,7 +386,7 @@ class RedGreenRefactorIDE:
             self._generate_project_docs(project_path, parsed_metadata)
 
             # Set the current project and refresh the UI
-            self.current_project = project_path
+            self.safe_ui_call(lambda: setattr(self, 'current_project', project_path))
             self.safe_ui_call(self.populate_project_tree)
 
             # Format project structure and tasks for AI Plan
@@ -427,7 +404,7 @@ class RedGreenRefactorIDE:
             logging.error(f"Project finalization error: {e}")
             messagebox.showerror("Generation Error", str(e))
         finally:
-            self.safe_ui_call(self.toggle_generation_ui, True)
+            self.ai_response_queue.put(("completed", "Project done"))
 
     def _generate_project_docs(self, project_path, parsed_metadata):
         """
@@ -504,43 +481,13 @@ class RedGreenRefactorIDE:
         self.stop_btn.config(state=tk.DISABLED)
 
     def populate_project_tree(self):
-        try:
-            self.project_tree.delete(*self.project_tree.get_children())
-            self.current_project_files.clear()
-
-            for root, dirs, files in os.walk(self.current_project):
-                parent = self.project_tree.insert(
-                    '',
-                    'end',
-                    text=os.path.basename(root),
-                    values=(root,)
-                )
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    file_id = self.project_tree.insert(
-                        parent,
-                        'end',
-                        text=file,
-                        values=(file_path,)
-                    )
-                    self.current_project_files[file_id] = file_path
-        except Exception as e:
-            logging.error(f"Error in populate_project_tree: {e}")
+        self.file_manager.populate_tree_view()
 
     def on_file_select(self, event):
-        selected_item = self.project_tree.selection()
-        if selected_item:
-            file_path = self.project_tree.item(selected_item[0])['values'][0]
-            if os.path.isfile(file_path):
-                self.current_file_path = file_path
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    self.file_editor.delete('1.0', tk.END)
-                    self.file_editor.insert('1.0', content)
-                    self.file_editor.edit_modified(False)
+        self.file_manager.on_file_select(event)
 
     def on_file_modified(self, event=None):
-        pass
+        self.file_manager.on_file_modified(event)
 
     def update_ai_plan(self, plan_text: str):
         self.ai_plan_listbox.delete(0, tk.END)
@@ -550,23 +497,14 @@ class RedGreenRefactorIDE:
                 self.ai_plan_listbox.insert(tk.END, step)
 
     def run_tests(self):
-        try:
-            result = subprocess.run(
-                ['pytest'],
-                capture_output=True,
-                text=True,
-                cwd=self.current_project
-            )
-            self.safe_ui_call(self.log_output, result.stdout)
+        success, stdout, stderr = run_pytest(self.current_project)
 
-            if result.returncode == 0:
-                self.safe_ui_call(self.log_output, "Tests passed successfully!")
+        self.safe_ui_call(self.log_output, stdout)
 
-            else:
-                self.safe_ui_call(self.log_output, "Tests failed:\n" + result.stderr)
-
-        except Exception as e:
-            self.safe_ui_call(self.log_output, f"Test execution error: {e}")
+        if success:
+            self.safe_ui_call(self.log_output, "Tests passed successfully!")
+        else:
+            self.safe_ui_call(self.log_output, f"Tests failed:\n{stderr}")
 
     def log_output(self, message: str):
         self.output_console.config(state='normal')
@@ -604,4 +542,3 @@ if __name__ == '__main__':
     root = tk.Tk()
     app = RedGreenRefactorIDE(root)
     root.mainloop()
-
