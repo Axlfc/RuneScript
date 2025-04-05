@@ -16,6 +16,7 @@ from datetime import datetime
 import unicodedata
 
 from src.agents.project_rag_coordinator import ProjectRAGCoordinator
+from src.models.tdd_manager import TDDManager, TDDStage
 
 
 def create_default_metadata(name, error_message):
@@ -294,9 +295,16 @@ class RequirementAgent:
 
     def analyze(self, requirements: str) -> Dict:
         logging.info(f"Analyzing requirements: {requirements}")
+        related_chunks = self.agent.get_relevant_rag_context(
+            f"What are best practices for: {requirements}",
+            top_k=3,
+            as_context=True
+        )
+
         context = {
             "requirements": requirements,
-            "project_name": self.agent._generate_project_name()
+            "project_name": self.agent._generate_project_name(),
+            "retrieved_context": related_chunks
         }
         ai_response = self.agent.process_prompt_with_ai("requirement_analysis", context)
         project_scope = AIResponseParser.parse_ai_response(ai_response)
@@ -315,6 +323,10 @@ class ArchitectureAgent:
 
     def design(self, project_scope: Dict) -> Dict:
         logging.info("Designing project architecture")
+        related_chunks = self.agent.get_relevant_rag_context(
+            f"What architectures are recommended for projects like: {project_scope.get('project_name')}"
+        )
+
         context = {
             "project_scope": project_scope,
             "default_structure": [
@@ -322,7 +334,8 @@ class ArchitectureAgent:
                 "tests/",
                 "docs/",
                 "README.md"
-            ]
+            ],
+            "retrieved_context": related_chunks
         }
         ai_response = self.agent.process_prompt_with_ai("architecture_design", context)
         architecture = AIResponseParser.parse_ai_response(ai_response)
@@ -339,36 +352,78 @@ class ArchitectureAgent:
 class TestGenerationAgent:
     def __init__(self, agent):
         self.agent = agent
+        self.tdd = agent.tdd
 
     def generate_tests(self, architecture: Dict) -> List[Dict]:
-        logging.info("Generating initial test cases")
+        logging.info("Generating RED-phase test cases")
+        # Skip tests if project looks purely visual
+        if any(k in str(architecture).lower() for k in ["html", "css", "web", "landing", "portfolio"]):
+            logging.info("Skipping test generation — visual/static project.")
+            return []
+
         context = {"architecture": architecture}
+        related_chunks = self.agent.get_relevant_rag_context(
+            f"What kinds of tests are common for systems like: {architecture.get('project_name')}")
+        context["retrieved_context"] = related_chunks
         ai_response = self.agent.process_prompt_with_ai("test_generation", context)
         parsed = AIResponseParser.parse_ai_response(ai_response)
 
         if not isinstance(parsed, list):
-            logging.warning("Parsed test response is not a list. Using fallback.")
-            return [{
+            logging.warning("Invalid test format, using fallback.")
+            parsed = [{
                 "name": "test_project_initialization",
                 "description": "Verify project initializes correctly",
                 "module": "test_core.py"
             }]
 
-        # Filter out any garbage responses
-        safe_tests = []
+        valid_tests = []
         for test in parsed:
-            if isinstance(test, dict) and "name" in test:
-                safe_tests.append(test)
+            if not isinstance(test, dict) or "name" not in test:
+                continue
 
-        if not safe_tests:
-            logging.warning("No valid test dicts found in parsed response. Using fallback.")
-            return [{
-                "name": "test_project_initialization",
-                "description": "Verify project initializes correctly",
-                "module": "test_core.py"
-            }]
+            name = test["name"]
+            description = test.get("description", "No description provided")
+            module = test.get("module", "test_misc.py")
 
-        return safe_tests
+            # test_code = self._generate_red_test(name, description)
+
+            # Track the full TDD cycle from RED
+            cycle_id = self.tdd.start_cycle(name)
+
+            test_code = self.tdd.get_test_content(cycle_id)
+            context = {
+                "test_name": test["name"],
+                "test_code": test_code,
+                "requirements": self.project_scope or {},
+            }
+
+            self.tdd.add_test_content(cycle_id, test_code)
+            self.tdd.set_stage(cycle_id, TDDStage.RED)
+
+            valid_tests.append({
+                "name": name,
+                "description": description,
+                "module": module,
+                "content": test_code,
+                "cycle_id": cycle_id
+            })
+
+        return valid_tests
+
+    def _generate_red_test(self, name: str, description: str) -> str:
+        class_name = name.replace("test_", "Test").title().replace("_", "")
+        return f'''# {name}
+# {description}
+
+import unittest
+
+class {class_name}(unittest.TestCase):
+    def test_unimplemented(self):
+        self.fail("🔴 RED: This test is intentionally failing until the feature is implemented.")
+
+if __name__ == '__main__':
+    unittest.main()
+'''
 
 
 class FeatureImplementationAgent:
@@ -380,6 +435,9 @@ class FeatureImplementationAgent:
         context = {
             "tests": tests
         }
+        related_chunks = self.agent.get_relevant_rag_context(
+            "How are similar features typically implemented?")
+        context["retrieved_context"] = related_chunks
         ai_response = self.agent.process_prompt_with_ai("feature_implementation", context)
         implementation_results = AIResponseParser.parse_ai_response(ai_response)
         if not implementation_results:
@@ -399,6 +457,13 @@ class RefactoringAgent:
         context = {
             "implementation_results": implementation_results
         }
+
+        # Feed the AI some actual files, not just vibes
+        context = enrich_context_with_relevant_files(context, self.agent.project_path)
+
+        related_chunks = self.agent.get_relevant_rag_context(
+            "What are best practices for refactoring Python code?")
+        context["retrieved_context"] = related_chunks
         self.agent.process_prompt_with_ai("code_refactoring", context)
 
 
@@ -600,11 +665,67 @@ class AutomatedTestingFramework:
             return False
 
 
+def detect_relevant_files(prompt: str, project_path: str) -> List[str]:
+    """
+    Naive keyword-to-filename mapping to detect likely relevant files based on prompt.
+    """
+    relevant_map = {
+        "html": ["index.html"],
+        "css": ["style.css", "styles.css", "main.css"],
+        "javascript": ["scripts.js", "main.js", "app.js"],
+        "design": ["index.html", "style.css", "scripts.js"],
+        "webpage": ["index.html", "style.css", "scripts.js"],
+        "portfolio": ["index.html", "style.css", "scripts.js"],
+        "landing": ["index.html"],
+        "backend": ["app.py", "main.py", "api.py"],
+        "api": ["app.py", "api.py"],
+        "test": ["test_", "_test.py"]
+    }
+
+    prompt = prompt.lower()
+    matched_files = set()
+
+    for keyword, files in relevant_map.items():
+        if keyword in prompt:
+            for fname in files:
+                full_path = os.path.join(project_path, fname)
+                if os.path.exists(full_path):
+                    matched_files.add(full_path)
+
+    return list(matched_files)
+
+
+def enrich_context_with_relevant_files(context: Dict[str, Any], project_path: str) -> Dict[str, Any]:
+    prompt_text = context.get("prompt") or context.get("project_scope", {}).get("description", "")
+    relevant_files = detect_relevant_files(prompt_text, project_path)
+    enriched_files = []
+
+    for file_path in relevant_files:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                enriched_files.append({
+                    "filename": os.path.relpath(file_path, project_path),
+                    "content": f.read()
+                })
+        except Exception as e:
+            logging.warning(f"Failed to read relevant file: {file_path}: {e}")
+
+    if enriched_files:
+        context["relevant_files"] = enriched_files
+        context["instruction"] = (
+            f"Update the following files to match the goal: '{prompt_text}'. "
+            "Only change what's necessary. Do not delete unrelated code."
+        )
+    return context
+
+
 class AutonomousProjectAgent:
-    def __init__(self, project_path: str):
+    def __init__(self, project_path: str, ide_instance=None):
         self.project_path = project_path
+        self.ide_instance = ide_instance
         self.state = StateManagementSystem(self.project_path)
         self.rag = ProjectRAGCoordinator(self.project_path, use_ollama=True, state=self.state)
+        self.tdd = TDDManager(self.project_path)
         self.task_queue = queue.Queue()
         self.result_queue = queue.Queue()
         self.current_phase = "idle"
@@ -646,13 +767,14 @@ class AutonomousProjectAgent:
         # Create development journal
         self._create_development_journal()
 
+    def get_relevant_rag_context(self, query: str, top_k=3, as_context=False) -> List[str]:
+        return self.rag.query(query, top_k=top_k, as_context=as_context)
 
     def add_feedback(self, feedback: Dict[str, Any]):
         """
         Add feedback to be considered in the next iteration.
         """
         self.feedback_buffer = feedback
-
 
     def _create_development_journal(self):
         """Create a development journal file to show thinking process"""
@@ -705,6 +827,27 @@ class AutonomousProjectAgent:
         """
         try:
             logging.info(f"THINKING: Processing {stage} with context keys: {list(context.keys())}")
+            # Inject relevant files if this stage modifies or writes code
+            if stage in ["feature_implementation", "code_refactoring"]:
+                prompt_text = context.get("prompt") or context.get("project_scope", {}).get("description", "")
+                relevant_files = detect_relevant_files(prompt_text, self.project_path)
+                context["relevant_files"] = []
+
+                for file_path in relevant_files:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            context["relevant_files"].append({
+                                "filename": os.path.relpath(file_path, self.project_path),
+                                "content": f.read()
+                            })
+                    except Exception as e:
+                        logging.warning(f"Failed to read {file_path}: {e}")
+
+                if context["relevant_files"]:
+                    context["instruction"] = (
+                        f"Update the following files to match the goal: '{prompt_text}'. "
+                        "Only change what's necessary. Do not delete unrelated code."
+                    )
             self._update_development_journal(f"Starting to process: {stage}", f"AI Processing - {stage}")
 
             combined_input = json.dumps({"stage": stage, "context": context, "meta_prompt": is_meta_prompt})
@@ -1008,7 +1151,7 @@ class AutonomousProjectAgent:
                     f"Architecture design:\n```json\n{json.dumps(self.architecture, indent=2)}\n```")
                 self._update_readme_status("✅ Architecture designed")
 
-                # Phase 3: Test-Driven Development
+                # Phase 3: Test-Driven Development (RED)
                 self.current_phase = "test_driven_development"
                 self._update_readme_status("🧪 Generating tests...")
 
@@ -1024,35 +1167,31 @@ class AutonomousProjectAgent:
                 for test in self.tests:
                     test_name = test.get('name')
                     test_module = test.get('module', 'test_unknown.py')
-                    test_description = test.get('description', 'No description')
+                    test_content = test.get('content', '')
 
-                    test_content = f"""# {test_name}
-# {test_description}
+                    cycle_id = self.tdd.start_cycle(test_name)
+                    test['cycle_id'] = cycle_id
+                    self.tdd.set_stage(cycle_id, TDDStage.RED)
+                    self.tdd.add_test_content(cycle_id, test_content)
 
-import unittest
-
-class {test_name.replace('test_', 'Test').title().replace('_', '')}(unittest.TestCase):
-    def setUp(self):
-        # Setup for the test
-        pass
-
-    def test_functionality(self):
-        # TODO: Implement actual test
-        self.assertTrue(True, "Placeholder test - will be implemented")
-
-if __name__ == '__main__':
-    unittest.main()
-"""
                     test_path = os.path.join(self.project_path, 'tests', test_module)
                     os.makedirs(os.path.dirname(test_path), exist_ok=True)
                     with open(test_path, 'w', encoding='utf-8') as f:
                         f.write(test_content)
 
-                    self.state.log_task(f"Created test: {test_name}")
+                    self.rag.log_ai_response("tdd_red", test_content)
+                    self.state.log_task(f"Created RED test: {test_name}")
+
+                # Confirm RED state (tests fail)
+                red_failed = not self.testing_framework.run_tests()
+                if red_failed:
+                    self._update_development_journal("Red phase confirmed: tests fail as expected.")
+                else:
+                    self._update_development_journal("Warning: RED tests unexpectedly passed!", "⚠️ TDD Violation")
 
                 self._update_readme_status("✅ Tests generated")
 
-                # Phase 4: Implementation
+                # Phase 4: Implementation (GREEN)
                 self.current_phase = "implementation"
                 self._update_readme_status("⚙️ Implementing features...")
 
@@ -1063,7 +1202,7 @@ if __name__ == '__main__':
                 if self.feedback_buffer:
                     impl_context["previous_feedback"] = self.feedback_buffer
 
-                implementation_results = self.feature_implementation_agent.implement_features(impl_context)
+                implementation_results = self.feature_implementation_agent.implement_features(self.tests)
 
                 for mod in implementation_results.get("implemented_modules", []):
                     filename = mod.get("filename", "unknown.py")
@@ -1072,21 +1211,41 @@ if __name__ == '__main__':
                     self.state.add_code_file(filename, content)
                     self.state.log_task(f"Implemented: {filename}")
 
+                # Update GREEN stage for each test
+                for test in self.tests:
+                    cycle_id = test.get('cycle_id')
+                    filename = test.get("module", "unknown.py")
+                    impl_code = next((m.get("content") for m in implementation_results.get("implemented_modules", [])
+                                      if m.get("filename") == filename), None)
+                    if cycle_id and impl_code:
+                        self.tdd.set_stage(cycle_id, TDDStage.GREEN)
+                        self.tdd.add_implementation(cycle_id, impl_code)
+
                 self.rag.embed_current_vault()
                 self._update_readme_status("✅ Features implemented")
 
-                # Phase 5: Refactoring
+                # Phase 5: Refactoring (conditional)
                 self.current_phase = "refactoring"
-                self._update_readme_status("🔧 Refactoring code...")
+                self._update_readme_status("🔧 Evaluating need for refactoring...")
 
                 if random.random() < 0.3:
                     self._inject_creative_thought("refactoring")
 
-                refactor_context = {"implementation_results": implementation_results}
-                if self.feedback_buffer:
-                    refactor_context["previous_feedback"] = self.feedback_buffer
+                for test in self.tests:
+                    cycle_id = test.get("cycle_id")
+                    if not cycle_id:
+                        continue
 
-                self.refactoring_agent.refactor_code(refactor_context)
+                    needs_refactor, reason = self.tdd.should_refactor(cycle_id)
+                    if needs_refactor:
+                        self._update_development_journal(f"Refactoring triggered for {test['name']}:\n{reason}")
+                        self.tdd.set_stage(cycle_id, TDDStage.REFACTOR)
+                        self.refactoring_agent.refactor_code({"cycle_id": cycle_id})
+                    else:
+                        self._update_development_journal(f"No refactoring needed for {test['name']}")
+
+                    self.tdd.complete_cycle(cycle_id)
+
                 self._update_readme_status("✅ Code refactored")
 
                 # Phase 6: Validation
@@ -1100,12 +1259,10 @@ if __name__ == '__main__':
                     self._update_development_journal("Tests failed, need to fix implementation!", "Validation Failed")
                     self._update_readme_status("❌ Tests failed, fixing issues...")
                     feedback = {"success": success, "needs_refinement": True}
-
-                    # Save feedback for next iteration
                     self.feedback_buffer = feedback
                 else:
                     feedback = {"success": success}
-                    self.feedback_buffer = None  # Reset buffer
+                    self.feedback_buffer = None
 
                 self._update_development_journal(f"Completed iteration {iteration_count} with success: {success}")
 
@@ -1130,7 +1287,12 @@ if __name__ == '__main__':
             self._update_readme_status(f"❌ Development error: {str(e)[:50]}...")
             self.state.export_state(os.path.join(self.project_path, "project_state_error.json"))
 
+        # Final vault sync
         self.rag.embed_current_vault()
+
+        # 🔓 FIX: Re-enable prompt input at the end of dev
+        if hasattr(self, 'ide_instance') and self.ide_instance:
+            self.ide_instance.safe_ui_call(self.ide_instance.toggle_generation_ui, True)
 
     def _analyze_requirements(self, requirements: str) -> Dict:
         """
@@ -1273,18 +1435,20 @@ if __name__ == '__main__':
             "output_format": "Return a JSON object with an 'implemented_modules' array where each module has 'filename' and 'content' properties"
         }
 
+        # Enrich context with relevant files before asking AI
+        context = enrich_context_with_relevant_files(context, self.project_path)
+
         ai_response = self.process_prompt_with_ai("feature_implementation", context)
         if ai_response:
             self.rag.log_ai_response("feature_implementation", ai_response)
 
-        # Parse AI response or use default
+        # Parse AI response or fallback
         try:
             implementation_results = json.loads(ai_response) if ai_response else {
                 "implemented_modules": [],
                 "test_coverage": {}
             }
 
-            # Log what files the AI decided to create
             for module in implementation_results.get("implemented_modules", []):
                 logging.info(f"AI generated file: {module.get('filename')}")
 
@@ -1775,7 +1939,7 @@ class RedGreenRefactorIDE:
         self.current_project = project_path
 
         # Initialize Autonomous Project Agent
-        self.ai_agent = AutonomousProjectAgent(self.current_project)
+        self.ai_agent = AutonomousProjectAgent(self.current_project, ide_instance=self)
         self.ai_agent.state.register_observer(self.handle_state_event)
 
         # Run an initial setup prompt to get initial files

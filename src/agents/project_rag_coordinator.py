@@ -85,8 +85,12 @@ class ProjectRAGCoordinator:
             logging.error(f"Failed to log AI response: {e}")
             return False
 
-    def query_similar_context(self, query, top_k=3):
-        """Query the vector store for similar context."""
+    def query(self, query: str, top_k: int = 3, as_context: bool = False) -> list:
+        """
+        Query the embedded chunks for similar context.
+        Returns a list of result dicts with 'text' and 'score'.
+        If as_context=True, returns a list of formatted text snippets.
+        """
         try:
             # Check if index exists
             index_path = os.path.join(self.vector_store_path, "index.faiss")
@@ -121,6 +125,9 @@ class ProjectRAGCoordinator:
                         "text": metadata["chunks"][idx],
                         "score": float(distances[0][i])
                     })
+
+            if as_context:
+                return [r["text"] for r in results]
 
             return results
         except Exception as e:
