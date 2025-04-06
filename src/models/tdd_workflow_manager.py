@@ -1,3 +1,6 @@
+from src.views.tk_utils import PHASE_UI_LABELS, UI_TO_INTERNAL_PHASE
+
+
 class TDDWorkflowManager:
     """
     Manages the TDD workflow state and transitions between red-green-refactor phases
@@ -14,13 +17,13 @@ class TDDWorkflowManager:
         """Start a new TDD cycle"""
         self.transition_to_phase("RED")
 
-    def transition_to_phase(self, phase):
-        """Transition to the specified phase"""
+    def transition_to_phase(self, phase: str):
+        phase = UI_TO_INTERNAL_PHASE.get(phase, phase)
         if phase not in self.phases:
             raise ValueError(f"Invalid phase: {phase}")
-
         self.current_phase = phase
-        self.ui_manager.update_phase_ui(phase, self.test_status)
+        ui_label = PHASE_UI_LABELS.get(phase, phase)
+        self.ui_manager.update_phase_ui(ui_label, self.test_status)
 
     def run_tests(self):
         """Run tests and determine next phase based on results"""

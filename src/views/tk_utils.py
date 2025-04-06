@@ -17,6 +17,15 @@ language_selected_option = read_config_parameter("options.editor_settings.langua
 localization_data = load_localization(f"data/locales/{language_selected_option}.json")
 
 
+PHASE_UI_LABELS = {
+    "RED": "Write Test",
+    "GREEN": "Write Code",
+    "REFACTOR": "Refactor"
+}
+
+UI_TO_INTERNAL_PHASE = {v: k for k, v in PHASE_UI_LABELS.items()}
+
+
 def configure_app():
     width = 800
     height = 600

@@ -1,6 +1,8 @@
 from tkinter import ttk
 import tkinter as tk
 
+from src.views.tk_utils import PHASE_UI_LABELS
+
 
 class TDDWorkflowPanel(ttk.Frame):
     """Panel specifically for managing the Red-Green-Refactor workflow"""
@@ -9,53 +11,6 @@ class TDDWorkflowPanel(ttk.Frame):
         super().__init__(parent)
         self.current_phase = tk.StringVar(value="Write Test")
         self.create_widgets(on_run_tests, on_refactor, on_write_test)
-
-    def create_widgets(self, on_run_tests, on_refactor, on_write_test):
-        # Create phase indicator
-        phase_frame = ttk.LabelFrame(self, text="TDD Cycle")
-        phase_frame.pack(fill=tk.X, padx=5, pady=5)
-
-        # Phase indicator
-        phases = ["Write Test", "Run Test", "Write Code", "Run Test Again", "Refactor"]
-        self.phase_indicators = {}
-
-        for i, phase in enumerate(phases):
-            col = i * 2  # Even columns for phases
-            indicator = ttk.Label(phase_frame, text=phase, padding=5)
-            indicator.grid(row=0, column=col, padx=5)
-            self.phase_indicators[phase] = indicator
-
-            if i < len(phases) - 1:
-                arrow = ttk.Label(phase_frame, text="→")
-                arrow.grid(row=0, column=col + 1, padx=2)  # Odd columns for arrows
-
-        # Action buttons frame
-        action_frame = ttk.Frame(self)
-        action_frame.pack(fill=tk.X, padx=5, pady=5)
-
-        # TDD workflow buttons with clear visual indicators
-        self.test_btn = ttk.Button(
-            action_frame,
-            text="1. Write Test (Red)",
-            style="Red.TButton",
-            command=on_write_test
-        )
-        self.test_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
-
-        self.run_tests_btn = ttk.Button(
-            action_frame,
-            text="2. Run Tests",
-            command=on_run_tests
-        )
-        self.run_tests_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
-
-        self.refactor_btn = ttk.Button(
-            action_frame,
-            text="3. Refactor (Green → Clean)",
-            style="Green.TButton",
-            command=on_refactor
-        )
-        self.refactor_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
 
     def create_widgets(self, on_run_tests, on_refactor, on_write_test):
         # Create phase indicator
@@ -104,6 +59,8 @@ class TDDWorkflowPanel(ttk.Frame):
 
     def update_phase(self, phase_name, test_status=None):
         """Updates the current phase indicator and button states"""
+
+        label = PHASE_UI_LABELS.get(phase_name, phase_name)  # just in case
         # Reset all indicators
         for phase, indicator in self.phase_indicators.items():
             indicator.configure(background="", foreground="")
@@ -144,3 +101,6 @@ class TDDWorkflowPanel(ttk.Frame):
         elif test_status is None:
             # Reset to default style
             self.run_tests_btn.configure(style="TButton")
+
+        if label in self.phase_indicators:
+            self.phase_indicators[label].configure(background="#4a6cd4", foreground="white")

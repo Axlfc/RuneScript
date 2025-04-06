@@ -1,6 +1,7 @@
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
+from typing import Optional
 
 from src.ui.project_file_manager import ProjectFileManager
 from src.ui.ui_components import create_project_tree, create_output_console, create_ai_plan, create_file_editor, \
@@ -91,26 +92,47 @@ class UIManager:
             )
             logging.critical(f"Layout creation failed: {e}")
 
-    def update_phase_ui(self, phase_name, test_status=None):
-        """Update visual indicator of current TDD phase"""
+    def update_phase_ui(self, phase_name: str, test_status: Optional[str] = None) -> None:
+        """
+        Update the visual indicator and button state for the current TDD phase.
+
+        Args:
+            phase_name (str): The current phase name (e.g., "Write Test", "Run Test").
+            test_status (Optional[str]): The result of the last test run, e.g. "passed" or "failed".
+        """
         if hasattr(self, 'tdd_panel'):
             self.tdd_panel.update_phase(phase_name, test_status)
 
-    def update_test_results(self, passed, stdout, stderr):
-        """Update test result panel with output"""
+    def update_test_results(self, passed: bool, stdout: str, stderr: str) -> None:
         if hasattr(self, 'test_result_panel'):
-            self.test_result_panel.update_test_results(passed, stdout + "\n" + stderr)
+            self.test_result_panel.update_test_results(passed, stdout, stderr)
 
-    def show_message(self, title, message):
-        """Display a message box for the user"""
+    def show_message(self, title: str, message: str) -> None:
+        """
+        Show a popup information message box to the user.
+
+        Args:
+            title (str): The title of the message box.
+            message (str): The message to be displayed.
+        """
         messagebox.showinfo(title, message)
 
-    def focus_test_editor(self):
-        """Optional: focus test file"""
+    def focus_test_editor(self) -> None:
+        """
+        Bring focus to the test file editor.
+
+        Note:
+            Currently only logs the action. Implement actual focus logic if needed.
+        """
         self.log_output("Focus on test editor requested (not yet implemented)")
 
-    def focus_implementation_editor(self):
-        """Optional: focus source file"""
+    def focus_implementation_editor(self) -> None:
+        """
+        Bring focus to the implementation editor.
+
+        Note:
+            Currently only logs the action. Implement actual focus logic if needed.
+        """
         self.log_output("Focus on implementation editor requested (not yet implemented)")
 
     def on_file_select(self, event):
