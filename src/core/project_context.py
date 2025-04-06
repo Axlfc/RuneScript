@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -24,6 +25,37 @@ class ProjectContext:
 
     def add_documentation(self, doc):
         self.documentation.append(doc)
+
+    def to_dict(self):
+        return {
+            "project_name": self.project_name,
+            "description": self.description,
+            "path": self.path,
+            "milestones": self.milestones,
+            "tasks": self.tasks,
+            "completed_tasks": self.completed_tasks,
+            "documentation": self.documentation,
+            "current_phase": self.current_phase,
+            "last_updated": datetime.now().isoformat()
+        }
+
+    def save_context(self):
+        context_path = os.path.join(self.path, "project_context.json")
+        with open(context_path, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=4)
+
+    @classmethod
+    def load_context(cls, path):
+        context_path = os.path.join(path, "project_context.json")
+        with open(context_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        ctx = cls(data["project_name"], data["description"], path)
+        ctx.milestones = data.get("milestones", [])
+        ctx.tasks = data.get("tasks", [])
+        ctx.completed_tasks = data.get("completed_tasks", [])
+        ctx.documentation = data.get("documentation", [])
+        ctx.current_phase = data.get("current_phase", "Planning")
+        return ctx
 
 
 

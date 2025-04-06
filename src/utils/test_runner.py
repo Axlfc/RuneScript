@@ -1,14 +1,20 @@
 import subprocess
 import logging
-from typing import Optional, Tuple
+from typing import NamedTuple
 
 
-def run_pytest(project_path: str) -> Tuple[bool, str, str]:
+class TestResult(NamedTuple):
+    success: bool
+    stdout: str
+    stderr: str
+
+
+def run_pytest(project_path: str) -> TestResult:
     """
     Executes pytest in the specified project directory.
 
     Returns:
-        (success: bool, stdout: str, stderr: str)
+        TestResult(success, stdout, stderr)
     """
     try:
         result = subprocess.run(
@@ -18,9 +24,12 @@ def run_pytest(project_path: str) -> Tuple[bool, str, str]:
             cwd=project_path
         )
 
-        success = result.returncode == 0
-        return success, result.stdout.strip(), result.stderr.strip()
+        return TestResult(
+            success=result.returncode == 0,
+            stdout=result.stdout.strip(),
+            stderr=result.stderr.strip()
+        )
 
     except Exception as e:
         logging.error(f"Test runner failed: {e}")
-        return False, "", str(e)
+        return TestResult(False, "", str(e))

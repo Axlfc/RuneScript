@@ -13,6 +13,7 @@ from src.agents.requirement_agent import RequirementAgent
 from src.agents.test_generation_agent import TestGenerationAgent
 from src.agents.validation_agent import ValidationAgent
 from datetime import datetime
+import traceback
 import uuid
 import time
 import random
@@ -580,6 +581,7 @@ class AutonomousProjectAgent:
                 "created_directories": created_dirs,
                 "created_files": created_files
             })
+            self.save_checkpoint()
 
         except Exception as e:
             error_msg = f"Failed to create structure: {e}"
@@ -762,6 +764,8 @@ class AutonomousProjectAgent:
                     with open(test_path, 'w', encoding='utf-8') as f:
                         f.write(test_content)
 
+                    self.save_checkpoint()
+
                     self.rag.log_ai_response("tdd_red", test_content)
                     self.state.log_task(f"Created RED test: {test_name}")
 
@@ -792,6 +796,7 @@ class AutonomousProjectAgent:
                     content = mod.get("content", "# Empty file")
 
                     self.state.add_code_file(filename, content)
+                    self.save_checkpoint()
                     self.state.log_task(f"Implemented: {filename}")
 
                 # Update GREEN stage for each test
@@ -824,6 +829,7 @@ class AutonomousProjectAgent:
                         self._update_development_journal(f"Refactoring triggered for {test['name']}:\n{reason}")
                         self.tdd.set_stage(cycle_id, TDDStage.REFACTOR)
                         self.refactoring_agent.refactor_code({"cycle_id": cycle_id})
+                        self.save_checkpoint()
                     else:
                         self._update_development_journal(f"No refactoring needed for {test['name']}")
 
@@ -837,6 +843,7 @@ class AutonomousProjectAgent:
 
                 success = self.testing_framework.run_tests()
                 self.state.add_test_result(f"iteration_{iteration_count}_validation", success)
+                self.save_checkpoint()
 
                 if not success and iteration_count < max_iterations:
                     self._update_development_journal("Tests failed, need to fix implementation!", "Validation Failed")
@@ -851,6 +858,7 @@ class AutonomousProjectAgent:
 
                 if random.random() < 0.4:
                     self._add_spontaneous_improvement()
+                    self.save_checkpoint()
 
                 time.sleep(1)
 
@@ -877,6 +885,18 @@ class AutonomousProjectAgent:
         if hasattr(self, 'ide_instance') and self.ide_instance:
             if hasattr(self.ide_instance, "ai_response_queue"):
                 self.ide_instance.ai_response_queue.put(("completed", "Autonomous development finished"))
+
+    def save_checkpoint(self):
+        """Persist current agent state for crash recovery with file-level error tracking."""
+        checkpoint_path = os.path.join(self.project_path, "project_state.json")
+
+        try:
+            self.state.export_state(checkpoint_path)
+            logging.info(f"Checkpoint saved at: {checkpoint_path}")
+        except Exception as e:
+            logging.error(f"❌ Failed to save checkpoint to {checkpoint_path}")
+            logging.error(f"Exception: {e}")
+            logging.debug(traceback.format_exc())
 
     def _analyze_requirements(self, requirements: str) -> Dict:
         """

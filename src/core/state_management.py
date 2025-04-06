@@ -137,11 +137,58 @@ class StateManagementSystem:
         except Exception as e:
             logging.error(f"Failed to update TODO.md: {e}")
 
-    def export_state(self, path):
+    def export_state(self, path: Optional[str] = None, keep_versions: int = 10):
+        """
+        Export the current state to a versioned file.
+
+        Args:
+            path (str): Optional custom path. If not provided, uses default inside project_path.
+            keep_versions (int): How many historical versions to retain.
+        """
         import json
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(self.state, f, indent=4)
-        self._notify_observers("state_exported", path)
+        from glob import glob
+
+        try:
+            if not path:
+                state_dir = self.project_path
+                base_name = "project_state"
+                versioned_files = sorted(
+                    glob(os.path.join(state_dir, f"{base_name}_v*.json")),
+                    key=lambda x: os.path.getmtime(x)
+                )
+
+                next_version = len(versioned_files) + 1
+                versioned_filename = os.path.join(state_dir, f"{base_name}_v{next_version}.json")
+                latest_path = os.path.join(state_dir, f"{base_name}_latest.json")
+
+            else:
+                versioned_filename = path
+                latest_path = os.path.join(self.project_path, "project_state_latest.json")
+
+            # Save new version
+            with open(versioned_filename, 'w', encoding='utf-8') as f:
+                json.dump(self.state, f, indent=4)
+
+            # Save a convenient "latest" copy
+            with open(latest_path, 'w', encoding='utf-8') as f:
+                json.dump(self.state, f, indent=4)
+
+            logging.info(f"State exported to: {versioned_filename}")
+            self._notify_observers("state_exported", versioned_filename)
+
+            # Clean up old versions
+            if not path:
+                versioned_files = sorted(
+                    glob(os.path.join(state_dir, f"{base_name}_v*.json")),
+                    key=lambda x: os.path.getmtime(x)
+                )
+                while len(versioned_files) > keep_versions:
+                    oldest = versioned_files.pop(0)
+                    os.remove(oldest)
+                    logging.info(f"Deleted old checkpoint: {oldest}")
+
+        except Exception as e:
+            logging.error(f"Failed to export state: {e}")
 
     def load_state(self, path):
         import json

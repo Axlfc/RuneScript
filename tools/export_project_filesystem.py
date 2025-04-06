@@ -16,6 +16,9 @@ def export_project_filesystem(root_path,
         additional_ignored_paths (list, optional): Extra paths to ignore beyond defaults
         ignored_extensions (list, optional): List of file extensions to ignore
     """
+    if not os.path.isdir(root_path):
+        raise NotADirectoryError(f"'{root_path}' is not a valid directory.")
+
     # Default ignored paths
     if default_ignored_paths is None:
         default_ignored_paths = [
@@ -62,7 +65,11 @@ def export_project_filesystem(root_path,
             return ''
 
         tree = ''
-        items = sorted(os.listdir(directory))
+        try:
+            items = sorted(os.listdir(directory))
+        except NotADirectoryError:
+            # This should ideally not happen if the initial check in export_project_filesystem works
+            return ''
 
         for i, item in enumerate(items):
             full_path = os.path.join(directory, item)
@@ -103,18 +110,23 @@ def main():
 
     args = parser.parse_args()
 
-    tree = export_project_filesystem(
-        root_path=args.root_path,
-        additional_ignored_paths=args.additional_ignored,
-        ignored_extensions=args.ignored_extensions
-    )
+    try:
+        tree = export_project_filesystem(
+            root_path=args.root_path,
+            additional_ignored_paths=args.additional_ignored,
+            ignored_extensions=args.ignored_extensions
+        )
 
-    if args.output:
-        with open(args.output, 'w') as file:
-            file.write(tree)
-        print(f"Filesystem tree saved to {args.output}")
-    else:
-        print(tree)
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as file:
+                file.write(tree)
+            print(f"Filesystem tree saved to {args.output}")
+        else:
+            print(tree)
+
+    except NotADirectoryError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ from src.window.SystemInfoWindow import SystemInfoWindow
 from src.window.Web3EditorWindow import Web3DevStudio
 
 # REFACTOR
-from src.models.ProjectWindow import RedGreenRefactorIDE
+from src.ide.IDEController import IDEController
 
 from src.models.file_operations import prompt_rename_file
 from src.models.script_operations import (
@@ -242,7 +242,7 @@ def open_prompt_enhancement_window(event=None):
 
 
 def open_new_project_window(event=None):
-    return RedGreenRefactorIDE()
+    IDEController().run()
 
 
 def open_translator_window(event=None):

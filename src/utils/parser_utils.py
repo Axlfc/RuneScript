@@ -5,6 +5,16 @@ import unicodedata
 from typing import Optional, Union, Dict, List
 
 
+def extract_code_blocks(markdown: str) -> Dict[str, str]:
+    """
+    Extract code blocks in Markdown formatted with filenames.
+    Format: ```<language> # filename: path/to/file.py\n<code>\n```
+    """
+    pattern = r"```[\w+-]*\s*#\s*filename:\s*(.+?)\s*\n(.*?)```"
+    matches = re.findall(pattern, markdown, re.DOTALL)
+    return {filename.strip(): content.strip() for filename, content in matches}
+
+
 def create_default_metadata(name, error_message):
     """Helper function to create default metadata with error information"""
     return {
@@ -27,41 +37,49 @@ def create_default_metadata(name, error_message):
 class AIResponseParser:
     @staticmethod
     def sanitize_prompt(prompt: str) -> str:
-        """Normalize and strip unsafe characters from user prompt."""
-        if not isinstance(prompt, str):
-            return ""
-        clean = ''.join(
-            c for c in unicodedata.normalize('NFKD', prompt)
-            if unicodedata.category(c)[0] != 'C'  # Remove control chars
-        )
-        return clean.strip()
+        """
+        Sanitize and enhance the user prompt to improve AI response quality.
+        """
+        sanitized = prompt.strip()
+
+        # Web project context enhancer
+        web_keywords = ["html", "website", "webpage", "web page", "site", "landing page"]
+        is_web_project = any(keyword in sanitized.lower() for keyword in web_keywords)
+
+        if is_web_project:
+            if "project structure" not in sanitized.lower():
+                sanitized += "\n\nPlease include HTML, CSS, and JavaScript files organized in a proper structure."
+            if "responsive" not in sanitized.lower():
+                sanitized += "\nMake sure the design is responsive and works well on all devices."
+
+        return sanitized
 
     @staticmethod
     def validate_prompt(prompt: str) -> bool:
-        """Ensure the prompt is descriptive enough for generation."""
-        if not prompt or len(prompt) < 10:
+        """
+        Check if the prompt is clear and meaningful.
+        """
+        if not prompt or len(prompt.strip()) < 5:
             return False
-
-        lowered = prompt.lower()
-        has_keyword = any(word in lowered for word in (
-            'create', 'build', 'design', 'develop', 'generate', 'html', 'website',
-            'app', 'api', 'tool', 'script', 'python', 'js', 'game', 'component'
-        ))
-
-        return has_keyword
+        return len(prompt.split()) >= 3
 
     @staticmethod
     def parse_ai_response(response: Optional[str]) -> Union[Dict, List, None]:
-        """Extracts and parses the first valid JSON object or array from an AI response."""
+        """
+        Attempts to parse a structured response from the AI output.
+        Supports JSON, escaped JSON, and Markdown code blocks with filenames.
+        """
         if not response:
             logging.warning("Empty response received for parsing.")
             return None
 
+        # Try direct JSON first
         try:
             return json.loads(response)
         except Exception:
-            pass  # Try extracting manually
+            pass
 
+        # Try regex-extracted JSON
         json_match = re.search(r'(\{.*\}|\[.*\])', response, re.DOTALL)
         if json_match:
             candidate = json_match.group(1)
@@ -70,6 +88,7 @@ class AIResponseParser:
             except json.JSONDecodeError as e:
                 logging.error(f"Regex-extracted JSON failed to parse: {e}")
 
+        # Handle escaped JSON in "raw" field
         if '"raw":' in response:
             raw_match = re.search(r'"raw"\s*:\s*"(.+?)"', response, re.DOTALL)
             if raw_match:
@@ -82,5 +101,21 @@ class AIResponseParser:
                 except json.JSONDecodeError as e:
                     logging.warning(f"Failed to parse JSON inside raw field: {e}")
 
-        logging.warning("Failed to extract valid JSON from AI response.")
+        # Fallback to extracting Markdown code blocks
+        code_blocks = extract_code_blocks(response)
+        if code_blocks:
+            return {
+                "initial_files": code_blocks,
+                "project_name": "Markdown Project",
+                "project_description": "Extracted from Markdown format",
+                "project_structure": list(code_blocks.keys()),
+                "key_features": [],
+                "project_tasks": [],
+                "implemented_features": [],
+                "planned_features": [],
+                "feature_priorities": {"high": [], "medium": [], "low": []},
+                "validation_notes": ["Parsed from markdown-style code blocks."]
+            }
+
+        logging.warning("Failed to extract valid data from AI response.")
         return None
