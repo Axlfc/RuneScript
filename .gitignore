@@ -188,3 +188,7 @@ data/archive/
 data/projects/
 
 logs/
+
+tests/
+
+fake/

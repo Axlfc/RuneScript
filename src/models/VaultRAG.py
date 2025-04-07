@@ -248,13 +248,24 @@ class VaultRAG:
             chunks = self.chunk_content(content)
 
             # Generate embeddings for each chunk
-            self.embeddings = self.model.encode(chunks, convert_to_numpy=True)
-            self.document_ids = [f'vault_content_{i}' for i in range(len(chunks))]
+            vectors = np.array(self.model.encode(chunks, convert_to_numpy=True)).astype(np.float32)
+            self.embeddings = []
+            self.document_ids = []
 
-            # Initialize FAISS index
-            embedding_dimension = self.embeddings.shape[1]
+            for i, vec in enumerate(vectors):
+                doc_id = f"vault_content_{i}"
+                self.index.add(vec.reshape(1, -1))
+                self.embeddings.append({
+                    'document_id': doc_id,
+                    'vector': vec.tolist(),
+                    'timestamp': datetime.now().isoformat()
+                })
+                self.document_ids.append(doc_id)
+
+            embedding_array = np.array([e['vector'] for e in self.embeddings], dtype=np.float32)
+            embedding_dimension = embedding_array.shape[1]
             self.index = faiss.IndexFlatL2(embedding_dimension)
-            self.index.add(self.embeddings)
+            self.index.add(embedding_array)
 
             print(f"Embeddings updated. Total documents: {len(self.document_ids)}")
             return True

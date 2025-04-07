@@ -206,7 +206,7 @@ def open_winget_window(event=None):
 
 
 def open_git_window(repo_dir=None):
-    return GitWindow(repo_dir)
+    GitWindow()
 
 
 '''def open_ai_assistant_window(event=None):
