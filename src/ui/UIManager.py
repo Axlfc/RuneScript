@@ -1,3 +1,4 @@
+import os
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -80,7 +81,8 @@ class UIManager:
                 right_panel,
                 on_run_tests=self.tdd_manager.run_tests,
                 on_refactor=self.tdd_manager.refactor_code,
-                on_write_test=self.tdd_manager.write_test
+                on_write_test=self.tdd_manager.write_test,
+                on_rerun_last=self.tdd_manager.rerun_last_test
             )
             self.tdd_panel.pack(fill=tk.X)
 
@@ -119,21 +121,28 @@ class UIManager:
 
     def focus_test_editor(self) -> None:
         """
-        Bring focus to the test file editor.
-
-        Note:
-            Currently only logs the action. Implement actual focus logic if needed.
+        Bring focus to the most recent test file.
         """
-        self.log_output("Focus on test editor requested (not yet implemented)")
+        # In a real system, you'd pull this from state, for now, fallback to convention
+        possible_test_files = [f for f in self.file_manager.current_project_files.values() if 'test' in f.lower()]
+        if possible_test_files:
+            relative = os.path.relpath(possible_test_files[0], self.file_manager.current_project)
+            self.file_manager.open_file(relative)
+        else:
+            self.log_output("No test file found to focus on.")
 
     def focus_implementation_editor(self) -> None:
         """
-        Bring focus to the implementation editor.
-
-        Note:
-            Currently only logs the action. Implement actual focus logic if needed.
+        Bring focus to a recently edited implementation file.
         """
-        self.log_output("Focus on implementation editor requested (not yet implemented)")
+        # Naive: just find any .py file that isn't in /tests/
+        impl_files = [f for f in self.file_manager.current_project_files.values()
+                      if f.endswith('.py') and 'test' not in f.lower()]
+        if impl_files:
+            relative = os.path.relpath(impl_files[0], self.file_manager.current_project)
+            self.file_manager.open_file(relative)
+        else:
+            self.log_output("No implementation file found to focus on.")
 
     def on_file_select(self, event):
         """Handle file selection in project tree"""

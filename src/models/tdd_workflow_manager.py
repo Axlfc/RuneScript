@@ -13,6 +13,8 @@ class TDDWorkflowManager:
         self.ui_manager = ui_manager
         self.test_status = None
 
+        self.last_test_output = None  # 🆕 Store last test result here
+
     def start_new_cycle(self):
         """Start a new TDD cycle"""
         self.transition_to_phase("RED")
@@ -25,35 +27,54 @@ class TDDWorkflowManager:
         ui_label = PHASE_UI_LABELS.get(phase, phase)
         self.ui_manager.update_phase_ui(ui_label, self.test_status)
 
+    def rerun_last_test(self):
+        """Re-run the previously executed test, if available."""
+        if not self.last_test_output:
+            self.ui_manager.show_message("Nothing to Re-run", "No test has been run yet.")
+            return
+
+        success, stdout, stderr = self.project_io.run_tests()
+        self.last_test_output = (success, stdout, stderr)
+        self.ui_manager.update_test_results(success, stdout, stderr)
+        self.ui_manager.tdd_panel.update_last_result_label(success)
+        self.ui_manager.tdd_panel.set_rerun_enabled(True, "Passed" if success else "Failed")
+
     def run_tests(self):
         """Run tests and determine next phase based on results"""
         success, stdout, stderr = self.project_io.run_tests()
 
+        # Save last output for re-runs
+        self.last_test_output = (success, stdout, stderr)
+
+        # Show results in UI
+        self.ui_manager.update_test_results(success, stdout, stderr)
+        self.ui_manager.tdd_panel.update_last_result_label(success)
+
+        # Always allow rerun after running tests
+        if hasattr(self.ui_manager, "tdd_panel"):
+            self.ui_manager.tdd_panel.set_rerun_enabled(True)
+            self.ui_manager.tdd_panel.update_last_test_summary("passed" if success else "failed")
+
         if success:
             self.test_status = "passed"
+            #
             if self.current_phase == "RED":
-                # Tests unexpectedly passed in RED phase
                 self.ui_manager.show_message(
                     "Test Already Passes",
                     "Your test already passes! Write a failing test first."
                 )
             else:
-                # Tests passed, move to REFACTOR phase
                 self.transition_to_phase("REFACTOR")
         else:
             self.test_status = "failed"
             if self.current_phase == "RED":
-                # Expected failure in RED phase, move to GREEN phase
                 self.transition_to_phase("GREEN")
             else:
-                # Unexpected failure in other phases
                 self.ui_manager.show_message(
                     "Tests Failed",
                     "Your tests are failing. Fix your implementation."
                 )
 
-        # Update UI with test results
-        self.ui_manager.update_test_results(success, stdout, stderr)
         return success
 
     def write_test(self):
