@@ -1,4 +1,5 @@
 import os
+import threading
 from tkinter import *
 from tkinter import scrolledtext, Menu, Frame, Button, Entry, Label, Toplevel, Listbox, Text, SUNKEN, END, W
 
@@ -79,20 +80,6 @@ class GitWindow:
 
         self.update_status()
 
-    def setup_commit_list(self):
-        top_frame = Frame(self.terminal_window)
-        top_frame.pack(fill="both", expand=True)
-
-        commit_scrollbar = Scrollbar(top_frame)
-        commit_scrollbar.pack(side="right", fill="y")
-
-        self.commit_list = Listbox(top_frame, yscrollcommand=commit_scrollbar.set)
-        self.commit_list.pack(side="left", fill="both", expand=True)
-        commit_scrollbar.config(command=self.commit_list.yview)
-
-        self.commit_list.bind("<Button-3>", self.commit_list_view.commit_list_context_menu)
-        self.commit_list_view.update_commit_list()
-
     def setup_button_frame(self):
         # Almacenar el frame de botones en self.button_frame para usarlo después
         self.button_frame = Frame(self.terminal_window)
@@ -123,7 +110,8 @@ class GitWindow:
             lambda event: self.context_menu.tk_popup(event.x_root, event.y_root)
         )
         self.context_menu.add_command(label="Git Add", command=self.add_selected_text_to_git_staging)
-        self.context_menu.add_command(label="Git Status", command=lambda: self.execute_command("status"))
+        self.context_menu.add_command(label="Git Status",
+                                      command=lambda: self.status_formatter.format_status(self.output_text))
         self.context_menu.add_command(label="Git Unstage", command=self.unstage_selected_text)
         self.context_menu.add_command(label="Git Diff", command=self.show_git_diff)
 
@@ -136,7 +124,7 @@ class GitWindow:
         if command == "status --porcelain -u":
             self.status_formatter.format_status(self.output_text)
         else:
-            self.command_runner.run(command, self.output_text)
+            threading.Thread(target=self.command_runner.run, args=(command, self.output_text), daemon=True).start()
 
         self.entry.delete(0, END)
         self.output_text.see(END)
@@ -158,7 +146,7 @@ class GitWindow:
         diff_text = Text(diff_window, height=20, width=80, font=my_font)
         diff_text.pack(fill="both", expand=True)
         self.ansi_renderer.define_ansi_tags(diff_text)
-        self.command_runner.run("diff --color", diff_text)
+        threading.Thread(target=self.command_runner.run, args=("diff --color", diff_text), daemon=True).start()
         diff_text.config(state="disabled")
 
     def update_status(self, commit_hash="HEAD"):
