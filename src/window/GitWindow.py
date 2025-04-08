@@ -1,5 +1,3 @@
-import subprocess
-import re
 import os
 from tkinter import *
 from tkinter import scrolledtext, Menu, Frame, Button, Entry, Label, Toplevel, Listbox, Text, SUNKEN, END, W
