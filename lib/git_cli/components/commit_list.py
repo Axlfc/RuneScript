@@ -117,7 +117,10 @@ class CommitListView:
         try:
             commit_hash_number = commit_hash[:7]
             output = subprocess.check_output(
-                ["git", "show", "--color=always", commit_hash_number], text=True
+                ["git", "show", "--color=always", commit_hash_number],
+                text=True,
+                encoding="utf-8",
+                errors='replace'
             )
             details_window = Toplevel()
             details_window.title(f"{commit_hash}")

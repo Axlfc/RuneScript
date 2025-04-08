@@ -64,7 +64,6 @@ class CommandDispatcher:
         return command.execute(**kwargs)
 
     def dispatch_line(self, line: str) -> CommandResult:
-        print("DISPATCH CMD:", line)
         tokens = shlex.split(line)
         if not tokens:
             return {

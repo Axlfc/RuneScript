@@ -35,7 +35,7 @@ class GitWindow:
         self.command_entry_view = CommandEntryView(self.button_frame, self)
         self.git_menu_manager = GitMenuManager(self.menubar, self)
         self.branch_menu_manager = BranchMenuManager(self.menubar, self)
-        self.git_menu_manager.setup_git_menu()
+        # self.git_menu_manager.setup_git_menu()
 
         # Asignar los bindings de navegación del entry
         self.entry.bind("<Up>", self.command_entry_view.navigate_history)

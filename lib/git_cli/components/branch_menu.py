@@ -23,7 +23,6 @@ class BranchMenuManager:
             label="🌱 Create new branch",
             command=self.create_new_branch
         )
-        self.menubar.add_cascade(label="Branch", menu=self.branch_menu)
         self.branch_menu.add_separator()
 
     def populate_branch_menu(self):
