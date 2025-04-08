@@ -13,6 +13,12 @@ from lib.git_cli.components.commit_list import CommitListView
 from lib.git_cli.components.branch_menu import BranchMenuManager
 from lib.git_cli.components.command_entry import CommandEntryView
 
+from lib.git_cli.infra.git_command_runner import GitCommandRunner
+from lib.git_cli.infra.git_status_formatter import GitStatusFormatter
+
+from lib.git_cli.core.repository import Repository
+
+
 from pathlib import Path
 
 
@@ -35,7 +41,8 @@ class GitWindow:
         self.command_entry_view = CommandEntryView(self.button_frame, self)
         self.git_menu_manager = GitMenuManager(self.menubar, self)
         self.branch_menu_manager = BranchMenuManager(self.menubar, self)
-        # self.git_menu_manager.setup_git_menu()
+        self.command_runner = GitCommandRunner(self.dispatcher, self.ansi_renderer, self.repo_dir)
+        self.status_formatter = GitStatusFormatter(self.ansi_renderer, self.repo_dir)
 
         # Asignar los bindings de navegación del entry
         self.entry.bind("<Up>", self.command_entry_view.navigate_history)
@@ -123,23 +130,18 @@ class GitWindow:
         self.context_menu.add_command(label="Git Diff", command=self.show_git_diff)
 
     def execute_command(self, command):
-        if command.strip():
-            self.command_history.append(command)
-            self.history_pointer[0] = len(self.command_history)
-            directory = self.repo_dir or os.getcwd()
-            git_command = f'git -C "{directory}" {command}'
-            try:
-                if command == "status --porcelain -u":
-                    self.update_output_text(self.output_text)
-                else:
-                    output = subprocess.check_output(
-                        git_command, stderr=subprocess.STDOUT, shell=True, text=True
-                    )
-                    self.ansi_renderer.insert_ansi_text(self.output_text, f"{git_command}\n{output}\n")
-            except subprocess.CalledProcessError as e:
-                self.ansi_renderer.insert_ansi_text(self.output_text, f"Error: {e.output}\n", "error")
-            self.entry.delete(0, END)
-            self.output_text.see(END)
+        if not command.strip():
+            return
+        self.command_history.append(command)
+        self.history_pointer[0] = len(self.command_history)
+
+        if command == "status --porcelain -u":
+            self.status_formatter.format_status(self.output_text)
+        else:
+            self.command_runner.run(command, self.output_text)
+
+        self.entry.delete(0, END)
+        self.output_text.see(END)
 
     def add_selected_text_to_git_staging(self):
         selected_text = self.output_text.get("sel.first", "sel.last")
@@ -151,105 +153,26 @@ class GitWindow:
         if selected_text:
             self.execute_command(f"reset -- {selected_text}")
 
-    def get_git_status(self):
-        return subprocess.check_output(
-            ["git", "status", "--porcelain", "-u"], text=True
-        )
-
     def show_git_diff(self):
-        git_diff_command = "git diff --color"
-        try:
-            output = subprocess.check_output(
-                git_diff_command, shell=True, stderr=subprocess.STDOUT
-            )
-            output = output.decode("utf-8", errors="replace")
-            diff_window = Toplevel(self.terminal_window)
-            diff_window.title("Git Diff")
-            diff_window.geometry("800x600")
-            diff_text = Text(diff_window, height=20, width=80, font=my_font)
-            diff_text.pack(fill="both", expand=True)
-            self.ansi_renderer.define_ansi_tags(diff_text)
-            ansi_escape = re.compile("\\x1B\\[[0-?]*[ -/]*[@-~]")
-            for line in output.split("\n"):
-                line_clean = ansi_escape.sub("", line)
-                if line.startswith("+"):
-                    diff_text.insert(END, line_clean + "\n", "addition")
-                elif line.startswith("-"):
-                    diff_text.insert(END, line_clean + "\n", "deletion")
-                elif line.startswith("@"):
-                    diff_text.insert(END, line_clean + "\n", "info")
-                else:
-                    diff_text.insert(END, line_clean + "\n")
-            diff_text.config(state="disabled")
-        except subprocess.CalledProcessError as e:
-            self.output_text.insert(END, f"Error: {e.output}\n", "error")
-
-    def update_output_text(self, output_text_widget):
-        git_status = self.get_git_status()
-        self.ansi_renderer.define_ansi_tags(output_text_widget)
-        if git_status == "":
-            output_text_widget.insert("end", "Your branch is up to date.\n\n")
-        else:
-            for line in git_status.split("\n"):
-                status = line[:2]
-                filename = line[3:]
-                if status in [" M", "M "]:
-                    output_text_widget.insert("end", status, "modified")
-                    output_text_widget.insert("end", " <" + filename + ">\n")
-                elif status == "MM":
-                    output_text_widget.insert("end", status, "modified_multiple")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status == "??":
-                    output_text_widget.insert("end", status, "untracked")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status == "A ":
-                    output_text_widget.insert("end", status, "added")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status in [" D", "D "]:
-                    output_text_widget.insert("end", status, "deleted")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status == "R ":
-                    output_text_widget.insert("end", status, "renamed")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status == "C ":
-                    output_text_widget.insert("end", status, "copied")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status == "U ":
-                    output_text_widget.insert("end", status, "unmerged")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                elif status == "!!":
-                    output_text_widget.insert("end", status, "ignored")
-                    output_text_widget.insert("end", " " + filename + "\n")
-                else:
-                    output_text_widget.insert("end", status)
-                    output_text_widget.insert("end", " " + filename + "\n")
-                try:
-                    if status in [" M", "M "]:
-                        git_diff_command = f"git diff --color {filename}"
-                        diff_output = subprocess.check_output(
-                            git_diff_command, shell=True, stderr=subprocess.STDOUT
-                        )
-                        diff_output = diff_output.decode("utf-8", errors="replace")
-                        ansi_escape = re.compile("\\x1B\\[[0-?]*[ -/]*[@-~]")
-                        for diff_line in diff_output.split("\n")[1:]:
-                            line_clean = ansi_escape.sub("", diff_line)
-                            self.ansi_renderer.apply_ansi_styles(self.output_text, line_clean)
-                        output_text_widget.insert("end", " </" + filename + ">\n\n")
-                except subprocess.CalledProcessError as e:
-                    self.output_text.insert(END, f"Error: {e.output}\n", "error")
+        diff_window = Toplevel(self.terminal_window)
+        diff_window.title("Git Diff")
+        diff_window.geometry("800x600")
+        diff_text = Text(diff_window, height=20, width=80, font=my_font)
+        diff_text.pack(fill="both", expand=True)
+        self.ansi_renderer.define_ansi_tags(diff_text)
+        self.command_runner.run("diff --color", diff_text)
+        diff_text.config(state="disabled")
 
     def update_status(self, commit_hash="HEAD"):
-        try:
-            branch_name = subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", commit_hash], text=True
-            ).strip()
-            if branch_name != "HEAD":
-                self.status_bar.config(text=f"Current branch: {branch_name}")
+        repo = Repository(self.repo_dir)
+        branch = repo.get_current_branch()
+        if branch:
+            self.status_bar.config(text=f"Current branch: {branch}")
+        else:
+            # fallback to commit hash if detached
+            from lib.git_cli.executor import GitExecutor
+            short_hash, _, _ = GitExecutor.run_git("rev-parse", "--short", commit_hash, repo_dir=self.repo_dir)
+            if short_hash.strip():
+                self.status_bar.config(text=f"Current commit: {short_hash.strip()}")
             else:
-                commit_short_hash = subprocess.check_output(
-                    ["git", "rev-parse", "--short", commit_hash], text=True
-                ).strip()
-                self.status_bar.config(text=f"Current commit: {commit_short_hash}")
-        except subprocess.CalledProcessError:
-            self.status_bar.config(text="Error: Invalid identifier")
-
+                self.status_bar.config(text="Error: Invalid identifier")
