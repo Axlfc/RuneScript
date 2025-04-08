@@ -1,4 +1,5 @@
 # lib/git_cli/infra/git_command_runner.py
+from lib.git_cli.executor import GitExecutor
 
 
 class GitCommandRunner:
@@ -6,6 +7,7 @@ class GitCommandRunner:
         self.dispatcher = dispatcher
         self.ansi_renderer = ansi_renderer
         self.repo_dir = repo_dir
+        self.git_executor = GitExecutor()
 
     def run(self, command_line: str, widget):
         from lib.git_cli.fallback_executor import execute_raw_git_command

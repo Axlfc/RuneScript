@@ -32,6 +32,9 @@ def export_project_filesystem(root_path,
             'node_modules',
             '.idea',
             '.vscode',
+            'logs',
+            'conversations',
+            'projects'
         ]
 
     # Combine default and additional ignored paths
