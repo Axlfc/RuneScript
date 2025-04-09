@@ -1,16 +1,24 @@
-from tkinter import Listbox, Button, LabelFrame, END
+from tkinter import Listbox, Button, LabelFrame, END, Menu, Frame, messagebox
 from tkinter.ttk import PanedWindow
-from src.views.tk_utils import *
 
 
-class StagingTab:
-    def __init__(self, parent, git_window):
+class StagingTab(Frame):
+    """
+    Tab for managing git staging area (unstaged and staged changes).
+    Allows users to stage, unstage, and commit changes.
+    """
+
+    def __init__(self, parent, ui_controller=None):
+        super().__init__(parent)
         self.parent = parent
-        self.git_window = git_window
+        self.ui_controller = ui_controller
+        self.git_window = None  # si es necesario puedes recibirlo también como parámetro
+
         self.setup_staging_tab()
         self.setup_context_menus()
 
     def setup_staging_tab(self):
+        """Create the split view for unstaged and staged changes"""
         # Split view for unstaged and staged changes
         self.staging_paned = PanedWindow(self.parent, orient="vertical")
         self.staging_paned.pack(fill="both", expand=True, padx=5, pady=5)
@@ -29,14 +37,43 @@ class StagingTab:
             selectforeground="#FFFFFF"
         )
         self.unstaged_files.pack(fill="both", expand=True, padx=5, pady=5)
-        self.unstaged_files.bind("<Double-1>", self.git_window.stage_selected_file)
+        self.unstaged_files.bind("<Double-1>", self.stage_selected_file)
 
         # Unstaged buttons
         unstaged_buttons = Frame(self.unstaged_frame)
         unstaged_buttons.pack(fill="x", expand=False, padx=5, pady=5)
-        Button(unstaged_buttons, text="Stage Selected", command=self.git_window.stage_selected_file).pack(side="left", padx=2)
-        Button(unstaged_buttons, text="Stage All", command=self.git_window.stage_all_files).pack(side="left", padx=2)
-        Button(unstaged_buttons, text="Discard Selected", command=self.git_window.discard_selected_changes).pack(side="left", padx=2)
+
+        # Button to stage selected files
+        self.stage_selected_btn = Button(
+            unstaged_buttons,
+            text="Stage Selected",
+            command=self.stage_selected_file
+        )
+        self.stage_selected_btn.pack(side="left", padx=2)
+
+        # Button to stage all files
+        self.stage_all_btn = Button(
+            unstaged_buttons,
+            text="Stage All",
+            command=self.stage_all_files
+        )
+        self.stage_all_btn.pack(side="left", padx=2)
+
+        # Button to discard selected changes
+        self.discard_btn = Button(
+            unstaged_buttons,
+            text="Discard Selected",
+            command=self.discard_selected_changes
+        )
+        self.discard_btn.pack(side="left", padx=2)
+
+        # Button to edit .gitignore
+        self.gitignore_btn = Button(
+            unstaged_buttons,
+            text="Edit .gitignore",
+            command=self.edit_gitignore
+        )
+        self.gitignore_btn.pack(side="left", padx=2)
 
         # Staged changes frame
         self.staged_frame = LabelFrame(self.staging_paned, text="Staged Changes")
@@ -52,31 +89,60 @@ class StagingTab:
             selectforeground="#FFFFFF"
         )
         self.staged_files.pack(fill="both", expand=True, padx=5, pady=5)
-        self.staged_files.bind("<Double-1>", self.git_window.unstage_selected_file)
+        self.staged_files.bind("<Double-1>", self.unstage_selected_file)
 
         # Staged buttons
         staged_buttons = Frame(self.staged_frame)
         staged_buttons.pack(fill="x", expand=False, padx=5, pady=5)
-        Button(staged_buttons, text="Unstage Selected", command=self.git_window.unstage_selected_file).pack(side="left", padx=2)
-        Button(staged_buttons, text="Unstage All", command=self.git_window.unstage_all_files).pack(side="left", padx=2)
+
+        # Button to unstage selected files
+        self.unstage_selected_btn = Button(
+            staged_buttons,
+            text="Unstage Selected",
+            command=self.unstage_selected_file
+        )
+        self.unstage_selected_btn.pack(side="left", padx=2)
+
+        # Button to unstage all files
+        self.unstage_all_btn = Button(
+            staged_buttons,
+            text="Unstage All",
+            command=self.unstage_all_files
+        )
+        self.unstage_all_btn.pack(side="left", padx=2)
 
     def setup_context_menus(self):
+        """Set up right-click context menus for both lists"""
         # Create context menu for unstaged files
         self.unstaged_context_menu = Menu(self.unstaged_files, tearoff=0)
-        self.unstaged_context_menu.add_command(label="Stage Selected",
-                                               command=self.stage_selected_file)
-        self.unstaged_context_menu.add_command(label="View Diff",
-                                               command=self.view_selected_diff)
+        self.unstaged_context_menu.add_command(
+            label="Stage Selected",
+            command=self.stage_selected_file
+        )
+        self.unstaged_context_menu.add_command(
+            label="View Diff",
+            command=self.view_unstaged_diff
+        )
         self.unstaged_context_menu.add_separator()
-        self.unstaged_context_menu.add_command(label="Discard Changes",
-                                               command=self.discard_selected_changes)
+        self.unstaged_context_menu.add_command(
+            label="Discard Changes",
+            command=self.discard_selected_changes
+        )
+        self.unstaged_context_menu.add_command(
+            label="Add to .gitignore",
+            command=self.add_to_gitignore
+        )
 
         # Create context menu for staged files
         self.staged_context_menu = Menu(self.staged_files, tearoff=0)
-        self.staged_context_menu.add_command(label="Unstage Selected",
-                                             command=self.unstage_selected_file)
-        self.staged_context_menu.add_command(label="View Diff",
-                                             command=self.view_selected_diff)
+        self.staged_context_menu.add_command(
+            label="Unstage Selected",
+            command=self.unstage_selected_file
+        )
+        self.staged_context_menu.add_command(
+            label="View Diff",
+            command=self.view_staged_diff
+        )
 
         # Bind context menu to right-click
         self.unstaged_files.bind("<Button-3>", self.show_unstaged_context_menu)
@@ -124,9 +190,9 @@ class StagingTab:
         selected_files = [self.unstaged_files.get(i) for i in selected_indices]
 
         for file_path in selected_files:
-            self.git_window.execute_command(f"add {file_path}")
+            self.ui_controller.execute_command(f"add {file_path}")
 
-        self.git_window.refresh_staging_view()
+        self.ui_controller.refresh_staging_view()
 
     def unstage_selected_file(self, event=None):
         """Unstage all selected files from the staged list."""
@@ -138,25 +204,27 @@ class StagingTab:
         selected_files = [self.staged_files.get(i) for i in selected_indices]
 
         for file_path in selected_files:
-            self.git_window.execute_command(f"reset -- {file_path}")
+            self.ui_controller.execute_command(f"reset -- {file_path}")
 
-        self.git_window.refresh_staging_view()
+        self.ui_controller.refresh_staging_view()
 
     def stage_all_files(self):
         """Stage all files in the unstaged list."""
         all_files = self.unstaged_files.get(0, END)
-        for file_path in all_files:
-            self.git_window.execute_command(f"add {file_path}")
+        if not all_files:
+            return
 
-        self.git_window.refresh_staging_view()
+        self.ui_controller.execute_command("add .")
+        self.ui_controller.refresh_staging_view()
 
     def unstage_all_files(self):
         """Unstage all files in the staged list."""
         all_files = self.staged_files.get(0, END)
-        for file_path in all_files:
-            self.git_window.execute_command(f"reset -- {file_path}")
+        if not all_files:
+            return
 
-        self.git_window.refresh_staging_view()
+        self.ui_controller.execute_command("reset")
+        self.ui_controller.refresh_staging_view()
 
     def discard_selected_changes(self):
         """Discard changes for selected files in the unstaged list."""
@@ -164,47 +232,54 @@ class StagingTab:
         if not selected_indices:
             return
 
+        # Confirm discard action
+        if not messagebox.askyesno("Discard Changes",
+                                   "Are you sure you want to discard changes? This cannot be undone."):
+            return
+
         # Use a copy of the selected items
         selected_files = [self.unstaged_files.get(i) for i in selected_indices]
 
         for file_path in selected_files:
-            self.git_window.execute_command(f"checkout -- {file_path}")
+            self.ui_controller.execute_command(f"checkout -- {file_path}")
 
-        self.git_window.refresh_staging_view()
+        self.ui_controller.refresh_staging_view()
 
-    def commit_changes(self):
-        """Commit staged changes."""
-        commit_message = self.git_window.commit_tab.get_commit_message()
-        if not commit_message.strip():
-            messagebox.showwarning("Commit Error", "Commit message cannot be empty.")
-            return False
-
-        self.git_window.execute_command(f'commit -m "{commit_message}"')
-        self.git_window.refresh_staging_view()
-        return True
-
-    def commit_and_push(self):
-        """Commit staged changes and push to the remote repository."""
-        if self.commit_changes():
-            self.git_window.execute_command("push")
-
-    def amend_last_commit(self):
-        """Amend the last commit with staged changes."""
-        commit_message = self.git_window.commit_tab.get_commit_message()
-        if not commit_message.strip():
-            messagebox.showwarning("Commit Error", "Commit message cannot be empty.")
-            return
-
-        self.git_window.execute_command(f'commit --amend -m "{commit_message}"')
-        self.git_window.refresh_staging_view()
-
-    def view_selected_diff(self):
+    def view_unstaged_diff(self):
+        """View diff for selected unstaged file"""
         selected = self.unstaged_files.curselection()
         if selected:
-            file = self.unstaged_files.get(selected[0])
-            self.git_window.view_file_diff(file, mode="Working Directory")
-        else:
-            selected = self.staged_files.curselection()
-            if selected:
-                file = self.staged_files.get(selected[0])
-                self.git_window.view_file_diff(file, mode="Staged Changes")
+            file_path = self.unstaged_files.get(selected[0])
+            self.ui_controller.view_file_diff(file_path, mode="Working Directory")
+
+    def view_staged_diff(self):
+        """View diff for selected staged file"""
+        selected = self.staged_files.curselection()
+        if selected:
+            file_path = self.staged_files.get(selected[0])
+            self.ui_controller.view_file_diff(file_path, mode="Staged Changes")
+
+    def update_file_lists(self, unstaged_files=None, staged_files=None):
+        """Update the file lists with new data"""
+        if unstaged_files is not None:
+            self.unstaged_files.delete(0, END)
+            for file in unstaged_files:
+                self.unstaged_files.insert(END, file)
+
+        if staged_files is not None:
+            self.staged_files.delete(0, END)
+            for file in staged_files:
+                self.staged_files.insert(END, file)
+
+    def edit_gitignore(self):
+        """Open the .gitignore file for editing"""
+        self.ui_controller.edit_gitignore()
+
+    def add_to_gitignore(self):
+        """Add selected files to .gitignore"""
+        selected_indices = self.unstaged_files.curselection()
+        if not selected_indices:
+            return
+
+        selected_files = [self.unstaged_files.get(i) for i in selected_indices]
+        self.ui_controller.add_to_gitignore(selected_files)

@@ -1,113 +1,152 @@
-from tkinter import LabelFrame, Button, Scrollbar, END, Toplevel
+from tkinter import LabelFrame, Button, Scrollbar, END, Toplevel, StringVar, Text, BOTH, NORMAL, DISABLED, Listbox, LEFT, Frame, Label, VERTICAL, RIGHT, Y
 from tkinter.ttk import Combobox, Treeview
 
+from lib.git_cli.components.commit_list import CommitListView
 from lib.git_cli.core.repository import Repository
-from src.views.tk_utils import *
+
+from src.views.tk_utils import my_font
 
 
-class HistoryTab:
-    def __init__(self, parent, git_window):
+class HistoryTab(Frame):
+    def __init__(self, parent, ui_controller=None):
+        super().__init__(parent)
         self.parent = parent
-        self.git_window = git_window
-        self.setup_history_tab()
+        self.ui_controller = ui_controller
+        self._controller_attached = bool(ui_controller)
+        self._ui_initialized = False
+
+        # Placeholder inicial
+        self.placeholder = Label(self, text="⏳ Loading history tab...")
+        self.placeholder.pack(expand=True)
+
+        if self._controller_attached:
+            self.setup_history_tab()
+
+    def attach_controller(self, ui_controller):
+        self.ui_controller = ui_controller
+        self._controller_attached = True
+
+        if not self._ui_initialized:
+            self.setup_history_tab()
 
     def refresh_branches(self):
-        repo = Repository(self.git_window.repo_dir)
-        branches = repo.get_branches()
-        self.branch_dropdown['values'] = branches
+        if not self._ui_initialized:
+            print("[HistoryTab] Skipping refresh_branches because UI is not initialized yet")
+            return
 
-        current_branch = repo.get_current_branch()
-        if current_branch and current_branch in branches:
-            self.branch_var.set(current_branch)
-        elif branches:
-            self.branch_var.set(branches[0])
-        self.load_commits()
+        if self.ui_controller:
+            self.ui_controller.refresh_branches()
+        else:
+            print("[HistoryTab] Controller not set for refresh_branches")
 
-    def load_commits(self):
-        print("Loading commits...")  # Debug
-        output, _, _ = self.git_window.run_git("log", "--pretty=format:%h%x09%an%x09%ad%x09%s", "--date=short")
-        # print(f"Raw git log output:\n{output}")  # Debug
+    def load_commits(self, commits=None):
+        if not self._ui_initialized:
+            print("[HistoryTab] Skipping load_commits because UI is not initialized")
+            return
 
-        self.commits_tree.delete(*self.commits_tree.get_children())
+        self.commit_listbox.delete(0, END)
+        if not commits:
+            commits = self.ui_controller.get_commits_for_selected_branch()
 
-        for line in output.splitlines():
-            parts = line.split("\t")
-            if len(parts) == 4:
-                self.commits_tree.insert("", END, values=parts)
-            else:
-                print(f"Malformed line skipped: {line}")  # Debug
+        for c in commits:
+            self.commit_listbox.insert(END, f"{c['hash']} - {c['message']}")
 
     def show_commit_details(self, event=None):
-        selected = self.commits_tree.focus()
-        if not selected:
+        if not self._ui_initialized or not hasattr(self, 'commit_listbox'):
             return
 
-        values = self.commits_tree.item(selected, "values")
-        if not values:
+        selection = self.commit_listbox.curselection()
+        if not selection:
             return
 
-        commit_hash = values[0]
-        output, _, _ = self.git_window.run_git("show", "--color", commit_hash)
+        idx = selection[0]
+        commit_hash = self.commit_listbox.get(idx).split(" - ")[0]
 
-        detail_window = Toplevel(self.parent)
-        detail_window.title(f"Details for commit {commit_hash}")
-        detail_window.geometry("800x600")
+        details = self.ui_controller.get_commit_details(commit_hash)
+        self.detail_text.config(state="normal")
+        self.detail_text.delete("1.0", END)
+        self.detail_text.insert("1.0", details)
+        self.detail_text.config(state="disabled")
 
-        text_widget = Text(detail_window, wrap="word", font=my_font)
-        text_widget.pack(fill="both", expand=True)
+    def display_commit_details(self, commit_info: dict):
+        if not hasattr(self, "detail_text"):
+            print("Warning: detail_text widget not initialized.")
+            return
 
-        self.git_window.ansi_renderer.define_ansi_tags(text_widget)
-        self.git_window.ansi_renderer.apply_ansi_styles(text_widget, output)
+        self.detail_text.config(state=NORMAL)
+        self.detail_text.delete("1.0", END)
 
-        text_widget.config(state="disabled")
+        message = commit_info.get("message", [])
+        if isinstance(message, list):
+            joined_message = "\n".join(message)
+            self.ui_controller.ansi_renderer.apply_ansi_styles(self.detail_text, joined_message)
+        else:
+            self.detail_text.insert(END, "[Error: Invalid commit message format]")
+
+        self.detail_text.config(state=DISABLED)
+
+    def update_branch_list(self, branches):
+        try:
+            from lib.git_cli.core.repository import Repository
+            repo = Repository(self.ui_controller.git_service.repo_dir)
+            current_branch = repo.get_current_branch()
+            print(f"[HistoryTab] Current branch: {current_branch}")
+        except Exception as e:
+            print(f"[HistoryTab] Error getting current branch: {e}")
 
     def setup_history_tab(self):
-        # Branch selection frame
-        branch_frame = LabelFrame(self.parent, text="Branch")
-        branch_frame.pack(fill="x", expand=False, padx=5, pady=5)
+        if self._ui_initialized:
+            return
+        if not self._controller_attached or not self.ui_controller:
+            print("[HistoryTab] Controller not attached, skipping setup.")
+            return
 
-        # Branch selection dropdown
-        self.branch_var = StringVar()
-        self.branch_dropdown = Combobox(branch_frame, textvariable=self.branch_var)
-        self.branch_dropdown.pack(side="left", fill="x", expand=True, padx=5, pady=5)
-        self.branch_dropdown.bind("<<ComboboxSelected>>", self.git_window.on_branch_selected)
-        Button(branch_frame, text="Refresh", command=self.git_window.refresh_branches).pack(side="left", padx=5, pady=5)
-        Button(branch_frame, text="New Branch", command=self.git_window.create_new_branch).pack(side="left", padx=5, pady=5)
+        # Limpia placeholder
+        if hasattr(self, 'placeholder'):
+            self.placeholder.destroy()
 
-        # Commit history view
-        history_content = LabelFrame(self.parent, text="Commit History")
-        history_content.pack(fill="both", expand=True, padx=5, pady=5)
+        # === Sección de ramas ===
+        branch_frame = LabelFrame(self, text="Branch")
+        branch_frame.pack(fill="x", padx=10, pady=(10, 5))
 
-        # Commits list with columns
-        columns = ("hash", "author", "date", "message")
-        self.commits_tree = Treeview(
-            history_content, 
-            columns=columns, 
-            show="headings", 
-            selectmode="browse"
-        )
+        self.branch_dropdown = Listbox(branch_frame, height=5, exportselection=False)
+        self.branch_dropdown.pack(side=LEFT, fill="x", expand=True, padx=5, pady=5)
+        self.branch_dropdown.bind("<<ListboxSelect>>", self.on_branch_selected)
 
-        # Configure columns
-        self.commits_tree.heading("hash", text="Commit")
-        self.commits_tree.heading("author", text="Author")
-        self.commits_tree.heading("date", text="Date")
-        self.commits_tree.heading("message", text="Message")
-        self.commits_tree.column("hash", width=80)
-        self.commits_tree.column("author", width=120)
-        self.commits_tree.column("date", width=120)
-        self.commits_tree.column("message", width=400)
+        Button(branch_frame, text="Refresh", command=self.refresh_branches).pack(side=LEFT, padx=5, pady=5)
 
-        # Add scrollbars
-        history_scrollbar_y = Scrollbar(history_content, orient="vertical", command=self.commits_tree.yview)
-        self.commits_tree.configure(yscrollcommand=history_scrollbar_y.set)
-        history_scrollbar_x = Scrollbar(history_content, orient="horizontal", command=self.commits_tree.xview)
-        self.commits_tree.configure(xscrollcommand=history_scrollbar_x.set)
+        # === Sección de commits ===
+        commit_frame = LabelFrame(self, text="Commits")
+        commit_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        # Arrange tree and scrollbars
-        self.commits_tree.pack(side="left", fill="both", expand=True)
-        history_scrollbar_y.pack(side="right", fill="y")
-        history_scrollbar_x.pack(side="bottom", fill="x")
+        self.commit_listbox = Listbox(commit_frame, exportselection=False)
+        self.commit_listbox.pack(side=LEFT, fill=BOTH, expand=True)
+        self.commit_listbox.bind("<Double-Button-1>", self.show_commit_details)
 
-        # Bind event for displaying commit details
-        self.commits_tree.bind("<Double-1>", self.git_window.show_commit_details)
+        scrollbar = Scrollbar(commit_frame, orient="vertical", command=self.commit_listbox.yview)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        self.commit_listbox.config(yscrollcommand=scrollbar.set)
+
+        # === Detalles ===
+        detail_frame = LabelFrame(self, text="Details")
+        detail_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        self.detail_text = Text(detail_frame, wrap="word", height=10, state="disabled")
+        self.detail_text.pack(fill="both", expand=True)
+
+        self._ui_initialized = True
+        print("[HistoryTab] UI initialized")
+
+    def on_branch_selected(self, event=None):
+        if not self._ui_initialized:
+            return
+
+        selection = self.branch_dropdown.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        branch_name = self.branch_dropdown.get(index)
+
+        self.ui_controller.set_current_branch(branch_name)
         self.load_commits()

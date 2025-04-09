@@ -1,84 +1,97 @@
+# latest version
 import os
+
 import threading
+from pathlib import Path
 from tkinter import *
 from tkinter import scrolledtext, Menu, Frame, Button, Entry, Label, Toplevel, Listbox, Text, SUNKEN, END, W
 from tkinter.ttk import Notebook
 
+from lib.git_cli.app import Application
+from lib.git_cli.components.ansi_renderer import AnsiRenderer
 from lib.git_cli.components.commit_tab import CommitTab
 from lib.git_cli.components.git_menu import GitMenuManager
-from src.views.tk_utils import my_font
-
-from lib.git_cli.components.ansi_renderer import AnsiRenderer
-from lib.git_cli.commands.dispatcher import CommandDispatcher
-from lib.git_cli.components.commit_list import CommitListView
 from lib.git_cli.components.branch_menu import BranchMenuManager
 from lib.git_cli.components.command_entry import CommandEntryView
-
-from lib.git_cli.infra.git_command_runner import GitCommandRunner
-from lib.git_cli.infra.git_status_formatter import GitStatusFormatter
-
+from lib.git_cli.components.commit_list import CommitListView
 from lib.git_cli.components.console_tab import ConsoleTab
 from lib.git_cli.components.staging_tab import StagingTab
 from lib.git_cli.components.history_tab import HistoryTab
 from lib.git_cli.components.diff_tab import DiffTab
 from lib.git_cli.ui.tab_manager import TabManager
-
-from lib.git_cli.core.repository import Repository
-
-
-from pathlib import Path
+from src.views.tk_utils import my_font
 
 
 class GitWindow:
+    """
+    Main application window that manages the UI components.
+    Delegates business logic to the Application and UIController classes.
+    """
+
     def __init__(self, repo_dir=None):
-        self.repo_dir = Path(repo_dir or os.getcwd())
-        self.dispatcher = CommandDispatcher(repo_dir=str(self.repo_dir))
-        self.command_history = []
-        self.history_pointer = [0]
-
+        self.app = Application(repo_dir=repo_dir)
         self.create_window()
-
-        self.command_runner = GitCommandRunner(self.dispatcher, None, self.repo_dir)
-        self.status_formatter = GitStatusFormatter(None, self.repo_dir)
-
         self.setup_ui()
 
-        # Retrieve tab instances from the tab manager immediately after setup_ui()
-        self.console_tab = self.tab_manager.get_tab(ConsoleTab)
-        self.diff_tab = self.tab_manager.get_tab(DiffTab)
-        self.staging_tab = self.tab_manager.get_tab(StagingTab)
-        self.commit_tab = self.tab_manager.get_tab(CommitTab)
-        self.history_tab = self.tab_manager.get_tab(HistoryTab)
+        self.tab_manager = TabManager(self.notebook)
 
-        # Initialize the ANSI renderer using the output_text widget from ConsoleTab
-        self.ansi_renderer = AnsiRenderer(self.console_tab.output_text)
-        self.ansi_renderer.define_ansi_tags(self.console_tab.output_text)
+        # Fase 1: Crear solo el ConsoleTab (sin controller)
+        self.console_tab = self.tab_manager.add_tab(ConsoleTab, name="Console")
 
-        # Set the renderer for other components
-        self.command_runner.ansi_renderer = self.ansi_renderer
-        self.status_formatter.ansi_renderer = self.ansi_renderer
+        # Fase 2: Inicializar app con output_text (esto crea el UIController)
+        self.app.initialize_with_ui(self.terminal_window, self.console_tab.output_text)
 
-        # Now, call set_renderer() on the diff tab now that ansi_renderer is available
-        # Now, call set_renderer() on the diff tab now that ansi_renderer is available
-        self.diff_tab.set_renderer()
-        # Refresh the diff tab file list so that the file dropdown is populated
-        self.diff_tab.refresh_file_list()
+        # Fase 3: Crear el resto de tabs PASÁNDOLE el ui_controller
+        self.diff_tab = self.tab_manager.add_tab(DiffTab, self.app.ui_controller, name="Diff")
+        self.staging_tab = self.tab_manager.add_tab(StagingTab, self.app.ui_controller, name="Staging")
+        self.commit_tab = self.tab_manager.add_tab(CommitTab, self.app.ui_controller, name="Commit")
+        self.history_tab = self.tab_manager.add_tab(HistoryTab, self.app.ui_controller, name="History")
 
-        self.commit_list_view = CommitListView(self.console_tab.commit_frame, self)
-        self.command_entry_view = CommandEntryView(self.console_tab.button_frame, self)
-        self.git_menu_manager = GitMenuManager(self.menubar, self)
-        self.branch_menu_manager = BranchMenuManager(self.menubar, self)
+        # Fase 4: Asociar componentes
+        self.app.ui_controller.set_ui_components(
+            console_tab=self.console_tab,
+            diff_tab=self.diff_tab,
+            staging_tab=self.staging_tab,
+            commit_tab=self.commit_tab,
+            history_tab=self.history_tab,
+            status_bar=self.status_bar,
+            notebook=self.notebook
+        )
 
-        self.console_tab.setup_context_menu()
-        self.console_tab.set_dependencies(self.status_formatter)
+        # Fase 5: Adjuntar controlador a console_tab (de nuevo por seguridad)
+        self.console_tab.attach_controller(self.app.ui_controller)
 
-        self.console_tab.entry.bind("<Up>", self.command_entry_view.navigate_history)
-        self.console_tab.entry.bind("<Down>", self.command_entry_view.navigate_history)
+        # Fase 6: Configurar componentes
+        self.setup_components()
 
-        self.execute_command("status --porcelain -u")
-        self.refresh_staging_view()
+        # Fase 7: Comandos iniciales
+        # Posponer comandos hasta que la interfaz esté renderizada
+        self.terminal_window.after_idle(self.run_initial_commands)
+
+
+    def run_initial_commands(self):
+        """Run initial Git commands after the UI is fully initialized"""
+        try:
+            self.app.git_service.execute_command("status --porcelain -u", self.console_tab.output_text)
+        except Exception as e:
+            print(f"[GitWindow] Error running initial Git status: {e}")
+
+        try:
+            if hasattr(self.staging_tab, "staged_files"):
+                self.app.git_service.refresh_staging_view()
+            else:
+                print("[GitWindow] Warning: staging_tab not fully initialized.")
+        except Exception as e:
+            print(f"[GitWindow] Error refreshing staging view: {e}")
+
+        try:
+            if hasattr(self.history_tab, "load_commits") and getattr(self.history_tab, "_ui_initialized", False):
+                self.history_tab.load_commits()
+        except Exception as e:
+            print(f"[GitWindow] Error loading commits in history tab: {e}")
 
     def create_window(self):
+        """Create the main application window"""
         self.terminal_window = Toplevel()
         self.terminal_window.title("Git Console")
         self.terminal_window.geometry("600x512")
@@ -88,195 +101,140 @@ class GitWindow:
         self.terminal_window.config(menu=self.menubar)
 
     def setup_ui(self):
+        """Only setup frame containers, not tabs or tabs that require controller"""
         self.notebook = Notebook(self.terminal_window)
         self.notebook.pack(fill="both", expand=True)
 
-        self.tab_manager = TabManager(self.notebook)
-        self.tab_manager.add_tab(ConsoleTab, self, name="Console")
-        self.tab_manager.add_tab(DiffTab, self, name="Diff")
-        self.tab_manager.add_tab(StagingTab, self, name="Staging")
-        self.tab_manager.add_tab(CommitTab, self, name="Commit")
-        self.tab_manager.add_tab(HistoryTab, self, name="History")
-
-        # Fix assignments here
-        self.console_tab = self.tab_manager.get_tab(ConsoleTab)
-        self.diff_tab = self.tab_manager.get_tab(DiffTab)
-        self.staging_tab = self.tab_manager.get_tab(StagingTab)
-        self.commit_tab = self.tab_manager.get_tab(CommitTab)
-        self.history_tab = self.tab_manager.get_tab(HistoryTab)
-
+        # Correct single creation of status_bar here:
         self.status_bar = Label(self.terminal_window, text="Loading...", bd=1, relief=SUNKEN, anchor=W)
         self.status_bar.pack(side="bottom", fill="x")
 
+    def setup_components(self):
+        """Set up UI components that need services"""
+        # Step 0: Ensure the ANSI renderer is created *before* anything tries to use it
+        if not getattr(self.app.ui_controller, "ansi_renderer", None):
+            if getattr(self.console_tab, "output_text", None):
+                renderer = AnsiRenderer(self.console_tab.output_text)
+                self.app.ui_controller.ansi_renderer = renderer
+                renderer.define_ansi_tags(self.console_tab.output_text)
+                print("[GitWindow] Created and attached ANSI renderer to UI controller")
+            else:
+                print("[GitWindow] ERROR: No output_text available to bind ANSI renderer")
+
+        # Step 0.5: Reattach controller to console_tab to ensure ANSI rendering is bound
+        if hasattr(self.console_tab, "attach_controller") and self.app.ui_controller:
+            self.console_tab.attach_controller(self.app.ui_controller)
+            print("[GitWindow] Re-attached UI controller to console tab")
+
+        # Step 1: Set the renderer for the diff tab
+        try:
+            if hasattr(self.diff_tab, 'set_renderer') and callable(self.diff_tab.set_renderer):
+                self.diff_tab.set_renderer()
+
+            if hasattr(self.diff_tab, 'refresh_file_list') and callable(self.diff_tab.refresh_file_list):
+                self.diff_tab.refresh_file_list()
+        except Exception as e:
+            print(f"[GitWindow] Error setting up diff tab: {e}")
+
+        # Step 2: Set up command entry view
+        try:
+            if hasattr(self.console_tab, 'button_frame') and self.console_tab.button_frame.winfo_exists():
+                self.command_entry_view = CommandEntryView(self.console_tab.button_frame, self)
+                self.app.ui_controller.command_entry_view = self.command_entry_view
+
+                self._bind_event_handlers()
+            else:
+                print("[GitWindow] Invalid button_frame for CommandEntryView")
+        except Exception as e:
+            print(f"[GitWindow] Error creating command entry view: {e}")
+
+        # Step 3: Initialize history tab branches
+        try:
+            if hasattr(self.history_tab, 'refresh_branches') and callable(self.history_tab.refresh_branches):
+                self.history_tab.refresh_branches()
+        except Exception as e:
+            print(f"[GitWindow] Error refreshing branches in history tab: {e}")
+
+    def _bind_event_handlers(self):
+        """Bind event handlers for UI components"""
+        # Bind command history navigation
+        self.command_entry_view.entry.bind("<Up>", self.command_entry_view.navigate_history)
+        self.command_entry_view.entry.bind("<Down>", self.command_entry_view.navigate_history)
+
+    # Delegate methods to the UI controller
+
     def execute_command(self, command):
-        if not command.strip():
-            return
-        self.command_history.append(command)
-        self.history_pointer[0] = len(self.command_history)
-
-        if command == "status --porcelain -u":
-            self.status_formatter.format_status(self.console_tab.output_text)
-        else:
-            threading.Thread(target=self.command_runner.run, args=(command, self.console_tab.output_text), daemon=True).start()
-
-        self.console_tab.entry.delete(0, END)
-        self.console_tab.output_text.see(END)
-
-    def run_git(self, *args):
-        return self.command_runner.git_executor.run_git(*args, repo_dir=self.repo_dir)
-
-    def add_selected_text_to_git_staging(self):
-        selected_text = self.console_tab.output_text.get("sel.first", "sel.last")
-        if selected_text:
-            self.execute_command(f"add -f {selected_text}")
-
-    def unstage_selected_text(self):
-        selected_text = self.console_tab.output_text.get("sel.first", "sel.last")
-        if selected_text:
-            self.execute_command(f"reset -- {selected_text}")
+        """Execute a Git command"""
+        self.app.ui_controller.execute_command(command)
 
     def refresh_staging_view(self):
-        output, _, _ = self.command_runner.git_executor.run_git("status", "--porcelain", repo_dir=self.repo_dir)
-        unstaged = []
-        staged = []
-
-        for line in output.splitlines():
-            status_code = line[:2]
-            file_path = line[3:]
-
-            staged_code = status_code[0]
-            unstaged_code = status_code[1]
-
-            if staged_code != ' ' and unstaged_code == ' ':
-                # Staged only
-                staged.append(file_path)
-            elif staged_code == ' ' and unstaged_code != ' ':
-                # Unstaged only
-                unstaged.append(file_path)
-            else:
-                # Both staged and unstaged — treat as unstaged for simplicity
-                unstaged.append(file_path)
-
-        self.staging_tab.staged_files.delete(0, END)
-        self.staging_tab.unstaged_files.delete(0, END)
-
-        for f in staged:
-            self.staging_tab.staged_files.insert(END, f)
-
-        for f in unstaged:
-            self.staging_tab.unstaged_files.insert(END, f)
-
-    def show_git_diff(self):
-        diff_window = Toplevel(self.terminal_window)
-        diff_window.title("Git Diff")
-        diff_window.geometry("800x600")
-        diff_text = Text(diff_window, height=20, width=80, font=my_font)
-        diff_text.pack(fill="both", expand=True)
-        self.ansi_renderer.define_ansi_tags(diff_text)
-        threading.Thread(
-            target=self.command_runner.run,
-            args=("diff --color", diff_text),
-            daemon=True
-        ).start()
-        diff_text.config(state="disabled")
-
-    def get_output_widget(self):
-        return self.console_tab.output_text
-
-    def update_status(self, commit_hash="HEAD"):
-        repo = Repository(self.repo_dir)
-        branch = repo.get_current_branch()
-        if branch:
-            self.status_bar.config(text=f"Current branch: {branch}")
-        else:
-            # fallback to commit hash if detached
-            from lib.git_cli.executor import GitExecutor
-            short_hash, _, _ = GitExecutor.run_git("rev-parse", "--short", commit_hash, repo_dir=self.repo_dir)
-            if short_hash.strip():
-                self.status_bar.config(text=f"Current commit: {short_hash.strip()}")
-            else:
-                self.status_bar.config(text="Error: Invalid identifier")
-
-    def copy_selected_text(self):
-        try:
-            selected_text = self.console_tab.output_text.get("sel.first", "sel.last")
-            self.terminal_window.clipboard_clear()
-            self.terminal_window.clipboard_append(selected_text)
-        except TclError:
-            pass  # No text selected
+        """Refresh the staging view"""
+        self.app.git_service.refresh_staging_view()
 
     def stage_selected_file(self, event=None):
-        self.staging_tab.stage_selected_file(event)
-        self.debounced_refresh_staging_view()
+        """Stage the selected file"""
+        self.app.ui_controller.stage_selected_file(event)
 
     def unstage_selected_file(self, event=None):
-        self.staging_tab.unstage_selected_file(event)
-        self.debounced_refresh_staging_view()
+        """Unstage the selected file"""
+        self.app.ui_controller.unstage_selected_file(event)
 
     def stage_all_files(self):
-        self.staging_tab.stage_all_files()
-        self.debounced_refresh_staging_view()
+        """Stage all files"""
+        self.app.ui_controller.stage_all_files()
 
     def unstage_all_files(self):
-        self.staging_tab.unstage_all_files()
-        self.debounced_refresh_staging_view()
+        """Unstage all files"""
+        self.app.ui_controller.unstage_all_files()
 
     def discard_selected_changes(self):
-        self.staging_tab.discard_selected_changes()
-        self.debounced_refresh_staging_view()
+        """Discard selected changes"""
+        self.app.ui_controller.discard_selected_changes()
 
     def commit_changes(self):
-        self.staging_tab.commit_changes()
-        self.debounced_refresh_staging_view()
+        """Commit changes"""
+        self.app.ui_controller.commit_changes()
 
     def commit_and_push(self):
-        self.staging_tab.commit_and_push()
-        self.debounced_refresh_staging_view()
+        """Commit and push changes"""
+        self.app.ui_controller.commit_and_push()
 
     def amend_last_commit(self):
-        self.staging_tab.amend_last_commit()
-        self.debounced_refresh_staging_view()
+        """Amend the last commit"""
+        self.app.ui_controller.amend_last_commit()
 
     def on_branch_selected(self, event=None):
+        """Handle branch selection"""
         self.history_tab.on_branch_selected(event)
 
     def refresh_branches(self):
-        self.history_tab.refresh_branches()
+        """Refresh branches"""
+        self.app.ui_controller.refresh_branches()
 
     def create_new_branch(self):
-        self.history_tab.create_new_branch()
+        """Create a new branch"""
+        self.app.ui_controller.create_new_branch()
 
     def show_commit_details(self, event=None):
+        """Show commit details"""
         self.history_tab.show_commit_details(event)
 
     def debounced_refresh_staging_view(self, delay=200):
-        """Evita múltiples actualizaciones consecutivas del staging tab."""
+        """Avoid excessive staging view updates by delaying them"""
         if hasattr(self, "_refresh_staging_job"):
             self.terminal_window.after_cancel(self._refresh_staging_job)
         self._refresh_staging_job = self.terminal_window.after(delay, self.refresh_staging_view)
 
-    def refresh_diff_view(self):
-        if hasattr(self, 'diff_tab'):
-            self.diff_tab.refresh_diff()
-
     def view_file_diff(self, file_path, mode="Working Directory"):
-        diff_tab = self.tab_manager.get_tab(DiffTab)
-        if diff_tab:
-            # Select the diff tab in the notebook
-            for i, tab_frame in enumerate(self.tab_manager.tab_frames.values()):
-                if tab_frame == self.tab_manager.tab_frames[DiffTab]:
-                    self.notebook.select(i)
-                    break
-
-            # Set the diff mode and selected file, then refresh diff view
-            diff_tab.diff_mode.set(mode)
-            diff_tab.selected_file.set(file_path)
-            diff_tab.refresh_diff()
+        """Switch to the Diff tab and display the diff for the selected file"""
+        self.app.ui_controller.view_file_diff(file_path, mode)
 
     def clear_console(self):
+        """Clear the console output"""
         self.console_tab.output_text.delete("1.0", END)
 
     def create_tooltip(self, widget, text):
+        """Attach a tooltip to a widget"""
         tooltip = None
 
         def on_enter(event):
@@ -298,9 +256,8 @@ class GitWindow:
 
 
 if __name__ == "__main__":
-    # Example usage:
-    repo_path = "/path/to/your/git/repository"  # Replace with your repository path
+    repo_path = "/path/to/your/git/repository"  # Replace this
     if os.path.exists(repo_path):
-        app = GitWindow(repo_path)
+        GitWindow(repo_path)
     else:
         print(f"Repository not found at: {repo_path}")
