@@ -11,8 +11,16 @@ class CommitTab(Frame):
         super().__init__(parent)
         self.parent = parent
         self.ui_controller = ui_controller
+        self._controller_attached = False
+        self._ui_initialized = False
         self.git_window = None  # si es necesario puedes recibirlo también como parámetro
         self.setup_commit_tab()
+
+    def attach_controller(self, ui_controller):
+        self.ui_controller = ui_controller
+        self._controller_attached = True
+        if not getattr(self, "_ui_initialized", False):
+            self.setup_commit_tab()
 
     def setup_commit_tab(self):
         """Set up the commit tab UI components"""
@@ -90,6 +98,8 @@ class CommitTab(Frame):
             command=self.ui_controller.amend_last_commit
         )
         self.amend_button.pack(side=LEFT, padx=2)
+
+        self._ui_initialized = True
 
     def _clear_placeholder(self, event):
         """Clear placeholder text when the commit message field is focused"""

@@ -38,3 +38,5 @@ google
 google-genai
 google-generativeai
 ttkbootstrap
+plyer
+

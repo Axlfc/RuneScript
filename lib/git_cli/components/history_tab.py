@@ -40,6 +40,8 @@ class HistoryTab(Frame):
             print("[HistoryTab] Controller not set for refresh_branches")
 
     def load_commits(self, commits=None):
+        print(f"[HistoryTab] Loading {len(commits)} commits")
+
         if not self._ui_initialized:
             print("[HistoryTab] Skipping load_commits because UI is not initialized")
             return

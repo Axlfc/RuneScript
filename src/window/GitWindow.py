@@ -47,6 +47,11 @@ class GitWindow:
         self.commit_tab = self.tab_manager.add_tab(CommitTab, self.app.ui_controller, name="Commit")
         self.history_tab = self.tab_manager.add_tab(HistoryTab, self.app.ui_controller, name="History")
 
+        # Adjuntar controller a los tabs manualmente
+        self.history_tab.attach_controller(self.app.ui_controller)
+        self.staging_tab.attach_controller(self.app.ui_controller)
+        self.commit_tab.attach_controller(self.app.ui_controller)
+
         # Fase 4: Asociar componentes
         self.app.ui_controller.set_ui_components(
             console_tab=self.console_tab,
@@ -64,13 +69,18 @@ class GitWindow:
         # Fase 6: Configurar componentes
         self.setup_components()
 
-        # Fase 7: Comandos iniciales
-        # Posponer comandos hasta que la interfaz esté renderizada
-        self.terminal_window.after_idle(self.run_initial_commands)
+        # ✅ Fase 7: Hacer refresh SOLO AHORA (cuando los componentes ya existen)
+        self.app.ui_controller.refresh_commit_history()
+        self.app.git_service.refresh_staging_view()
 
+        # Fase 8: Comandos iniciales diferidos hasta render completo
+        self.terminal_window.after_idle(self.run_initial_commands)
 
     def run_initial_commands(self):
         """Run initial Git commands after the UI is fully initialized"""
+        if hasattr(self.app, "ui_controller"):
+            self.app.ui_controller.diagnostics()
+
         try:
             self.app.git_service.execute_command("status --porcelain -u", self.console_tab.output_text)
         except Exception as e:
@@ -169,7 +179,10 @@ class GitWindow:
 
     def refresh_staging_view(self):
         """Refresh the staging view"""
-        self.app.git_service.refresh_staging_view()
+        if hasattr(self.staging_tab, "update_staging_data"):
+            self.app.git_service.refresh_staging_view()
+        else:
+            print("[GitWindow] StagingTab not fully initialized.")
 
     def stage_selected_file(self, event=None):
         """Stage the selected file"""

@@ -93,6 +93,8 @@ class GitService:
                 # Both staged and unstaged — treat as unstaged for simplicity
                 unstaged.append(file_path)
 
+        print(f"[GitService] Publishing staging update: {staged} staged, {unstaged} unstaged")
+
         # Publish the staging information
         self.event_bus.publish("git.staging.updated", {
             "staged_files": staged,
@@ -256,3 +258,17 @@ class GitService:
         if success:
             return output
         return ""
+
+    def get_commits_for_branch(self, branch_name):
+        output, success, _ = self.run_git("log", "--format=%H - %s", branch_name)
+        if not success:
+            return []
+
+        commits = []
+        for line in output.splitlines():
+            if line.strip():
+                parts = line.strip().split(" - ", 1)
+                if len(parts) == 2:
+                    commits.append({"hash": parts[0], "message": parts[1]})
+
+        return commits

@@ -29,6 +29,42 @@ class UIController:
         # Register event handlers
         self._register_event_handlers()
 
+    def diagnostics(self):
+        print("\n[Diagnostics] Running UI initialization health check...")
+
+        components = {
+            "console_tab": self.console_tab,
+            "diff_tab": self.diff_tab,
+            "staging_tab": self.staging_tab,
+            "commit_tab": self.commit_tab,
+            "history_tab": self.history_tab,
+            "status_bar": self.status_bar,
+            "notebook": self.notebook,
+            "ansi_renderer": self.ansi_renderer,
+        }
+
+        for name, component in components.items():
+            if component is None:
+                print(f"❌ {name} is NOT initialized")
+            else:
+                print(f"✅ {name} is OK")
+
+        if self.staging_tab and not getattr(self.staging_tab, "_ui_initialized", False):
+            print("⚠️  staging_tab exists but is NOT fully initialized")
+
+        if self.history_tab and not getattr(self.history_tab, "_ui_initialized", False):
+            print("⚠️  history_tab exists but is NOT fully initialized")
+
+        if hasattr(self, "commit_list_view") and not isinstance(self.commit_list_view, CommitListView):
+            print(f"⚠️  commit_list_view is misconfigured (type: {type(self.commit_list_view)})")
+
+        if not self.current_branch:
+            print("⚠️  current_branch not set")
+        else:
+            print(f"📌 Current branch: {self.current_branch}")
+
+        print("[Diagnostics] Done.\n")
+
     def run_git(self, *args):
         return self.git_service.command_runner.git_executor.run_git(*args, repo_dir=self.git_service.repo_dir)
 
@@ -85,6 +121,7 @@ class UIController:
         self.event_bus.subscribe("git.command.executed", self._on_command_executed)
         self.event_bus.subscribe("git.commit.created", self.refresh_commit_history)
         self.event_bus.subscribe("git.branch.changed", self.refresh_commit_history)
+        self.event_bus.subscribe("git.status.changed", self.refresh_staging_view)
 
     def _refresh_commit_list(self, data=None):
         """Refresh the commit list if available and valid"""
@@ -127,16 +164,34 @@ class UIController:
             return []
         return self.git_service.get_commits_for_branch(self.current_branch)
 
+    def refresh_staging_view(self, *_):
+        self.git_service.refresh_staging_view()
+
     def _update_staging_view(self, data=None):
         if not self.staging_tab or not getattr(self.staging_tab, "_ui_initialized", False):
             print("[UIController] StagingTab not initialized yet")
             return
+        elif not self.staging_tab:
+            print("[UIController] ERROR: staging_tab is None during publish")
         if not hasattr(self.staging_tab, "staged_files"):
             print("[UIController] staged_files Listbox missing")
             return
+
+
+        # Clear the lists first
         self.staging_tab.staged_files.delete(0, END)
-        for file in data.get("staged", []):
+        self.staging_tab.unstaged_files.delete(0, END)
+
+        print(
+            f"Updating staging tab with {len(data.get('staged_files', []))} staged and {len(data.get('unstaged_files', []))} unstaged files.")
+
+
+        # Update with the data from GitService
+        for file in data.get("staged_files", []):
             self.staging_tab.staged_files.insert(END, file)
+
+        for file in data.get("unstaged_files", []):
+            self.staging_tab.unstaged_files.insert(END, file)
 
     def _on_command_executed(self, data):
         """Handle command execution events"""
@@ -153,6 +208,10 @@ class UIController:
             # Clear the command entry
             if hasattr(self, 'command_entry_view') and self.command_entry_view.entry:
                 self.command_entry_view.entry.delete(0, END)
+
+            # If this is a staging-related command, refresh the staging view
+            if any(cmd in command for cmd in ["add", "reset", "checkout --", "rm"]):
+                self.refresh_staging_view()
 
     # File operations
     def stage_selected_file(self, event=None):

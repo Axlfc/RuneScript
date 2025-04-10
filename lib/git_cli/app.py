@@ -36,7 +36,7 @@ class Application:
     def initialize_with_ui(self, main_window, output_text):
         print(f"Initializing Application UI with output_text: {output_text}")
 
-        # Step 1: Setup ANSI renderer first
+        # Step 1: Setup ANSI renderer
         self.ansi_renderer = AnsiRenderer(output_text)
         self.ansi_renderer.define_ansi_tags(output_text)
 
@@ -50,13 +50,14 @@ class Application:
             event_bus=self.event_bus
         )
 
-        # ✅ Step 3: Create UIController correctly (con todos los argumentos)
+        # Step 3: Create UIController (AHORA ya puedes pasarle todo)
         self.ui_controller = UIController(
             git_service=self.git_service,
             main_window=main_window,
             output_text=output_text,
             event_bus=self.event_bus
         )
+
         self.ui_controller.ansi_renderer = self.ansi_renderer
 
     def _setup_event_listeners(self):

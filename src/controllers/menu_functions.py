@@ -265,6 +265,10 @@ def open_clock_window():
     return ClockWindow()
 
 
+def open_productivity_window():
+    return PlannerWindow()
+
+
 def open_scriptsstudio_folder(event=None):
     """
     Opens the ScriptsStudio program folder in the system's file explorer.
@@ -1316,6 +1320,14 @@ def create_menu():
         accelerator="Ctrl+Alt+C",
     )
     root.bind("<Control-Alt-c>", open_calculator_window)
+
+    tool_menu.add_command(
+        label=localization_data["clock"],
+        command=open_clock_window,
+        accelerator="F7",
+    )
+    root.bind("<F7>", open_calculator_window)
+    open_clock_window
 
     tool_menu.add_command(
         label=localization_data["clock"],
