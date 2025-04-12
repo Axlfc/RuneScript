@@ -49,6 +49,12 @@ class GitWindow:
 
         # Adjuntar controller a los tabs manualmente
         self.history_tab.attach_controller(self.app.ui_controller)
+
+        if hasattr(self.history_tab, "commit_list_view"):
+            self.app.ui_controller.commit_list_view = self.history_tab.commit_list_view
+        else:
+            print("[GitWindow] Warning: commit_list_view not initialized in HistoryTab")
+
         self.staging_tab.attach_controller(self.app.ui_controller)
         self.commit_tab.attach_controller(self.app.ui_controller)
 
@@ -68,6 +74,12 @@ class GitWindow:
 
         # Fase 6: Configurar componentes
         self.setup_components()
+
+        # Make sure current branch is initialized
+        branch = self.app.git_service.repo.get_current_branch()
+        if branch:
+            self.app.ui_controller.current_branch = branch
+            print(f"[GitWindow] Set current branch to: {branch}")
 
         # ✅ Fase 7: Hacer refresh SOLO AHORA (cuando los componentes ya existen)
         self.app.ui_controller.refresh_commit_history()

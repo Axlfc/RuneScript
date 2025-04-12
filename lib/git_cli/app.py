@@ -40,9 +40,11 @@ class Application:
         self.ansi_renderer = AnsiRenderer(output_text)
         self.ansi_renderer.define_ansi_tags(output_text)
 
-        # Step 2: Setup services
+        # Step 2: Setup services IN CORRECT ORDER
         self.command_runner = GitCommandRunner(self.dispatcher, self.ansi_renderer, self.repo_dir)
         self.status_formatter = GitStatusFormatter(self.ansi_renderer, self.repo_dir)
+
+        # Initialize git_service BEFORE trying to access it
         self.git_service = GitService(
             repo_dir=self.repo_dir,
             command_runner=self.command_runner,
@@ -50,7 +52,11 @@ class Application:
             event_bus=self.event_bus
         )
 
-        # Step 3: Create UIController (AHORA ya puedes pasarle todo)
+        # Move this line AFTER git_service is initialized
+        print(f"[App Init] CommandRunner initialized? {self.command_runner is not None}")
+        print(f"[App Init] GitService.command_runner: {self.git_service.command_runner}")
+
+        # Step 3: Create UIController
         self.ui_controller = UIController(
             git_service=self.git_service,
             main_window=main_window,
@@ -59,6 +65,9 @@ class Application:
         )
 
         self.ui_controller.ansi_renderer = self.ansi_renderer
+
+        # Step 4: Set up all pub/sub event wiring
+        self._setup_event_listeners()
 
     def _setup_event_listeners(self):
         """Set up event listeners for application-wide events"""

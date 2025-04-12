@@ -74,6 +74,27 @@
             "api_key": "not-needed",
             "last_selected_session_id": 0
         },
+        "project_settings": {
+            "missing_dot_git": true,
+            "missing_dot_env": true,
+            "missing_dot_gitignore": true,
+            "missing_dot_venv": true,
+            "missing_requirements_txt": true,
+            "missing_setup_py": true,
+            "missing_pyproject_toml": true,
+            "missing_readme_md": true,
+            "missing_tests_directory": true,
+            "missing_init_files": true,
+            "missing_linting_config": true,
+            "missing_mypy_config": true,
+            "missing_ci_config": true,
+            "python_version": "3.10",
+            "virtual_env_type": "venv",
+            "package_manager": "pip",
+            "linter_preference": "flake8",
+            "formatter_preference": "black",
+            "test_framework": "pytest"
+        },
         "miscellaneous": {
             "user_name": "John Doe",
             "timestamp_format": "YYYY-MM-DD HH:mm:ss",

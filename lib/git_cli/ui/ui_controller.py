@@ -125,25 +125,24 @@ class UIController:
 
     def _refresh_commit_list(self, data=None):
         """Refresh the commit list if available and valid"""
-        if not hasattr(self, "commit_list_view"):
+        if not hasattr(self, "commit_list_view") or self.commit_list_view is None:
             print("Warning: commit_list_view attribute not found")
             return
 
-        if not isinstance(self.commit_list_view, CommitListView):
-            print(f"Warning: commit_list_view is not a CommitListView instance (type: {type(self.commit_list_view)})")
-            return
-
-        self.commit_list_view.update_commit_list()
+        try:
+            self.commit_list_view.update_commit_list()
+        except Exception as e:
+            print(f"Error updating commit list: {e}")
 
     def _update_status_bar(self, data):
         """Update the status bar with the given message"""
         if self.status_bar and "message" in data:
             self.status_bar.config(text=data["message"])
 
-    def refresh_commit_history(self):
+    def refresh_commit_history(self, *args):
         """Refresh both the commit list view and history tab"""
         # Update commit list if available
-        if hasattr(self, "commit_list_view") and isinstance(self.commit_list_view, CommitListView):
+        if hasattr(self, "commit_list_view") and self.commit_list_view is not None:
             try:
                 self.commit_list_view.update_commit_list()
             except Exception as e:
@@ -159,10 +158,18 @@ class UIController:
     def set_current_branch(self, branch):
         self.current_branch = branch
 
-    def get_commits_for_selected_branch(self):
-        if not hasattr(self, 'git_service') or not self.current_branch:
-            return []
-        return self.git_service.get_commits_for_branch(self.current_branch)
+    def get_commits_for_selected_branch(self, branch_name=None):
+        if branch_name is None:
+            branch_name = self.current_branch
+
+        #print("[DEBUG] Running raw git log...")
+        #out = self.run_git_stdout("log", "--oneline", "redgreenrefactor")
+        #print(out)
+
+        print(f"[UIController] Getting commits for branch: {branch_name}")
+        result = self.git_service.get_commits_for_branch(branch_name)
+        print(f"[UIController] Retrieved {len(result)} commits")
+        return result
 
     def refresh_staging_view(self, *_):
         self.git_service.refresh_staging_view()
@@ -300,7 +307,11 @@ class UIController:
         """Refresh the branch list in the history tab"""
         if self.history_tab:
             branches = self.git_service.get_branches()
-            self.history_tab.update_branch_list(branches)
+            if branches:
+                self.history_tab.update_branch_list(branches)
+                # Make sure a branch is selected
+                if not self.current_branch and self.git_service.current_branch:
+                    self.set_current_branch(self.git_service.current_branch)
 
     def create_new_branch(self, name=None):
         """Create a new branch"""

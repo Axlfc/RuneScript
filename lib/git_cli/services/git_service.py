@@ -18,6 +18,7 @@ class GitService:
         self.event_bus = event_bus
         self.command_history = []
         self.history_pointer = [0]
+        self.current_branch = None
 
     def execute_command(self, command, output_text):
         """Execute a Git command and update the output text widget"""
@@ -43,8 +44,11 @@ class GitService:
         self.event_bus.publish("git.command.executed", {"command": command})
 
     def run_git(self, *args):
-        """Run a git command directly and return the output"""
-        return self.command_runner.git_executor.run_git(*args, repo_dir=self.repo_dir)
+        try:
+            output = self.command_runner.git_executor.run_git(*args, repo_dir=self.repo_dir)
+            return output, True, ""
+        except Exception as e:
+            return "", False, str(e)
 
     def refresh_status(self):
         """Refresh the repository status information"""
@@ -173,17 +177,27 @@ class GitService:
             self.event_bus.publish("git.push.completed")
 
     def get_branches(self):
-        """Get list of branches"""
+        """Get list of branches and mark the current one"""
         output, _, _ = self.run_git("branch", "--all")
         branches = []
+        self.current_branch = None
+        self.all_branches = []  # Add this line to store all branches
 
         for line in output.splitlines():
             if line.strip():
-                # Remove the '*' prefix for current branch
                 branch = line.strip()
                 if branch.startswith("*"):
                     branch = branch[1:].strip()
+                    self.current_branch = branch
+                else:
+                    branch = branch.strip()
+
+                # Clean up branch names (remove remote prefixes if necessary)
+                if branch.startswith("remotes/"):
+                    branch = branch.split("/", 2)[-1]
+
                 branches.append(branch)
+                self.all_branches.append(branch)  # Store cleaned branch name
 
         return branches
 
@@ -259,16 +273,53 @@ class GitService:
             return output
         return ""
 
-    def get_commits_for_branch(self, branch_name):
-        output, success, _ = self.run_git("log", "--format=%H - %s", branch_name)
-        if not success:
+    def get_commits_for_branch(self, branch_name=None):
+        """Get the commits for a specific branch"""
+        # If no branch_name is provided, use current branch or HEAD
+        if branch_name is None:
+            branch_name = self.repo.get_current_branch() or "HEAD"
+            print(f"[GitService] Using fallback branch: {branch_name}")
+
+        # Ensure we have a list of branches
+        if not hasattr(self, 'all_branches') or not self.all_branches:
+            self.get_branches()
+
+        # Verify the branch exists
+        branch_exists = branch_name in self.all_branches or branch_name == "HEAD"
+        if not branch_exists:
+            print(f"[GitService] Branch '{branch_name}' not found in repository")
+            print(f"[GitService] Available branches: {self.all_branches}")
+
+            # Try using HEAD instead
+            branch_name = "HEAD"
+            print(f"[GitService] Falling back to {branch_name}")
+
+        print(f"[GitService] Running git log for branch: {branch_name}")
+
+        try:
+            # Define the args here so we can reference them in the debug print
+            args = ["log", "--format=%H - %s", branch_name]
+            output, success, error = self.run_git(*args)
+
+            print(f"[GitService] git log args: {args} for branch {branch_name}")
+
+            if not success:
+                print(f"[GitService] Failed to get commits for branch: {branch_name}")
+                print(f"[GitService] Error: {error}")
+                return []
+
+            commits = []
+            for line in output.splitlines():
+                if line.strip():
+                    parts = line.strip().split(" - ", 1)
+                    if len(parts) == 2:
+                        commits.append({"hash": parts[0], "message": parts[1]})
+                    else:
+                        print(f"[GitService] Unexpected commit format: {line}")
+
+            print(f"[GitService] Retrieved {len(commits)} commits for branch: {branch_name}")
+            return commits
+        except Exception as e:
+            print(f"[GitService] Exception getting commits: {str(e)}")
+            # Return empty array instead of None to avoid NoneType errors
             return []
-
-        commits = []
-        for line in output.splitlines():
-            if line.strip():
-                parts = line.strip().split(" - ", 1)
-                if len(parts) == 2:
-                    commits.append({"hash": parts[0], "message": parts[1]})
-
-        return commits

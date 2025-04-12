@@ -26,8 +26,12 @@ class HistoryTab(Frame):
         self.ui_controller = ui_controller
         self._controller_attached = True
 
+        # If UI is not initialized, do it now
         if not self._ui_initialized:
             self.setup_history_tab()
+        # If we already have a commit_list_view, update its controller reference
+        elif hasattr(self, 'commit_list_view') and self.commit_list_view is not None:
+            self.commit_list_view.controller = ui_controller
 
     def refresh_branches(self):
         if not self._ui_initialized:
@@ -40,18 +44,49 @@ class HistoryTab(Frame):
             print("[HistoryTab] Controller not set for refresh_branches")
 
     def load_commits(self, commits=None):
-        print(f"[HistoryTab] Loading {len(commits)} commits")
-
+        """Load commits into the commit listbox"""
         if not self._ui_initialized:
             print("[HistoryTab] Skipping load_commits because UI is not initialized")
             return
 
         self.commit_listbox.delete(0, END)
-        if not commits:
-            commits = self.ui_controller.get_commits_for_selected_branch()
 
+        # Get commits if not provided
+        if commits is None and self.ui_controller and self.ui_controller.git_service:
+            try:
+                # Add debug to see what's happening
+                print("[HistoryTab] Fetching commits for selected branch")
+
+                # Use the current branch if available
+                current_branch = getattr(self.ui_controller, 'current_branch', None)
+                if current_branch:
+                    print(f"[HistoryTab] Using current branch: {current_branch}")
+                    commits = self.ui_controller.get_commits_for_selected_branch(current_branch)
+                else:
+                    print("[HistoryTab] No current branch set, falling back to default")
+                    commits = self.ui_controller.get_commits_for_selected_branch()
+
+                print(f"[HistoryTab] Fetched {len(commits) if commits else 0} commits")
+            except Exception as e:
+                print(f"[HistoryTab] Error getting commits: {e}")
+                # Consider displaying this error to the user
+                commits = []
+
+        # Ensure commits is at least an empty list to avoid NoneType errors
+        commits = commits or []
+
+        print(f"[HistoryTab] Loading {len(commits)} commits")
+
+        # Add commits to listbox
         for c in commits:
-            self.commit_listbox.insert(END, f"{c['hash']} - {c['message']}")
+            if isinstance(c, dict):
+                # Handle dict format
+                commit_hash = c.get('hash', '')
+                message = c.get('message', '')
+                self.commit_listbox.insert(END, f"{commit_hash} - {message}")
+            else:
+                # Handle string format or other formats
+                self.commit_listbox.insert(END, str(c))
 
     def show_commit_details(self, event=None):
         if not self._ui_initialized or not hasattr(self, 'commit_listbox'):
@@ -88,13 +123,36 @@ class HistoryTab(Frame):
         self.detail_text.config(state=DISABLED)
 
     def update_branch_list(self, branches):
-        try:
-            from lib.git_cli.core.repository import Repository
-            repo = Repository(self.ui_controller.git_service.repo_dir)
-            current_branch = repo.get_current_branch()
-            print(f"[HistoryTab] Current branch: {current_branch}")
-        except Exception as e:
-            print(f"[HistoryTab] Error getting current branch: {e}")
+        """Update the branch dropdown with branches and select current one"""
+        if not self._ui_initialized or not hasattr(self, 'branch_dropdown'):
+            print("[HistoryTab] branch_dropdown not initialized yet")
+            return
+
+        print(f"[HistoryTab] Updating branch list with {len(branches)} branches")
+
+        # Clear existing branches
+        self.branch_dropdown.delete(0, END)
+
+        # Get the current branch
+        current_branch = None
+        if self.ui_controller and hasattr(self.ui_controller, 'current_branch'):
+            current_branch = self.ui_controller.current_branch
+
+        # Add all branches to the list with * marking the current one
+        for branch in branches:
+            display_name = f"* {branch}" if branch == current_branch else f"  {branch}"
+            self.branch_dropdown.insert(END, display_name)
+
+        # Try to select the current branch in the list
+        if current_branch:
+            for i, branch in enumerate(branches):
+                if branch == current_branch:
+                    self.branch_dropdown.selection_set(i)
+                    break
+
+            # Load commits for the current branch
+            self.ui_controller.set_current_branch(current_branch)
+            self.load_commits()
 
     def setup_history_tab(self):
         if self._ui_initialized:
@@ -103,11 +161,11 @@ class HistoryTab(Frame):
             print("[HistoryTab] Controller not attached, skipping setup.")
             return
 
-        # Limpia placeholder
+        # Clear placeholder
         if hasattr(self, 'placeholder'):
             self.placeholder.destroy()
 
-        # === Sección de ramas ===
+        # === Branch section ===
         branch_frame = LabelFrame(self, text="Branch")
         branch_frame.pack(fill="x", padx=10, pady=(10, 5))
 
@@ -117,19 +175,37 @@ class HistoryTab(Frame):
 
         Button(branch_frame, text="Refresh", command=self.refresh_branches).pack(side=LEFT, padx=5, pady=5)
 
-        # === Sección de commits ===
+        # === Commit section ===
         commit_frame = LabelFrame(self, text="Commits")
         commit_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        self.commit_listbox = Listbox(commit_frame, exportselection=False)
-        self.commit_listbox.pack(side=LEFT, fill=BOTH, expand=True)
-        self.commit_listbox.bind("<Double-Button-1>", self.show_commit_details)
+        # Initialize the CommitListView
+        try:
+            # Create the commit_list_view
+            self.commit_list_view = CommitListView(commit_frame, self.ui_controller)
+            self.commit_list_view.pack(fill=BOTH, expand=True)
 
-        scrollbar = Scrollbar(commit_frame, orient="vertical", command=self.commit_listbox.yview)
-        scrollbar.pack(side=RIGHT, fill=Y)
-        self.commit_listbox.config(yscrollcommand=scrollbar.set)
+            # IMPORTANT: Store reference to this in the UIController
+            if self.ui_controller:
+                self.ui_controller.commit_list_view = self.commit_list_view
 
-        # === Detalles ===
+            # Use the commit_list_view as the listbox for compatibility with existing code
+            self.commit_listbox = self.commit_list_view
+        except Exception as e:
+            print(f"[HistoryTab] Error initializing CommitListView: {e}")
+            # Fallback to simple listbox
+            self.commit_listbox = Listbox(commit_frame, exportselection=False)
+            self.commit_listbox.pack(side=LEFT, fill=BOTH, expand=True)
+
+            scrollbar = Scrollbar(commit_frame, orient="vertical", command=self.commit_listbox.yview)
+            scrollbar.pack(side=RIGHT, fill=Y)
+            self.commit_listbox.config(yscrollcommand=scrollbar.set)
+
+            # Bind events
+            self.commit_listbox.bind("<Double-Button-1>", self.show_commit_details)
+            self.commit_listbox.bind("<Button-3>", self.show_commit_context_menu)
+
+        # === Details section ===
         detail_frame = LabelFrame(self, text="Details")
         detail_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -139,7 +215,22 @@ class HistoryTab(Frame):
         self._ui_initialized = True
         print("[HistoryTab] UI initialized")
 
+        # Initial data load
+        self.refresh_branches()
+
+    def show_commit_context_menu(self, event):
+        """Display context menu for commits on right-click"""
+        if not hasattr(self.ui_controller, 'commit_list_view') or self.ui_controller.commit_list_view is None:
+            return
+
+        try:
+            # Use the CommitListView's context menu method
+            self.ui_controller.commit_list_view.commit_list_context_menu(event)
+        except Exception as e:
+            print(f"[HistoryTab] Error showing commit context menu: {e}")
+
     def on_branch_selected(self, event=None):
+        """Handle branch selection from the branch list"""
         if not self._ui_initialized:
             return
 
@@ -148,7 +239,18 @@ class HistoryTab(Frame):
             return
 
         index = selection[0]
-        branch_name = self.branch_dropdown.get(index)
+        branch_display = self.branch_dropdown.get(index)
+        # Remove the prefix (* or spaces) to get the actual branch name
+        branch_name = branch_display.strip('* ')
 
-        self.ui_controller.set_current_branch(branch_name)
-        self.load_commits()
+        print(f"[HistoryTab] Selected branch: {branch_name}")
+
+        # Update controller with the selected branch
+        if self.ui_controller:
+            self.ui_controller.set_current_branch(branch_name)
+
+            # Load commits for the selected branch
+            try:
+                self.load_commits()
+            except Exception as e:
+                print(f"[HistoryTab] Error loading commits for branch {branch_name}: {e}")
