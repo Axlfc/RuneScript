@@ -27,10 +27,10 @@ from src.controllers.scheduled_tasks import (
 )
 from src.window.ClockWindow import ClockWindow
 from src.window.FindInFilesWindow import FindInFilesWindow
-from src.window.GraphicEngineWindow import GraphicEngineWindow
+# from src.window.GraphicEngineWindow import GraphicEngineWindow
 from src.window.PromptLookup import PromptLookup, PromptInterpreter
 from src.window.SystemInfoWindow import SystemInfoWindow
-from src.window.Web3EditorWindow import Web3DevStudio
+# from src.window.Web3EditorWindow import Web3DevStudio
 
 # REFACTOR
 from src.ide.IDEController import IDEController
@@ -1398,7 +1398,7 @@ def create_menu():
         command=create_settings_window,
         accelerator="Ctrl+,",
     )
-    root.bind("<Control-,>", create_settings_window)
+    root.bind("<Control-comma>", create_settings_window)
 
     tool_menu.add_command(
         label="Graphic Engine",

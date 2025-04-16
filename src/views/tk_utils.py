@@ -69,7 +69,7 @@ except Exception as e:
     style.theme_use("cosmo")
 
 root = style.master
-root.iconbitmap("src/views/icon.ico")
+# root.iconbitmap("src/views/icon.ico")
 toolbar = Frame(root, pady=2)
 
 # Create a new Font object with the desired font family and size
