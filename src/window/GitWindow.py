@@ -112,6 +112,17 @@ class GitWindow:
         except Exception as e:
             print(f"[GitWindow] Error loading commits in history tab: {e}")
 
+        # Make sure we update the status bar with current repository information
+        try:
+            self.app.git_service.refresh_status()
+
+            # Add a backup direct update in case the event system isn't working properly
+            branch = self.app.git_service.repo.get_current_branch()
+            if branch:
+                self.status_bar.config(text=f"Current branch: {branch}")
+        except Exception as e:
+            print(f"[GitWindow] Error updating status bar: {e}")
+
     def create_window(self):
         """Create the main application window"""
         self.terminal_window = Toplevel()
@@ -125,9 +136,11 @@ class GitWindow:
     def setup_ui(self):
         """Only setup frame containers, not tabs or tabs that require controller"""
         self.notebook = Notebook(self.terminal_window)
-        self.notebook.pack(fill="both", expand=True)
+        # self.notebook.pack(fill="both", expand=True)
+        self.notebook.pack(fill="both", expand=True, pady=(0, 20))  # Add padding at bottom
 
         # Correct single creation of status_bar here:
+        print("CREATING STATUS BAR")
         self.status_bar = Label(self.terminal_window, text="Loading...", bd=1, relief=SUNKEN, anchor=W)
         self.status_bar.pack(side="bottom", fill="x")
 
@@ -176,6 +189,34 @@ class GitWindow:
                 self.history_tab.refresh_branches()
         except Exception as e:
             print(f"[GitWindow] Error refreshing branches in history tab: {e}")
+
+        # Step 4: Set up status bar event listeners
+        try:
+            print(f"Status bar visibility check: {self.status_bar.winfo_ismapped()}")
+
+            if hasattr(self.app.ui_controller, "setup_status_bar_listeners"):
+                self.app.ui_controller.setup_status_bar_listeners()
+            else:
+                print("[GitWindow] Warning: setup_status_bar_listeners not found in UIController")
+
+            # Manually refresh status as a fallback
+            self.app.git_service.refresh_status()
+
+            # Update status bar with initial repository information
+            branch = self.app.git_service.repo.get_current_branch()
+            if branch:
+                self.status_bar.config(text=f"Current branch: {branch}")
+            else:
+                # Try to get the commit hash if in detached HEAD state
+                output, success, _ = self.app.git_service.run_git("rev-parse", "--short", "HEAD")
+                if isinstance(output, tuple) and output:
+                    output = output[0]
+                if success and output:
+                    self.status_bar.config(text=f"HEAD at commit: {output.strip()}")
+        except Exception as e:
+            print(f"[GitWindow] Error setting up status bar: {e}")
+            # At least show something useful instead of "Loading..."
+            self.status_bar.config(text=f"Repository: {self.app.git_service.repo_dir.name}")
 
     def _bind_event_handlers(self):
         """Bind event handlers for UI components"""

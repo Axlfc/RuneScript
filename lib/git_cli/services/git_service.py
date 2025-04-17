@@ -61,7 +61,7 @@ class GitService:
             status_info["message"] = f"Current branch: {branch}"
         else:
             # Get the current commit hash if detached
-            short_hash, _, _ = self.run_git("rev-parse", "--short", "HEAD")
+            short_hash, success, _ = self.run_git("rev-parse", "--short", "HEAD")
             if short_hash.strip():
                 status_info["commit"] = short_hash.strip()
                 status_info["message"] = f"Current commit: {short_hash.strip()}"
@@ -73,9 +73,19 @@ class GitService:
 
     def refresh_staging_view(self):
         """Get the current staged and unstaged files and publish the information"""
-        output, _, _ = self.run_git("status", "--porcelain")
+        output, success, error = self.run_git("status", "--porcelain")
         unstaged = []
         staged = []
+
+        # Make sure output is a string before calling splitlines()
+        if isinstance(output, tuple):
+            # This is likely the issue - output should be a string, not a tuple
+            print(f"[GitService] Warning: output is a tuple: {output}")
+            output = str(output[0]) if output else ""
+
+        if not isinstance(output, str):
+            print(f"[GitService] Error: output is not a string: {type(output)}")
+            output = str(output) if output else ""
 
         for line in output.splitlines():
             if not line:
@@ -178,10 +188,18 @@ class GitService:
 
     def get_branches(self):
         """Get list of branches and mark the current one"""
-        output, _, _ = self.run_git("branch", "--all")
+        output, success, error = self.run_git("branch", "--all")
         branches = []
         self.current_branch = None
         self.all_branches = []  # Add this line to store all branches
+
+        # Fix potential tuple issue
+        if isinstance(output, tuple) and len(output) > 0:
+            output = output[0]
+
+        if not isinstance(output, str):
+            print(f"[GitService] Error: branch output is not a string: {type(output)}")
+            output = str(output) if output else ""
 
         for line in output.splitlines():
             if line.strip():
@@ -228,7 +246,14 @@ class GitService:
 
     def get_commit_details(self, commit_hash):
         """Get details about a specific commit"""
-        output, success, _ = self.run_git("show", "--name-status", commit_hash)
+        output, success, error = self.run_git("show", "--name-status", commit_hash)
+
+        # Fix potential tuple issue
+        if isinstance(output, tuple) and len(output) > 0:
+            output = output[0]
+
+        if not isinstance(output, str):
+            output = str(output) if output else ""
 
         if success:
             # Parse the commit details
@@ -269,6 +294,10 @@ class GitService:
         else:
             output, success, _ = self.run_git("diff", "HEAD", "--", file_path)
 
+        # Fix potential tuple issue
+        if isinstance(output, tuple) and len(output) > 0:
+            output = output[0]
+
         if success:
             return output
         return ""
@@ -300,6 +329,13 @@ class GitService:
             # Define the args here so we can reference them in the debug print
             args = ["log", "--format=%H - %s", branch_name]
             output, success, error = self.run_git(*args)
+
+            # Fix potential tuple issue
+            if isinstance(output, tuple) and len(output) > 0:
+                output = output[0]
+
+            if not isinstance(output, str):
+                output = str(output) if output else ""
 
             print(f"[GitService] git log args: {args} for branch {branch_name}")
 

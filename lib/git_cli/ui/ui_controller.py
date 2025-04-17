@@ -136,8 +136,49 @@ class UIController:
 
     def _update_status_bar(self, data):
         """Update the status bar with the given message"""
-        if self.status_bar and "message" in data:
+        if hasattr(self, "status_bar") and self.status_bar and "message" in data:
             self.status_bar.config(text=data["message"])
+
+    def _handle_branch_changed(self, data):
+        """Handle branch changed events"""
+        if "name" in data:
+            self.status_bar.config(text=f"Current branch: {data['name']}")
+            # Also update the current branch in the controller
+            self.current_branch = data["name"]
+            # Refresh commit history for the new branch
+            self.refresh_commit_history()
+
+    def _handle_command_executed(self, data):
+        """Handle command executed events"""
+        if "command" in data:
+            command = data["command"]
+            # Show the last executed command in the status bar
+            if command != "status --porcelain -u":  # Don't show status commands
+                self.status_bar.config(text=f"Last command: git {command}")
+
+    def _handle_commit_created(self, data=None):
+        """Handle commit created events"""
+        self.status_bar.config(text="Commit successful!")
+        # Refresh the staging view and commit history
+        self.git_service.refresh_staging_view()
+        self.refresh_commit_history()
+
+    def _handle_push_completed(self, data=None):
+        """Handle push completed events"""
+        self.status_bar.config(text="Push successful!")
+
+    def setup_status_bar_listeners(self):
+        """Set up event listeners for status bar updates"""
+        # Subscribe to status update events
+        self.event_bus.subscribe("git.status.updated", self._update_status_bar)
+        self.event_bus.subscribe("git.branch.changed", self._handle_branch_changed)
+        self.event_bus.subscribe("git.command.executed", self._handle_command_executed)
+        self.event_bus.subscribe("git.commit.created", self._handle_commit_created)
+        self.event_bus.subscribe("git.push.completed", self._handle_push_completed)
+
+        # Trigger initial status refresh
+        if hasattr(self, 'git_service'):
+            self.git_service.refresh_status()
 
     def refresh_commit_history(self, *args):
         """Refresh both the commit list view and history tab"""
