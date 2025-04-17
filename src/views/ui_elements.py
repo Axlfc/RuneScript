@@ -130,47 +130,28 @@ class Tooltip:
 
 
 class LineNumberCanvas(Canvas):
-    """ ""\"
-    LineNumberCanvas
-
-    Description of the class.
-    ""\" """
-
     def __init__(self, text_widget, *args, **kwargs):
-        """ ""\"
-        __init__
-
-            Args:
-                self (Any): Description of self.
-                text_widget (Any): Description of text_widget.
-
-            Returns:
-                None: Description of return value.
-        ""\" """
         super().__init__(*args, **kwargs)
         self.text_widget = text_widget
-        self.text_widget.bind("<KeyPress>", self.on_text_change)
-        self.text_widget.bind("<MouseWheel>", self.on_text_change)
-        self.text_widget.bind("<KeyRelease>", self.on_text_change)
-        self.text_widget.bind("<Button-1>", self.on_text_change)
-        self.text_widget.bind("<<Modified>>", self.on_text_change)
-        self.text_widget.bind("<Configure>", self.on_text_change)
 
-    def on_text_change(self, event=None):
-        """ ""\"
-        on_text_change
+        # Reduce event bindings to just what's necessary
+        self.text_widget.bind("<<Modified>>", self._on_text_modified)
+        self.text_widget.bind("<Configure>", self._on_configure, add="+")
 
-            Args:
-                self (Any): Description of self.
-                event (Any): Description of event.
+        # Initial draw
+        self.after(100, self.redraw)
 
-            Returns:
-                None: Description of return value.
-        ""\" """
+    def _on_text_modified(self, event=None):
+        # Reset the modified flag
+        self.text_widget.edit_modified(False)
         self.redraw()
 
+    def _on_configure(self, event=None):
+        # Delayed redraw on configure to prevent excessive updates
+        self.after(50, self.redraw)
+
     def redraw(self):
-        """Redraw line numbers with recursion protection"""
+        """Redraw line numbers with improved recursion protection"""
         # Use a class variable to prevent recursive calls
         if hasattr(self, '_is_redrawing') and self._is_redrawing:
             return  # Prevent recursive calls
@@ -205,7 +186,8 @@ class LineNumberCanvas(Canvas):
                     dline = self.text_widget.dlineinfo(f"{current_line}.0")
                 except Exception:
                     # Handle any errors in dlineinfo
-                    break
+                    current_line += 1
+                    continue
 
                 if dline is None:
                     # We've reached a line that's not mapped in the display
@@ -235,8 +217,13 @@ class LineNumberCanvas(Canvas):
         except Exception as e:
             print(f"Error in line number redraw: {e}")
         finally:
-            # Always reset the redrawing flag
-            self._is_redrawing = False
+            # Reset the redrawing flag after a short delay
+            self.after(10, self._reset_redraw_flag)
+
+    def _reset_redraw_flag(self):
+        """Safely reset the redrawing flag"""
+        self._is_redrawing = False
+
 
 class ScrollableFrame(Frame):
     """ ""\"

@@ -41,7 +41,7 @@ from src.views.tree_functions import (
 )
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
-from src.controllers.file_operations import on_text_change, update_line_numbers
+from src.controllers.file_operations import on_text_change
 
 
 def create_app():
@@ -73,75 +73,41 @@ def create_filesystem_window():
 
 def create_content_file_window():
     global is_modified, line_numbers
-    original_text = script_text.get("1.0", "end-1c")
 
     # Create the line numbers canvas
     line_numbers = LineNumberCanvas(script_text, width=30)
     line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
 
-    # Create a flag to prevent update loops
-    update_in_progress = False
-
-    # Create vertical scrollbar with special handling
+    # Create vertical scrollbar with simpler connection
     vsb = Scrollbar(frm, orient="vertical")
     vsb.grid(row=2, column=1, sticky="ns")
 
-    # Create a wrapper function for the scrollbar command
-    def scrollbar_command(*args):
-        nonlocal update_in_progress
-        if update_in_progress:
-            return
-        update_in_progress = True
-        script_text.yview(*args)
-        # Use after to break the potential recursion chain
-        root.after(10, lambda: line_numbers.redraw())
-        update_in_progress = False
+    # Clean direct connection - this is key for proper response
+    vsb.config(command=script_text.yview)
+    script_text.config(yscrollcommand=vsb.set)# Add a post-command update for line numbers
+    original_yview = script_text.yview
+    def yview_with_update(*args):
+        result = original_yview(*args)
+        # Schedule line number update after scrolling completes
+        script_text.after_idle(lambda: line_numbers.redraw())
+        return result
 
-    # Set the command to our wrapper
-    vsb.config(command=scrollbar_command)
+    # Replace the text widget's yview method
+    script_text.yview = yview_with_update
 
-    # Create a wrapper for the text widget's scrollbar communication
-    def yscroll_set(*args):
-        nonlocal update_in_progress
-        if update_in_progress:
-            return
-        update_in_progress = True
-        vsb.set(*args)
-        # Use after to break the potential recursion chain
-        root.after(10, lambda: line_numbers.redraw())
-        update_in_progress = False
+    # Create a wrapper for keyboard/mouse scroll events
+    def on_scroll_event(event):
+        # Schedule line number update after default handler
+        script_text.after_idle(lambda: line_numbers.redraw())
 
-    # Configure the text widget to use our wrapper
-    script_text.config(yscrollcommand=yscroll_set)
+    # Add these bindings after the default handlers
+    for event in ("<MouseWheel>", "<Button-4>", "<Button-5>",
+                 "<Key-Up>", "<Key-Down>", "<Key-Prior>", "<Key-Next>",
+                 "<Key-Home>", "<Key-End>"):
+        script_text.bind(event, on_scroll_event, add="+")
 
-    # Define scroll handler for mouse wheel and keyboard events
-    def on_scroll(event=None):
-        # Use after to break potential recursion chain
-        root.after(10, lambda: line_numbers.redraw())
-        # Don't return anything to allow normal event handling
-
-    # Bind to events that might affect scroll position
-    script_text.bind("<MouseWheel>", on_scroll)
-    script_text.bind("<Button-4>", on_scroll)  # Linux scroll up
-    script_text.bind("<Button-5>", on_scroll)  # Linux scroll down
-    script_text.bind("<Key-Up>", on_scroll)
-    script_text.bind("<Key-Down>", on_scroll)
-    script_text.bind("<Key-Prior>", on_scroll)  # Page Up
-    script_text.bind("<Key-Next>", on_scroll)  # Page Down
-    script_text.bind("<Key-Home>", on_scroll)  # Home
-    script_text.bind("<Key-End>", on_scroll)  # End
-
-    # Use a debounced configure handler to prevent excessive updates
-    last_configure_id = None
-
-    def on_configure(event=None):
-        nonlocal last_configure_id
-        if last_configure_id:
-            root.after_cancel(last_configure_id)
-        last_configure_id = root.after(50, lambda: line_numbers.redraw())
-
-    # Make sure line numbers update when window size changes, with debounce
-    script_text.bind("<Configure>", on_configure)
+    # Update line numbers when text widget resizes
+    script_text.bind("<Configure>", lambda e: script_text.after_idle(line_numbers.redraw), add="+")
 
     def show_context_menu(event):
         """ ""\"
@@ -225,13 +191,14 @@ def create_content_file_window():
 
     script_text.configure(bg="#1f1f1f", fg="white")
     script_text.config(insertbackground="#F0F0F0", selectbackground="#4d4d4d")
+
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", on_text_change)
 
     status_bar = Label(frm, text="Status Bar")
 
     # Call line_numbers.redraw() initially to make sure they're shown
-    root.after(100, lambda: line_numbers.redraw())
+    root.after(100, line_numbers.redraw)
 
 
 def scroll_lines_up(event):
@@ -259,3 +226,11 @@ def create_horizontal_scrollbar_lines():
 
     scrollbar.config(command=on_scroll)
     script_text.config(xscrollcommand=scrollbar.set)
+
+
+def update_line_numbers():
+    """Direct update of line numbers"""
+    global line_numbers
+    if line_numbers:
+        # Use after_idle to prevent update loops
+        root.after_idle(line_numbers.redraw)

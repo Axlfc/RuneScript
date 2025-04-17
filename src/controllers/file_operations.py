@@ -91,22 +91,9 @@ def open_file(file_path):
     update_title()
 
     # We need to trigger a redraw of the line numbers and adjust text position
-    root.after(10, update_line_numbers)  # Small delay to ensure text is fully loaded
+    # root.after(10, update_line_numbers)  # Small delay to ensure text is fully loaded
 
 
-def update_line_numbers():
-    """Update line numbers with proper widget finding"""
-    # Find the LineNumberCanvas instead of assuming a global variable exists
-    for widget in root.winfo_children():
-        if isinstance(widget, Frame):  # Find the frame first
-            for child in widget.winfo_children():
-                if isinstance(child, LineNumberCanvas):
-                    # Use after(1) instead of after_idle to prevent recursion
-                    root.after(1, child.redraw)
-                    return
-
-    # If we reach here, no LineNumberCanvas was found
-    print("Warning: Line numbers widget not found")
 
 
 def update_menu_based_on_extension(ext):
