@@ -24,6 +24,7 @@
     "is_timeout_view_visible": "Establir Temps Límit",
     "is_interactive_view_visible": "Alternar Mode Interactiu",
     "is_filesystem_view_visible": "Obrir Explorador de Fitxers",
+    "is_scheduled_tasks_view_visible": "Alternar Tasques Programables",
     "tools": "Eines",
     "ai_assistant": "Assistent AI",
     "calculator": "Calculadora",

@@ -27,6 +27,7 @@
     "is_timeout_view_visible": "Establecer Tiempo Límite",
     "is_interactive_view_visible": "Alternar Modo Interactivo",
     "is_filesystem_view_visible": "Abrir Explorador de Archivos",
+    "is_scheduled_tasks_view_visible": "Alternar Tareas Programables",
     "tools": "Herramientas",
     "ai_assistant": "Asistente AI",
     "ai_assistant_options": "Opciones Asistente AI...",

@@ -8,6 +8,7 @@
             "is_timeout_view_visible": true,
             "is_interactive_view_visible": true,
             "is_filesystem_view_visible": true,
+            "is_scheduled_tasks_view_visible": true,
             "toolbar_visible": true,
             "status_bar_visible": true,
             "scrollbar_visibility": "auto"

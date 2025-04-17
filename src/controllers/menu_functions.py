@@ -42,7 +42,7 @@ from src.models.script_operations import (
     see_stderr,
     run_script,
     run_script_windows,
-    run_script_with_timeout,
+    run_script_with_timeout, run_script_crontab, run_script_once,
 )
 from src.views.edit_operations import undo, redo, duplicate, copy, cut, paste
 from src.views.tk_utils import (
@@ -60,7 +60,8 @@ from src.views.tk_utils import (
     run_frm,
     line_frm,
     interactive_frm,
-    filesystem_frm, my_font, persistent_agent_selection_var,
+    filesystem_frm,
+    scheduled_tasks_frm, my_font, persistent_agent_selection_var,
 )
 from src.controllers.tool_functions import (
     open_ai_assistant_window, open_ai_server_settings_window, open_llama_cpp_python_settings_window,
@@ -906,6 +907,69 @@ def toggle_filesystem_view_visibility(frame):
         frame.grid_remove()
 
 
+def create_execute_one_time_with_format():
+    if get_operative_system() != "Windows":
+        one_time_frm.grid(row=8, column=0, pady=0, sticky="nsew")
+        Label(one_time_frm, text=localization_data["scheduled_script_execution"]).grid(
+            row=0, column=0, sticky="e", padx=5, pady=0
+        )
+        date_entry = Entry(one_time_frm, width=15)
+        date_entry.grid(column=1, row=0, padx=(10, 0))
+        Tooltip(date_entry, localization_data["time_format"])
+        run_button = Button(
+            one_time_frm,
+            text=run_icon,
+            command=lambda: run_script_once(date_entry.get()),
+        )
+        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
+        Tooltip(run_button, localization_data["use_at_command"])
+
+
+def create_program_daily_with_format():
+    if get_operative_system() != "Windows":
+        daily_frm.grid(row=9, column=0, pady=0, sticky="ew")
+        Label(daily_frm, text=localization_data["daily_script_scheduling"]).grid(
+            row=0, column=0, sticky="w", padx=5, pady=0
+        )
+        minute_entry = Entry(daily_frm, width=2)
+        minute_entry.grid(column=1, row=0, padx=(10, 0))
+        Tooltip(minute_entry, localization_data["every_minute"])
+        hour_entry = Entry(daily_frm, width=2)
+        hour_entry.grid(column=2, row=0, padx=(10, 0))
+        Tooltip(hour_entry, localization_data["every_hour"])
+        day_entry = Entry(daily_frm, width=2)
+        day_entry.grid(column=3, row=0, padx=(10, 0))
+        Tooltip(day_entry, localization_data["every_day"])
+        month_entry = Entry(daily_frm, width=2)
+        month_entry.grid(column=4, row=0, padx=(10, 0))
+        Tooltip(month_entry, localization_data["every_month"])
+        day_of_the_week_entry = Entry(daily_frm, width=2)
+        day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
+        Tooltip(day_of_the_week_entry, localization_data["every_day_of_week"])
+        run_button = Button(
+            daily_frm,
+            text=run_icon,
+            command=lambda: run_script_crontab(
+                minute_entry.get(),
+                hour_entry.get(),
+                day_entry.get(),
+                month_entry.get(),
+                day_of_the_week_entry.get(),
+            ),
+        )
+        run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
+        Tooltip(run_button, localization_data["utilize_crontab"])
+
+
+def toggle_scheduled_tasks_view_visibility(frame):
+    # TODO: Give this format support in Windows
+    if show_scheduled_tasks_view_var.get() == 1:
+        create_execute_one_time_with_format()
+        create_program_daily_with_format()
+    else:
+        one_time_frm.grid_remove()
+        daily_frm.grid_remove()
+
 def toggle_view_visibility(frame, view_var, config_option, elements_setup_callback=None):
     if view_var.get() == 1:
         write_config_parameter(f"options.view_options.{config_option}", "true")
@@ -988,6 +1052,7 @@ def create_menu():
     global show_timeout_view_var
     global show_interactive_view_var
     global show_filesystem_view_var
+    global show_scheduled_tasks_view_var
     global menu
     # Initialize the main menu
     # menu = Menu(root)
@@ -1253,6 +1318,15 @@ def create_menu():
         localization_data["is_filesystem_view_visible"],
         filesystem_frm,
         toggle_filesystem_view_visibility
+    )
+    # TODO: Enable or disable scheduled tasks view
+    add_view_section_to_menu(
+        "is_scheduled_tasks_view_visible",
+        show_scheduled_tasks_view_var,
+        view_menu,
+        localization_data["is_scheduled_tasks_view_visible"],
+        scheduled_tasks_frm,
+        toggle_scheduled_tasks_view_visibility
     )
 
     # ----- Tools Menu -----

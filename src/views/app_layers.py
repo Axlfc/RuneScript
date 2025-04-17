@@ -47,40 +47,11 @@ from src.controllers.file_operations import on_text_change
 def create_app():
     create_menu()
     create_body()
-    create_footer()
-
-
-def create_footer():
-    create_execute_one_time_with_format()
-    create_program_daily_with_format()
 
 
 def create_body():
     create_content_file_window()
     create_filesystem_window()
-
-
-def create_open_script_line():
-    script_frm.grid(row=1, column=0, pady=0, sticky="ew")
-    script_frm.grid_columnconfigure(2, weight=1)
-    open_button = Button(script_frm, text=open_icon, command=open_script)
-    open_button.grid(column=0, row=0)
-    Tooltip(open_button, localization_data["open_script"])
-    script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)
-    script_name_label.bind("<Double-1>", lambda event: prompt_rename_file())
-    Tooltip(script_name_label, localization_data["file_name"])
-    save_button = Button(script_frm, text=save_icon, command=save_script)
-    save_button.grid(column=3, row=0, sticky="e")
-    Tooltip(save_button, localization_data["save_script"])
-    save_new_button = Button(script_frm, text=save_new_icon, command=save_as_new_script)
-    save_new_button.grid(column=4, row=0, sticky="e")
-    Tooltip(save_new_button, localization_data["save_as_new_script"])
-    undo_button = Button(script_frm, text=undo_icon, command=undo)
-    undo_button.grid(column=5, row=0, sticky="e")
-    Tooltip(undo_button, localization_data["undo"])
-    redo_button = Button(script_frm, text=redo_icon, command=redo)
-    redo_button.grid(column=6, row=0, sticky="e")
-    Tooltip(redo_button, localization_data["redo"])
 
 
 def create_filesystem_window():
@@ -189,57 +160,3 @@ def create_horizontal_scrollbar_lines():
     scrollbar = Scrollbar(root, orient=HORIZONTAL, command=script_text.xview)
     scrollbar.grid(row=3, column=0, sticky="ew")
     script_text.config(xscrollcommand=scrollbar.set)
-
-
-def create_execute_one_time_with_format():
-    if get_operative_system() != "Windows":
-        one_time_frm.grid(row=8, column=0, pady=0, sticky="nsew")
-        Label(one_time_frm, text=localization_data["scheduled_script_execution"]).grid(
-            row=0, column=0, sticky="e", padx=5, pady=0
-        )
-        date_entry = Entry(one_time_frm, width=15)
-        date_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(date_entry, localization_data["time_format"])
-        run_button = Button(
-            one_time_frm,
-            text=run_icon,
-            command=lambda: run_script_once(date_entry.get()),
-        )
-        run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, localization_data["use_at_command"])
-
-
-def create_program_daily_with_format():
-    if get_operative_system() != "Windows":
-        daily_frm.grid(row=9, column=0, pady=0, sticky="ew")
-        Label(daily_frm, text=localization_data["daily_script_scheduling"]).grid(
-            row=0, column=0, sticky="w", padx=5, pady=0
-        )
-        minute_entry = Entry(daily_frm, width=2)
-        minute_entry.grid(column=1, row=0, padx=(10, 0))
-        Tooltip(minute_entry, localization_data["every_minute"])
-        hour_entry = Entry(daily_frm, width=2)
-        hour_entry.grid(column=2, row=0, padx=(10, 0))
-        Tooltip(hour_entry, localization_data["every_hour"])
-        day_entry = Entry(daily_frm, width=2)
-        day_entry.grid(column=3, row=0, padx=(10, 0))
-        Tooltip(day_entry, localization_data["every_day"])
-        month_entry = Entry(daily_frm, width=2)
-        month_entry.grid(column=4, row=0, padx=(10, 0))
-        Tooltip(month_entry, localization_data["every_month"])
-        day_of_the_week_entry = Entry(daily_frm, width=2)
-        day_of_the_week_entry.grid(column=5, row=0, padx=(10, 0))
-        Tooltip(day_of_the_week_entry, localization_data["every_day_of_week"])
-        run_button = Button(
-            daily_frm,
-            text=run_icon,
-            command=lambda: run_script_crontab(
-                minute_entry.get(),
-                hour_entry.get(),
-                day_entry.get(),
-                month_entry.get(),
-                day_of_the_week_entry.get(),
-            ),
-        )
-        run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
-        Tooltip(run_button, localization_data["utilize_crontab"])

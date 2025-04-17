@@ -27,6 +27,7 @@
     "is_timeout_view_visible": "Set Timeout",
     "is_interactive_view_visible": "Toggle Interactive Mode",
     "is_filesystem_view_visible": "Open Filesystem Explorer",
+    "is_scheduled_tasks_view_visible": "Toggle Scheduled Tasks",
     "tools": "Tools",
     "ai_assistant": "AI Assistant",
     "ai_assistant_options": "AI Assistant Options...",
