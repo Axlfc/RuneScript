@@ -126,6 +126,7 @@ def on_double_click(event):
         write_config_parameter("options.file_management.current_file_path", filepath)
 
 
+
 def show_context_menu(event):
     """
     Show context menu for file system items.

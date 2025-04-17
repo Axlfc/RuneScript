@@ -170,24 +170,73 @@ class LineNumberCanvas(Canvas):
         self.redraw()
 
     def redraw(self):
-        """ ""\"
-        Redraw line numbers
-        ""\" """
-        self.delete("all")
-        end_line_num = int(self.text_widget.index("end-1c").split(".")[0])
-        max_line_num_length = len(str(end_line_num))
-        width = max_line_num_length * 8
-        self.config(width=width)
-        i = self.text_widget.index("@0,0")
-        while True:
-            dline = self.text_widget.dlineinfo(i)
-            if dline is None:
-                break
-            y = dline[1]
-            line_num = str(i).split(".")[0]
-            self.create_text(2, y, anchor="nw", text=line_num, fill="#CE9178")
-            i = self.text_widget.index(f"{i}+1line")
+        """Redraw line numbers with recursion protection"""
+        # Use a class variable to prevent recursive calls
+        if hasattr(self, '_is_redrawing') and self._is_redrawing:
+            return  # Prevent recursive calls
 
+        try:
+            self._is_redrawing = True
+            self.delete("all")
+
+            # Get first visible index at the top of the viewport
+            first_index = self.text_widget.index("@0,0")
+            first_line = int(first_index.split('.')[0])
+
+            # Get visible height of text widget
+            text_height = self.text_widget.winfo_height()
+
+            # Start with empty list of lines to draw
+            lines_to_draw = []
+
+            # Start from first visible line and go down until we're off screen
+            current_line = first_line
+            last_line = int(self.text_widget.index("end-1c").split('.')[0])
+
+            # Limit the number of iterations to prevent infinite loops
+            max_iterations = 1000
+            iteration_count = 0
+
+            while current_line <= last_line and iteration_count < max_iterations:
+                iteration_count += 1
+
+                # Get coordinates of current line
+                try:
+                    dline = self.text_widget.dlineinfo(f"{current_line}.0")
+                except Exception:
+                    # Handle any errors in dlineinfo
+                    break
+
+                if dline is None:
+                    # We've reached a line that's not mapped in the display
+                    current_line += 1
+                    continue
+
+                y_coord = dline[1]  # Y coordinate of this line
+
+                # If we're past the visible area, stop
+                if y_coord > text_height:
+                    break
+
+                # Add this line to our drawing list
+                lines_to_draw.append((current_line, y_coord))
+                current_line += 1
+
+            # Draw the line numbers
+            for line_num, y_pos in lines_to_draw:
+                self.create_text(2, y_pos, anchor="nw", text=str(line_num), fill="#CE9178")
+
+            # Update the canvas width if needed
+            total_lines = last_line
+            width_needed = max(len(str(total_lines)) * 8, 30)  # Minimum width of 30
+            if self.winfo_width() != width_needed:
+                self.config(width=width_needed)
+
+        except Exception as e:
+            print(f"Error in line number redraw: {e}")
+        finally:
+            # Always reset the redrawing flag
+            self._is_redrawing = False
 
 class ScrollableFrame(Frame):
     """ ""\"
