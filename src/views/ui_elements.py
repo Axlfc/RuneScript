@@ -133,10 +133,13 @@ class LineNumberCanvas(Canvas):
     def __init__(self, text_widget, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text_widget = text_widget
+        self._is_redrawing = False
 
-        # Reduce event bindings to just what's necessary
+        # Improve event bindings
         self.text_widget.bind("<<Modified>>", self._on_text_modified)
         self.text_widget.bind("<Configure>", self._on_configure, add="+")
+
+        # No <YView> event - we'll track scroll position differently
 
         # Initial draw
         self.after(100, self.redraw)
@@ -151,74 +154,40 @@ class LineNumberCanvas(Canvas):
         self.after(50, self.redraw)
 
     def redraw(self):
-        """Redraw line numbers with improved recursion protection"""
-        # Use a class variable to prevent recursive calls
-        if hasattr(self, '_is_redrawing') and self._is_redrawing:
-            return  # Prevent recursive calls
+        """Redraw line numbers with improved performance"""
+        # Prevent recursive calls
+        if self._is_redrawing:
+            return
 
         try:
             self._is_redrawing = True
             self.delete("all")
 
-            # Get first visible index at the top of the viewport
+            # Get visible information
             first_index = self.text_widget.index("@0,0")
             first_line = int(first_index.split('.')[0])
-
-            # Get visible height of text widget
-            text_height = self.text_widget.winfo_height()
-
-            # Start with empty list of lines to draw
-            lines_to_draw = []
-
-            # Start from first visible line and go down until we're off screen
-            current_line = first_line
+            last_visible_index = self.text_widget.index(f"@0,{self.text_widget.winfo_height()}")
+            last_visible_line = int(last_visible_index.split('.')[0])
             last_line = int(self.text_widget.index("end-1c").split('.')[0])
 
-            # Limit the number of iterations to prevent infinite loops
-            max_iterations = 1000
-            iteration_count = 0
-
-            while current_line <= last_line and iteration_count < max_iterations:
-                iteration_count += 1
-
-                # Get coordinates of current line
+            # Draw visible line numbers
+            for line_num in range(first_line, min(last_visible_line + 3, last_line + 1)):
                 try:
-                    dline = self.text_widget.dlineinfo(f"{current_line}.0")
+                    dline = self.text_widget.dlineinfo(f"{line_num}.0")
+                    if dline:  # Only draw if the line is actually visible
+                        y_pos = dline[1]
+                        self.create_text(2, y_pos, anchor="nw", text=str(line_num), fill="#CE9178")
                 except Exception:
-                    # Handle any errors in dlineinfo
-                    current_line += 1
                     continue
 
-                if dline is None:
-                    # We've reached a line that's not mapped in the display
-                    current_line += 1
-                    continue
-
-                y_coord = dline[1]  # Y coordinate of this line
-
-                # If we're past the visible area, stop
-                if y_coord > text_height:
-                    break
-
-                # Add this line to our drawing list
-                lines_to_draw.append((current_line, y_coord))
-                current_line += 1
-
-            # Draw the line numbers
-            for line_num, y_pos in lines_to_draw:
-                self.create_text(2, y_pos, anchor="nw", text=str(line_num), fill="#CE9178")
-
-            # Update the canvas width if needed
-            total_lines = last_line
-            width_needed = max(len(str(total_lines)) * 8, 30)  # Minimum width of 30
+            # Update canvas width if needed
+            width_needed = max(len(str(last_line)) * 8, 30)
             if self.winfo_width() != width_needed:
                 self.config(width=width_needed)
 
-        except Exception as e:
-            print(f"Error in line number redraw: {e}")
         finally:
-            # Reset the redrawing flag after a short delay
-            self.after(10, self._reset_redraw_flag)
+            # Reset the redrawing flag
+            self._is_redrawing = False
 
     def _reset_redraw_flag(self):
         """Safely reset the redrawing flag"""

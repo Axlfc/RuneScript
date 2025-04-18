@@ -78,47 +78,70 @@ def create_content_file_window():
     line_numbers = LineNumberCanvas(script_text, width=30)
     line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
 
-    # Create vertical scrollbar with simpler connection
+    # Create vertical scrollbar with proper connections
     vsb = Scrollbar(frm, orient="vertical")
     vsb.grid(row=2, column=1, sticky="ns")
 
-    # Clean direct connection - this is key for proper response
-    vsb.config(command=script_text.yview)
-    script_text.config(yscrollcommand=vsb.set)# Add a post-command update for line numbers
-    original_yview = script_text.yview
-    def yview_with_update(*args):
-        result = original_yview(*args)
-        # Schedule line number update after scrolling completes
-        script_text.after_idle(lambda: line_numbers.redraw())
-        return result
+    # Connect scrollbar to text widget
+    def on_vertical_scroll(*args):
+        script_text.yview(*args)
+        # Update line numbers after scrolling
+        root.after(10, line_numbers.redraw)
 
-    # Replace the text widget's yview method
-    script_text.yview = yview_with_update
+    vsb.config(command=on_vertical_scroll)
 
-    # Create a wrapper for keyboard/mouse scroll events
-    def on_scroll_event(event):
-        # Schedule line number update after default handler
-        script_text.after_idle(lambda: line_numbers.redraw())
+    def on_text_scroll(*args):
+        vsb.set(*args)
+        # Schedule line numbers update
+        root.after(10, line_numbers.redraw)
 
-    # Add these bindings after the default handlers
-    for event in ("<MouseWheel>", "<Button-4>", "<Button-5>",
-                 "<Key-Up>", "<Key-Down>", "<Key-Prior>", "<Key-Next>",
-                 "<Key-Home>", "<Key-End>"):
-        script_text.bind(event, on_scroll_event, add="+")
+    script_text.config(yscrollcommand=on_text_scroll)
 
-    # Update line numbers when text widget resizes
-    script_text.bind("<Configure>", lambda e: script_text.after_idle(line_numbers.redraw), add="+")
+    # Debug mouse wheel events
+    # Handle mouse wheel events
+    def on_mousewheel(event):
+        # Calculate scroll direction
+        if hasattr(event, 'delta'):
+            # Windows style
+            delta = -1 if event.delta > 0 else 1
+        elif event.num == 4:
+            # Linux scroll up
+            delta = -1
+        elif event.num == 5:
+            # Linux scroll down
+            delta = 1
+        else:
+            return
+
+        # Scroll the text widget
+        script_text.yview_scroll(delta, "units")
+        # Update line numbers after scrolling
+        root.after(10, line_numbers.redraw)
+
+        # Allow event to continue for proper scrollbar update
+        return
+
+    # Bind mouse wheel events
+    script_text.bind("<MouseWheel>", on_mousewheel)  # Windows
+    script_text.bind("<Button-4>", on_mousewheel)  # Linux up
+    script_text.bind("<Button-5>", on_mousewheel)  # Linux down
+
+    # Handle keyboard navigation that may affect scrolling
+    def on_key_scroll(event):
+        # Schedule line numbers update after key navigation
+        root.after(10, line_numbers.redraw)
+
+    # Bind key navigation events
+    for key in ("<Key-Up>", "<Key-Down>", "<Key-Prior>", "<Key-Next>", "<Key-Home>", "<Key-End>"):
+        script_text.bind(key, on_key_scroll, add="+")
+
+    # Handle text widget resize
+    def on_text_configure(event):
+        root.after(10, line_numbers.redraw)
+
+    script_text.bind("<Configure>", on_text_configure, add="+")
 
     def show_context_menu(event):
-        """ ""\"
-        show_context_menu
-
-            Args:
-                event (Any): Description of event.
-
-            Returns:
-                None: Description of return value.
-        ""\" """
         context_menu = Menu(root, tearoff=0)
         context_menu.add_command(
             label=localization_data["undo"], command=undo, accelerator="Ctrl+Z"
@@ -195,11 +218,30 @@ def create_content_file_window():
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", on_text_change)
 
-    status_bar = Label(frm, text="Status Bar")
+    # Additional debugging for manual scrolling
+    def scroll_lines_up(event):
+        script_text.yview_scroll(-5, "units")
+        # Update line numbers and scroll position
+        vsb.set(*script_text.yview())
+        root.after(10, line_numbers.redraw)
+        return "break"
 
-    # Call line_numbers.redraw() initially to make sure they're shown
+    def scroll_lines_down(event):
+        script_text.yview_scroll(5, "units")
+        # Update line numbers and scroll position
+        vsb.set(*script_text.yview())
+        root.after(10, line_numbers.redraw)
+        return "break"
+
+    # Bind the debug scroll functions
+    script_text.bind("<Control-Up>", scroll_lines_up)
+    script_text.bind("<Control-Down>", scroll_lines_down)
+
+    # Ensure the line numbers are drawn initially
     root.after(100, line_numbers.redraw)
 
+    # Start the synchronization loop
+    root.after(1000, ensure_scroll_sync)
 
 def scroll_lines_up(event):
     script_text.yview_scroll(-5, "units")  # Scroll up 5 lines
@@ -234,3 +276,17 @@ def update_line_numbers():
     if line_numbers:
         # Use after_idle to prevent update loops
         root.after_idle(line_numbers.redraw)
+
+
+def ensure_scroll_sync():
+    """Make sure text widget, scrollbar and line numbers stay in sync"""
+    # This function can be called periodically to ensure synchronization
+    global line_numbers
+    if line_numbers:
+        # Get current text widget view
+        first, last = script_text.yview()
+        # Update line numbers
+        line_numbers.redraw()
+
+    # Schedule next check
+    root.after(500, ensure_scroll_sync)
