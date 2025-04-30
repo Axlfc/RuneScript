@@ -296,6 +296,8 @@ def open_ai_server_agent_settings_window(localization_data, persistent_agent_sel
 def open_ai_assistant_window(session_id=None):
     global original_md_content, markdown_render_enabled, rendered_html_content, session_data, url_data
 
+    print("OPEN AI ASSISTANT WINDOW TRIGGERED")
+
     tts_manager = TTSManager()
     prompt_lookup = PromptLookup(prompt_folder="data/prompts")
     prompt_interpreter = PromptInterpreter(prompt_lookup)
@@ -1103,6 +1105,7 @@ def open_ai_assistant_window(session_id=None):
 
     def handle_input(event=None):
         """Handle input from the entry widget."""
+        print("HANDLE_INPUT TRIGGERED")
         text = entry.get().strip()
 
         if text:
@@ -1174,6 +1177,7 @@ def open_ai_assistant_window(session_id=None):
             entry.delete(0, END)
 
     def stream_output(process, history_manager):
+        print("STREAM OUTPUT TRIGGERED")
         global current_session, original_md_content
         ai_response_buffer = ""
         try:
@@ -1410,6 +1414,7 @@ def open_ai_assistant_window(session_id=None):
 
     def execute_ai_assistant_command(opened_script_var, selected_text_var, ai_command):
         global original_md_content, selected_agent_var, current_session
+        print("EXECUTE_AI_ASSISTANT_COMMAND TRIGGERED")
 
         if not current_session:
             create_session()
@@ -1470,9 +1475,16 @@ def open_ai_assistant_window(session_id=None):
 
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
         if platform.system() == "Windows":
-            python_executable = os.path.join("venv", "Scripts", "python")
+            try:
+                # TODO: Protect venv logic
+                python_executable = os.path.join(".venv", "Scripts", "python.exe")
+            except:
+                python_executable = os.path.join("venv", "Scripts", "python.exe")
         else:
-            python_executable = os.path.join("venv", "bin", "python3")
+            try:
+                python_executable = os.path.join(".venv", "bin", "python3")
+            except:
+                python_executable = os.path.join("venv", "bin", "python3")
         if agent_name:
             return [python_executable, ai_script_path, user_prompt, agent_name]
         else:

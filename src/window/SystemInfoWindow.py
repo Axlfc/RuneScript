@@ -1,3 +1,4 @@
+import os
 import subprocess
 import threading
 import queue
@@ -114,23 +115,39 @@ class SystemInfoWindow(Toplevel):
         }
 
     def _run_command(self, command, result_queue, label):
+        print("_RUN_COMMAND CALL")
         try:
+            # Use list arguments instead of shell=True for better security and reliability
             powershell_path = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-            full_command = f'"{powershell_path}" -Command "{command}"'
+
+            # Check if PowerShell path exists
+            if not os.path.exists(powershell_path):
+                # Try alternative path for Windows 11
+                powershell_path = "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+                if not os.path.exists(powershell_path):
+                    # As a fallback, let Windows find PowerShell in the PATH
+                    powershell_path = "powershell.exe"
+
+            # Use list format for arguments (more reliable)
+            args = [powershell_path, "-Command", command]
+
             result = subprocess.run(
-                full_command,
+                args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                shell=False  # Important: don't use shell when using list arguments
             )
+
             if result.returncode == 0:
                 output = result.stdout.strip()
             else:
                 output = f"Error: {result.stderr.strip()}"
         except Exception as e:
             output = f"Error: {str(e)}"
+
         result_queue.put((label, output))
 
     def _worker(self, commands, result_queue):
