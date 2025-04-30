@@ -98,8 +98,7 @@ text = Text(
 status_label_var = StringVar()
 all_fonts = StringVar()
 all_size = StringVar()
-local_python_var = BooleanVar()
-local_python_var.set(True)
+local_python_var = StringVar()
 selected_agent_var = "Assistant"
 entry_text = StringVar()
 content_frm = Frame(root)

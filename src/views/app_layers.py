@@ -12,6 +12,8 @@ from tkinter import (
 )
 from src.controllers.menu_functions import open_search_window, open_search_replace_window
 from src.models.file_operations import prompt_rename_file
+from src.controllers.parameters import read_config_parameter
+
 from src.controllers.menu_functions import (
     create_menu,
     run_icon,
@@ -45,8 +47,11 @@ from src.controllers.file_operations import on_text_change
 
 
 def create_app():
+    print("app_layers: CREATE MENU TRIGGERED")
     create_menu()
+    print("app_layers: CREATE CONTENT FILE WINDOW TRIGGERED")
     create_content_file_window()
+    print("app_layers: CREATE CONTENT FILE WINDOW")
     create_filesystem_window()
 
 

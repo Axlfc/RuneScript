@@ -14,10 +14,12 @@ from tkinter import (
     Label,
     Checkbutton,
     Entry,
-    BooleanVar, TclError,
+    BooleanVar, TclError, simpledialog,
 )
 
 from PIL import Image, ImageTk
+
+from src.controllers.menu_creators import create_python_menu
 from src.controllers.scheduled_tasks import (
     open_cron_window,
     open_at_window,
@@ -25,6 +27,7 @@ from src.controllers.scheduled_tasks import (
     open_new_at_task_window,
     open_new_crontab_task_window,
 )
+from src.controllers.venv_utils import find_venvs, find_system_pythons
 from src.window.ClockWindow import ClockWindow
 from src.window.FindInFilesWindow import FindInFilesWindow
 # from src.window.GraphicEngineWindow import GraphicEngineWindow
@@ -101,6 +104,89 @@ from src.window.SettingsWindow import SettingsWindow
 from src.window.TerminalWindow import TerminalWindow
 from src.window.TranslatorWindow import TranslatorWindow
 from src.window.WingetWindow import WingetWindow
+
+
+def _open_script_and_update():
+    """
+    Abre un diálogo para elegir un .py, actualiza intérpretes
+    usando la carpeta del fichero, y luego abre el script.
+    """
+    file_path = filedialog.askopenfilename(
+        title="Open Python Script",
+        filetypes=[("Python Files", "*.py"), ("All Files", "*.*")]
+    )
+    if not file_path:
+        return
+    # 1) Actualiza intérpretes en función de la carpeta del fichero
+    directory = os.path.dirname(file_path)
+    _update_interpreters(directory)
+    # 2) Abre el script en el editor
+    open_file(file_path)
+
+
+def _update_interpreters(directory):
+    """
+    Escanea directory en busca de entornos virtuales y Pythons de sistema,
+    guarda la configuración y refresca el menú Python.
+    """
+    # 1) Guarda el cwd del proyecto
+    write_config_parameter("options.file_management.current_working_directory", directory)
+
+    # 2) Detecta venvs y pythons de sistema
+    venv_dirs  = find_venvs(directory)
+    system_pys = find_system_pythons()
+
+    # 3) Construye lista de ejecutables de venv
+    venv_exes = []
+    for v in venv_dirs:
+        exe = (
+            os.path.join(v, "Scripts", "python.exe")
+            if os.name == "nt"
+            else os.path.join(v, "bin", "python3")
+        )
+        if os.path.isfile(exe):
+            venv_exes.append(os.path.normpath(exe))
+
+    # 4) Normaliza también los pythons de sistema
+    system_exes = [os.path.normpath(p) for p in system_pys]
+
+    # 5) Une y deduplica (venvs primero, luego sistema)
+    interpreters = venv_exes + system_exes
+    seen = set()
+    unique = []
+    for p in interpreters:
+        key = os.path.normcase(p)
+        if key not in seen:
+            seen.add(key)
+            unique.append(p)
+    interpreters = unique
+
+    # 6) Guarda lista en JSON
+    write_config_parameter("options.project_settings.interpreters", interpreters)
+
+    # 7) Elige el intérprete actual
+    if venv_exes:
+        current = read_config_parameter("options.project_settings.current_interpreter") or ""
+        chosen = current if current in venv_exes else venv_exes[0]
+    else:
+        chosen = interpreters[0] if interpreters else ""
+    write_config_parameter("options.project_settings.current_interpreter", chosen)
+
+    # 8) Flag para ocultar menú si no hay venv
+    write_config_parameter(
+        "options.project_settings.missing_dot_venv",
+        not bool(venv_dirs)
+    )
+
+    # 9) Finalmente, reconstruye el submenú Python
+    refresh_python_submenu()
+
+    # 10) ¡Actualiza también la vista de archivos!
+    try:
+        update_tree(directory)
+    except Exception as e:
+        print(f"[DEBUG] Error actualizando filesystem tree: {e}")
+
 
 
 git_console_instance = None
@@ -380,21 +466,45 @@ find_button.grid(in_=toolbar, row=0, column=9, padx=4, pady=4, sticky="w")
 
 
 def select_directory():
-    directory = filedialog.askdirectory()
-    if directory:
-        os.chdir(directory)
-        global current_directory
-        current_directory = directory
-        directory_label.config(text=f"{directory}")
-        if messagebox.askyesno(
-            localization_data["open_script"],
-            localization_data["open_first_file_from_directory"],
-        ):
-            open_first_text_file(directory)
-        write_config_parameter(
-            "options.file_management.current_working_directory", directory
+    project = filedialog.askdirectory(title="Select Project Folder")
+    if not project:
+        return
+    _update_interpreters(project)
+
+
+def open_create_venv_window():
+    # 1) Recupera el directorio de proyecto actual de la configuración
+    cwd = read_config_parameter("options.file_management.current_working_directory")
+    if not cwd or not os.path.isdir(cwd):
+        # Fallback: usar cwd del proceso
+        cwd = os.getcwd()
+
+    # 2) Sólo pedimos el NOMBRE del venv
+    venv_name = simpledialog.askstring(
+        "New Virtual Environment",
+        "Enter name for new virtual environment:"
+    )
+    if not venv_name:
+        return
+
+    # 3) Creamos el venv en <cwd>/<venv_name>
+    venv_path = os.path.join(cwd, venv_name)
+    try:
+        subprocess.check_call([sys.executable, "-m", "venv", venv_path])
+    except subprocess.CalledProcessError as e:
+        messagebox.showerror(
+            "Error Creating Virtualenv",
+            f"Could not create venv:\n{e}"
         )
-        update_tree(current_directory)
+        return
+
+    messagebox.showinfo(
+        "VEnv Created",
+        f"Virtual environment created at:\n{venv_path}"
+    )
+
+    # 4) Reescanea intérpretes en el proyecto **sin** volver a pedir carpeta
+    _update_interpreters(cwd)
 
 
 def open_first_text_file(directory):
@@ -443,7 +553,9 @@ def toggle_file_view_visibility(frame):
         write_config_parameter("options.view_options.is_file_view_visible", "true")
         frame.grid(row=1, column=0, pady=0, sticky="ew")
         frame.grid_columnconfigure(2, weight=1)
-        open_button = Button(frame, text=open_icon, command=open_script)
+        open_button = Button(frame, text=open_icon, command=_open_script_and_update)
+        open_button.grid(column=0, row=0)
+        Tooltip(open_button, localization_data["open_script"])
         open_button.grid(column=0, row=0)
         Tooltip(open_button, localization_data["open_script"])
         script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)
@@ -1044,6 +1156,7 @@ def update_config(option_name, value):
 from tkinter import Menu
 from src.views.tk_utils import *
 
+
 def create_menu():
     global show_directory_view_var
     global show_file_view_var
@@ -1053,9 +1166,10 @@ def create_menu():
     global show_interactive_view_var
     global show_filesystem_view_var
     global show_scheduled_tasks_view_var
-    global menu
+    global menu, main_menu
     # Initialize the main menu
     # menu = Menu(root)
+    main_menu = menu
     root.config(menu=menu)
 
     # ----- Project Menu -----
@@ -1076,7 +1190,7 @@ def create_menu():
     # Refactor this so we can update the tree view with the project and we can
     project_menu.add_command(
         label=localization_data["open_project"],
-        command=open_new_project_window,
+        command=select_directory,
         compound="left",
         image=image_new,
         accelerator="Ctrl+M",
@@ -1580,6 +1694,15 @@ def create_menu():
         accelerator="Ctrl+G",
     )
     root.bind("<Control-g>", about)
+
+
+def refresh_python_submenu():
+    # Borra la sección "Python" si existe y vuelve a generarla
+    try:
+        main_menu.delete("Python")
+    except TclError:
+        pass
+    create_python_menu(main_menu)
 
 
 def get_scheduled_tasks(submenu):

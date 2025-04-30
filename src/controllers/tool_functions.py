@@ -1476,7 +1476,7 @@ def open_ai_assistant_window(session_id=None):
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
         if platform.system() == "Windows":
             try:
-                # TODO: Protect venv logic
+                # TODO: Protect venv logic by checking bool "options.project_settings.missing_dot_env"
                 python_executable = os.path.join(".venv", "Scripts", "python.exe")
             except:
                 python_executable = os.path.join("venv", "Scripts", "python.exe")

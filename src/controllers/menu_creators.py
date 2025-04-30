@@ -1,4 +1,7 @@
-from tkinter import Menu
+import os
+from tkinter import Menu, messagebox
+
+from src.controllers.parameters import read_config_parameter, write_config_parameter
 from src.controllers.script_tasks import (
     render_markdown_to_html,
     generate_html_from_markdown,
@@ -12,6 +15,8 @@ from src.controllers.script_tasks import (
     analyze_csv_data,
 )
 from src.views.tk_utils import local_python_var
+#from src.controllers.menu_functions import open_create_venv_window
+
 
 
 def create_submenu(parent_menu, title, entries):
@@ -211,15 +216,73 @@ def create_latex_menu(parent_menu):
 
 
 def create_python_menu(parent_menu):
+    missing = read_config_parameter("options.project_settings.missing_dot_venv")
 
-    entries = {
-        "Create Virtual Environment": change_interpreter,
-        "Manage pip packages": change_interpreter,
-        "Change Interpreter": change_interpreter,
-    }
-    parent_menu.add_checkbutton(
-        label="ScriptsEditor Local Python 3",
-        variable=local_python_var,
-        command=run_python_script,
+    python_menu = Menu(parent_menu, tearoff=0)
+    parent_menu.add_cascade(label="Python", menu=python_menu)
+
+    # Si NO hay .venv, solo mostramos "Create New Virtual Environment…"
+    if missing:
+        from src.controllers.menu_functions import open_create_venv_window
+        python_menu.add_command(
+            label="Create New Virtual Environment…",
+            command=open_create_venv_window
+        )
+        return
+
+    # ————————— Si HAY venv, pintamos todo el menú completo —————————
+
+    interpreters = read_config_parameter("options.project_settings.interpreters") or []
+    current      = read_config_parameter("options.project_settings.current_interpreter") or ""
+
+    # Submenú de selección de intérprete
+    interp_menu = Menu(python_menu, tearoff=0)
+    python_menu.add_cascade(label="Select Interpreter…", menu=interp_menu)
+
+    project_dir = os.path.normpath(
+        read_config_parameter("options.file_management.current_working_directory")
+        or os.getcwd()
     )
-    create_submenu(parent_menu, "Interpreter", entries)
+
+    for path in interpreters:
+        p_norm = os.path.normpath(path)
+        if p_norm.startswith(project_dir + os.sep):
+            label = os.path.relpath(p_norm, project_dir).replace(os.sep, "/")
+        else:
+            label = p_norm
+
+        interp_menu.add_radiobutton(
+            label=label,
+            value=p_norm,
+            variable=local_python_var,
+            command=lambda p=p_norm: _on_switch_interpreter(p)
+        )
+
+    local_python_var.set(current)
+
+    python_menu.add_separator()
+    python_menu.add_command(
+        label="Manage pip packages…",
+        command=lambda: change_interpreter(current)
+    )
+    python_menu.add_command(
+        label="Install requirements.txt…",
+        command=lambda: install_reqs(current)
+    )
+    python_menu.add_separator()
+    from src.controllers.menu_functions import open_create_venv_window
+    python_menu.add_command(
+        label="Create New Virtual Environment…",
+        command=open_create_venv_window
+    )
+
+def _on_switch_interpreter(path):
+    """
+    Callback al seleccionar un nuevo intérprete.
+    Actualiza la config y notifica al usuario.
+    """
+    write_config_parameter("options.project_settings.current_interpreter", path)
+    messagebox.showinfo(
+        "Interpreter switched",
+        f"Active Python interpreter:\n{path}"
+    )
