@@ -23,6 +23,7 @@ class AIAgentOrchestrator:
         try:
             ai_script_path = "src/models/ai_assistant.py"
             result = run_ai_prompt(ai_script_path, combined_input)
+            print("PROCESS_PROMPT_WITH_AI:\t", result)
             return result
         except Exception as e:
             logging.error(f"Failed to communicate with AI: {e}")

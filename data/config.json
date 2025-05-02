@@ -81,6 +81,7 @@
             "missing_dot_gitignore": true,
             "missing_dot_venv": true,
             "venv_dirs": [],
+            "file_interpreters": {},
             "interpreters": [],
             "missing_requirements_txt": true,
             "missing_setup_py": true,

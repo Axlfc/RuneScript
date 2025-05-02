@@ -1,8 +1,9 @@
+import importlib
+import logging
 import os
 import platform
 import sys
 import time
-import openai
 import requests
 from colorama import init
 from colorama import Fore, Back, Style
@@ -15,6 +16,26 @@ from datetime import datetime
 from dotenv import load_dotenv
 # import anthropic
 from src.controllers.parameters import read_config_parameter
+
+# Añade tu .venv/Lib/site-packages al path si no está ya
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+for suffix in (('.venv', 'Lib', 'site-packages'), ('venv', 'Lib', 'site-packages')):
+    path = os.path.join(base_dir, *suffix)
+    if os.path.isdir(path):
+        sys.path.insert(0, path)
+        break
+
+# Lista de librerías a validar
+venv_libs = ["openai", "requests"]
+
+for lib in venv_libs:
+    try:
+        importlib.import_module(lib)
+    except ImportError as e:
+        raise ImportError(
+            f"No se pudo cargar la librería '{lib}'. "
+            f"Asegúrate de haber ejecutado `pip install {lib}` dentro de tu venv."
+        ) from e
 
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
 

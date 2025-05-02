@@ -1,4 +1,6 @@
 from typing import List, Dict, Any, Optional
+
+from src.controllers.parameters import read_config_parameter
 from src.utils.file_helpers import enrich_context_with_relevant_files, detect_relevant_files
 from src.agents.project_rag_coordinator import ProjectRAGCoordinator
 from src.core.state_management import StateManagementSystem
@@ -294,7 +296,8 @@ class AutonomousProjectAgent:
 
             combined_input = json.dumps({"stage": stage, "context": context, "meta_prompt": is_meta_prompt})
             ai_script_path = "src/models/ai_assistant.py"
-            command = ["python", ai_script_path, combined_input]
+            interpreter_path = read_config_parameter("options.project_settings.current_interpreter")
+            command = [interpreter_path, ai_script_path, combined_input]
 
             subtask_id = None
             if stage not in self.development_stages:

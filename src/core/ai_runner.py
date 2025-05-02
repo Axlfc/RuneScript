@@ -1,9 +1,19 @@
 import subprocess
 import logging
 
+from src.controllers.parameters import read_config_parameter
 
-def run_ai_prompt(ai_script_path: str, input_json: str, python_executable: str = "python") -> str:
+try:
+    interpreter_directory = read_config_parameter("options.project_settings.current_interpreter")
+except Exception as e:
+    print("AI RUNNER INTERPRETER NOT FOUND.\n", e)
+
+
+def run_ai_prompt(ai_script_path: str, input_json: str, python_executable = interpreter_directory) -> str:
     try:
+        print("MY PYTHON CUSTOM EXECUTABLE:")
+        interpreter_directory = read_config_parameter("options.project_settings.current_interpreter")
+        print("--->", interpreter_directory)
         command = [python_executable, ai_script_path, input_json]
 
         process = subprocess.Popen(
