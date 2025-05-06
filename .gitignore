@@ -192,3 +192,5 @@ logs/
 tests/
 
 fake/
+
+lib/dia

@@ -8,7 +8,7 @@
         "api_key": "not-needed"
     },
     "ollama": {
-        "server_url": "http://localhost:11434/api/generate",
+        "server_url": "http://192.168.1.30:11434/api/generate",
         "api_key": "not-needed"
     },
     "lmstudio": {

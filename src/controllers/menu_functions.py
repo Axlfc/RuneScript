@@ -29,7 +29,9 @@ from src.controllers.scheduled_tasks import (
 )
 from src.controllers.venv_utils import find_venvs, find_system_pythons
 from src.window.ClockWindow import ClockWindow
+from src.window.ClojureWindow import ClojureWindow
 from src.window.FindInFilesWindow import FindInFilesWindow
+from src.window.PlannerWindow import PlannerWindow
 # from src.window.GraphicEngineWindow import GraphicEngineWindow
 from src.window.PromptLookup import PromptLookup, PromptInterpreter
 from src.window.SystemInfoWindow import SystemInfoWindow
@@ -354,6 +356,9 @@ def open_clock_window():
 
 def open_productivity_window():
     return PlannerWindow()
+
+def open_clojure_window():
+    return ClojureWindow()
 
 
 def open_scriptsstudio_folder(event=None):
@@ -1515,15 +1520,12 @@ def create_menu():
         accelerator="F7",
     )
     root.bind("<F7>", open_calculator_window)
-    open_clock_window
 
     tool_menu.add_command(
-        label=localization_data["clock"],
-        command=open_clock_window,
-        accelerator="F7",
+        label="Clojure IDE",
+        command=open_clojure_window
     )
-    root.bind("<F7>", open_calculator_window)
-    open_clock_window
+    # root.bind("<F7>", open_calculator_window)
 
     tool_menu.add_command(
         label=localization_data["translator"],

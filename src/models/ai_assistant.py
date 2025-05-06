@@ -315,7 +315,7 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
     import re
     from datetime import datetime
 
-    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
+    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://192.168.1.30:11434"
     ollama_model = read_config_parameter("options.network_settings.ollama_model")
     if not ollama_model:
         print("Error: Ollama model not specified in the configuration.")
@@ -336,6 +336,7 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
     try:
         response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data)
         response.raise_for_status()
+        # TODO: Only getting the content under 'response' but if it invents another it may not be properly parsing
         raw_response = response.json().get("response", "")
 
         # Save raw response to log for debugging
