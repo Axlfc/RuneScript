@@ -1,139 +1,118 @@
-from tkinter import ttk
 import tkinter as tk
-from typing import Optional
-
-from src.views.tk_utils import PHASE_UI_LABELS
-
+from tkinter import ttk
 
 class TDDWorkflowPanel(ttk.Frame):
-    """Panel specifically for managing the Red-Green-Refactor workflow"""
+    """
+    An intelligent, guided TDD workbench to seamlessly guide the user
+    through the Red-Green-Refactor cycle with AI assistance.
+    """
 
-    def __init__(self, parent, on_run_tests, on_refactor, on_write_test, on_rerun_last=None):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.current_phase = tk.StringVar(value="Write Test")
-        self.create_widgets(on_run_tests, on_refactor, on_write_test, on_rerun_last)
+        self.create_widgets()
 
-    def create_widgets(self, on_run_tests, on_refactor, on_write_test, on_rerun_last):
-        # Phase indicators
-        phase_frame = ttk.LabelFrame(self, text="TDD Cycle")
-        phase_frame.pack(fill=tk.X, padx=5, pady=5)
+    def create_widgets(self):
+        """Creates and lays out the new three-section TDD Workbench UI."""
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
-        phases = ["Write Test", "Run Test", "Write Code", "Run Test Again", "Refactor"]
-        self.phase_indicators = {}
+        # --- Section 1: Goal & Status Header ---
+        header_frame = ttk.Frame(self, padding=(10, 5))
+        header_frame.grid(row=0, column=0, sticky="ew")
+        header_frame.grid_columnconfigure(1, weight=1)
 
-        for i, phase in enumerate(phases):
-            col = i * 2
-            indicator = ttk.Label(phase_frame, text=phase, padding=5)
-            indicator.grid(row=0, column=col, padx=5)
-            self.phase_indicators[phase] = indicator
+        goal_label = ttk.Label(header_frame, text="Your Goal:")
+        goal_label.grid(row=0, column=0, padx=(0, 5), sticky="w")
 
-            if i < len(phases) - 1:
-                ttk.Label(phase_frame, text="→").grid(row=0, column=col + 1, padx=2)
+        self.user_intent_input = ttk.Entry(header_frame, font=("TkDefaultFont", 10))
+        self.user_intent_input.grid(row=0, column=1, sticky="ew")
 
-        # Action buttons
-        action_frame = ttk.Frame(self)
-        action_frame.pack(fill=tk.X, padx=5, pady=5)
+        # State Indicator Frame
+        self.state_indicator_frame = ttk.Frame(header_frame, relief="sunken", borderwidth=1, width=150)
+        self.state_indicator_frame.grid(row=0, column=2, padx=(10, 0), sticky="e")
+        self.state_indicator_label = ttk.Label(self.state_indicator_frame, text="AWAITING GOAL", font=("TkDefaultFont", 10, "bold"), padding=(10, 5))
+        self.state_indicator_label.pack(expand=True, fill="both")
 
-        self.test_btn = ttk.Button(
-            action_frame,
-            text="1. Write Test (Red)",
-            style="Red.TButton",
-            command=on_write_test
-        )
-        self.test_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
+        self.primary_action_button = ttk.Button(header_frame, text="Generate Failing Test")
+        self.primary_action_button.grid(row=0, column=3, padx=(5, 0), sticky="e")
 
-        self.run_tests_btn = ttk.Button(
-            action_frame,
-            text="2. Run Tests",
-            command=on_run_tests
-        )
-        self.run_tests_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
 
-        self.refactor_btn = ttk.Button(
-            action_frame,
-            text="3. Refactor (Green → Clean)",
-            style="Green.TButton",
-            command=on_refactor
-        )
-        self.refactor_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
+        # --- Section 2: Code Panes (Split View) ---
+        code_panes = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        code_panes.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
-        # 🔁 Re-run last test button (optional)
-        if on_rerun_last:
-            self.rerun_btn = ttk.Button(
-                action_frame,
-                text="🔁 Re-run Last Test",
-                command=on_rerun_last,
-                state=tk.DISABLED  # Start disabled
-            )
-            self.rerun_btn.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
-            self.last_result_label = ttk.Label(action_frame, text="")  # Empty until first test
-            self.last_result_label.pack(side=tk.LEFT, padx=5)
+        # Left Pane: Test Code
+        test_code_frame = ttk.LabelFrame(code_panes, text="Test Code (Read-Only)")
+        self.test_code_text = tk.Text(test_code_frame, wrap="word", state="disabled", bg="#f0f0f0")
+        self.test_code_text.pack(expand=True, fill="both", padx=5, pady=5)
+        code_panes.add(test_code_frame, weight=1)
 
-        self.last_result_label = ttk.Label(
-            action_frame,
-            text="🔁 Last: None",
-            foreground="gray"
-        )
-        self.last_result_label.pack(side=tk.LEFT, padx=5)
+        # Right Pane: Implementation Code
+        impl_code_frame = ttk.LabelFrame(code_panes, text="Implementation Code")
+        self.impl_code_text = tk.Text(impl_code_frame, wrap="word")
+        self.impl_code_text.pack(expand=True, fill="both", padx=5, pady=5)
+        code_panes.add(impl_code_frame, weight=1)
 
-    def update_last_test_summary(self, status: Optional[str]):
-        """Update the label showing last test result"""
-        if hasattr(self, 'last_result_label'):
-            if status == "passed":
-                self.last_result_label.config(text="✔️ Last: Passed", foreground="green")
-            elif status == "failed":
-                self.last_result_label.config(text="❌ Last: Failed", foreground="red")
-            else:
-                self.last_result_label.config(text="")
 
-    def update_phase(self, phase_name: str, test_status: Optional[str] = None):
-        """
-        Updates the current phase indicator and button states.
+        # --- Section 3: Output & Suggestions Footer ---
+        footer_frame = ttk.LabelFrame(self, text="Output")
+        footer_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=(0, 5))
+        footer_frame.grid_columnconfigure(0, weight=1)
 
-        Args:
-            phase_name (str): The UI-label of the phase (e.g., "Write Test", "Refactor")
-            test_status (Optional[str]): Test result status ("passed", "failed", None)
-        """
-        assert phase_name in self.phase_indicators, f"[TDDWorkflowPanel] Unknown UI phase label: '{phase_name}'"
+        self.output_console_text = tk.Text(footer_frame, wrap="word", height=8, state="disabled", bg="#f0f0f0")
+        self.output_console_text.pack(expand=True, fill="both", padx=5, pady=5)
+        footer_frame.grid_columnconfigure(0, weight=1) # Ensure footer expands
 
-        for phase, indicator in self.phase_indicators.items():
-            indicator.configure(background="", foreground="")
+        # --- nIA Suggestions Frame (initially hidden) ---
+        self.nia_suggestions_frame = ttk.LabelFrame(self, text="nIA's Refactoring Suggestions")
+        self.nia_suggestions_frame.grid_rowconfigure(0, weight=1)
+        self.nia_suggestions_frame.grid_columnconfigure(0, weight=1)
 
-        self.phase_indicators[phase_name].configure(background="#4a6cd4", foreground="white")
+        self.suggestion_text = tk.Text(self.nia_suggestions_frame, wrap="none", height=10, state="disabled")
+        self.suggestion_text.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=5, pady=5)
 
-        if phase_name == "Write Test":
-            self.test_btn.configure(state=tk.NORMAL)
-            self.run_tests_btn.configure(state=tk.DISABLED)
-            self.refactor_btn.configure(state=tk.DISABLED)
-        elif phase_name in ["Run Test", "Write Code", "Run Test Again"]:
-            self.test_btn.configure(state=tk.DISABLED)
-            self.run_tests_btn.configure(state=tk.NORMAL)
-            self.refactor_btn.configure(state=tk.DISABLED)
-        elif phase_name == "Refactor":
-            self.test_btn.configure(state=tk.DISABLED)
-            self.run_tests_btn.configure(state=tk.NORMAL)
-            self.refactor_btn.configure(state=tk.NORMAL)
+        self.accept_button = ttk.Button(self.nia_suggestions_frame, text="Accept")
+        self.accept_button.grid(row=1, column=0, padx=5, pady=5, sticky="e")
 
-        if test_status == "failed":
-            self.run_tests_btn.configure(style="Red.TButton")
-        elif test_status == "passed":
-            self.run_tests_btn.configure(style="Green.TButton")
-        elif test_status is None:
-            self.run_tests_btn.configure(style="TButton")
+        self.decline_button = ttk.Button(self.nia_suggestions_frame, text="Decline")
+        self.decline_button.grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
-    def set_rerun_enabled(self, enabled: bool, result_label: Optional[str] = None):
-        if hasattr(self, 'rerun_btn'):
-            if result_label:
-                self.rerun_btn.config(state=tk.NORMAL if enabled else tk.DISABLED)
-                self.rerun_btn.config(text=f"🔁 Last: {result_label}")
+        self.set_state("AWAITING_GOAL")
 
-    def update_last_result_label(self, passed: Optional[bool]):
-        """Show summary icon next to rerun button"""
-        if not hasattr(self, "last_result_label"):
-            return
-        if passed is True:
-            self.last_result_label.config(text="✔️ Last: Passed", foreground="green")
-        elif passed is False:
-            self.last_result_label.config(text="❌ Last: Failed", foreground="red")
+    def set_state(self, state: str, test_output: str = ""):
+        """Updates the UI to reflect the current TDD state."""
+        state_map = {
+            "AWAITING_GOAL": {"text": "AWAITING GOAL", "color": "#e0e0e0", "button_text": "Generate Failing Test"},
+            "RED": {"text": "🔴 RED", "color": "#ffdddd", "button_text": "Implement Solution"},
+            "GREEN": {"text": "🟢 GREEN", "color": "#ddffdd", "button_text": "Suggest Refactoring"},
+            "REFACTORING": {"text": "🔵 REFACTORING", "color": "#ddddff", "button_text": "Apply Suggestion"},
+        }
+
+        config = state_map.get(state, state_map["AWAITING_GOAL"])
+
+        self.state_indicator_frame.config(style=f"{state}.TFrame")
+        self.state_indicator_label.config(text=config["text"])
+        self.primary_action_button.config(text=config["button_text"])
+
+        # Show/hide suggestions panel
+        if state == "REFACTORING":
+            self.nia_suggestions_frame.grid(row=3, column=0, sticky="ew", padx=5, pady=5)
         else:
-            self.last_result_label.config(text="🔁 Last: None", foreground="gray")
+            self.nia_suggestions_frame.grid_remove()
+
+        # Update style for the frame background color
+        style = ttk.Style()
+        style.configure(f"{state}.TFrame", background=config["color"])
+
+        # Update output console
+        self.output_console_text.config(state="normal")
+        self.output_console_text.delete("1.0", tk.END)
+        self.output_console_text.insert("1.0", test_output)
+        self.output_console_text.config(state="disabled")
+
+    def display_refactor_suggestions(self, diff: str):
+        """Displays the diff in the suggestions text widget."""
+        self.suggestion_text.config(state="normal")
+        self.suggestion_text.delete("1.0", tk.END)
+        self.suggestion_text.insert("1.0", diff)
+        self.suggestion_text.config(state="disabled")

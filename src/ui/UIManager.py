@@ -10,7 +10,6 @@ from src.ui.ui_components import create_project_tree, create_output_console, cre
 
 
 from src.models.tdd_workflow_panel import TDDWorkflowPanel
-from src.models.test_result_panel import TestResultPanel
 from src.models.tdd_workflow_manager import TDDWorkflowManager
 from src.utils.ProjectIO import ProjectIO
 
@@ -68,23 +67,26 @@ class UIManager:
                 on_stop=self.controller.project_manager.stop_project
             )
 
-            # ✅ Add TDD Test Result Panel
-            self.test_result_panel = TestResultPanel(right_panel)
-            self.test_result_panel.pack(fill=tk.BOTH, expand=False)
+            # Add the new AI-Assisted TDD Workbench
+            # This single panel now contains the entire TDD UI.
+            self.tdd_panel = TDDWorkflowPanel(right_panel)
+            self.tdd_panel.pack(fill=tk.BOTH, expand=True) # Give it space
 
-            # ✅ Add TDD Workflow Manager
-            project_io = ProjectIO(log_function=self.log_output)
-            self.tdd_manager = TDDWorkflowManager(project_io, self)
-
-            # ✅ Add TDD Workflow Panel
-            self.tdd_panel = TDDWorkflowPanel(
-                right_panel,
-                on_run_tests=self.tdd_manager.run_tests,
-                on_refactor=self.tdd_manager.refactor_code,
-                on_write_test=self.tdd_manager.write_test,
-                on_rerun_last=self.tdd_manager.rerun_last_test
+            # Initialize the new TDD Workflow Manager
+            # It needs a reference to the panel to update the UI.
+            self.tdd_manager = TDDWorkflowManager(
+                ui_panel=self.tdd_panel,
+                project_path=self.controller.projects_base_dir # A bit simplified, will be updated when a project is open
             )
-            self.tdd_panel.pack(fill=tk.X)
+
+            # Wire up the primary action button to the manager
+            self.tdd_panel.primary_action_button.config(
+                command=self.on_primary_tdd_action
+            )
+
+            # Wire up the suggestion buttons
+            self.tdd_panel.accept_button.config(command=self.on_accept_suggestion)
+            self.tdd_panel.decline_button.config(command=self.on_decline_suggestion)
 
         except Exception as e:
             self.controller.safe_ui_call(
@@ -94,20 +96,34 @@ class UIManager:
             )
             logging.critical(f"Layout creation failed: {e}")
 
-    def update_phase_ui(self, phase_name: str, test_status: Optional[str] = None) -> None:
+    def on_primary_tdd_action(self):
         """
-        Update the visual indicator and button state for the current TDD phase.
-
-        Args:
-            phase_name (str): The current phase name (e.g., "Write Test", "Run Test").
-            test_status (Optional[str]): The result of the last test run, e.g. "passed" or "failed".
+        Handles the click of the main, context-aware TDD button.
         """
-        if hasattr(self, 'tdd_panel'):
-            self.tdd_panel.update_phase(phase_name, test_status)
+        current_state = self.tdd_panel.state_indicator_label.cget("text")
 
-    def update_test_results(self, passed: bool, stdout: str, stderr: str) -> None:
-        if hasattr(self, 'test_result_panel'):
-            self.test_result_panel.update_test_results(passed, stdout, stderr)
+        if "AWAITING GOAL" in current_state:
+            user_intent = self.tdd_panel.user_intent_input.get()
+            self.tdd_manager.start_red_phase(user_intent)
+        elif "GREEN" in current_state:
+            self.tdd_manager.start_refactor_phase()
+
+    def on_accept_suggestion(self):
+        """Handles accepting a refactoring suggestion."""
+        # This is a simplified approach. A real implementation would
+        # parse the diff and apply it programmatically.
+        # For now, we'll get the refactored code from the mock agent.
+        refactored_code = self.tdd_manager._mock_refactor_agent(
+            self.tdd_manager.temp_impl_code
+        )
+        # A crude way to extract the code from the diff
+        lines = refactored_code.split('\n')
+        code_lines = [line[1:] for line in lines if line.startswith('+') and not line.startswith('+++')]
+        self.tdd_manager.apply_refactoring("\n".join(code_lines))
+
+    def on_decline_suggestion(self):
+        """Handles declining a refactoring suggestion."""
+        self.tdd_panel.set_state("GREEN", test_output="Refactoring suggestion declined.")
 
     def show_message(self, title: str, message: str) -> None:
         """
