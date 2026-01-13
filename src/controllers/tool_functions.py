@@ -44,7 +44,7 @@ from src.controllers.parameters import read_config_parameter, write_config_param
 from src.window.LlamaCppServerManager import LlamaCppServerManager
 from src.window.PromptLookup import PromptLookup, PromptInterpreter
 
-from src.models.TTSManager import TTSManager
+# from src.models.TTSManager import TTSManager
 from src.models.VaultRAG import VaultRAG
 
 from src.models.convert_pdf_to_text import process_pdf_to_text
@@ -298,7 +298,7 @@ def open_ai_assistant_window(session_id=None):
 
     print("OPEN AI ASSISTANT WINDOW TRIGGERED")
 
-    tts_manager = TTSManager()
+    # tts_manager = TTSManager()
     prompt_lookup = PromptLookup(prompt_folder="data/prompts")
     prompt_interpreter = PromptInterpreter(prompt_lookup)
 
@@ -1206,8 +1206,8 @@ def open_ai_assistant_window(session_id=None):
                 original_md_content += f"\nAI: {output_content}\n"
 
                 # Add TTS here
-                if tts_enabled_var.get():
-                    tts_manager.say(output_content)
+                # if tts_enabled_var.get():
+                    # tts_manager.say(output_content)
 
         except Exception as e:
             output_text.insert(END, f"Error: {e}\n", "error")
@@ -2143,7 +2143,7 @@ def open_ai_assistant_window(session_id=None):
 
     def on_ai_assistant_window_close():
         # Stop the TTS manager thread
-        tts_manager.queue.put(None)  # Send None to signal the thread to exit
+        # tts_manager.queue.put(None)  # Send None to signal the thread to exit
         ai_assistant_window.destroy()
 
     ai_assistant_window.protocol("WM_DELETE_WINDOW", on_ai_assistant_window_close)

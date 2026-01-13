@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Tuple, Union
 from datetime import datetime
 import json
 from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 import requests
 
