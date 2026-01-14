@@ -26,5 +26,8 @@
     "gemini": {
     "server_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
     "api_key": "GEMINI_API_KEY"
+  },
+    "euriai": {
+    "api_key": "EURIAI_API_KEY"
   }
 }

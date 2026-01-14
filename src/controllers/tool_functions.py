@@ -85,12 +85,19 @@ def open_ai_server_settings_window():
         else:
             server_url_entry.grid_remove()
             server_url_label.grid_remove()
-        if selected_server in ["openai", "claude", "gemini"]:
+        if selected_server in ["openai", "claude", "gemini", "euriai"]:
             api_key_entry.grid()
             api_key_label.grid()
         else:
             api_key_entry.grid_remove()
             api_key_label.grid_remove()
+
+        if selected_server == "euriai":
+            euriai_model_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
+            euriai_model_dropdown.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
+        else:
+            euriai_model_label.grid_remove()
+            euriai_model_dropdown.grid_remove()
 
     def load_server_details():
         try:
@@ -157,7 +164,7 @@ def open_ai_server_settings_window():
                 )
                 return
         if new_api_key not in api_keys.values():
-            if selected in ["openai", "claude", "gemini"]:
+            if selected in ["openai", "claude", "gemini", "euriai"]:
                 update_env_file(api_key_field, new_api_key)
                 messagebox.showinfo(
                     "AI Server Settings", "API Key updated successfully!"
@@ -169,6 +176,8 @@ def open_ai_server_settings_window():
                 "AI Server Settings",
                 "No changes made. The API Key entered is a placeholder.",
             )
+        if selected == "euriai":
+            write_config_parameter("options.network_settings.euriai_model", selected_euriai_model.get())
         write_config_parameter(
             "options.network_settings.last_selected_llm_server_provider", selected
         )
@@ -203,8 +212,15 @@ def open_ai_server_settings_window():
     api_key_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
     api_key_entry = Entry(settings_window, width=25, show="*")
     api_key_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+
+    euriai_model_label = Label(settings_window, text="EuriaAI Model:")
+    euriai_models = ["qwen/qwen3-32b", "deepseek-r1-distill-llama-70b", "gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.5-flash-lite-preview-06-17", "gemini-embedding-001", "gemini-3-pro-image-preview", "groq/compound", "groq/compound-mini", "llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-guard-4-12b", "gpt-5-nano-2025-08-07", "gpt-5-mini-2025-08-07", "gpt-4.1-nano", "gpt-4.1-mini", "openai/gpt-oss-20b", "openai/gpt-oss-120b", "text-embedding-3-small", "togethercomputer/m2-bert-80M-32k-retrieval"]
+    selected_euriai_model = StringVar(settings_window)
+    selected_euriai_model.set(read_config_parameter("options.network_settings.euriai_model") or euriai_models[0])
+    euriai_model_dropdown = OptionMenu(settings_window, selected_euriai_model, *euriai_models)
+
     Button(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
-        row=3, column=0, columnspan=2, pady=10
+        row=4, column=0, columnspan=2, pady=10
     )
     selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
     toggle_display(selected_server.get())

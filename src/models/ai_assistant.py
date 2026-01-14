@@ -283,6 +283,80 @@ def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
         return f"Error: An unexpected error occurred. Details: {str(e)}"
 
 
+def initialize_euriai_client():
+    """Initializes the EuriaAI client using credentials from the configuration."""
+    try:
+        from euriai import EuriaiClient
+    except ImportError:
+        raise ImportError("EuriaAI client not installed. Please install with 'pip install euriai'")
+
+    api_key = read_config_parameter("options.network_settings.euriai_api_key")
+    if not api_key:
+        raise ValueError("EuriaAI API key not found in configuration.")
+
+    model = read_config_parameter("options.network_settings.euriai_model")
+    if not model:
+        raise ValueError("EuriaAI model not found in configuration.")
+
+    client = EuriaiClient(api_key=api_key, model=model)
+    return client
+
+
+def process_euriai_chat(client, full_prompt):
+    """Processes a chat completion request with the EuriaAI client."""
+    try:
+        temperature = read_config_parameter("options.network_settings.euriai_temperature")
+        max_tokens = read_config_parameter("options.network_settings.euriai_max_tokens")
+
+        response = client.generate_completion(
+            prompt=full_prompt,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not content:
+            return "Error: Empty response from EuriaAI."
+        return content
+    except Exception as e:
+        return f"Error: EuriaAI API request failed. Details: {str(e)}"
+
+
+def chat_loop_euriai(prompt, system_prompt, session_id):
+    """Manages the chat loop for the EuriaAI client."""
+    try:
+        client = initialize_euriai_client()
+
+        # Load conversation history
+        session_dir = os.path.join("data", "conversations", f"session_{session_id}")
+        file_path = os.path.join(session_dir, f"{session_id}.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as file:
+                conversation_data = json.load(file)
+                history = conversation_data.get("messages", [])
+        else:
+            history = []
+
+        # Add current user message to history
+        history.append({"role": "user", "content": prompt})
+
+        # Prepare the full prompt with history
+        full_prompt = f"{system_prompt}\n\n"
+        for message in history:
+            full_prompt += f"{message['role'].capitalize()}: {message['content']}\n"
+
+        response = process_euriai_chat(client, full_prompt)
+
+        # Save assistant's response to history
+        history.append({"role": "assistant", "content": response})
+        add_message(session_id, {"role": "assistant", "content": response})
+
+        print(response)
+    except (ValueError, ImportError) as e:
+        print(f"Error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred in the EuriaAI chat loop: {e}")
+
+
 """def chat_loop_ollama(prompt, system_prompt, session_id):
     ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
     ollama_model = read_config_parameter("options.network_settings.ollama_model")
@@ -407,6 +481,8 @@ def main():
         chat_loop_claude(user_input, client, system_prompt, session_id)
     elif selected_llm_server_provider == "ollama":
         chat_loop_ollama(user_input, system_prompt, session_id)
+    elif selected_llm_server_provider == "euriai":
+        chat_loop_euriai(user_input, system_prompt, session_id)
     else:
         print("UNSUPPORTED LLM SERVER PROVIDER")
 
