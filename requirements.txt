@@ -40,5 +40,4 @@ google-genai
 google-generativeai
 ttkbootstrap
 plyer
-
-
+euriai
