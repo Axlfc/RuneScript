@@ -14,12 +14,10 @@ from src.controllers.menu_creators import (
     create_bash_menu,
     create_powershell_menu,
 )
-from src.controllers.menu_functions import _update_interpreters
 from src.controllers.parameters import write_config_parameter
 from src.views.tk_utils import (
     localization_data,
     directory_label,
-    main_menu,
     script_name_label,
     script_text,
     root,
@@ -97,6 +95,8 @@ def open_file(file_path):
 
 
 def update_menu_based_on_extension(ext, directory_path):
+    from src.controllers.menu_functions import _update_interpreters
+
     # If a Python file is opened, refresh the python submenu
     if ext == ".py":
         _update_interpreters(directory_path)
