@@ -239,23 +239,14 @@ def create_python_menu(parent_menu):
     interp_menu = Menu(python_menu, tearoff=0)
     python_menu.add_cascade(label="Select Interpreter…", menu=interp_menu)
 
-    project_dir = os.path.normpath(
-        read_config_parameter("options.file_management.current_working_directory")
-        or os.getcwd()
-    )
-
-    for path in interpreters:
-        p_norm = os.path.normpath(path)
-        if p_norm.startswith(project_dir + os.sep):
-            label = os.path.relpath(p_norm, project_dir).replace(os.sep, "/")
-        else:
-            label = p_norm
-
+    for interp in interpreters:
+        path = interp["path"]
+        name = interp["name"]
         interp_menu.add_radiobutton(
-            label=label,
-            value=p_norm,
+            label=name,
+            value=path,
             variable=local_python_var,
-            command=lambda p=p_norm: _on_switch_interpreter(p)
+            command=lambda p=path: _on_switch_interpreter(p),
         )
 
     local_python_var.set(current)

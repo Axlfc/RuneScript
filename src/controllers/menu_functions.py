@@ -135,49 +135,54 @@ def _update_interpreters(directory):
     write_config_parameter("options.file_management.current_working_directory", directory)
 
     # 2) Detecta venvs y pythons de sistema
-    venv_dirs  = find_venvs(directory)
+    venv_tuples = find_venvs(directory)
     system_pys = find_system_pythons()
 
     # 3) Construye lista de ejecutables de venv
-    venv_exes = []
-    for v in venv_dirs:
+    venv_interpreters = []
+    for name, path in venv_tuples:
         exe = (
-            os.path.join(v, "Scripts", "python.exe")
+            os.path.join(path, "Scripts", "python.exe")
             if os.name == "nt"
-            else os.path.join(v, "bin", "python3")
+            else os.path.join(path, "bin", "python3")
         )
         if os.path.isfile(exe):
-            venv_exes.append(os.path.normpath(exe))
+            venv_interpreters.append({"path": os.path.normpath(exe), "name": name})
 
     # 4) Normaliza también los pythons de sistema
-    system_exes = [os.path.normpath(p) for p in system_pys]
+    system_interpreters = [
+        {"path": os.path.normpath(p), "name": os.path.normpath(p)} for p in system_pys
+    ]
 
     # 5) Une y deduplica (venvs primero, luego sistema)
-    interpreters = venv_exes + system_exes
+    all_interpreters = venv_interpreters + system_interpreters
     seen = set()
     unique = []
-    for p in interpreters:
-        key = os.path.normcase(p)
+    for interp in all_interpreters:
+        key = os.path.normcase(interp["path"])
         if key not in seen:
             seen.add(key)
-            unique.append(p)
+            unique.append(interp)
     interpreters = unique
 
     # 6) Guarda lista en JSON
     write_config_parameter("options.project_settings.interpreters", interpreters)
 
     # 7) Elige el intérprete actual
-    if venv_exes:
-        current = read_config_parameter("options.project_settings.current_interpreter") or ""
-        chosen = current if current in venv_exes else venv_exes[0]
+    venv_paths = [interp["path"] for interp in venv_interpreters]
+    if venv_paths:
+        current = (
+            read_config_parameter("options.project_settings.current_interpreter") or ""
+        )
+        chosen = current if current in venv_paths else venv_paths[0]
     else:
-        chosen = interpreters[0] if interpreters else ""
+        all_paths = [interp["path"] for interp in interpreters]
+        chosen = all_paths[0] if all_paths else ""
     write_config_parameter("options.project_settings.current_interpreter", chosen)
 
     # 8) Flag para ocultar menú si no hay venv
     write_config_parameter(
-        "options.project_settings.missing_dot_venv",
-        not bool(venv_dirs)
+        "options.project_settings.missing_dot_venv", not bool(venv_tuples)
     )
 
     # 9) Finalmente, reconstruye el submenú Python
