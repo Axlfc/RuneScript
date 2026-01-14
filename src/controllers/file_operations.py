@@ -18,7 +18,6 @@ from src.controllers.parameters import write_config_parameter
 from src.views.tk_utils import (
     localization_data,
     directory_label,
-    main_menu,
     script_name_label,
     script_text,
     root,
@@ -104,7 +103,7 @@ def update_menu_based_on_extension(ext, directory_path):
     # For any other file, remove the python submenu
     else:
         try:
-            main_menu.delete("Python")
+            menu.delete("Python")
         except TclError:
             pass  # Ignore if menu doesn't exist
 
