@@ -15,11 +15,11 @@ def find_venvs(project_root):
         if not os.path.isdir(full):
             continue
         if os.path.isfile(os.path.join(full, "pyvenv.cfg")):
-            venvs.append(full)
+            venvs.append((name, full))
         elif os.path.isfile(os.path.join(full, "Scripts", "python.exe")):
-            venvs.append(full)
+            venvs.append((name, full))
         elif os.path.isfile(os.path.join(full, "bin", "python")):
-            venvs.append(full)
+            venvs.append((name, full))
     return venvs
 
 def find_system_pythons():
