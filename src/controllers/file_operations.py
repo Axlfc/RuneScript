@@ -94,8 +94,6 @@ def open_file(file_path):
     # root.after(10, update_line_numbers)  # Small delay to ensure text is fully loaded
 
 
-
-
 def update_menu_based_on_extension(ext):
     menu_creators = {
         ".py": create_python_menu,

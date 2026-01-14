@@ -219,6 +219,16 @@ def init_git_console():
 
 
 def open_current_directory(path):
+    if path == '' or path is None:
+        # Obtener el directorio del script actual
+        current_script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Subir dos niveles para llegar al directorio raíz del proyecto
+        # desde controllers -> src -> RuneScript
+        project_root = os.path.dirname(os.path.dirname(current_script_dir))
+
+        path = project_root
+
     if not os.path.isdir(path):
         print(f"Error: The directory '{path}' does not exist.")
         return
@@ -251,11 +261,13 @@ def create_settings_window(event=None):
 
 
 def create_web3_window(event=None):
-    return Web3DevStudio()
+    pass
+    # return Web3DevStudio()
 
 
 def create_graphic_engine_window(event=None):
-    return GraphicEngineWindow()
+    pass
+    # return GraphicEngineWindow()
 
 
 def open_system_info_window(event=None):
@@ -474,7 +486,16 @@ def select_directory():
     project = filedialog.askdirectory(title="Select Project Folder")
     if not project:
         return
+
+    # Asumiendo que _update_interpreters maneja todo lo relacionado con
+    # guardar el directorio y actualizar intérpretes como antes
     _update_interpreters(project)
+
+    # [NEW] Actualizar el texto del label para reflejar el nuevo directorio
+    # Este es el mismo valor que _update_interpreters guardó en la config
+    directory_label.config(text=project)
+    # Opcional: podrías añadir un pequeño mensaje o truncar el path si es muy largo
+    # directory_label.config(text=f"Working Dir: {os.path.basename(project)}") # Solo nombre base
 
 
 def open_create_venv_window():
