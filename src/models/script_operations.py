@@ -5,6 +5,8 @@ import subprocess
 import sys
 from time import sleep
 from tkinter import messagebox, Toplevel, Text
+
+from src.controllers.parameters import read_config_parameter
 from src.controllers.utility_functions import validate_time
 from src.views.tk_utils import (
     script_text,
@@ -17,7 +19,7 @@ from src.views.tk_utils import (
 )
 
 
-def get_execution_command(file_path, entry_arguments):
+def get_execution_command(file_path, entry_arguments, interpreter_path=None):
     """ ""\"
     get_execution_command
 
@@ -29,11 +31,10 @@ def get_execution_command(file_path, entry_arguments):
         None: Description of return value.
     ""\" """
     file_extension = os.path.splitext(file_path)[1].lower()
+
     if file_extension == ".py":
-        if platform.system() == "Windows":
-            return ["python", file_path] + entry_arguments
-        else:
-            return ["python3", file_path] + entry_arguments
+        python_executable = interpreter_path or ("python" if platform.system() == "Windows" else "python3")
+        return [python_executable, file_path] + entry_arguments
     elif file_extension == ".sh":
         return ["bash", file_path] + entry_arguments
     elif file_extension == ".ps1":
@@ -115,7 +116,14 @@ def run_script_windows():
     ).strip()
     current_directory = directory_label.cget("text")
     file_path = os.path.join(current_directory, file_name)
-    command = get_execution_command(file_path, entry_arguments)
+
+    interpreter_path = read_config_parameter("options.project_settings.current_interpreter")
+    if not interpreter_path:
+        messagebox.showwarning("No Interpreter Selected", "No valid interpreter has been set for the project.")
+        return
+
+    command = get_execution_command(file_path, entry_arguments, interpreter_path=interpreter_path)
+
     if not command:
         print(f"Cannot execute file: {file_name}")
         return
