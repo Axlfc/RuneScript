@@ -56,11 +56,13 @@ def create_app():
 
 
 def create_filesystem_window():
+    tree_frame.grid_rowconfigure(0, weight=1)
+    tree_frame.grid_columnconfigure(0, weight=1)
     vsb = Scrollbar(tree_frame, orient="vertical", command=tree.yview)
-    vsb.pack(side=RIGHT, fill=Y)
+    vsb.grid(row=0, column=1, sticky="ns")
     hsb = Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
-    hsb.pack(side=BOTTOM, fill=X)
-    tree.pack(side=LEFT, fill=BOTH, expand=True)
+    hsb.grid(row=1, column=0, sticky="ew")
+    tree.grid(row=0, column=0, sticky="nsew")
     tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
     tree.heading("#0", text="", anchor=W)
     tree.column("#0", width=300, minwidth=200)
@@ -82,25 +84,6 @@ def create_content_file_window():
     # Create the line numbers canvas
     line_numbers = LineNumberCanvas(script_text, width=30)
     line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
-
-    # Create vertical scrollbar with proper connections
-    vsb = Scrollbar(frm, orient="vertical")
-    vsb.grid(row=2, column=1, sticky="ns")
-
-    # Connect scrollbar to text widget
-    def on_vertical_scroll(*args):
-        script_text.yview(*args)
-        # Update line numbers after scrolling
-        root.after(10, line_numbers.redraw)
-
-    vsb.config(command=on_vertical_scroll)
-
-    def on_text_scroll(*args):
-        vsb.set(*args)
-        # Schedule line numbers update
-        root.after(10, line_numbers.redraw)
-
-    script_text.config(yscrollcommand=on_text_scroll)
 
     # Debug mouse wheel events
     # Handle mouse wheel events
@@ -227,14 +210,12 @@ def create_content_file_window():
     def scroll_lines_up(event):
         script_text.yview_scroll(-5, "units")
         # Update line numbers and scroll position
-        vsb.set(*script_text.yview())
         root.after(10, line_numbers.redraw)
         return "break"
 
     def scroll_lines_down(event):
         script_text.yview_scroll(5, "units")
         # Update line numbers and scroll position
-        vsb.set(*script_text.yview())
         root.after(10, line_numbers.redraw)
         return "break"
 
