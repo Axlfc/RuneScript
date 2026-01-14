@@ -14,10 +14,12 @@ from src.controllers.menu_creators import (
     create_bash_menu,
     create_powershell_menu,
 )
+from src.controllers.menu_functions import _update_interpreters
 from src.controllers.parameters import write_config_parameter
 from src.views.tk_utils import (
     localization_data,
     directory_label,
+    main_menu,
     script_name_label,
     script_text,
     root,
@@ -86,7 +88,7 @@ def open_file(file_path):
     last_saved_content = script_content
     ext = os.path.splitext(file_path)[1]
     print("EXT of Opened File IS:\t", ext)
-    update_menu_based_on_extension(ext)
+    update_menu_based_on_extension(ext, directory_path)
     is_modified = False
     update_title()
 
@@ -94,9 +96,18 @@ def open_file(file_path):
     # root.after(10, update_line_numbers)  # Small delay to ensure text is fully loaded
 
 
-def update_menu_based_on_extension(ext):
+def update_menu_based_on_extension(ext, directory_path):
+    # If a Python file is opened, refresh the python submenu
+    if ext == ".py":
+        _update_interpreters(directory_path)
+    # For any other file, remove the python submenu
+    else:
+        try:
+            main_menu.delete("Python")
+        except TclError:
+            pass  # Ignore if menu doesn't exist
+
     menu_creators = {
-        ".py": create_python_menu,
         ".csv": create_csv_menu,
         ".txt": create_generic_text_menu,
         ".md": create_markdown_menu,
@@ -111,7 +122,6 @@ def update_menu_based_on_extension(ext):
     }
 
     file_type_labels = {
-        ".py": "Python",
         ".csv": "CSV",
         ".txt": "Text",
         ".md": "Markdown",
@@ -126,7 +136,6 @@ def update_menu_based_on_extension(ext):
     }
 
     jobs_menu_index = None
-
     for index in range(menu.index('end') + 1):
         if localization_data["jobs"] in menu.entrycget(index, 'label'):
             jobs_menu_index = index
@@ -135,25 +144,26 @@ def update_menu_based_on_extension(ext):
     if jobs_menu_index is None:
         return
 
-    dynamic_menu_index = None
+    # Delete any previous dynamic menu
+    possible_labels = list(file_type_labels.values()) + ["Other"]
     for index in range(menu.index('end') + 1):
         try:
-            if menu.entrycget(index, 'label') in file_type_labels.values() or menu.entrycget(index, 'label') == "Other":
-                dynamic_menu_index = index
-                menu.delete(dynamic_menu_index)
+            if menu.entrycget(index, 'label') in possible_labels:
+                menu.delete(index)
                 break
-        except Exception as e:
+        except Exception:
             continue
 
-    dynamic_menu = Menu(menu, tearoff=0, name='dynamic')
-    if ext in menu_creators:
-        menu_creators[ext](dynamic_menu)
-        label = file_type_labels.get(ext, "Other")
-    else:
-        create_generic_text_menu(dynamic_menu)
-        label = "Other"
-
-    menu.insert_cascade(jobs_menu_index + 1, label=label, menu=dynamic_menu)
+    # Create new dynamic menu for non-python files
+    if ext != ".py":
+        dynamic_menu = Menu(menu, tearoff=0, name='dynamic')
+        if ext in menu_creators:
+            menu_creators[ext](dynamic_menu)
+            label = file_type_labels.get(ext, "Other")
+        else:
+            create_generic_text_menu(dynamic_menu)
+            label = "Other"
+        menu.insert_cascade(jobs_menu_index + 1, label=label, menu=dynamic_menu)
 
 
 def open_script(event=None):

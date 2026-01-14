@@ -140,14 +140,18 @@ def _update_interpreters(directory):
 
     # 3) Construye lista de ejecutables de venv
     venv_interpreters = []
+    if os.name == "nt":
+        sub_dir = "Scripts"
+        possible_exes = ["python.exe", "python3.exe"]
+    else:
+        sub_dir = "bin"
+        possible_exes = ["python", "python3"]
     for name, path in venv_tuples:
-        exe = (
-            os.path.join(path, "Scripts", "python.exe")
-            if os.name == "nt"
-            else os.path.join(path, "bin", "python3")
-        )
-        if os.path.isfile(exe):
-            venv_interpreters.append({"path": os.path.normpath(exe), "name": name})
+        for exe_name in possible_exes:
+            exe_path = os.path.join(path, sub_dir, exe_name)
+            if os.path.isfile(exe_path):
+                venv_interpreters.append({"path": os.path.normpath(exe_path), "name": name})
+                break
 
     # 4) Normaliza también los pythons de sistema
     system_interpreters = [
