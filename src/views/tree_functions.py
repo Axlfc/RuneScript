@@ -120,7 +120,12 @@ def on_double_click(event):
     Handle double click on tree item
     """
     item = tree.identify("item", event.x, event.y)
-    filepath = tree.item(item, "values")[0]
+    if not item:
+        return
+    values = tree.item(item, "values")
+    if not values:
+        return
+    filepath = values[0]
     if os.path.isfile(filepath):
         open_file(filepath)
         write_config_parameter("options.file_management.current_file_path", filepath)

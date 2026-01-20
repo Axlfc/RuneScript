@@ -17,8 +17,10 @@ from tkinter import (
 )
 from tkinter.ttk import Notebook, Combobox
 
-from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.controllers.parameters import (read_config_parameter, write_config_parameter,
+                                        get_appearance_mode)
 from src.models.LanguageManager import LanguageManager
+import customtkinter
 from src.views.tk_utils import style
 from src.views.ui_elements import ScrollableFrame
 
@@ -202,7 +204,7 @@ class SettingsWindow(Toplevel):
         theme = updated_config_data["options"].get("theme_appearance", {}).get("theme", None)
         if theme:
             try:
-                self.style.theme_use(theme)
+                customtkinter.set_appearance_mode(get_appearance_mode(theme))
             except Exception as e:
                 messagebox.showerror("Theme Error", f"The theme '{theme}' is not available. ({e})")
 
@@ -229,8 +231,8 @@ class SettingsWindow(Toplevel):
         # default_theme = self.config_data["options"].get("theme_appearance", {}).get("theme", "default")
         default_theme = read_config_parameter("options.theme_appearance.theme")
         try:
-            self.style.theme_use(default_theme)
+            customtkinter.set_appearance_mode(get_appearance_mode(default_theme))
         except Exception as e:
-            messagebox.showerror("Theme Error", f"The default theme '{default_theme}' is not available. ({e}")
+            messagebox.showerror("Theme Error", f"The default theme '{default_theme}' is not available. ({e})")
 
         messagebox.showinfo("Reset Settings", "Settings reset to defaults. User configuration file deleted.")
