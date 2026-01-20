@@ -1621,15 +1621,14 @@ def create_menu():
 
     # Jobs
     jobs_menu.add_command(
-        label=localization_data["new_at"],
-        command=open_new_at_task_window,
-        # accelerator="Ctrl+Alt+Shift+A")
-    # root.bind("<Control-Alt-Shift-a>", open_new_at_task_window)
+    label=localization_data["new_at"],
+    command=open_new_at_task_window)
+# accelerator="Ctrl+Alt+Shift+A"
+# root.bind("<Control-Alt-Shift-a>", open_new_at_task_window)
 
     jobs_menu.add_command(
-        label=localization_data["new_crontab"],
-        command=open_new_crontab_task_window,
-        # accelerator="Ctrl+Alt+Shift+C")
+    label=localization_data["new_crontab"],
+    command=open_new_crontab_task_window)
     # root.bind("<Control-Alt-Shift-c>", open_new_crontab_task_window)
 
     jobs_menu.add_separator()
