@@ -1,4 +1,4 @@
-# git_cli/commands/meta_commands.py
+﻿# git_cli/commands/meta_commands.py
 from lib.git_cli.commands.base import GitCommand, CommandResult
 import subprocess
 

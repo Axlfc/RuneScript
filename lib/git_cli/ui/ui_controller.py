@@ -1,4 +1,4 @@
-from tkinter import TclError, END
+﻿from tkinter import TclError, END
 
 from lib.git_cli.components.commit_list import CommitListView
 
@@ -45,23 +45,23 @@ class UIController:
 
         for name, component in components.items():
             if component is None:
-                print(f"❌ {name} is NOT initialized")
+                print(f"âŒ {name} is NOT initialized")
             else:
-                print(f"✅ {name} is OK")
+                print(f"âœ… {name} is OK")
 
         if self.staging_tab and not getattr(self.staging_tab, "_ui_initialized", False):
-            print("⚠️  staging_tab exists but is NOT fully initialized")
+            print("âš ï¸  staging_tab exists but is NOT fully initialized")
 
         if self.history_tab and not getattr(self.history_tab, "_ui_initialized", False):
-            print("⚠️  history_tab exists but is NOT fully initialized")
+            print("âš ï¸  history_tab exists but is NOT fully initialized")
 
         if hasattr(self, "commit_list_view") and not isinstance(self.commit_list_view, CommitListView):
-            print(f"⚠️  commit_list_view is misconfigured (type: {type(self.commit_list_view)})")
+            print(f"âš ï¸  commit_list_view is misconfigured (type: {type(self.commit_list_view)})")
 
         if not self.current_branch:
-            print("⚠️  current_branch not set")
+            print("âš ï¸  current_branch not set")
         else:
-            print(f"📌 Current branch: {self.current_branch}")
+            print(f"ðŸ“Œ Current branch: {self.current_branch}")
 
         print("[Diagnostics] Done.\n")
 
@@ -137,12 +137,12 @@ class UIController:
     def _update_status_bar(self, data):
         """Update the status bar with the given message"""
         if hasattr(self, "status_bar") and self.status_bar and "message" in data:
-            self.status_bar.config(text=data["message"])
+            self.status_bar.configure(text=data["message"])
 
     def _handle_branch_changed(self, data):
         """Handle branch changed events"""
         if "name" in data:
-            self.status_bar.config(text=f"Current branch: {data['name']}")
+            self.status_bar.configure(text=f"Current branch: {data['name']}")
             # Also update the current branch in the controller
             self.current_branch = data["name"]
             # Refresh commit history for the new branch
@@ -154,18 +154,18 @@ class UIController:
             command = data["command"]
             # Show the last executed command in the status bar
             if command != "status --porcelain -u":  # Don't show status commands
-                self.status_bar.config(text=f"Last command: git {command}")
+                self.status_bar.configure(text=f"Last command: git {command}")
 
     def _handle_commit_created(self, data=None):
         """Handle commit created events"""
-        self.status_bar.config(text="Commit successful!")
+        self.status_bar.configure(text="Commit successful!")
         # Refresh the staging view and commit history
         self.git_service.refresh_staging_view()
         self.refresh_commit_history()
 
     def _handle_push_completed(self, data=None):
         """Handle push completed events"""
-        self.status_bar.config(text="Push successful!")
+        self.status_bar.configure(text="Push successful!")
 
     def setup_status_bar_listeners(self):
         """Set up event listeners for status bar updates"""

@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import subprocess
 import os
 import re
@@ -14,28 +14,28 @@ default_repo_dir = config.get("git", "default_repo_dir", fallback=os.getcwd())
 default_username = config.get("git", "default_username", fallback=None)
 default_email = config.get("git", "default_email", fallback=None)
 git_icons = {
-    "commit": "📝",
-    "push": "🚀",
-    "pull": "🔄",
-    "merge": "🔀",
-    "clone": "🔄➕",
-    "fetch": "🔍➕",
-    "add": "➕",
-    "checkout": "🛒",
-    "branch": "🌳",
-    "hard": "💥",
-    "pristine": "🧼",
-    "status": "🛠️",
-    "log": "📜",
-    "diff": "🔍",
-    "blame": "🧟\u200d♂️",
-    "rebase": "🔃",
-    "stash": "📦",
-    "unstash": "📤",
-    "remote": "🌐",
-    "config": "⚙️",
-    "tag": "🏷️",
-    "init": "🚀",
+    "commit": "ðŸ“",
+    "push": "ðŸš€",
+    "pull": "ðŸ”„",
+    "merge": "ðŸ”€",
+    "clone": "ðŸ”„âž•",
+    "fetch": "ðŸ”âž•",
+    "add": "âž•",
+    "checkout": "ðŸ›’",
+    "branch": "ðŸŒ³",
+    "hard": "ðŸ’¥",
+    "pristine": "ðŸ§¼",
+    "status": "ðŸ› ï¸",
+    "log": "ðŸ“œ",
+    "diff": "ðŸ”",
+    "blame": "ðŸ§Ÿ\u200dâ™‚ï¸",
+    "rebase": "ðŸ”ƒ",
+    "stash": "ðŸ“¦",
+    "unstash": "ðŸ“¤",
+    "remote": "ðŸŒ",
+    "config": "âš™ï¸",
+    "tag": "ðŸ·ï¸",
+    "init": "ðŸš€",
 }
 
 
@@ -65,8 +65,7 @@ def run_git_command(command, *args, repo_dir=None, encoding="utf-8"):
             capture_output=True,
             text=True,
             cwd=repo_dir,
-            encoding=encoding,
-        )
+            encoding=encoding)
         return result.stdout
     except subprocess.CalledProcessError as e:
         logger.error(f"Error executing Git {command}: {e.stderr}")
@@ -477,8 +476,7 @@ def git_log(repo_dir=None):
         "--pretty=format:" + log_format,
         "--abbrev-commit",
         "--date=relative",
-        repo_dir=repo_dir,
-    )
+        repo_dir=repo_dir)
     logger.info(f"{git_icons['log']} Log:\n{log}")
 
 
@@ -771,8 +769,7 @@ def main():
     init_parser.add_argument(
         "--repo-dir",
         help="Directory to initialize as a git repository",
-        default=default_repo_dir,
-    )
+        default=default_repo_dir)
     tag_parser = subparsers.add_parser("tag", help="Emulate git tag alias")
     tag_parser.add_argument("tag_name", help="Name of the tag to create")
     tag_parser.add_argument(
@@ -913,3 +910,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

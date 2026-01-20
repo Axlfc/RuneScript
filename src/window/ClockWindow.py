@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from time import strftime
 import datetime
 
@@ -56,8 +56,8 @@ class ClockWindow(tk.Toplevel):
         time_font_size = min(int(width / 15), int(height / 4))
         date_font_size = min(int(width / 30), int(height / 10))
 
-        self.time_label.config(font=('DS-Digital', time_font_size, 'bold'))
-        self.date_label.config(font=('Arial', date_font_size, 'bold'))
+        self.time_label.configure(font=('DS-Digital', time_font_size, 'bold'))
+        self.date_label.configure(font=('Arial', date_font_size, 'bold'))
 
     def update_clock(self):
         # Get current time and format
@@ -65,8 +65,8 @@ class ClockWindow(tk.Toplevel):
         current_date = datetime.datetime.now().strftime('%A, %B %d, %Y')
 
         # Update labels
-        self.time_label.config(text=current_time)
-        self.date_label.config(text=current_date)
+        self.time_label.configure(text=current_time)
+        self.date_label.configure(text=current_date)
 
         # Schedule next update
         self.after(1000, self.update_clock)

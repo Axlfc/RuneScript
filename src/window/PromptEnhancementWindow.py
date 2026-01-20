@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import re
 from tkinter import Toplevel, Frame, Button, LEFT, RIGHT, Y, X, N, S, W, E, BOTH, Label, Entry, END, Checkbutton, \
@@ -185,7 +185,7 @@ class PromptEnhancementWindow:
         if name and name.strip():
             if name not in self.categories:
                 self.categories[name] = {"description": "", "subcategories": {}}
-                self.category_tree.insert('', 'end', text=name, values=("category",))
+                self.category_tree.insert('', 'end', text=name, values=("category"))
                 self.save_categories()
             else:
                 messagebox.showerror("Error", "Category already exists!")
@@ -571,7 +571,7 @@ class PromptEnhancementWindow:
         validation_result = self.check_alias_validity(alias)
 
         if not validation_result['valid']:
-            self.alias_status_label.config(text=validation_result['error'], fg="red")
+            self.alias_status_label.configure(text=validation_result['error'], fg="red")
             self.alias_valid = False
             self.alias_error = validation_result['error']
             # Fallback: auto-generate a valid alias if the current one is invalid
@@ -581,7 +581,7 @@ class PromptEnhancementWindow:
                 self.alias_entry.insert(0, generated_alias)
                 return self.validate_alias()
         else:
-            self.alias_status_label.config(text="✓", fg="green")
+            self.alias_status_label.configure(text="✓", fg="green")
             self.alias_valid = True
             self.alias_error = None
 
@@ -593,11 +593,11 @@ class PromptEnhancementWindow:
         validation_result = self.check_alias_validity(alias, check_exists=True)
 
         if not validation_result['valid']:
-            self.alias_status_label.config(text="⚠ " + validation_result['error'], fg="orange")
+            self.alias_status_label.configure(text="⚠ " + validation_result['error'], fg="orange")
             self.alias_valid = False
             self.alias_error = validation_result['error']
         else:
-            self.alias_status_label.config(text="✓", fg="green")
+            self.alias_status_label.configure(text="✓", fg="green")
             self.alias_valid = True
             self.alias_error = None
 
@@ -743,30 +743,30 @@ class PromptEnhancementWindow:
         def add_subcategories(parent, data):
             if isinstance(data, dict):
                 for subcat_name, subcat_data in data.items():
-                    subcat_id = self.category_tree.insert(parent, 'end', text=subcat_name, values=("category",))
+                    subcat_id = self.category_tree.insert(parent, 'end', text=subcat_name, values=("category"))
                     # If it's a dictionary with prompts
                     if isinstance(subcat_data, dict) and "prompts" in subcat_data:
                         for prompt in subcat_data["prompts"]:
-                            self.category_tree.insert(subcat_id, 'end', text=prompt, values=("prompt",))
+                            self.category_tree.insert(subcat_id, 'end', text=prompt, values=("prompt"))
                         # Handle nested subcategories if they exist
                         if "subcategories" in subcat_data:
                             add_subcategories(subcat_id, subcat_data["subcategories"])
                     # If it's just a list of prompts
                     elif isinstance(subcat_data, list):
                         for prompt in subcat_data:
-                            self.category_tree.insert(subcat_id, 'end', text=prompt, values=("prompt",))
+                            self.category_tree.insert(subcat_id, 'end', text=prompt, values=("prompt"))
 
         # Process each top-level category
         for category, data in self.categories.items():
             # Add category to tree
-            category_id = self.category_tree.insert('', 'end', text=category, values=("category",))
+            category_id = self.category_tree.insert('', 'end', text=category, values=("category"))
 
             # Handle category data
             if isinstance(data, dict):
                 # Add prompts if they exist at the category level
                 if "prompts" in data:
                     for prompt in data["prompts"]:
-                        self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
+                        self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt"))
 
                 # Add subcategories if they exist
                 if "subcategories" in data:
@@ -774,7 +774,7 @@ class PromptEnhancementWindow:
             elif isinstance(data, list):
                 # If data is just a list of prompts
                 for prompt in data:
-                    self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt",))
+                    self.category_tree.insert(category_id, 'end', text=prompt, values=("prompt"))
     def load_variables_into_tree(self):
         """Load all variables into the Treeview."""
         self.var_tree.delete(*self.var_tree.get_children())
@@ -993,4 +993,5 @@ class PromptEnhancementWindow:
         self.variables = []
         self.var_tree.delete(*self.var_tree.get_children())
         self.prompt_data = {}
+
 

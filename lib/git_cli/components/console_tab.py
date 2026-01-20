@@ -1,4 +1,4 @@
-from tkinter import Frame, Menu, Label, Entry, END, BOTH, X, Text
+﻿from tkinter import Frame, Menu, Label, Entry, END, BOTH, X, Text
 from tkinter import scrolledtext
 from src.views.tk_utils import my_font
 
@@ -21,8 +21,7 @@ class ConsoleTab(Frame):
             width=80,
             font=my_font,
             background="#1E1E1E",
-            foreground="#D4D4D4",
-            insertbackground="#FFFFFF"
+            foreground="#D4D4D4"
         )
         self.output_text.pack(fill=BOTH, expand=True)
 
@@ -77,8 +76,7 @@ class ConsoleTab(Frame):
             command_frame,
             width=80,
             background="#1E1E1E",
-            foreground="#D4D4D4",
-            insertbackground="#FFFFFF"
+            foreground="#D4D4D4"
         )
         self.entry.pack(side="left", fill="x", expand=True)
         self.entry.focus()

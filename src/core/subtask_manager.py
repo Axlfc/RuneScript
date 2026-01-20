@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from datetime import datetime
 from typing import Dict, Optional, Any, List
 
@@ -94,3 +94,4 @@ class SubtaskManager:
                     for dep in deps
                 ) and self.subtasks[task_id]["status"] == "pending":
                     self.start_subtask(task_id)
+

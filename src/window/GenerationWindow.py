@@ -1,4 +1,4 @@
-import os
+﻿import os
 import queue
 import threading
 import subprocess
@@ -65,8 +65,8 @@ class GenerationWindow:
             messagebox.showwarning("Input Error", "Please fill all fields.")
             return
 
-        self.status_label.config(text="Starting media generation...")
-        self.generate_button.config(state=DISABLED)
+        self.status_label.configure(text="Starting media generation...")
+        self.generate_button.configure(state=DISABLED)
 
         self.output_queue = queue.Queue()
         threading.Thread(
@@ -90,8 +90,7 @@ class GenerationWindow:
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-            )
+                text=True)
             for line in process.stdout:
                 output_queue.put(line.strip())
             process.wait()
@@ -117,11 +116,11 @@ class GenerationWindow:
                     media_type = media_type.split("_")[1]
                     self.load_media(media_type, path)
                 else:
-                    self.status_label.config(text=f"Progress: {line}")
+                    self.status_label.configure(text=f"Progress: {line}")
 
                 if f"{self.media_type.get()} generation completed" in line:
-                    self.status_label.config(text=line)
-                    self.generate_button.config(state=NORMAL)
+                    self.status_label.configure(text=line)
+                    self.generate_button.configure(state=NORMAL)
                     break
 
         except queue.Empty:
@@ -137,7 +136,7 @@ class GenerationWindow:
                 img = Image.open(media_path)
                 img = img.resize((250, 250), Image.Resampling.LANCZOS)
                 img_tk = ImageTk.PhotoImage(img)
-                self.preview_area.config(image=img_tk)
+                self.preview_area.configure(image=img_tk)
                 self.preview_area.image = img_tk
             elif media_type == "Audio":
                 # Load and play audio
@@ -151,7 +150,7 @@ class GenerationWindow:
             elif media_type == "Personalized Avatar":
                 # Load and display avatar
                 pass
-            self.status_label.config(text=f"{media_type} generated at {media_path}")
+            self.status_label.configure(text=f"{media_type} generated at {media_path}")
         except Exception as e:
             messagebox.showerror(f"{media_type} Error", f"Could not load {media_type.lower()}: {e}")
 

@@ -1,5 +1,6 @@
-import tkinter
+﻿import tkinter
 from tkinter import END, messagebox, colorchooser
+from customtkinter import CTkFont
 from src.views.tk_utils import text, all_fonts, all_size, fontColor
 
 
@@ -267,15 +268,15 @@ def make_tag():
         overstrike = 1
     else:
         overstrike = 0
-    big_font = tkinter.font.Font(text, text.cget("font"))
+    big_font = CTkFont(family="Consolas", size=12)
+
     big_font.configure(
         slant=slant,
         weight=weight,
         underline=underline,
         overstrike=overstrike,
         family=current_font_family,
-        size=current_font_size,
-    )
+        size=current_font_size)
     text.tag_config(
         "BigTag", font=big_font, foreground=fontColor, background=fontBackground
     )
@@ -335,3 +336,4 @@ def validate_time(hour, minute):
             "Invalid Time", "Please enter a valid time in HH:MM format."
         )
         return False
+

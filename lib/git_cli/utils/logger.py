@@ -1,4 +1,4 @@
-import io
+﻿import io
 import logging
 import sys
 from datetime import datetime
@@ -62,3 +62,4 @@ def get_logger(name: str) -> logging.Logger:
         logger.setLevel(logging.INFO)
 
     return logger
+

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import threading
 from tkinter import (
@@ -201,4 +201,5 @@ class FindInFilesWindow:
             file_path, line_num, _ = values
             full_path = os.path.join(self.path_entry.get(), file_path)
             print(f"Opening {full_path} at line {line_num}")
+
 

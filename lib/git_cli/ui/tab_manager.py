@@ -1,4 +1,4 @@
-from tkinter import Frame
+﻿from tkinter import Frame
 from tkinter import ttk
 
 
@@ -18,7 +18,7 @@ class TabManager:
         frame.pack(fill="both", expand=True)
 
         tab_instance = tab_class(frame, *args, **kwargs)
-        tab_instance.pack(fill="both", expand=True)  # ahora sí, porque heredan de Frame
+        tab_instance.pack(fill="both", expand=True)  # ahora sÃ­, porque heredan de Frame
 
         self.notebook.add(frame, text=name if name else tab_class.__name__)
         return tab_instance

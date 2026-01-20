@@ -1,4 +1,4 @@
-from tkinter import (
+﻿from tkinter import (
     Button,
     Scrollbar,
     HORIZONTAL,
@@ -8,8 +8,7 @@ from tkinter import (
     X,
     Y,
     BOTTOM,
-    W,
-)
+    W)
 from src.controllers.menu_functions import open_search_window, open_search_replace_window
 from src.models.file_operations import prompt_rename_file
 from src.controllers.parameters import read_config_parameter
@@ -27,20 +26,17 @@ from src.controllers.menu_functions import (
     save_as_new_script,
     cut,
     copy,
-    paste,
-)
+    paste)
 from src.models.script_operations import (
     run_script_once,
     run_script_crontab,
-    get_operative_system,
-)
+    get_operative_system)
 from src.views.edit_operations import undo, redo
 from src.views.tree_functions import (
     item_opened,
     update_tree,
     on_item_select,
-    on_double_click, show_context_menu,
-)
+    on_double_click, show_context_menu)
 from src.views.ui_elements import Tooltip, LineNumberCanvas
 from src.views.tk_utils import *
 from src.controllers.file_operations import on_text_change
@@ -157,8 +153,7 @@ def create_content_file_window():
             label="Find and Replace",
             command=open_search_replace_window,
             compound="left",
-            accelerator="Ctrl+R",
-        )
+            accelerator="Ctrl+R")
         """git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
                                 accelerator='Ctrl+Alt+A')"""
         context_menu.post(event.x_root, event.y_root)
@@ -200,8 +195,9 @@ def create_content_file_window():
 
     line_numbers.bind("<Configure>", show_changes_in_text_zone)
 
-    script_text.configure(bg="#1f1f1f", fg="white")
-    script_text.config(insertbackground="#F0F0F0", selectbackground="#4d4d4d")
+    script_text.configure(fg_color="#1f1f1f", text_color="white")
+
+    script_text.configure()
 
     script_text.bind("<Button-3>", show_context_menu)
     script_text.bind("<Key>", on_text_change)
@@ -252,8 +248,8 @@ def create_horizontal_scrollbar_lines():
         update_line_numbers()
         return "break"
 
-    scrollbar.config(command=on_scroll)
-    script_text.config(xscrollcommand=scrollbar.set)
+    scrollbar.configure(command=on_scroll)
+    script_text.configure(xscrollcommand=scrollbar.set)
 
 
 def update_line_numbers():
@@ -276,3 +272,5 @@ def ensure_scroll_sync():
 
     # Schedule next check
     root.after(500, ensure_scroll_sync)
+
+

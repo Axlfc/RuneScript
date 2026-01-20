@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import os
 
@@ -99,4 +99,5 @@ def transition_to_next_phase(context: ProjectContext):
         context.current_phase = "Ready for Review"
     else:
         logging.info("Project is ready for review.")
+
 

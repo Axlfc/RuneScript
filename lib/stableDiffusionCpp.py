@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 from typing import Any
 from stable_diffusion_cpp import StableDiffusion
 
@@ -34,8 +34,7 @@ class ImageGenerationManager:
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
-        verbose: bool = True,
-    ) -> Any:
+        verbose: bool = True) -> Any:
         """ ""\"
         ""\"
             ""\"
@@ -85,8 +84,7 @@ class ImageGenerationManager:
             keep_clip_on_cpu=keep_clip_on_cpu,
             keep_control_net_cpu=keep_control_net_cpu,
             keep_vae_on_cpu=keep_vae_on_cpu,
-            verbose=verbose,
-        )
+            verbose=verbose)
 
     def generate_image_from_text(self, prompt: str, output_path: str):
         """ ""\"
@@ -142,3 +140,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

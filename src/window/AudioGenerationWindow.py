@@ -1,4 +1,4 @@
-import os
+﻿import os
 import queue
 import threading
 import subprocess
@@ -64,8 +64,8 @@ class AudioGenerationWindow:
             messagebox.showwarning("Input Error", "Please fill all fields.")
             return
 
-        self.status_label.config(text="Starting audio generation...")
-        self.generate_button.config(state=DISABLED)
+        self.status_label.configure(text="Starting audio generation...")
+        self.generate_button.configure(state=DISABLED)
 
         self.output_queue = queue.Queue()
         threading.Thread(
@@ -91,8 +91,7 @@ class AudioGenerationWindow:
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-            )
+                text=True)
             for line in process.stdout:
                 output_queue.put(line.strip())
             process.wait()
@@ -116,11 +115,11 @@ class AudioGenerationWindow:
                 if line.startswith("LOAD_AUDIO:"):
                     self.load_audio(line.split(":", 1)[1])
                 else:
-                    self.status_label.config(text=f"Progress: {line}")
+                    self.status_label.configure(text=f"Progress: {line}")
 
                 if "Audio generation completed" in line:
-                    self.status_label.config(text=line)
-                    self.generate_button.config(state=NORMAL)
+                    self.status_label.configure(text=line)
+                    self.generate_button.configure(state=NORMAL)
                     break
 
         except queue.Empty:
@@ -132,8 +131,8 @@ class AudioGenerationWindow:
     def load_audio(self, audio_path):
         """Loads the generated audio."""
         try:
-            self.status_label.config(text=f"Audio generated at {audio_path}")
-            self.audio_label.config(text=f"Audio saved at {audio_path}")
+            self.status_label.configure(text=f"Audio generated at {audio_path}")
+            self.audio_label.configure(text=f"Audio saved at {audio_path}")
         except Exception as e:
             messagebox.showerror("Audio Error", f"Could not load audio: {e}")
 
@@ -146,3 +145,4 @@ class AudioGenerationWindow:
         path = filedialog.asksaveasfilename(defaultextension=".wav", filetypes=[("WAV Files", "*.wav")])
         self.output_path_entry.delete(0, END)
         self.output_path_entry.insert(0, path)
+

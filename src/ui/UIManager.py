@@ -1,4 +1,4 @@
-import os
+﻿import os
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -28,7 +28,7 @@ class UIManager:
     def setup_menu(self):
         """Set up the application menu bar"""
         menubar = tk.Menu(self.controller.root)
-        self.controller.root.config(menu=menubar)
+        self.controller.root.configure(menu=menubar)
 
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
@@ -162,19 +162,19 @@ class UIManager:
 
     def log_output(self, message: str):
         """Log message to output console"""
-        self.output_console.config(state='normal')
+        self.output_console.configure(state='normal')
         self.output_console.insert(tk.END, message + "\n")
         self.output_console.see(tk.END)
-        self.output_console.config(state='disabled')
+        self.output_console.configure(state='disabled')
         logging.info(message)
 
     def toggle_generation_ui(self, enabled: bool):
         """Toggle UI components based on generation state"""
         state = tk.NORMAL if enabled else tk.DISABLED
-        self.prompt_entry.config(state=state)
-        self.generate_btn.config(state=state)
+        self.prompt_entry.configure(state=state)
+        self.generate_btn.configure(state=state)
 
         # Pause and stop buttons are enabled during generation and disabled otherwise
         pause_stop_state = tk.NORMAL if not enabled else tk.DISABLED
-        self.pause_btn.config(state=pause_stop_state)
-        self.stop_btn.config(state=pause_stop_state)
+        self.pause_btn.configure(state=pause_stop_state)
+        self.stop_btn.configure(state=pause_stop_state)

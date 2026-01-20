@@ -1,4 +1,4 @@
-# git_cli/commands/setup_commands.py
+﻿# git_cli/commands/setup_commands.py
 from typing import Any
 from lib.git_cli.commands.base import GitCommand
 from lib.git_cli.executor import GitExecutor

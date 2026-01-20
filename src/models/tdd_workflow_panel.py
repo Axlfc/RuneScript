@@ -1,4 +1,4 @@
-from tkinter import ttk
+﻿from tkinter import ttk
 import tkinter as tk
 from typing import Optional
 
@@ -80,11 +80,11 @@ class TDDWorkflowPanel(ttk.Frame):
         """Update the label showing last test result"""
         if hasattr(self, 'last_result_label'):
             if status == "passed":
-                self.last_result_label.config(text="✔️ Last: Passed", foreground="green")
+                self.last_result_label.configure(text="✔️ Last: Passed", foreground="green")
             elif status == "failed":
-                self.last_result_label.config(text="❌ Last: Failed", foreground="red")
+                self.last_result_label.configure(text="❌ Last: Failed", foreground="red")
             else:
-                self.last_result_label.config(text="")
+                self.last_result_label.configure(text="")
 
     def update_phase(self, phase_name: str, test_status: Optional[str] = None):
         """
@@ -124,16 +124,17 @@ class TDDWorkflowPanel(ttk.Frame):
     def set_rerun_enabled(self, enabled: bool, result_label: Optional[str] = None):
         if hasattr(self, 'rerun_btn'):
             if result_label:
-                self.rerun_btn.config(state=tk.NORMAL if enabled else tk.DISABLED)
-                self.rerun_btn.config(text=f"🔁 Last: {result_label}")
+                self.rerun_btn.configure(state=tk.NORMAL if enabled else tk.DISABLED)
+                self.rerun_btn.configure(text=f"🔁 Last: {result_label}")
 
     def update_last_result_label(self, passed: Optional[bool]):
         """Show summary icon next to rerun button"""
         if not hasattr(self, "last_result_label"):
             return
         if passed is True:
-            self.last_result_label.config(text="✔️ Last: Passed", foreground="green")
+            self.last_result_label.configure(text="✔️ Last: Passed", foreground="green")
         elif passed is False:
-            self.last_result_label.config(text="❌ Last: Failed", foreground="red")
+            self.last_result_label.configure(text="❌ Last: Failed", foreground="red")
         else:
-            self.last_result_label.config(text="🔁 Last: None", foreground="gray")
+            self.last_result_label.configure(text="🔁 Last: None", foreground="gray")
+

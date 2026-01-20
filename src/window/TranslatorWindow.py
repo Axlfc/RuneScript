@@ -1,4 +1,4 @@
-from tkinter import *
+﻿from tkinter import *
 from tkinter import scrolledtext
 from tkinter.ttk import Combobox
 from datetime import datetime
@@ -108,7 +108,7 @@ class TranslatorWindow:
             return
 
         self.last_translation["input"] = text
-        self.input_entry.config(state="disabled")
+        self.input_entry.configure(state="disabled")
 
         prompt = f"Translate the following text from {self.input_lang_var.get()} to {self.output_lang_var.get()}: {text}"
         ai_script_path = "src/models/ai_assistant.py"
@@ -121,8 +121,7 @@ class TranslatorWindow:
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding="utf-8",
-                bufsize=1,
-            )
+                bufsize=1)
 
             translation = ""
             self.output_text.insert(END,
@@ -137,7 +136,7 @@ class TranslatorWindow:
             self.output_text.insert(END, f"Error: {e}\n")
 
         finally:
-            self.input_entry.config(state="normal")
+            self.input_entry.configure(state="normal")
 
     def stream_translation(self, translation):
         for char in translation:
@@ -156,5 +155,6 @@ class TranslatorWindow:
             return [python_executable, ai_script_path, user_prompt, agent_name]
         else:
             return [python_executable, ai_script_path, user_prompt]
+
 
 

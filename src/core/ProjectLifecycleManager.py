@@ -1,4 +1,4 @@
-import os
+﻿import os
 import logging
 import threading
 import uuid
@@ -46,7 +46,7 @@ class ProjectLifecycleManager:
             # Start AI generation thread
             thread = threading.Thread(
                 target=self.controller.ai_orchestrator.threaded_ai_generation,
-                args=(prompt,)
+                args=(prompt)
             )
             thread.daemon = True
             thread.start()

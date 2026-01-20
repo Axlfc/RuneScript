@@ -1,4 +1,4 @@
-import threading
+﻿import threading
 from pathlib import Path
 
 from lib.git_cli.core.repository import Repository
@@ -104,7 +104,7 @@ class GitService:
                 # Unstaged only
                 unstaged.append(file_path)
             else:
-                # Both staged and unstaged — treat as unstaged for simplicity
+                # Both staged and unstaged â€” treat as unstaged for simplicity
                 unstaged.append(file_path)
 
         print(f"[GitService] Publishing staging update: {staged} staged, {unstaged} unstaged")

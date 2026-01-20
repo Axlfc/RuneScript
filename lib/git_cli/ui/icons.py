@@ -1,4 +1,4 @@
-# git_cli/ui/icons.py
+﻿# git_cli/ui/icons.py
 
 def get_icon(name: str) -> str:
     """
@@ -11,29 +11,29 @@ def get_icon(name: str) -> str:
         A string containing the Unicode icon
     """
     icons = {
-        "init": "🆕",
-        "deinit": "🗑️",
-        "commit": "✅",
-        "push": "📤",
-        "pull": "📥",
-        "stash": "📦",
-        "unstash": "📂",
-        "rebase": "♻️",
-        "branch": "🌿",
-        "checkout": "🚀",
-        "merge": "🔀",
-        "tag": "🏷️",
-        "config": "⚙️",
-        "remote": "🌐",
-        "clone": "📁",
-        "fetch": "📡",
-        "status": "📋",
-        "log": "🧾",
-        "diff": "🧮",
-        "blame": "👤",
-        "reset": "🔄",
-        "hard": "💣",
-        "clean": "🧹",
-        "pristine": "✨",
+        "init": "ðŸ†•",
+        "deinit": "ðŸ—‘ï¸",
+        "commit": "âœ…",
+        "push": "ðŸ“¤",
+        "pull": "ðŸ“¥",
+        "stash": "ðŸ“¦",
+        "unstash": "ðŸ“‚",
+        "rebase": "â™»ï¸",
+        "branch": "ðŸŒ¿",
+        "checkout": "ðŸš€",
+        "merge": "ðŸ”€",
+        "tag": "ðŸ·ï¸",
+        "config": "âš™ï¸",
+        "remote": "ðŸŒ",
+        "clone": "ðŸ“",
+        "fetch": "ðŸ“¡",
+        "status": "ðŸ“‹",
+        "log": "ðŸ§¾",
+        "diff": "ðŸ§®",
+        "blame": "ðŸ‘¤",
+        "reset": "ðŸ”„",
+        "hard": "ðŸ’£",
+        "clean": "ðŸ§¹",
+        "pristine": "âœ¨",
     }
-    return icons.get(name.lower(), "❓")
+    return icons.get(name.lower(), "â“")

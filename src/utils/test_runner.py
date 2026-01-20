@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import logging
 from typing import NamedTuple
 
@@ -33,3 +33,4 @@ def run_pytest(project_path: str) -> TestResult:
     except Exception as e:
         logging.error(f"Test runner failed: {e}")
         return TestResult(False, "", str(e))
+

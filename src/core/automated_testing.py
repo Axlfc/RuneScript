@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import logging
 import os
 
@@ -20,3 +20,4 @@ class AutomatedTestingFramework:
         except Exception as e:
             logging.error(f"Automated testing failed: {e}")
             return False
+

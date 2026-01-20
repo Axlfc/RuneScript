@@ -1,4 +1,4 @@
-# src/controllers/venv_utils.py
+﻿# src/controllers/venv_utils.py
 import os
 import sys
 import shutil
@@ -24,7 +24,7 @@ def find_venvs(project_root):
 
 def find_system_pythons():
     """
-    Detecta intérpretes Python del sistema en PATH.
+    Detecta intÃ©rpretes Python del sistema en PATH.
     Devuelve lista de rutas absolutas.
     """
     pythons = set()
@@ -33,3 +33,4 @@ def find_system_pythons():
         if path:
             pythons.add(path)
     return list(pythons)
+

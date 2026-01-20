@@ -1,4 +1,4 @@
-import os
+﻿import os
 import subprocess
 import tempfile
 from tkinter import END, Toplevel, Listbox, Button, messagebox, Label, Entry
@@ -22,8 +22,7 @@ def open_at_window():
     remove_button = Button(
         at_window,
         text=localization_data["remove_selected"],
-        command=lambda: remove_selected_at_job(listbox),
-    )
+        command=lambda: remove_selected_at_job(listbox))
     remove_button.pack(side="bottom")
     at_window.after(0, update_at_jobs)
     at_window.mainloop()
@@ -79,8 +78,7 @@ def open_cron_window():
     remove_button = Button(
         crontab_window,
         text=localization_data["remove_selected"],
-        command=lambda: remove_selected_cron_job(listbox),
-    )
+        command=lambda: remove_selected_cron_job(listbox))
     remove_button.pack(side="bottom")
     crontab_window.after(0, update_cron_jobs)
     crontab_window.mainloop()
@@ -199,8 +197,7 @@ def open_new_at_task_window(event=None):
 
             messagebox.showinfo(
                 localization_data["task_scheduled"],
-                message,
-            )
+                message)
         except Exception as e:
             message = localization_data["at_error_creation"] + f"\n{str(e)}"
             messagebox.showerror("Task Execution", message)
@@ -253,10 +250,10 @@ def open_new_crontab_task_window(event=None):
         message = localization_data["cron_task_scheduled"] + " " + minute + " " + hour + " " + day_month + " " + month + " " + day_week
         messagebox.showinfo(
             localization_data["task_scheduled"],
-            message,
-        )
+            message)
 
     Button(
         new_cron_task_window, text=localization_data["create_crontab_job_button"], command=create_crontab_job
     ).grid(row=7, column=0, columnspan=2)
     new_cron_task_window.mainloop()
+

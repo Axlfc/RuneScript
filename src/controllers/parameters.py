@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import pathlib
 
@@ -115,8 +115,7 @@ def get_scriptsstudio_directory():
     )
     write_config_parameter(
         "options.file_management.scriptsstudio_user_config_path",
-        data_path + "\\user_config.json",
-    )
+        data_path + "\\user_config.json")
     return abs_path
 
 
@@ -147,3 +146,4 @@ def load_theme_setting():
     if theme is None:
         theme = "cosmo"
     return theme
+

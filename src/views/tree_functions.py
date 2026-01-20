@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import subprocess
 import tkinter as tk
@@ -54,7 +54,7 @@ def update_tree(path):
     for item in tree.get_children():
         tree.delete(item)
     abspath = os.path.abspath(path)
-    root_node = tree.insert("", "end", text=abspath, values=(abspath,), open=True)
+    root_node = tree.insert("", "end", text=abspath, values=(abspath), open=True)
     populate_tree(root_node, abspath)
 
 
@@ -72,7 +72,7 @@ def populate_tree(parent, path):
     for item in os.listdir(path):
         if item != ".git" and item != ".idea":
             abspath = os.path.join(path, item)
-            node = tree.insert(parent, "end", text=item, values=(abspath,), open=False)
+            node = tree.insert(parent, "end", text=item, values=(abspath), open=False)
             if os.path.isdir(abspath):
                 tree.insert(node, "end")
 

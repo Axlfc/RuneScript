@@ -1,4 +1,4 @@
-# registry.py
+﻿# registry.py
 from typing import Dict, Type
 from lib.git_cli.commands.base import GitCommand
 
@@ -25,3 +25,4 @@ COMMAND_REGISTRY: Dict[str, Type[GitCommand]] = {
         RevParseCommand, ShowCommand,
     ]
 }
+

@@ -1,4 +1,4 @@
-import os
+﻿import os
 from tkinter import messagebox, END, filedialog, Menu, TclError, Frame
 from src.controllers.menu_creators import (
     create_python_menu,
@@ -12,8 +12,7 @@ from src.controllers.menu_creators import (
     create_cpp_menu,
     create_latex_menu,
     create_bash_menu,
-    create_powershell_menu,
-)
+    create_powershell_menu)
 from src.controllers.parameters import write_config_parameter
 from src.views.tk_utils import (
     localization_data,
@@ -24,8 +23,7 @@ from src.views.tk_utils import (
     menu,
     is_modified,
     file_name,
-    last_saved_content,
-)
+    last_saved_content)
 from src.views.ui_elements import LineNumberCanvas
 
 file_types = [
@@ -61,12 +59,12 @@ def open_file(file_path):
     last_saved_content = ""
     file_name = file_path
     directory_path = os.path.dirname(file_path)
-    directory_label.config(text=f"{directory_path}")
+    directory_label.configure(text=f"{directory_path}")
     write_config_parameter(
         "options.file_management.current_file_directory", directory_path
     )
     write_config_parameter("options.file_management.last_opened_script", file_name)
-    script_name_label.config(
+    script_name_label.configure(
         text=f"{localization_data['save_changes']} in {os.path.basename(file_path)}"
     )
     encodings = ["utf-8", "cp1252", "ISO-8859-1", "utf-16"]
@@ -183,8 +181,7 @@ def open_script(event=None):
         write_config_parameter("options.file_management.current_file_path", file_path)
         write_config_parameter(
             "options.file_management.current_working_directory",
-            directory_label.cget("text"),
-        )
+            directory_label.cget("text"))
 
 def update_title():
     global is_modified
@@ -194,7 +191,7 @@ def update_title():
         root.title(f"*{title} - {localization_data['scripts_editor']}")
     else:
         root.title(f"{title} - {localization_data['scripts_editor']}")
-    script_name_label.config(text=f"{localization_data['script_name_label']}{title}")
+    script_name_label.configure(text=f"{localization_data['script_name_label']}{title}")
 
 
 def on_text_change(event=None):
@@ -303,7 +300,7 @@ def save_as_new_script(event=None):
 def update_script_name_label(file_path):
     base_name = os.path.basename(file_path)
     message = localization_data["file_name"] + ": " + base_name
-    script_name_label.config(text=message)
+    script_name_label.configure(text=message)
 
 
 def new(event=None):
@@ -311,8 +308,7 @@ def new(event=None):
     if is_modified:
         response = messagebox.askyesnocancel(
             localization_data["save_file"],
-            localization_data["save_changes_confirmation"],
-        )
+            localization_data["save_changes_confirmation"])
         if response:
             save()
             clear_editor()
@@ -331,3 +327,4 @@ def clear_editor():
     file_name = ""
     is_modified = False
     update_title()
+

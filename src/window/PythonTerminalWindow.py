@@ -1,4 +1,4 @@
-# PythonTerminalWindow.py
+﻿# PythonTerminalWindow.py
 import sys
 import io
 import re
@@ -21,13 +21,11 @@ class PythonTerminalWindow:
         main_frame.pack(fill="both", expand=True)
 
         # Create output text widget with scroll
-        self.output_text = scrolledtext.ScrolledText(main_frame, height=20, width=80, bg='black', fg='white',
-                                                     insertbackground='white', font=('Consolas', 10))
+        self.output_text = scrolledtext.ScrolledText(main_frame, height=20, width=80, bg='black', fg='white', font=('Consolas', 10))
         self.output_text.pack(fill="both", expand=True)
 
         # Create input text widget
-        self.input_text = Text(main_frame, height=4, width=80, bg='black', fg='white',
-                               insertbackground='white', font=my_font)
+        self.input_text = Text(main_frame, height=4, width=80, bg='black', fg='white', font=my_font)
         self.input_text.pack(fill="x", expand=False)
 
         # Show the Python welcome message
@@ -194,3 +192,4 @@ class PythonTerminalWindow:
     def on_closing(self):
         """Handle window close event."""
         self.terminal_window.destroy()
+

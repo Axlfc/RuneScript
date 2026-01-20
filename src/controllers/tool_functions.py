@@ -1,4 +1,4 @@
-import csv
+﻿import csv
 import json
 import os
 import platform
@@ -160,8 +160,7 @@ def open_ai_server_settings_window():
             else:
                 messagebox.showerror(
                     "Error",
-                    f"No API key found for {selected}. Please enter a valid API key.",
-                )
+                    f"No API key found for {selected}. Please enter a valid API key.")
                 return
         if new_api_key not in api_keys.values():
             if selected in ["openai", "claude", "gemini", "euriai"]:
@@ -174,8 +173,7 @@ def open_ai_server_settings_window():
         else:
             messagebox.showinfo(
                 "AI Server Settings",
-                "No changes made. The API Key entered is a placeholder.",
-            )
+                "No changes made. The API Key entered is a placeholder.")
         if selected == "euriai":
             write_config_parameter("options.network_settings.euriai_model", selected_euriai_model.get())
         write_config_parameter(
@@ -298,8 +296,7 @@ def open_ai_server_agent_settings_window(localization_data, persistent_agent_sel
     persistent_agent_selection_checkbox = Checkbutton(
         settings_window,
         text=localization_data["ai_server_agent_persistent_checkbutton"],
-        variable=persistent_agent_selection_var,
-    )
+        variable=persistent_agent_selection_var)
     persistent_agent_selection_checkbox.grid(row=3, columnspan=2)
 
     Button(settings_window, text=localization_data["save"], command=save_agent_settings).grid(row=4, column=0)
@@ -359,8 +356,7 @@ def open_ai_assistant_window(session_id=None):
             execute_ai_assistant_command(
                 add_current_main_opened_script_var,
                 add_current_selected_text_var,
-                entry.get(),
-            )
+                entry.get())
             status_label_var.set(selected_agent)
             messagebox.showinfo("Agent Settings", "Settings saved successfully!")
             settings_window.destroy()
@@ -378,8 +374,7 @@ def open_ai_assistant_window(session_id=None):
             settings_window,
             selected_agent_var,
             *agent_options,
-            command=update_instructions,
-        )
+            command=update_instructions)
         agent_dropdown.grid(row=0, column=1)
         Label(settings_window, text=localization_data["ai_server_agent_instructions_label"]).grid(row=1, column=0)
         instructions_text = scrolledtext.ScrolledText(
@@ -393,8 +388,7 @@ def open_ai_assistant_window(session_id=None):
         persistent_agent_selection_checkbox = Checkbutton(
             settings_window,
             text=localization_data["ai_server_agent_persistent_checkbutton"],
-            variable=persistent_agent_selection_var,
-        )
+            variable=persistent_agent_selection_var)
         persistent_agent_selection_checkbox.grid(row=3, columnspan=2)
         Button(
             settings_window, text=localization_data["save"], command=lambda: save_agent_settings()
@@ -421,7 +415,7 @@ def open_ai_assistant_window(session_id=None):
     ai_assistant_window.title("AI Assistant")
     ai_assistant_window.geometry("800x600")
     menu_bar = Menu(ai_assistant_window)
-    ai_assistant_window.config(menu=menu_bar)
+    ai_assistant_window.configure(menu=menu_bar)
     settings_menu = Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Settings", menu=settings_menu)
     menu_bar.add_command(
@@ -438,15 +432,13 @@ def open_ai_assistant_window(session_id=None):
         onvalue=1,
         offvalue=0,
         variable=render_markdown_var,
-        command=lambda: toggle_render_markdown(render_markdown_var.get()),
-    )
+        command=lambda: toggle_render_markdown(render_markdown_var.get()))
     tts_enabled_var = IntVar()
     settings_menu.add_checkbutton(
         label="Enable Text-to-Speech",
         onvalue=1,
         offvalue=0,
-        variable=tts_enabled_var,
-    )
+        variable=tts_enabled_var)
     add_current_main_opened_script_var = IntVar()
     settings_menu.add_checkbutton(
         label="Include Main Script in AI Context",
@@ -455,16 +447,14 @@ def open_ai_assistant_window(session_id=None):
         variable=add_current_main_opened_script_var,
         command=lambda: add_current_main_opened_script(
             add_current_main_opened_script_var.get()
-        ),
-    )
+        ))
     add_current_selected_text_var = IntVar()
     settings_menu.add_checkbutton(
         label="Include Selected Text from Script",
         onvalue=1,
         offvalue=0,
         variable=add_current_selected_text_var,
-        command=lambda: add_current_selected_text(add_current_selected_text_var.get()),
-    )
+        command=lambda: add_current_selected_text(add_current_selected_text_var.get()))
     """settings_menu.add_checkbutton(
         label="Persistent Agent Selection",
         onvalue=1,
@@ -847,11 +837,11 @@ def open_ai_assistant_window(session_id=None):
 
     # Function to change the button's appearance on hover
     def on_button_enter(e):
-        ingest_button.config(background='#2E86C1', foreground='white', relief=RAISED)
+        ingest_button.configure(background='#2E86C1', foreground='white', relief=RAISED)
 
     # Function to revert the button's appearance when the mouse leaves
     def on_button_leave(e):
-        ingest_button.config(background='SystemButtonFace', foreground='black', relief=FLAT)
+        ingest_button.configure(background='SystemButtonFace', foreground='black', relief=FLAT)
 
     # Create a frame for the ingest button at the bottom
     ingest_frame = Frame(session_list_frame)
@@ -899,7 +889,7 @@ def open_ai_assistant_window(session_id=None):
 
         # Update scrollregion after adding all widgets
         documents_container.update_idletasks()  # Force the system to recalculate layout sizes
-        documents_canvas.config(scrollregion=documents_canvas.bbox("all"))
+        documents_canvas.configure(scrollregion=documents_canvas.bbox("all"))
 
         # Bind mousewheel scrolling to the canvas
         documents_canvas.bind_all("<MouseWheel>",
@@ -1249,7 +1239,7 @@ def open_ai_assistant_window(session_id=None):
 
     def on_processing_complete():
         load_selected_agent()
-        entry.config(state="normal")
+        entry.configure(state="normal")
         status_label_var.set("READY")
 
     def store_selected_agent(selected_agent):
@@ -1405,8 +1395,7 @@ def open_ai_assistant_window(session_id=None):
                         "```\n"
                         + script_text.get(
                     script_text.tag_ranges("sel")[0],
-                    script_text.tag_ranges("sel")[1],
-                )
+                    script_text.tag_ranges("sel")[1])
                         + "```\n\n"
                 )
             except:
@@ -1472,7 +1461,7 @@ def open_ai_assistant_window(session_id=None):
                 combined_command += context_text
 
             entry.delete(0, END)
-            entry.config(state="disabled")
+            entry.configure(state="disabled")
             status_label_var.set("AI is thinking...")
 
             # Preparar el comando para ser procesado por el asistente de IA
@@ -1487,7 +1476,7 @@ def open_ai_assistant_window(session_id=None):
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
             process_ai_command(command)
         else:
-            entry.config(state="normal")
+            entry.configure(state="normal")
 
     def create_ai_command(ai_script_path, user_prompt, agent_name=None):
         if platform.system() == "Windows":
@@ -1517,8 +1506,7 @@ def open_ai_assistant_window(session_id=None):
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding="utf-8",
-                bufsize=1,
-            )
+                bufsize=1)
             threading.Thread(
                 target=stream_output,
                 args=(process, current_session.history_manager)
@@ -1567,8 +1555,7 @@ def open_ai_assistant_window(session_id=None):
             execute_ai_assistant_command(
                 add_current_main_opened_script_var,
                 add_current_selected_text_var,
-                fix_user_prompt,
-            )
+                fix_user_prompt)
 
     def nlp_custom():
         selected_text = output_text.get("sel.first", "sel.last")
@@ -1603,8 +1590,7 @@ def open_ai_assistant_window(session_id=None):
                         label=command["description"],
                         command=lambda cmd=command: ai_assistant_rightclick_menu(
                             cmd["name"]
-                        ),
-                    )
+                        ))
                     if "description" in command:
                         Tooltip(menu, command["description"])
 
@@ -1630,9 +1616,7 @@ def open_ai_assistant_window(session_id=None):
         lambda event: execute_ai_assistant_command(
             add_current_main_opened_script_var,
             add_current_selected_text_var,
-            entry.get(),
-        ),
-    )'''
+            entry.get()))'''
     entry.bind("<Return>", handle_input)
     entry.bind("<Up>", navigate_history)
     entry.bind("<Down>", navigate_history)
@@ -2083,8 +2067,7 @@ def open_ai_assistant_window(session_id=None):
         print(f"Archiving session {session_index}...")
         messagebox.showinfo(
             "Archive Session",
-            f"Session {session_data[session_index]['id']} archived successfully.",
-        )
+            f"Session {session_data[session_index]['id']} archived successfully.")
 
     def delete_session(session_index):
         global current_session, session_data
@@ -2163,4 +2146,5 @@ def open_ai_assistant_window(session_id=None):
         ai_assistant_window.destroy()
 
     ai_assistant_window.protocol("WM_DELETE_WINDOW", on_ai_assistant_window_close)
+
 

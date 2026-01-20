@@ -1,4 +1,4 @@
-# parser.py
+﻿# parser.py
 import shlex
 from typing import Tuple, Dict
 
@@ -22,3 +22,4 @@ def parse_command_line(line: str) -> Tuple[str, Dict[str, str]]:
             kwargs[f"arg{i}"] = arg
 
     return name, kwargs
+

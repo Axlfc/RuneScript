@@ -1,4 +1,4 @@
-# latest version
+﻿# latest version
 import os
 
 import threading
@@ -119,7 +119,7 @@ class GitWindow:
             # Add a backup direct update in case the event system isn't working properly
             branch = self.app.git_service.repo.get_current_branch()
             if branch:
-                self.status_bar.config(text=f"Current branch: {branch}")
+                self.status_bar.configure(text=f"Current branch: {branch}")
         except Exception as e:
             print(f"[GitWindow] Error updating status bar: {e}")
 
@@ -131,7 +131,7 @@ class GitWindow:
 
         # Setup menubar
         self.menubar = Menu(self.terminal_window)
-        self.terminal_window.config(menu=self.menubar)
+        self.terminal_window.configure(menu=self.menubar)
 
     def setup_ui(self):
         """Only setup frame containers, not tabs or tabs that require controller"""
@@ -205,18 +205,18 @@ class GitWindow:
             # Update status bar with initial repository information
             branch = self.app.git_service.repo.get_current_branch()
             if branch:
-                self.status_bar.config(text=f"Current branch: {branch}")
+                self.status_bar.configure(text=f"Current branch: {branch}")
             else:
                 # Try to get the commit hash if in detached HEAD state
                 output, success, _ = self.app.git_service.run_git("rev-parse", "--short", "HEAD")
                 if isinstance(output, tuple) and output:
                     output = output[0]
                 if success and output:
-                    self.status_bar.config(text=f"HEAD at commit: {output.strip()}")
+                    self.status_bar.configure(text=f"HEAD at commit: {output.strip()}")
         except Exception as e:
             print(f"[GitWindow] Error setting up status bar: {e}")
             # At least show something useful instead of "Loading..."
-            self.status_bar.config(text=f"Repository: {self.app.git_service.repo_dir.name}")
+            self.status_bar.configure(text=f"Repository: {self.app.git_service.repo_dir.name}")
 
     def _bind_event_handlers(self):
         """Bind event handlers for UI components"""
@@ -327,3 +327,4 @@ if __name__ == "__main__":
         GitWindow(repo_path)
     else:
         print(f"Repository not found at: {repo_path}")
+

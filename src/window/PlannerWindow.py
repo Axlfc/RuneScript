@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk, messagebox
 import time
 import json
@@ -31,7 +31,7 @@ class PlannerWindow(tk.Toplevel):
         super().__init__()
         self.title("Productivity Planner")
         self.geometry("1000x650")
-        self.configure(bg='#1e1e1e')
+        self.configure(fg_color='#1e1e1e')
         self.data = cargar_datos()
 
         self._estilos()
@@ -54,7 +54,7 @@ class PlannerWindow(tk.Toplevel):
             "Alarmas y Acciones": self._cronometros_ui,
             "Plan de Comidas": self._comidas_ui,
             "Lista de Compras": self._compras_ui,
-            "Hábitos y Rituales": self._habitos_ui
+            "HÃ¡bitos y Rituales": self._habitos_ui
         }
         for nombre, metodo in sections.items():
             frame = ttk.Frame(self.tabs)
@@ -64,7 +64,7 @@ class PlannerWindow(tk.Toplevel):
 
     def _rutina_ui(self, frame):
         ttk.Label(frame, text="Rutina Diaria Personalizada").pack(pady=10)
-        self.rutina_text = tk.Text(frame, height=25, bg="#111", fg="white")
+        self.rutina_text = tk.Text(frame, height=25, fg_color="#111", text_color="white")
         self.rutina_text.pack(expand=True, fill='both', padx=20)
         if self.data.get("rutina"):
             self.rutina_text.insert('1.0', "\n".join(self.data["rutina"]))
@@ -77,7 +77,7 @@ class PlannerWindow(tk.Toplevel):
         messagebox.showinfo("Guardado", "Rutina guardada correctamente.")
 
     def _cronometros_ui(self, frame):
-        ttk.Label(frame, text="Crear Cronómetro con Acción").pack(pady=10)
+        ttk.Label(frame, text="Crear CronÃ³metro con AcciÃ³n").pack(pady=10)
         frm = ttk.Frame(frame)
         frm.pack(pady=10)
 
@@ -87,14 +87,14 @@ class PlannerWindow(tk.Toplevel):
         self.tipo_cronometro.set("Normal")
         self.entrada_comando = ttk.Entry(frm)
 
-        etiquetas = ["Nombre:", "Duración (min):", "Tipo:", "Comando opcional:"]
+        etiquetas = ["Nombre:", "DuraciÃ³n (min):", "Tipo:", "Comando opcional:"]
         entradas = [self.entrada_nombre, self.entrada_duracion, self.tipo_cronometro, self.entrada_comando]
         for i, (et, ent) in enumerate(zip(etiquetas, entradas)):
             ttk.Label(frm, text=et).grid(row=i, column=0)
             ent.grid(row=i, column=1)
 
         ttk.Button(frm, text="Iniciar", command=self._iniciar_cronometro).grid(row=4, column=1, pady=10)
-        ttk.Button(frm, text="Ver Cronómetros Guardados", command=self._mostrar_guardados).grid(row=5, column=1)
+        ttk.Button(frm, text="Ver CronÃ³metros Guardados", command=self._mostrar_guardados).grid(row=5, column=1)
 
     def _iniciar_cronometro(self):
         nombre, tipo, comando = self.entrada_nombre.get().strip(), self.tipo_cronometro.get(), self.entrada_comando.get().strip()
@@ -102,7 +102,7 @@ class PlannerWindow(tk.Toplevel):
             duracion = int(self.entrada_duracion.get()) * 60
             if not nombre: raise ValueError
         except:
-            messagebox.showerror("Error", "Nombre y duración válidos requeridos.")
+            messagebox.showerror("Error", "Nombre y duraciÃ³n vÃ¡lidos requeridos.")
             return
         self.data.setdefault("cronometros", []).append({"nombre": nombre, "tipo": tipo, "duracion": duracion, "comando": comando})
         guardar_datos(self.data)
@@ -112,11 +112,11 @@ class PlannerWindow(tk.Toplevel):
     def _mostrar_guardados(self):
         c = self.data.get("cronometros", [])
         texto = "\n".join([f"{x['nombre']} - {x['tipo']} - {x['duracion']//60} min" for x in c])
-        messagebox.showinfo("Cronómetros", texto or "No hay cronómetros guardados.")
+        messagebox.showinfo("CronÃ³metros", texto or "No hay cronÃ³metros guardados.")
 
     def _simple_crono(self, nombre, duracion, comando):
         time.sleep(duracion)
-        Notificador.enviar_titulo_mensaje("Alarma", f"Fin del cronómetro: {nombre}")
+        Notificador.enviar_titulo_mensaje("Alarma", f"Fin del cronÃ³metro: {nombre}")
         if comando:
             try: os.system(comando)
             except Exception as e: messagebox.showerror("Error", f"Error ejecutando: {e}")
@@ -135,8 +135,8 @@ class PlannerWindow(tk.Toplevel):
             messagebox.showerror("Error", f"Error durante Pomodoro: {e}")
 
     def _comidas_ui(self, frame):
-        ttk.Label(frame, text="Planificación de Comidas (Markdown)").pack(pady=10)
-        self.comidas_text = tk.Text(frame, height=25, bg="#111", fg="white")
+        ttk.Label(frame, text="PlanificaciÃ³n de Comidas (Markdown)").pack(pady=10)
+        self.comidas_text = tk.Text(frame, height=25, fg_color="#111", text_color="white")
         self.comidas_text.pack(expand=True, fill='both', padx=20)
         if self.data.get("comidas"):
             self.comidas_text.insert('1.0', "\n".join(self.data["comidas"]))
@@ -149,7 +149,7 @@ class PlannerWindow(tk.Toplevel):
 
     def _compras_ui(self, frame):
         ttk.Label(frame, text="Lista de la Compra").pack(pady=10)
-        self.compras_text = tk.Text(frame, height=25, bg="#111", fg="white")
+        self.compras_text = tk.Text(frame, height=25, fg_color="#111", text_color="white")
         self.compras_text.pack(expand=True, fill='both', padx=20)
         if self.data.get("compras"):
             self.compras_text.insert('1.0', "\n".join(self.data["compras"]))
@@ -161,12 +161,12 @@ class PlannerWindow(tk.Toplevel):
         messagebox.showinfo("Guardado", "Lista de compras guardada.")
 
     def _habitos_ui(self, frame):
-        ttk.Label(frame, text="Seguimiento de Hábitos y Rituales").pack(pady=10)
+        ttk.Label(frame, text="Seguimiento de HÃ¡bitos y Rituales").pack(pady=10)
         frm = ttk.Frame(frame)
         frm.pack(pady=10)
         self.habito_entry = ttk.Entry(frm, width=30)
         self.habito_entry.grid(row=0, column=0, padx=5)
-        ttk.Button(frm, text="Añadir", command=self._agregar_habito).grid(row=0, column=1)
+        ttk.Button(frm, text="AÃ±adir", command=self._agregar_habito).grid(row=0, column=1)
         self._refrescar_habitos(frame)
 
     def _agregar_habito(self):
@@ -175,7 +175,7 @@ class PlannerWindow(tk.Toplevel):
             self.data.setdefault("habitos", []).append({"nombre": nuevo, "realizado": False})
             guardar_datos(self.data)
             self.habito_entry.delete(0, 'end')
-            self._refrescar_habitos(self.frames["Hábitos y Rituales"])
+            self._refrescar_habitos(self.frames["HÃ¡bitos y Rituales"])
 
     def _refrescar_habitos(self, frame):
         for widget in frame.winfo_children():
@@ -190,3 +190,4 @@ class PlannerWindow(tk.Toplevel):
     def _actualizar_habito(self, i, var):
         self.data["habitos"][i]["realizado"] = var.get()
         guardar_datos(self.data)
+

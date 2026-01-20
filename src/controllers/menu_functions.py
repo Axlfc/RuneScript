@@ -1,4 +1,4 @@
-import difflib
+﻿import difflib
 import json
 import os
 import re
@@ -14,8 +14,7 @@ from tkinter import (
     Label,
     Checkbutton,
     Entry,
-    BooleanVar, TclError, simpledialog,
-)
+    BooleanVar, TclError, simpledialog)
 
 from PIL import Image, ImageTk
 
@@ -25,8 +24,7 @@ from src.controllers.scheduled_tasks import (
     open_at_window,
     open_scheduled_tasks_window,
     open_new_at_task_window,
-    open_new_crontab_task_window,
-)
+    open_new_crontab_task_window)
 from src.controllers.venv_utils import find_venvs, find_system_pythons
 from src.window.ClockWindow import ClockWindow
 from src.window.ClojureWindow import ClojureWindow
@@ -47,8 +45,7 @@ from src.models.script_operations import (
     see_stderr,
     run_script,
     run_script_windows,
-    run_script_with_timeout, run_script_crontab, run_script_once,
-)
+    run_script_with_timeout, run_script_crontab, run_script_once)
 from src.views.edit_operations import undo, redo, duplicate, copy, cut, paste
 from src.views.tk_utils import (
     localization_data,
@@ -66,8 +63,7 @@ from src.views.tk_utils import (
     line_frm,
     interactive_frm,
     filesystem_frm,
-    scheduled_tasks_frm, my_font, persistent_agent_selection_var,
-)
+    scheduled_tasks_frm, my_font, persistent_agent_selection_var)
 from src.controllers.tool_functions import (
     open_ai_assistant_window, open_ai_server_settings_window, open_llama_cpp_python_settings_window,
     open_ai_server_agent_settings_window
@@ -83,8 +79,7 @@ from src.controllers.file_operations import (
     save,
     save_script,
     save_as_new_script,
-    close,
-)
+    close)
 
 from src.window.AboutWindow import AboutWindow
 from src.window.AudioGenerationWindow import AudioGenerationWindow
@@ -417,7 +412,7 @@ new_button = Button(name="toolbar_b2", borderwidth=1, command=new, width=20, hei
 photo_new = Image.open("icons/new.png")
 photo_new = photo_new.resize((18, 18), Image.LANCZOS)
 image_new = ImageTk.PhotoImage(photo_new)
-new_button.config(image=image_new)
+new_button.configure(image=image_new)
 new_button.grid(in_=toolbar, row=0, column=0, padx=4, pady=4, sticky="w")
 save_button = Button(
     name="toolbar_b1", borderwidth=1, command=save, width=20, height=20
@@ -425,7 +420,7 @@ save_button = Button(
 photo_save = Image.open("icons/save.png")
 photo_save = photo_save.resize((18, 18), Image.LANCZOS)
 image_save = ImageTk.PhotoImage(photo_save)
-save_button.config(image=image_save)
+save_button.configure(image=image_save)
 save_button.grid(in_=toolbar, row=0, column=1, padx=4, pady=4, sticky="w")
 open_button = Button(
     name="toolbar_b3", borderwidth=1, command=open_file, width=20, height=20
@@ -433,7 +428,7 @@ open_button = Button(
 photo_open = Image.open("icons/open.png")
 photo_open = photo_open.resize((18, 18), Image.LANCZOS)
 image_open = ImageTk.PhotoImage(photo_open)
-open_button.config(image=image_open)
+open_button.configure(image=image_open)
 open_button.grid(in_=toolbar, row=0, column=2, padx=4, pady=4, sticky="w")
 copy_button = Button(
     name="toolbar_b4", borderwidth=1, command=copy, width=20, height=20
@@ -441,13 +436,13 @@ copy_button = Button(
 photo_copy = Image.open("icons/copy.png")
 photo_copy = photo_copy.resize((18, 18), Image.LANCZOS)
 image_copy = ImageTk.PhotoImage(photo_copy)
-copy_button.config(image=image_copy)
+copy_button.configure(image=image_copy)
 copy_button.grid(in_=toolbar, row=0, column=3, padx=4, pady=4, sticky="w")
 cut_button = Button(name="toolbar_b5", borderwidth=1, command=cut, width=20, height=20)
 photo_cut = Image.open("icons/cut.png")
 photo_cut = photo_cut.resize((18, 18), Image.LANCZOS)
 image_cut = ImageTk.PhotoImage(photo_cut)
-cut_button.config(image=image_cut)
+cut_button.configure(image=image_cut)
 cut_button.grid(in_=toolbar, row=0, column=4, padx=4, pady=4, sticky="w")
 paste_button = Button(
     name="toolbar_b6", borderwidth=1, command=paste, width=20, height=20
@@ -455,7 +450,7 @@ paste_button = Button(
 photo_paste = Image.open("icons/paste.png")
 photo_paste = photo_paste.resize((18, 18), Image.LANCZOS)
 image_paste = ImageTk.PhotoImage(photo_paste)
-paste_button.config(image=image_paste)
+paste_button.configure(image=image_paste)
 paste_button.grid(in_=toolbar, row=0, column=5, padx=4, pady=4, sticky="w")
 duplicate_button = Button(
     name="toolbar_b7", borderwidth=1, command=duplicate, width=20, height=20
@@ -463,7 +458,7 @@ duplicate_button = Button(
 photo_duplicate = Image.open("icons/duplicate.png")
 photo_duplicate = photo_paste.resize((18, 18), Image.LANCZOS)
 image_duplicate = ImageTk.PhotoImage(photo_paste)
-duplicate_button.config(image=image_duplicate)
+duplicate_button.configure(image=image_duplicate)
 duplicate_button.grid(in_=toolbar, row=0, column=6, padx=4, pady=4, sticky="w")
 redo_button = Button(
     name="toolbar_b8", borderwidth=1, command=redo, width=20, height=20
@@ -471,7 +466,7 @@ redo_button = Button(
 photo_redo = Image.open("icons/redo.png")
 photo_redo = photo_redo.resize((18, 18), Image.LANCZOS)
 image_redo = ImageTk.PhotoImage(photo_redo)
-redo_button.config(image=image_redo)
+redo_button.configure(image=image_redo)
 redo_button.grid(in_=toolbar, row=0, column=7, padx=4, pady=4, sticky="w")
 undo_button = Button(
     name="toolbar_b9", borderwidth=1, command=undo, width=20, height=20
@@ -479,7 +474,7 @@ undo_button = Button(
 photo_undo = Image.open("icons/undo.png")
 photo_undo = photo_undo.resize((18, 18), Image.LANCZOS)
 image_undo = ImageTk.PhotoImage(photo_undo)
-undo_button.config(image=image_undo)
+undo_button.configure(image=image_undo)
 undo_button.grid(in_=toolbar, row=0, column=8, padx=4, pady=4, sticky="w")
 find_button = Button(
     name="toolbar_b10", borderwidth=1, command=open_search_window, width=20, height=20
@@ -487,7 +482,7 @@ find_button = Button(
 photo_find = Image.open("icons/find.png")
 photo_find = photo_find.resize((18, 18), Image.LANCZOS)
 image_find = ImageTk.PhotoImage(photo_find)
-find_button.config(image=image_find)
+find_button.configure(image=image_find)
 find_button.grid(in_=toolbar, row=0, column=9, padx=4, pady=4, sticky="w")
 
 
@@ -502,9 +497,9 @@ def select_directory():
 
     # [NEW] Actualizar el texto del label para reflejar el nuevo directorio
     # Este es el mismo valor que _update_interpreters guardó en la config
-    directory_label.config(text=project)
+    directory_label.configure(text=project)
     # Opcional: podrías añadir un pequeño mensaje o truncar el path si es muy largo
-    # directory_label.config(text=f"Working Dir: {os.path.basename(project)}") # Solo nombre base
+    # directory_label.configure(text=f"Working Dir: {os.path.basename(project)}") # Solo nombre base
 
 
 def open_create_venv_window():
@@ -573,8 +568,7 @@ def toggle_directory_view_visibility(event=None):
                 read_config_parameter(
                     "options.file_management.current_working_directory"
                 )
-            ),
-        )
+            ))
         Tooltip(directory_label, localization_data["current_directory"])
     else:
         write_config_parameter(
@@ -762,7 +756,7 @@ def toggle_interactive_view_visibility(frame):
 
                     if results:
                         # Disable input field
-                        input_field.config(state="disabled")
+                        input_field.configure(state="disabled")
 
                         # Process each result
                         for result in results:
@@ -814,7 +808,7 @@ def toggle_interactive_view_visibility(frame):
                                                                    ai_response))
             else:
                 # Re-enable the input field if there was no response
-                root.after(0, lambda: input_field.config(state="normal"))
+                root.after(0, lambda: input_field.configure(state="normal"))
 
         def process_prompt_with_ai(combined_input):
             ai_script_path = "src/models/ai_assistant.py"
@@ -885,7 +879,7 @@ def toggle_interactive_view_visibility(frame):
 
                 else:
                     # All opcodes processed, re-enable input field
-                    input_field.config(state="normal")
+                    input_field.configure(state="normal")
 
             # Start processing opcodes
             process_opcode(0)
@@ -1019,8 +1013,7 @@ def toggle_timeout_view_visibility(frame):
                 text=run_icon,
                 command=lambda: run_script_with_timeout(
                     timeout_seconds=float(seconds_entry.get())
-                ),
-            )
+                ))
             run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
             Tooltip(run_button, localization_data["set_duration_for_script_execution"])
         else:
@@ -1036,8 +1029,7 @@ def toggle_timeout_view_visibility(frame):
                 text=run_icon,
                 command=lambda: run_script_with_timeout(
                     timeout_seconds=float(seconds_entry.get())
-                ),
-            )
+                ))
             run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
             Tooltip(run_button, localization_data["set_duration_for_script_execution"])
     else:
@@ -1066,8 +1058,7 @@ def create_execute_one_time_with_format():
         run_button = Button(
             one_time_frm,
             text=run_icon,
-            command=lambda: run_script_once(date_entry.get()),
-        )
+            command=lambda: run_script_once(date_entry.get()))
         run_button.grid(row=0, column=2, sticky="e", padx=15, pady=0)
         Tooltip(run_button, localization_data["use_at_command"])
 
@@ -1101,9 +1092,7 @@ def create_program_daily_with_format():
                 hour_entry.get(),
                 day_entry.get(),
                 month_entry.get(),
-                day_of_the_week_entry.get(),
-            ),
-        )
+                day_of_the_week_entry.get()))
         run_button.grid(row=0, column=6, sticky="e", padx=15, pady=0)
         Tooltip(run_button, localization_data["utilize_crontab"])
 
@@ -1205,7 +1194,7 @@ def create_menu():
     # Initialize the main menu
     # menu = Menu(root)
     main_menu = menu
-    root.config(menu=menu)
+    root.configure(menu=menu)
 
     # ----- Project Menu -----
     project_menu = Menu(menu, tearoff=0)
@@ -1218,8 +1207,7 @@ def create_menu():
         compound="left",
         image=image_new,
         accelerator="Ctrl+M",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-m>', new)
 
     # Refactor this so we can update the tree view with the project and we can
@@ -1229,8 +1217,7 @@ def create_menu():
         compound="left",
         image=image_new,
         accelerator="Ctrl+M",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-m>', new)
 
     # ----- File Menu -----
@@ -1246,8 +1233,7 @@ def create_menu():
         compound="left",
         image=image_new,
         accelerator="Ctrl+N",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-n>', new)
     file_menu.add_command(
         label=localization_data["open"],
@@ -1255,8 +1241,7 @@ def create_menu():
         compound="left",
         image=image_open,
         accelerator="Ctrl+O",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-o>', open_script)
 
     # Uncomment if "Recent Files" functionality is implemented
@@ -1267,8 +1252,7 @@ def create_menu():
         compound="left",
         image=None,
         accelerator="Ctrl+W",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-w>', duplicate)'''
     # Uncomment if "Close All" functionality is implemented
     # file_menu.add_command(label="Close All", command=close_all_files, compound='left', image=None, accelerator='Ctrl+Shift+W', underline=0)
@@ -1278,8 +1262,7 @@ def create_menu():
         compound="left",
         image=image_save,
         accelerator="Ctrl+S",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-s>', save_script)
     # Uncomment if "Save All Files" functionality is implemented
     # file_menu.add_command(label="Save All Files", command=save_all_scripts, compound='left', image=image_save, accelerator='Ctrl+Shift+S', underline=0)
@@ -1294,24 +1277,21 @@ def create_menu():
         label=localization_data["move_rename"],
         command=prompt_rename_file,  # TODO: Test
         accelerator="F2",
-        underline=0,
-    )
+        underline=0)
     root.bind('<F2>', prompt_rename_file)
     '''file_menu.add_separator()
     file_menu.add_command(
         label="Print...",
         command=duplicate,  # Assuming a function to print documents
         accelerator="Ctrl+P",
-        underline=0,
-    )
+        underline=0)
     root.bind('<Control-p>', duplicate)'''
     file_menu.add_separator()
     file_menu.add_command(
         label=localization_data["exit"],
         command=close,
         accelerator="Alt+F4",
-        underline=0,
-    )
+        underline=0)
 
     # ----- Edit Menu -----
     edit_menu = Menu(menu, tearoff=0)
@@ -1324,16 +1304,14 @@ def create_menu():
         compound="left",
         image=image_undo,
         accelerator="Ctrl+Z",
-        underline=0,
-    )
+        underline=0)
     edit_menu.add_command(
         label=localization_data["redo"],
         command=redo,
         compound="left",
         image=image_redo,
         accelerator="Ctrl+Y",
-        underline=0,
-    )
+        underline=0)
     edit_menu.add_separator()
     edit_menu.add_command(
         label=localization_data["cut"],
@@ -1341,40 +1319,35 @@ def create_menu():
         compound="left",
         image=image_cut,
         accelerator="Ctrl+X",
-        underline=0,
-    )
+        underline=0)
     edit_menu.add_command(
         label=localization_data["copy"],
         command=copy,
         compound="left",
         image=image_copy,
         accelerator="Ctrl+C",
-        underline=0,
-    )
+        underline=0)
     edit_menu.add_command(
         label=localization_data["paste"],
         command=paste,
         compound="left",
         image=image_paste,
         accelerator="Ctrl+V",
-        underline=0,
-    )
+        underline=0)
     '''edit_menu.add_command(
         label="Duplicate",
         command=duplicate,  # Assuming a function to duplicate content
         compound='left',
         image=image_duplicate,  # Assuming an image for duplicate
         accelerator='Ctrl+D',
-        underline=0,
-    )
+        underline=0)
     edit_menu.add_command(
         label="Select All",
         command=duplicate,  # Assuming a function to select all content
         compound='left',
         image=image_duplicate,  # Assuming an image for select all
         accelerator='Ctrl+A',
-        underline=0,
-    )'''
+        underline=0)'''
     edit_menu.add_separator()
 
     # Find Submenu
@@ -1393,16 +1366,14 @@ def create_menu():
         command=open_search_replace_window,
         compound="left",
         image=image_duplicate,  # Assuming an image for find and replace
-        accelerator="Ctrl+R",
-    )
+        accelerator="Ctrl+R")
     root.bind('<Control-r>', open_search_replace_window)
     find_submenu.add_command(
         label=localization_data["find_in_files"],
         command=open_find_in_files_window,
         compound="left",
         image=image_duplicate,  # Assuming an image for find in files
-        accelerator="Ctrl+H",
-    )
+        accelerator="Ctrl+H")
     root.bind('<Control-h>', open_find_in_files_window)
 
     # ----- View Menu -----
@@ -1486,32 +1457,28 @@ def create_menu():
     tool_menu.add_command(
         label=localization_data["ai_assistant"],
         command=open_ai_assistant_window,
-        accelerator="Ctrl+Alt+A",
-    )
+        accelerator="Ctrl+Alt+A")
     root.bind("<Control-Alt-a>", open_ai_assistant_window)
 
     # Tools and Utilities
     '''tool_menu.add_command(
         label=localization_data["ai_assistant_options"],
         command=open_ai_assistant_window,
-        accelerator="Ctrl+Alt+O",
-    )
+        accelerator="Ctrl+Alt+O")
     root.bind("<Control-Alt-o>", open_ai_assistant_window)'''
 
     ai_assistant_tool_menu = Menu(tool_menu, tearoff=0)
     ai_assistant_tool_menu.add_command(
         label="llama-cpp-python Settings",
         command=open_llama_cpp_python_settings_window,
-        accelerator="Ctrl+L",
-    )
+        accelerator="Ctrl+L")
     root.bind("<Control-l>", open_llama_cpp_python_settings_window)
 
     tool_menu.add_cascade(label=localization_data["ai_assistant_options"], menu=ai_assistant_tool_menu)
     ai_assistant_tool_menu.add_command(
         label=localization_data["ai_assistant_options"],
         command=open_ai_server_settings_window,
-        accelerator="Ctrl+Alt+O",
-    )
+        accelerator="Ctrl+Alt+O")
     root.bind("<Control-Alt-o>", open_ai_server_settings_window)
     
     ai_assistant_tool_menu.add_command(
@@ -1529,26 +1496,22 @@ def create_menu():
     '''tool_menu.add_command(
         label="Generate Audio",
         command=open_audio_generation_window,
-        accelerator="Ctrl+Alt+G",
-    )
+        accelerator="Ctrl+Alt+G")
     tool_menu.add_command(
             label="Generate Image",
             command=open_image_generation_window,
-            accelerator="Ctrl+Alt+G",
-        )'''
+            accelerator="Ctrl+Alt+G")'''
 
     tool_menu.add_command(
         label=localization_data["calculator"],
         command=open_calculator_window,
-        accelerator="Ctrl+Alt+C",
-    )
+        accelerator="Ctrl+Alt+C")
     root.bind("<Control-Alt-c>", open_calculator_window)
 
     tool_menu.add_command(
         label=localization_data["clock"],
         command=open_clock_window,
-        accelerator="F7",
-    )
+        accelerator="F7")
     root.bind("<F7>", open_calculator_window)
 
     tool_menu.add_command(
@@ -1560,89 +1523,76 @@ def create_menu():
     tool_menu.add_command(
         label=localization_data["translator"],
         command=open_translator_window,
-        accelerator="F3",
-    )
+        accelerator="F3")
     root.bind("<F3>", open_translator_window)
 
     tool_menu.add_command(
         label=localization_data["prompt_enhancement"],
         command=open_prompt_enhancement_window,
-        accelerator="Ctrl+Alt+P",
-    )
+        accelerator="Ctrl+Alt+P")
     root.bind("<Control-Alt-p>", open_prompt_enhancement_window)
 
     tool_menu.add_command(
         label=localization_data["kanban_board"],
         command=open_kanban_window,
-        accelerator="Ctrl+Alt+K",
-    )
+        accelerator="Ctrl+Alt+K")
     root.bind("<Control-Alt-k>", open_kanban_window)
 
     tool_menu.add_command(
         label=localization_data["latex_markdown_editor"],
         command=open_latex_markdown_editor,
-        accelerator="Ctrl+Alt+L",
-    )
+        accelerator="Ctrl+Alt+L")
     root.bind("<Control-Alt-l>", open_latex_markdown_editor)
 
     tool_menu.add_command(
         label=localization_data["git_console"],
         command=open_git_window,
-        accelerator="Ctrl+Alt+G",
-    )
+        accelerator="Ctrl+Alt+G")
     root.bind("<Control-Alt-g>", open_git_window)
 
     tool_menu.add_command(
         label=localization_data["system_shell"],
         command=open_terminal_window,
-        accelerator="Ctrl+Alt+B",
-    )
+        accelerator="Ctrl+Alt+B")
     root.bind("<Control-Alt-b>", open_terminal_window)
 
     tool_menu.add_command(
         label=localization_data["python_shell"],
         command=open_python_terminal_window,
-        accelerator="Ctrl+Alt+Y",
-    )
+        accelerator="Ctrl+Alt+Y")
     root.bind("<Control-Alt-y>", open_python_terminal_window)
 
     tool_menu.add_command(
         label=localization_data["notebooks"],
         command=open_ipython_notebook_window,
-        accelerator="Ctrl+Alt+N",
-    )
+        accelerator="Ctrl+Alt+N")
     root.bind("<Control-Alt-n>", open_ipython_notebook_window)
 
     tool_menu.add_command(
         label=localization_data["options"],
         command=create_settings_window,
-        accelerator="Ctrl+,",
-    )
+        accelerator="Ctrl+,")
     root.bind("<Control-comma>", create_settings_window)
 
     tool_menu.add_command(
         label="Graphic Engine",
         command=create_graphic_engine_window,
-        accelerator="Ctrl+W+3",
-    )
+        accelerator="Ctrl+W+3")
     # root.bind("<Control-W-3>", create_web3_window)
 
     tool_menu.add_command(
         label="Web3",
         command=create_web3_window,
-        accelerator="Ctrl+W+3",
-    )
+        accelerator="Ctrl+W+3")
     # root.bind("<Control-W-3>", create_web3_window)
 
     tool_menu.add_separator()
     tool_menu.add_command(
         label=localization_data["open_scripts_studio_program_folder"],
-        command=open_scriptsstudio_folder,
-    )
+        command=open_scriptsstudio_folder)
     tool_menu.add_command(
         label=localization_data["open_scripts_studio_data_folder"],
-        command=open_scriptsstudio_data_folder,
-    )
+        command=open_scriptsstudio_data_folder)
 
     # ----- System Menu -----
     system_menu = Menu(menu, tearoff=0)
@@ -1656,15 +1606,13 @@ def create_menu():
             label=localization_data["open_winget_window"],
             command=open_winget_window,
             compound="left",
-            accelerator="Ctrl+Alt+W",
-        )
+            accelerator="Ctrl+Alt+W")
         root.bind("<Control-Alt-w>", open_winget_window)
 
     system_menu.add_command(
         label=localization_data["system_info"],
         command=open_system_info_window,
-        accelerator="Ctrl+Alt+I",
-    )
+        accelerator="Ctrl+Alt+I")
     root.bind("<Control-Alt-i>", open_system_info_window)
 
     # ----- Jobs Menu -----
@@ -1675,15 +1623,13 @@ def create_menu():
     jobs_menu.add_command(
         label=localization_data["new_at"],
         command=open_new_at_task_window,
-        # accelerator="Ctrl+Alt+Shift+A",
-    )
+        # accelerator="Ctrl+Alt+Shift+A")
     # root.bind("<Control-Alt-Shift-a>", open_new_at_task_window)
 
     jobs_menu.add_command(
         label=localization_data["new_crontab"],
         command=open_new_crontab_task_window,
-        # accelerator="Ctrl+Alt+Shift+C",
-    )
+        # accelerator="Ctrl+Alt+Shift+C")
     # root.bind("<Control-Alt-Shift-c>", open_new_crontab_task_window)
 
     jobs_menu.add_separator()
@@ -1697,34 +1643,29 @@ def create_menu():
     help_menu.add_command(
         label=localization_data["help_contents"],
         command=open_help_window,
-        accelerator="F1",
-    )
+        accelerator="F1")
     root.bind("<F1>", open_help_window)
     help_menu.add_command(
         label=localization_data["shortcuts"],
         command=open_shortcuts_window,
-        accelerator="F4",
-    )
+        accelerator="F4")
     root.bind("<F4>", open_shortcuts_window)
     help_menu.add_command(
         label=localization_data["mnemonics"],
         command=open_mnemonics_window,
-        accelerator="F10",
-    )
+        accelerator="F10")
     root.bind("<F10>", open_mnemonics_window)
     help_menu.add_separator()
     help_menu.add_command(
         label=localization_data["report_problems"],
         command=report_url,
-        accelerator="F9",
-    )
+        accelerator="F9")
     root.bind("<F9>", report_url)
     help_menu.add_separator()
     help_menu.add_command(
         label=localization_data["about_scripts_editor_about"],
         command=about,
-        accelerator="Ctrl+G",
-    )
+        accelerator="Ctrl+G")
     root.bind("<Control-g>", about)
 
 
@@ -1745,3 +1686,4 @@ def get_scheduled_tasks(submenu):
     else:
         submenu.add_command(label="at", command=open_at_window)
         submenu.add_command(label="crontab", command=open_cron_window)
+

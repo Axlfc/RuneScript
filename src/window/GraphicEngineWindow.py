@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import (
     END, Label, Entry, Button, scrolledtext, IntVar, Menu, StringVar,
     messagebox, Checkbutton, Frame, filedialog, BOTH, LEFT, X, RAISED,
@@ -74,7 +74,7 @@ class GraphicEngineWindow:
     def create_menu(self):
         """Crea la barra de menú principal."""
         self.menu_bar = Menu(self.root)
-        self.root.config(menu=self.menu_bar)
+        self.root.configure(menu=self.menu_bar)
 
         # Menú Archivo
         file_menu = Menu(self.menu_bar, tearoff=0)
@@ -264,7 +264,7 @@ class GraphicEngineWindow:
         # Iniciar procesamiento en un hilo separado
         threading.Thread(
             target=self.run_ai_processing,
-            args=(prompt,),
+            args=(prompt),
             daemon=True
         ).start()
 
@@ -368,7 +368,7 @@ class GraphicEngineWindow:
         objects_node = self.find_node("Objects")
         if objects_node:
             new_object_text = f"New {object_type}"
-            self.hierarchy_tree.insert(objects_node, "end", text=new_object_text, values=(object_type,))
+            self.hierarchy_tree.insert(objects_node, "end", text=new_object_text, values=(object_type))
             self.log_message(f"Added '{new_object_text}' to 'Objects' node.")
         else:
             self.log_message("AI: 'Objects' node not found in hierarchy.")
@@ -388,18 +388,18 @@ class GraphicEngineWindow:
     def log_message(self, message):
         """Registra un mensaje en el área de texto de salida."""
         def _log():
-            self.output_text.config(state='normal')
+            self.output_text.configure(state='normal')
             self.output_text.insert(END, message + "\n")
             self.output_text.see(END)
-            self.output_text.config(state='disabled')
+            self.output_text.configure(state='disabled')
 
         self.root.after(0, _log)
 
     def update_ui_state(self):
         """Actualiza el estado de la UI basado en el estado de procesamiento."""
         state = 'disabled' if self.is_processing else 'normal'
-        self.prompt_input.config(state=state)
-        self.send_button.config(state=state)
+        self.prompt_input.configure(state=state)
+        self.send_button.configure(state=state)
 
     def start_monitoring(self):
         """Inicia la monitorización en segundo plano."""
@@ -425,7 +425,7 @@ class GraphicEngineWindow:
     def update_memory_stack(self, last_command, physics_state, memory_usage):
         """Actualiza la barra de estado con la información proporcionada."""
         status_text = f"Last Command: {last_command} | Physics State: {physics_state} | {memory_usage}"
-        self.root.after(0, lambda: self.status_bar.config(text=status_text))
+        self.root.after(0, lambda: self.status_bar.configure(text=status_text))
 
     def play_scene(self):
         """Inicia la reproducción de la escena."""
@@ -564,3 +564,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

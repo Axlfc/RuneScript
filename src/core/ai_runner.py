@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import logging
 
 from src.controllers.parameters import read_config_parameter
@@ -37,3 +37,4 @@ def run_ai_prompt(ai_script_path: str, input_json: str, python_executable = inte
     except Exception as e:
         logging.error(f"AI runner failed: {e}")
         raise
+

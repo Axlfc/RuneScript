@@ -1,4 +1,4 @@
-import queue
+﻿import queue
 
 class MessageQueue:
     def __init__(self):
@@ -70,3 +70,4 @@ class MessageQueue:
             bool: True if the queue is empty, False otherwise.
         """
         return self.queue.empty()
+

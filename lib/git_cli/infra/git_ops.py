@@ -1,4 +1,4 @@
-class GitOps:
+﻿class GitOps:
     def __init__(self, repo_dir, git_executor):
         self.repo_dir = repo_dir
         self.git_executor = git_executor

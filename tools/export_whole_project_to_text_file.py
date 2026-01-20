@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 
 def export_python_scripts_to_txt(directory, output_filename):
@@ -82,3 +82,4 @@ def export_all_python_scripts_to_txt_from_mvc_project(
 main_directory_path = "X:\\Documents\\Python Projects\\ScriptsEditor\\src"
 output_filename = "exported_mvc_scripts.txt"
 export_all_python_scripts_to_txt_from_mvc_project(main_directory_path, output_filename)
+

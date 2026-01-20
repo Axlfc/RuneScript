@@ -1,4 +1,4 @@
-from tkinter import messagebox
+﻿from tkinter import messagebox
 import markdown
 
 
@@ -178,3 +178,4 @@ def render_latex_to_pdf():
     ""\"
     ""\" """
     messagebox.showinfo("LaTeX Rendering", "Rendering LaTeX to PDF.")
+

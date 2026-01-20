@@ -1,4 +1,4 @@
-from tkinter import Menu
+﻿from tkinter import Menu
 
 
 class GitMenuManager:
@@ -11,17 +11,17 @@ class GitMenuManager:
         self.git_menu = Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Git", menu=self.git_menu)
         git_icons = {
-            "status": "📊",
-            "add": "➕",
-            "commit": "💾",
-            "push": "⬆️",
-            "pull": "⬇️",
-            "fetch": "🔄",
-            "merge": "🔀",
-            "branch": "🌿",
-            "checkout": "✨",
-            "reset": "⏮️",
-            "stash": "📦",
+            "status": "ðŸ“Š",
+            "add": "âž•",
+            "commit": "ðŸ’¾",
+            "push": "â¬†ï¸",
+            "pull": "â¬‡ï¸",
+            "fetch": "ðŸ”„",
+            "merge": "ðŸ”€",
+            "branch": "ðŸŒ¿",
+            "checkout": "âœ¨",
+            "reset": "â®ï¸",
+            "stash": "ðŸ“¦",
         }
         for command, icon in git_icons.items():
             self.git_menu.add_command(

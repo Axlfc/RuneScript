@@ -1,4 +1,4 @@
-# lib/git_cli/infra/git_command_runner.py
+﻿# lib/git_cli/infra/git_command_runner.py
 from lib.git_cli.executor import GitExecutor
 
 
@@ -25,3 +25,4 @@ class GitCommandRunner:
             self.ansi_renderer.insert_ansi_text(widget, f"Fatal error: {e}\n", tag="error")
 
         widget.see("end")
+

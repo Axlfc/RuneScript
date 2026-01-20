@@ -1,4 +1,4 @@
-import re
+﻿import re
 import subprocess
 import threading
 from tkinter import Button, LEFT, X, Frame, BOTH, WORD, scrolledtext, RIGHT, VERTICAL, Scrollbar, Canvas, Label, \
@@ -28,8 +28,7 @@ Use the buttons to perform WinGet operations."""
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding="utf-8",
-                shell=True,
-            )
+                shell=True)
             output = result.stdout
             spinner_chars = {"\\", "-", "|", "/", "█", "▒"}
             filtered_output = "\n".join(
@@ -131,8 +130,7 @@ Use the buttons to perform WinGet operations."""
                         variable=var,
                         anchor="w",
                         justify=LEFT,
-                        font=("Courier", 10),
-                    )
+                        font=("Courier", 10))
                     checkbox.grid(row=i, column=0, sticky="w")
                     self.upgrade_vars.append((var, program_id))
         self.upgrade_checkboxes_frame.update_idletasks()
@@ -172,20 +170,20 @@ Use the buttons to perform WinGet operations."""
         threading.Thread(target=upgrade_thread).start()
 
     def disable_upgrade_buttons(self):
-        self.select_all_button.config(state=DISABLED)
-        self.deselect_all_button.config(state=DISABLED)
-        self.upgrade_selected_button.config(state=DISABLED)
+        self.select_all_button.configure(state=DISABLED)
+        self.deselect_all_button.configure(state=DISABLED)
+        self.upgrade_selected_button.configure(state=DISABLED)
         for widget in self.upgrade_checkboxes_frame.winfo_children():
             if isinstance(widget, Checkbutton):
-                widget.config(state=DISABLED)
+                widget.configure(state=DISABLED)
 
     def enable_upgrade_buttons(self):
-        self.select_all_button.config(state=NORMAL)
-        self.deselect_all_button.config(state=NORMAL)
-        self.upgrade_selected_button.config(state=NORMAL)
+        self.select_all_button.configure(state=NORMAL)
+        self.deselect_all_button.configure(state=NORMAL)
+        self.upgrade_selected_button.configure(state=NORMAL)
         for widget in self.upgrade_checkboxes_frame.winfo_children():
             if isinstance(widget, Checkbutton):
-                widget.config(state=NORMAL)
+                widget.configure(state=NORMAL)
 
     def select_all(self):
         for var, _ in self.upgrade_vars:
@@ -257,8 +255,8 @@ Use the buttons to perform WinGet operations."""
         self.installed_listbox.pack(side=LEFT, fill=BOTH, expand=True)
         installed_scrollbar = Scrollbar(left_frame)
         installed_scrollbar.pack(side=RIGHT, fill=Y)
-        self.installed_listbox.config(yscrollcommand=installed_scrollbar.set)
-        installed_scrollbar.config(command=self.installed_listbox.yview)
+        self.installed_listbox.configure(yscrollcommand=installed_scrollbar.set)
+        installed_scrollbar.configure(command=self.installed_listbox.yview)
 
         # Right frame setup
         right_frame = Frame(main_frame)

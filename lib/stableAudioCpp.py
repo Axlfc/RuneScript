@@ -1,4 +1,4 @@
-import torch
+﻿import torch
 import torchaudio
 from einops import rearrange
 import argparse
@@ -89,8 +89,7 @@ class AudioGenerationManager:
                 sigma_min=0.3,
                 sigma_max=500,
                 sampler_type="dpmpp-3m-sde",
-                device=self.device,
-            )
+                device=self.device)
             output = rearrange(output, "b d n -> d (b n)")
             output = (
                 output.to(torch.float32)
@@ -126,8 +125,7 @@ def main():
         "--model_path",
         type=str,
         required=True,
-        help="Path to the local .ckpt model file",
-    )
+        help="Path to the local .ckpt model file")
     parser.add_argument(
         "--prompt", type=str, required=True, help="Prompt for audio generation"
     )
@@ -141,8 +139,7 @@ def main():
         "--out-dir",
         type=str,
         required=True,
-        help="Output directory for the generated audio",
-    )
+        help="Output directory for the generated audio")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     manager = AudioGenerationManager(model_path=args.model_path, device=device)
@@ -151,3 +148,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

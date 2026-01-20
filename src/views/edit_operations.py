@@ -1,4 +1,4 @@
-from tkinter import INSERT, SEL, END
+﻿from tkinter import INSERT, SEL, END
 from tkinter.constants import SEL_FIRST, SEL_LAST
 from src.views.tk_utils import root, text, script_text
 
@@ -143,3 +143,4 @@ def duplicate(event=None):
     ""\" """
     print("DUPLICAT")
     script_text.event_generate("<<Duplicate>>")
+

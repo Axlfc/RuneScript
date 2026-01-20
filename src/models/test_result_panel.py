@@ -1,4 +1,4 @@
-from tkinter import ttk, scrolledtext
+﻿from tkinter import ttk, scrolledtext
 import tkinter as tk
 
 
@@ -55,7 +55,7 @@ class TestResultPanel(ttk.Frame):
                 foreground="white"
             )
 
-        self.test_output.config(state=tk.NORMAL)
+        self.test_output.configure(state=tk.NORMAL)
         self.test_output.delete("1.0", tk.END)
 
         # Add stdout section
@@ -71,7 +71,7 @@ class TestResultPanel(ttk.Frame):
         # Requires test line parsing and file opening
         # Placeholder for future implementation
 
-        self.test_output.config(state=tk.DISABLED)
+        self.test_output.configure(state=tk.DISABLED)
 
         # Optional: tag formatting
         self.test_output.tag_configure("stdout_header", font=("Arial", 10, "bold"))

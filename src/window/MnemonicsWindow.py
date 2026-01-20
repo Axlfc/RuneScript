@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Frame, LEFT
+﻿from tkinter import Toplevel, Label, Frame, LEFT
 
 
 class MnemonicsWindow:
@@ -35,3 +35,4 @@ class MnemonicsWindow:
             row_frame.pack(fill="x", pady=5)
             Label(row_frame, text=f"{menu}:", font=("Arial", 10, "bold"), anchor="w", width=10).pack(side=LEFT, padx=10)
             Label(row_frame, text=shortcut, font=("Arial", 10), anchor="e").pack(side=LEFT)
+

@@ -1,4 +1,4 @@
-from sentence_transformers import SentenceTransformer
+﻿from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModel
 import torch
 import sys
@@ -51,3 +51,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

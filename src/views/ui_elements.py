@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Canvas, Frame, Scrollbar
+﻿from tkinter import Toplevel, Label, Canvas, Frame, Scrollbar
 
 
 class Tooltip:
@@ -109,8 +109,7 @@ class Tooltip:
             text=self.text,
             background="#ffffe0",
             relief="solid",
-            borderwidth=1,
-        )
+            borderwidth=1)
         label.pack()
         self.adjust_tooltip_position(event.x_root, event.y_root)
 
@@ -183,7 +182,7 @@ class LineNumberCanvas(Canvas):
             # Update canvas width if needed
             width_needed = max(len(str(last_line)) * 8, 30)
             if self.winfo_width() != width_needed:
-                self.config(width=width_needed)
+                self.configure(width=width_needed)
 
         finally:
             # Reset the redrawing flag
@@ -271,3 +270,4 @@ class ScrollableFrame(Frame):
             self.scrollable_frame.master.yview_scroll(-1, "units")
         elif event.num == 5 or event.delta < 0:
             self.scrollable_frame.master.yview_scroll(1, "units")
+

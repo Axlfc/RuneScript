@@ -1,4 +1,4 @@
-import openai
+﻿import openai
 from src.models.strategies.BaseStrategy import CommunicationStrategy
 
 
@@ -22,3 +22,4 @@ class OpenAIStrategy(CommunicationStrategy):
 
     def get_responses(self, thread_id):
         pass
+

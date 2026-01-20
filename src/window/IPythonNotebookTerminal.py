@@ -1,5 +1,7 @@
-from tkinter import *
+﻿from tkinter import *
+from src.config.fonts import AppFonts
 from tkinter import scrolledtext, filedialog, ttk
+from src.config.fonts import AppFonts
 from tkinter.font import Font
 import sys
 import io
@@ -61,8 +63,8 @@ class IPythonNotebookTerminal:
         self.scrollbar.pack(side=RIGHT, fill=Y)
 
         # Configurar fuentes
-        self.code_font = Font(family="Consolas", size=10)
-        self.markdown_font = Font(family="Arial", size=10)
+        self.code_font = AppFonts.CODE_SMALL
+        self.markdown_font = AppFonts.MARKDOWN
 
     def create_cell(self, cell_type="code"):
         """Crea una nueva celda del tipo especificado"""
@@ -117,7 +119,7 @@ class IPythonNotebookTerminal:
         output_text = cell['output']
 
         # Habilitar la salida para escritura
-        output_text.config(state='normal')
+        output_text.configure(state='normal')
         output_text.delete("1.0", END)
 
         if cell['type'] == "code":
@@ -157,7 +159,7 @@ class IPythonNotebookTerminal:
             except Exception as e:
                 output_text.insert(END, f"Error rendering markdown: {str(e)}\n", "error")
 
-        output_text.config(state='disabled')
+        output_text.configure(state='disabled')
 
     def execute_current_cell(self):
         """Ejecuta la celda actual"""

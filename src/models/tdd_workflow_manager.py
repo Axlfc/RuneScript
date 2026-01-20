@@ -1,4 +1,4 @@
-from src.views.tk_utils import PHASE_UI_LABELS, UI_TO_INTERNAL_PHASE
+﻿from src.views.tk_utils import PHASE_UI_LABELS, UI_TO_INTERNAL_PHASE
 
 
 class TDDWorkflowManager:
@@ -13,7 +13,7 @@ class TDDWorkflowManager:
         self.ui_manager = ui_manager
         self.test_status = None
 
-        self.last_test_output = None  # 🆕 Store last test result here
+        self.last_test_output = None  # ðŸ†• Store last test result here
 
     def start_new_cycle(self):
         """Start a new TDD cycle"""

@@ -1,4 +1,4 @@
-import importlib
+﻿import importlib
 import logging
 import os
 import platform
@@ -21,7 +21,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from src.controllers.parameters import read_config_parameter
 
-# Añade tu .venv/Lib/site-packages al path si no está ya
+# AÃ±ade tu .venv/Lib/site-packages al path si no estÃ¡ ya
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 for suffix in (('.venv', 'Lib', 'site-packages'), ('venv', 'Lib', 'site-packages')):
     path = os.path.join(base_dir, *suffix)
@@ -29,7 +29,7 @@ for suffix in (('.venv', 'Lib', 'site-packages'), ('venv', 'Lib', 'site-packages
         sys.path.insert(0, path)
         break
 
-# Lista de librerías a validar
+# Lista de librerÃ­as a validar
 venv_libs = ["openai", "requests"]
 
 for lib in venv_libs:
@@ -37,8 +37,8 @@ for lib in venv_libs:
         importlib.import_module(lib)
     except ImportError as e:
         raise ImportError(
-            f"No se pudo cargar la librería '{lib}'. "
-            f"Asegúrate de haber ejecutado `pip install {lib}` dentro de tu venv."
+            f"No se pudo cargar la librerÃ­a '{lib}'. "
+            f"AsegÃºrate de haber ejecutado `pip install {lib}` dentro de tu venv."
         ) from e
 
 initial_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
@@ -90,8 +90,7 @@ def process_chat_completions(client, history):
         messages=history,
         temperature=0.7,
         stream=True,
-        max_tokens=150,
-    )
+        max_tokens=150)
     for chunk in response:
         if chunk.choices[0].delta.content:
             char = chunk.choices[0].delta.content
@@ -105,8 +104,7 @@ def chat_loop(
     client,
     model_path,
     system_prompt="You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful.",
-    session_id=0,
-):
+    session_id=0):
     history = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt},
@@ -380,7 +378,7 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
         print("Error: Ollama model not specified in the configuration.")
         return
 
-    # 💡 Enforce strict JSON output instruction
+    # ðŸ’¡ Enforce strict JSON output instruction
     system_prompt += "\n\nIMPORTANT: Respond ONLY with a valid JSON object. Do NOT include explanations or text outside the JSON. Do NOT use markdown. The entire response must be pure JSON."
 
     # Prepare and send the request
@@ -474,3 +472,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

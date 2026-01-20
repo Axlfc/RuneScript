@@ -1,4 +1,4 @@
-class GitStatusFormatter:
+﻿class GitStatusFormatter:
     def __init__(self, ansi_renderer, repo_dir):
         self.ansi_renderer = ansi_renderer
         self.repo_dir = repo_dir
@@ -18,7 +18,7 @@ class GitStatusFormatter:
             widget.insert("end", status, self._status_tag(status))
             widget.insert("end", f" <{filename}>\n")
 
-            if status.strip() in ("M",):
+            if status.strip() in ("M"):
                 diff_out, _, _ = GitExecutor.run_git("diff", "--color", filename, repo_dir=self.repo_dir)
                 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
                 for diff_line in diff_out.splitlines()[1:]:
@@ -40,3 +40,4 @@ class GitStatusFormatter:
             "U ": "unmerged",
             "!!": "ignored"
         }.get(status, "default")
+

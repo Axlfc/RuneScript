@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Entry, Button, END
+﻿from tkinter import Toplevel, Label, Entry, Button, END
 from src.views.tk_utils import script_text
 
 
@@ -61,4 +61,5 @@ class SearchAndReplaceWindow:
 
     def cancel(self):
         self.replace_toplevel.destroy()
+
 

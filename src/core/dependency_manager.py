@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import logging
 import os
 
@@ -19,3 +19,4 @@ class DependencyManagementUnit:
         with open(req_path, "w", encoding='utf-8') as f:
             for dep in dependencies:
                 f.write(f"{dep}\n")
+

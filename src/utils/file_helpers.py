@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+﻿from typing import List, Dict, Any
 import logging
 import os
 
@@ -55,4 +55,5 @@ def enrich_context_with_relevant_files(context: Dict[str, Any], project_path: st
             "Only change what's necessary. Do not delete unrelated code."
         )
     return context
+
 

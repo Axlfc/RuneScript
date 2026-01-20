@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fixed version of the Clojure IDE with:
 - Proper REPL communication
 - Thread safety for UI updates
@@ -14,7 +14,9 @@ import shutil
 import json
 import threading
 from tkinter import *
+from src.config.fonts import create_font
 from tkinter import ttk, filedialog, messagebox, simpledialog
+from src.config.fonts import create_font
 from tkinter.font import Font
 from threading import Thread
 import tkinter.scrolledtext as scrolledtext
@@ -111,7 +113,7 @@ class AutoCompleteWindow:
             self.listbox = Listbox(frame, width=50, height=min(10, len(self.matched_functions)),
                                    yscrollcommand=self.scrollbar.set)
             self.listbox.pack(side=LEFT, fill=BOTH)
-            self.scrollbar.config(command=self.listbox.yview)
+            self.scrollbar.configure(command=self.listbox.yview)
 
             # Populate listbox
             for func in self.matched_functions:
@@ -419,7 +421,7 @@ class LineNumberCanvas(Canvas):
         self.text_widget = text_widget
         self.textfont = None
 
-        self.config(bd=0, highlightthickness=0)
+        self.configure(bd=0, highlightthickness=0)
         self.bind("<Configure>", self._on_configure)
 
     def _on_configure(self, event=None):
@@ -549,7 +551,7 @@ class ClojureWindow:
     def setup_fonts(self):
         font_family = self.config.get('General', 'font_family', fallback='Consolas')
         font_size = self.config.getint('General', 'font_size', fallback=11)
-        self.code_font = Font(family=font_family, size=font_size)
+        self.code_font = create_font(family=font_family, size=font_size)
 
     def setup_bindings(self):
         self.editor.bind("<KeyRelease>", self.highlighter.highlight_syntax)
@@ -568,9 +570,9 @@ class ClojureWindow:
         try:
             index = self.editor.index(INSERT)
             line, col = index.split(".")
-            self.position_indicator.config(text=f"Línea {line}, Col {int(col) + 1}")
+            self.position_indicator.configure(text=f"Línea {line}, Col {int(col) + 1}")
         except Exception:
-            self.position_indicator.config(text="")
+            self.position_indicator.configure(text="")
 
     def handle_autocomplete(self, event=None):
         if event and event.keysym in ("Up", "Down", "Return", "Escape"):
@@ -674,8 +676,8 @@ class ClojureWindow:
             self.editor_y_scroll.set(*args)
             self.line_numbers.redraw()
 
-        self.editor.config(yscrollcommand=on_text_scroll, xscrollcommand=self.editor_x_scroll.set)
-        self.editor_y_scroll.config(command=lambda *args: [self.editor.yview(*args), self.line_numbers.redraw()])
+        self.editor.configure(yscrollcommand=on_text_scroll, xscrollcommand=self.editor_x_scroll.set)
+        self.editor_y_scroll.configure(command=lambda *args: [self.editor.yview(*args), self.line_numbers.redraw()])
         self.editor.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Set up syntax highlighter
@@ -720,7 +722,7 @@ class ClojureWindow:
         self.console_output = scrolledtext.ScrolledText(self.console_frame, wrap=WORD, bg=self.colors["console_bg"],
                                                         fg=self.colors["console_fg"], font=self.code_font)
         self.console_output.pack(fill=BOTH, expand=True)
-        self.console_output.config(state=DISABLED)
+        self.console_output.configure(state=DISABLED)
 
         # Test output tab
         self.test_frame = ttk.Frame(self.output_notebook)
@@ -729,7 +731,7 @@ class ClojureWindow:
         self.test_output = scrolledtext.ScrolledText(self.test_frame, wrap=WORD, bg=self.colors["test_bg"],
                                                      fg=self.colors["test_fg"], font=self.code_font)
         self.test_output.pack(fill=BOTH, expand=True)
-        self.test_output.config(state=DISABLED)
+        self.test_output.configure(state=DISABLED)
 
         # Status bar
         self.status_frame = ttk.Frame(self.window)
@@ -772,7 +774,7 @@ class ClojureWindow:
 
     def setup_menu(self):
         menu_bar = Menu(self.window)
-        self.window.config(menu=menu_bar)
+        self.window.configure(menu=menu_bar)
 
         # File menu
         self.file_menu = Menu(menu_bar, tearoff=0)
@@ -806,7 +808,7 @@ class ClojureWindow:
         menu_bar.add_cascade(label="Ayuda", menu=self.help_menu)
 
     def update_status(self, message):
-        self.status_bar.config(text=message)
+        self.status_bar.configure(text=message)
 
     def update_repl(self, text):
         """Thread-safe update to the REPL output via queue"""
@@ -969,9 +971,9 @@ class ClojureWindow:
         if task:
             try:
                 output = subprocess.check_output(["lein"] + task.split(), text=True)
-                self.console_output.config(state=NORMAL)
+                self.console_output.configure(state=NORMAL)
                 self.console_output.insert(END, output + "\n")
-                self.console_output.config(state=DISABLED)
+                self.console_output.configure(state=DISABLED)
             except Exception as e:
                 self.update_status(f"Error running task: {e}")
 

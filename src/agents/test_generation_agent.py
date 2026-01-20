@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from typing import Dict, List
 
 from src.models.tdd_manager import TDDStage
@@ -15,7 +15,7 @@ class TestGenerationAgent:
 
         # Skip tests if project looks purely visual
         if any(k in str(architecture).lower() for k in ["html", "css", "web", "landing", "portfolio"]):
-            logging.info("Skipping test generation — visual/static project.")
+            logging.info("Skipping test generation â€” visual/static project.")
             return []
 
         context = {"architecture": architecture}
@@ -67,7 +67,7 @@ import unittest
 
 class {class_name}(unittest.TestCase):
     def test_unimplemented(self):
-        self.fail("🔴 RED: This test is intentionally failing until the feature is implemented.")
+        self.fail("ðŸ”´ RED: This test is intentionally failing until the feature is implemented.")
 
 if __name__ == '__main__':
     unittest.main()

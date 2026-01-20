@@ -1,4 +1,4 @@
-import os
+﻿import os
 import threading
 from tkinter import *
 from tkinter.ttk import Separator
@@ -89,7 +89,7 @@ class DiffTab(Frame):
         Label(file_frame, text="File:").pack(side=LEFT, padx=(0, 5))
         self.file_dropdown = OptionMenu(file_frame, self.selected_file, "")
         self.file_dropdown.pack(side=LEFT, fill=X, expand=True, padx=(0, 10))
-        self.file_dropdown.config(width=30)
+        self.file_dropdown.configure(width=30)
 
         # Create diff mode selection
         mode_frame = Frame(control_frame)
@@ -102,7 +102,7 @@ class DiffTab(Frame):
         self.mode_dropdown.pack(side=LEFT, padx=(0, 10))
 
         # Create refresh button
-        refresh_btn = Button(mode_frame, text="⟳", command=self.refresh_diff, width=3)
+        refresh_btn = Button(mode_frame, text="âŸ³", command=self.refresh_diff, width=3)
         refresh_btn.pack(side=LEFT)
 
         # Add tooltip if controller is available
@@ -128,7 +128,7 @@ class DiffTab(Frame):
 
         # Configure text widgets
         for text_widget in [self.original_text, self.unified_text, self.modified_text]:
-            text_widget.config(xscrollcommand=self.h_scrollbar.set)
+            text_widget.configure(xscrollcommand=self.h_scrollbar.set)
             text_widget.tag_configure("add", background="#e6ffed", foreground="#24292e")
             text_widget.tag_configure("remove", background="#ffdce0", foreground="#24292e")
             text_widget.tag_configure("header", background="#f1f8ff", foreground="#0366d6")
@@ -139,7 +139,7 @@ class DiffTab(Frame):
                 self.ui_controller.ansi_renderer.define_ansi_tags(text_widget)
 
         # Configure horizontal scrollbar
-        self.h_scrollbar.config(command=self.scroll_all_horizontal)
+        self.h_scrollbar.configure(command=self.scroll_all_horizontal)
 
         # Mark UI as initialized
         self._ui_initialized = True
@@ -154,7 +154,7 @@ class DiffTab(Frame):
         text_widget.pack(side=LEFT, fill=BOTH, expand=True)
         vscroll = Scrollbar(frame, orient=VERTICAL, command=text_widget.yview)
         vscroll.pack(side=RIGHT, fill=Y)
-        text_widget.config(yscrollcommand=vscroll.set)
+        text_widget.configure(yscrollcommand=vscroll.set)
         return text_widget
 
     def setup_bindings(self):
@@ -248,7 +248,7 @@ class DiffTab(Frame):
         try:
             # Enable text widgets for editing
             for widget in [self.original_text, self.unified_text, self.modified_text]:
-                widget.config(state=NORMAL)
+                widget.configure(state=NORMAL)
                 widget.delete("1.0", END)
 
             mode = self.diff_mode.get()
@@ -295,7 +295,7 @@ class DiffTab(Frame):
 
             # Disable text widgets after editing
             for widget in [self.original_text, self.unified_text, self.modified_text]:
-                widget.config(state=DISABLED)
+                widget.configure(state=DISABLED)
 
         except Exception as e:
             print(f"Error showing diff: {e}")
@@ -310,8 +310,8 @@ class DiffTab(Frame):
             orig_lines = self.original_text.get("1.0", END).splitlines()
             mod_lines = self.modified_text.get("1.0", END).splitlines()
 
-            self.original_text.config(state=NORMAL)
-            self.modified_text.config(state=NORMAL)
+            self.original_text.configure(state=NORMAL)
+            self.modified_text.configure(state=NORMAL)
 
             for i, (orig, mod) in enumerate(zip(orig_lines, mod_lines)):
                 if orig != mod:
@@ -319,8 +319,8 @@ class DiffTab(Frame):
                     self.original_text.tag_add("remove", line, f"{i + 1}.end")
                     self.modified_text.tag_add("add", line, f"{i + 1}.end")
 
-            self.original_text.config(state=DISABLED)
-            self.modified_text.config(state=DISABLED)
+            self.original_text.configure(state=DISABLED)
+            self.modified_text.configure(state=DISABLED)
 
         except Exception as e:
             print(f"Error highlighting differences: {e}")
@@ -332,9 +332,9 @@ class DiffTab(Frame):
 
         for widget in [self.original_text, self.unified_text, self.modified_text]:
             if widget:  # Check if widget exists
-                widget.config(state=NORMAL)
+                widget.configure(state=NORMAL)
                 widget.delete("1.0", END)
-                widget.config(state=DISABLED)
+                widget.configure(state=DISABLED)
 
     def sync_vertical_scroll(self, event):
         """Synchronize vertical scrolling across all text widgets"""

@@ -1,4 +1,4 @@
-
+﻿
 import subprocess
 from tkinter import Frame, Listbox, Scrollbar, Menu, Toplevel, END, LEFT, RIGHT, BOTH, Y, Label, DISABLED, scrolledtext, \
     SINGLE, VERTICAL
@@ -17,7 +17,7 @@ class CommitListView(Frame):
         # Pack widgets
         self.listbox.pack(side=LEFT, fill=BOTH, expand=True)
         scrollbar.pack(side=RIGHT, fill=Y)
-        self.listbox.config(yscrollcommand=scrollbar.set)
+        self.listbox.configure(yscrollcommand=scrollbar.set)
 
         # Bind events
         self.listbox.bind("<Double-Button-1>", self.on_double_click)
@@ -149,7 +149,7 @@ class CommitListView(Frame):
             text_widget = scrolledtext.ScrolledText(details_window)
             self.ui_controller.ansi_renderer.define_ansi_tags(text_widget)
             self.ui_controller.ansi_renderer.apply_ansi_styles(text_widget, output)
-            text_widget.config(state=DISABLED)
+            text_widget.configure(state=DISABLED)
             text_widget.pack(fill="both", expand=True)
         except subprocess.CalledProcessError as e:
             error_window = Toplevel()
@@ -171,7 +171,7 @@ class CommitListView(Frame):
         return self.listbox.yview
 
     def config(self, **kwargs):
-        self.listbox.config(**kwargs)
+        self.listbox.configure(**kwargs)
 
     def bind(self, sequence=None, func=None, add=None):
         self.listbox.bind(sequence, func, add=add)

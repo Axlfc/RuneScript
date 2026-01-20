@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import argparse
 
@@ -83,14 +83,14 @@ def export_project_filesystem(root_path,
 
             # Determine tree connector
             is_last = (i == len(items) - 1)
-            connector = '└── ' if is_last else '├── '
+            connector = 'â””â”€â”€ ' if is_last else 'â”œâ”€â”€ '
 
             # Add item to tree
             tree += prefix + connector + item + '\n'
 
             # Recursively process subdirectories
             if os.path.isdir(full_path):
-                extension = '    ' if is_last else '│   '
+                extension = '    ' if is_last else 'â”‚   '
                 tree += generate_tree(full_path, prefix + extension)
 
         return tree

@@ -1,4 +1,4 @@
-import requests
+﻿import requests
 
 # Sending the query in the get request parameter
 query = "How to print hello world in python"

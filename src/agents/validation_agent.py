@@ -1,4 +1,4 @@
-from typing import Dict
+﻿from typing import Dict
 import logging
 
 
@@ -13,3 +13,4 @@ class ValidationAgent:
             "code_quality_score": self.agent._analyze_code_quality()
         }
         return validation_results
+

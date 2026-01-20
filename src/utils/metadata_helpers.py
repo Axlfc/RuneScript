@@ -1,4 +1,4 @@
-def create_default_metadata(name, error_message):
+﻿def create_default_metadata(name, error_message):
     """Helper function to create default metadata with error information"""
     return {
         'project_name': name,
@@ -15,3 +15,4 @@ def create_default_metadata(name, error_message):
         },
         'validation_notes': [error_message]
     }
+

@@ -1,4 +1,4 @@
-from tkinter import LabelFrame, Button, Scrollbar, END, Toplevel, StringVar, Text, BOTH, NORMAL, DISABLED, Listbox, LEFT, Frame, Label, VERTICAL, RIGHT, Y
+﻿from tkinter import LabelFrame, Button, Scrollbar, END, Toplevel, StringVar, Text, BOTH, NORMAL, DISABLED, Listbox, LEFT, Frame, Label, VERTICAL, RIGHT, Y
 from tkinter.ttk import Combobox, Treeview
 
 from lib.git_cli.components.commit_list import CommitListView
@@ -16,7 +16,7 @@ class HistoryTab(Frame):
         self._ui_initialized = False
 
         # Placeholder inicial
-        self.placeholder = Label(self, text="⏳ Loading history tab...")
+        self.placeholder = Label(self, text="â³ Loading history tab...")
         self.placeholder.pack(expand=True)
 
         if self._controller_attached:
@@ -100,17 +100,17 @@ class HistoryTab(Frame):
         commit_hash = self.commit_listbox.get(idx).split(" - ")[0]
 
         details = self.ui_controller.get_commit_details(commit_hash)
-        self.detail_text.config(state="normal")
+        self.detail_text.configure(state="normal")
         self.detail_text.delete("1.0", END)
         self.detail_text.insert("1.0", details)
-        self.detail_text.config(state="disabled")
+        self.detail_text.configure(state="disabled")
 
     def display_commit_details(self, commit_info: dict):
         if not hasattr(self, "detail_text"):
             print("Warning: detail_text widget not initialized.")
             return
 
-        self.detail_text.config(state=NORMAL)
+        self.detail_text.configure(state=NORMAL)
         self.detail_text.delete("1.0", END)
 
         message = commit_info.get("message", [])
@@ -120,7 +120,7 @@ class HistoryTab(Frame):
         else:
             self.detail_text.insert(END, "[Error: Invalid commit message format]")
 
-        self.detail_text.config(state=DISABLED)
+        self.detail_text.configure(state=DISABLED)
 
     def update_branch_list(self, branches):
         """Update the branch dropdown with branches and select current one"""
@@ -199,7 +199,7 @@ class HistoryTab(Frame):
 
             scrollbar = Scrollbar(commit_frame, orient="vertical", command=self.commit_listbox.yview)
             scrollbar.pack(side=RIGHT, fill=Y)
-            self.commit_listbox.config(yscrollcommand=scrollbar.set)
+            self.commit_listbox.configure(yscrollcommand=scrollbar.set)
 
             # Bind events
             self.commit_listbox.bind("<Double-Button-1>", self.show_commit_details)

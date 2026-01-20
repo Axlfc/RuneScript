@@ -1,4 +1,4 @@
-# dispatcher.py
+﻿# dispatcher.py
 from pathlib import Path
 from typing import Any, Dict
 from lib.git_cli.registry import COMMAND_REGISTRY
@@ -28,3 +28,4 @@ class CommandDispatcher:
         if not name:
             return {"stdout": "", "stderr": "Empty command", "success": False}
         return self.dispatch(name, **kwargs)
+

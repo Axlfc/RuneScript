@@ -1,4 +1,4 @@
-# fallback_executor.py
+﻿# fallback_executor.py
 import subprocess
 from pathlib import Path
 from lib.git_cli.commands.base import CommandResult
@@ -23,3 +23,4 @@ def execute_raw_git_command(command: str, repo_dir: Path) -> CommandResult:
             "stderr": e.output,
             "success": False
         }
+

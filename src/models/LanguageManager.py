@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+﻿from typing import Dict, List, Tuple
 import os
 import json
 
@@ -16,12 +16,12 @@ class LanguageManager:
         # Dictionary of language codes to their full names in English
         language_names = {
             "en": "English",
-            "es": "Español (Spanish)",
-            "ca": "Català (Catalan)",
-            "fr": "Français (French)",
+            "es": "EspaÃ±ol (Spanish)",
+            "ca": "CatalÃ  (Catalan)",
+            "fr": "FranÃ§ais (French)",
             "de": "Deutsch (German)",
             "it": "Italiano (Italian)",
-            "pt": "Português (Portuguese)",
+            "pt": "PortuguÃªs (Portuguese)",
             # Add more languages as needed
         }
 
@@ -54,3 +54,4 @@ class LanguageManager:
             file_path = os.path.join(self.locales_dir, "en.json")
             with open(file_path, 'r', encoding='utf-8') as file:
                 return json.load(file)
+

@@ -1,9 +1,9 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk, scrolledtext
 
 
 def create_project_tree(parent, on_select):
-    tree = ttk.Treeview(parent, columns=('path',), show='tree')
+    tree = ttk.Treeview(parent, columns=('path'), show='tree')
     tree.pack(fill=tk.BOTH, expand=True)
     tree.bind('<<TreeviewSelect>>', on_select)
     return tree
@@ -55,3 +55,4 @@ def create_command_bar(parent, on_generate, on_pause, on_stop):
     stop_btn.pack(side=tk.LEFT, padx=2)
 
     return prompt_entry, generate_btn, pause_btn, stop_btn
+

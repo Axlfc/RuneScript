@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import json
 import logging
@@ -6,7 +6,9 @@ import threading
 import subprocess
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
+from customtkinter import CTkFont
 from tkinter import scrolledtext
+from customtkinter import CTkFont
 from web3 import Web3
 import solcx
 from solcx import compile_standard, install_solc
@@ -111,7 +113,7 @@ class Editor(tk.Frame):
         self.scrollbar = tk.Scrollbar(
             self.editor_frame, command=self.sync_scroll)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.text_widget.config(yscrollcommand=self.scrollbar.set)
+        self.text_widget.configure(yscrollcommand=self.scrollbar.set)
 
     def bind_events(self):
         self.text_widget.bind("<KeyRelease>", self.on_key_release)
@@ -121,9 +123,7 @@ class Editor(tk.Frame):
         self.text_widget.bind("<Button-5>", self.on_scroll_linux)
 
     def initialize_tags(self):
-        italic_font = tkFont.Font(
-            self.text_widget, self.text_widget.cget("font"))
-        italic_font.configure(slant='italic')
+        italic_font = CTkFont(family="Consolas", size=11, slant="italic")
 
         self.text_widget.tag_configure('keyword', foreground='#FF4500')
         self.text_widget.tag_configure('type', foreground='#2E8B57')
@@ -170,13 +170,13 @@ class Editor(tk.Frame):
         return "break"
 
     def update_line_numbers(self):
-        self.line_numbers.config(state='normal')
+        self.line_numbers.configure(state='normal')
         self.line_numbers.delete('1.0', tk.END)
         line_count = int(self.text_widget.index('end-1c').split('.')[0])
         line_numbers_string = "\n".join(str(i) for i in range(1,
                                                               line_count))
         self.line_numbers.insert('1.0', line_numbers_string)
-        self.line_numbers.config(state='disabled')
+        self.line_numbers.configure(state='disabled')
 
     def highlight_syntax(self):
         content = self.text_widget.get("1.0", tk.END)
@@ -419,7 +419,7 @@ contract {contract_name} {{
 
         try:
             threading.Thread(target=self.execute_tests,
-                             args=(framework,)).start()
+                             args=(framework)).start()
         except Exception as e:
             logging.error(f"Test Execution Error: {e}")
             messagebox.showerror("Test Error", str(e))
@@ -606,3 +606,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

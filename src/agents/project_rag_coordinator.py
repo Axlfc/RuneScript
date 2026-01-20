@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import os
 
@@ -133,3 +133,4 @@ class ProjectRAGCoordinator:
         except Exception as e:
             logging.error(f"Error querying similar context: {e}")
             return []
+

@@ -1,5 +1,7 @@
-from tkinter import Toplevel, Label, Frame, LEFT, RIGHT, Canvas, Scrollbar, VERTICAL, YES, BOTH, X, NW, ttk
+﻿from tkinter import Toplevel, Label, Frame, LEFT, RIGHT, Canvas, Scrollbar, VERTICAL, YES, BOTH, X, NW, ttk
+from src.config.fonts import AppFonts
 from tkinter import font
+from src.config.fonts import AppFonts
 import platform
 
 
@@ -87,8 +89,8 @@ class ShortcutsWindow:
         content_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
         # Define fonts
-        heading_font = font.Font(family="Arial", size=14, weight="bold")
-        content_font = font.Font(family="Arial", size=10)
+        heading_font = AppFonts.HEADER
+        content_font = AppFonts.SMALL
 
         # Add shortcuts for each category
         for category, shortcuts in shortcuts_data.items():

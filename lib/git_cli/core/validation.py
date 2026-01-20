@@ -1,4 +1,4 @@
-# git_cli/core/validation.py
+﻿# git_cli/core/validation.py
 import os
 import re
 from pathlib import Path

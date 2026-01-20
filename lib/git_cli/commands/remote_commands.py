@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Dict, Any
+﻿from typing import Optional, Union, List, Dict, Any
 from pathlib import Path
 from lib.git_cli.commands.base import GitCommand
 from lib.git_cli.executor import GitExecutor
@@ -88,3 +88,4 @@ class FetchCommand(GitCommand):
         else:
             logger.error(f"Failed to fetch changes: {stderr}")
             return False
+

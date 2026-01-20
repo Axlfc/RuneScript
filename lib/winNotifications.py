@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import argparse
 
 
@@ -7,8 +7,7 @@ def show_balloon_notification(
     title="Task Notification",
     message_text="Your custom message here",
     message_duration=10,
-    custom_icon_path=None,
-):
+    custom_icon_path=None):
     """ ""\"
     ""\"
     ""\"
@@ -82,19 +81,16 @@ def main():
     parser.add_argument(
         "--message",
         default="Your custom message here",
-        help="The custom text to display in the notification",
-    )
+        help="The custom text to display in the notification")
     parser.add_argument(
         "--duration",
         type=int,
         default=10,
-        help="Duration of the notification in seconds",
-    )
+        help="Duration of the notification in seconds")
     parser.add_argument(
         "--custom-icon",
         default="None",
-        help="Path to a custom icon (.ico file) for the notification",
-    )
+        help="Path to a custom icon (.ico file) for the notification")
     args = parser.parse_args()
     show_balloon_notification(
         args.task_name, args.title, args.message, args.duration, args.custom_icon
@@ -103,3 +99,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

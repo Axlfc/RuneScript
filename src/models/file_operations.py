@@ -1,4 +1,4 @@
-from tkinter import messagebox, simpledialog
+﻿from tkinter import messagebox, simpledialog
 import os
 from src.views.tk_utils import root, script_name_label
 
@@ -54,7 +54,7 @@ def rename_or_create_file(new_name):
         try:
             os.rename(file_name, new_path)
             file_name = new_path
-            script_name_label.config(text=f"File Name: {new_name}")
+            script_name_label.configure(text=f"File Name: {new_name}")
             messagebox.showinfo(
                 "Rename Successful", f"File has been renamed to {new_name}"
             )
@@ -65,7 +65,7 @@ def rename_or_create_file(new_name):
             with open(new_path, "w") as new_file:
                 new_file.write("")
             file_name = new_path
-            script_name_label.config(text=f"File Name: {new_name}")
+            script_name_label.configure(text=f"File Name: {new_name}")
             messagebox.showinfo(
                 "File Created", f"New file has been created: {new_name}"
             )
@@ -77,3 +77,4 @@ def remove_asterisk_from_title():
     title = root.title()
     if title.startswith("*"):
         root.title(title[1:])
+

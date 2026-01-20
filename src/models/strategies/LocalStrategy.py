@@ -1,4 +1,4 @@
-import requests
+﻿import requests
 from src.models.strategies.BaseStrategy import CommunicationStrategy
 
 
@@ -20,3 +20,4 @@ class LocalServerStrategy(CommunicationStrategy):
 
     def get_responses(self, thread_id):
         pass
+

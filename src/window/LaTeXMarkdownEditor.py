@@ -1,9 +1,11 @@
-import tempfile
+﻿import tempfile
 import webbrowser
 from tkhtmlview import HTMLLabel
 
 from tkinter import *
+from src.config.fonts import AppFonts
 from tkinter import ttk, filedialog, messagebox
+from src.config.fonts import AppFonts
 from tkinter.font import Font
 import os
 import subprocess
@@ -40,9 +42,9 @@ class LaTeXMarkdownEditor:
         self.last_saved_content = ""
 
     def setup_fonts(self):
-        self.editor_font = Font(family="Consolas", size=11)
-        self.tree_font = Font(family="Arial", size=10)
-        self.preview_font = Font(family="Times New Roman", size=11)
+        self.editor_font = AppFonts.CODE_NORMAL
+        self.tree_font = AppFonts.SMALL
+        self.preview_font = AppFonts.PREVIEW
 
     def check_latex_installed(self):
         """Check if LaTeX (pdflatex) is installed and accessible"""
@@ -75,17 +77,17 @@ class LaTeXMarkdownEditor:
         self.update_project_tree()
 
         # Clear the preview and details
-        #self.preview.config(state="normal")
+        #self.preview.configure(state="normal")
         #self.preview.delete("1.0", END)
-        #self.preview.config(state="disabled")
+        #self.preview.configure(state="disabled")
 
-        self.current_file_label.config(text="None")
-        self.stats_text.config(state="normal")
+        self.current_file_label.configure(text="None")
+        self.stats_text.configure(state="normal")
         self.stats_text.delete("1.0", END)
-        self.stats_text.config(state="disabled")
-        self.errors_text.config(state="normal")
+        self.stats_text.configure(state="disabled")
+        self.errors_text.configure(state="normal")
         self.errors_text.delete("1.0", END)
-        self.errors_text.config(state="disabled")
+        self.errors_text.configure(state="disabled")
 
         messagebox.showinfo("New Project", "A new project has been created.")
 
@@ -147,13 +149,13 @@ class LaTeXMarkdownEditor:
                 if self.current_file == file_path:
                     self.editor.delete("1.0", END)
                     self.current_file = None
-                    self.current_file_label.config(text="None")
-                    self.preview.config(state='normal')
+                    self.current_file_label.configure(text="None")
+                    self.preview.configure(state='normal')
                     self.preview.delete("1.0", END)
-                    self.preview.config(state='disabled')
-                    self.stats_text.config(state='normal')
+                    self.preview.configure(state='disabled')
+                    self.stats_text.configure(state='normal')
                     self.stats_text.delete("1.0", END)
-                    self.stats_text.config(state='disabled')
+                    self.stats_text.configure(state='disabled')
 
             except ValueError:
                 messagebox.showerror("Error", "File not found in the project list.")
@@ -220,7 +222,7 @@ class LaTeXMarkdownEditor:
         #view_menu.add_command(label="File Info", command=self.toggle_file_info)
         menu_bar.add_cascade(label="View", menu=view_menu)
 
-        self.window.config(menu=menu_bar)
+        self.window.configure(menu=menu_bar)
 
     def toggle_sidebar(self):
         """Toggle the visibility of the project sidebar"""
@@ -288,10 +290,10 @@ class LaTeXMarkdownEditor:
 
         try:
             # Clear previous output
-            self.output_display.config(state=NORMAL)
+            self.output_display.configure(state=NORMAL)
             self.output_display.delete("1.0", END)
             self.output_display.insert("1.0", "Running Python script...\n")
-            self.output_display.config(state=DISABLED)
+            self.output_display.configure(state=DISABLED)
 
             # Run the Python file and capture output
             result = subprocess.run(
@@ -302,16 +304,16 @@ class LaTeXMarkdownEditor:
             )
 
             # Display the output in the output_display widget
-            self.output_display.config(state=NORMAL)
+            self.output_display.configure(state=NORMAL)
             self.output_display.insert("end", result.stdout if result.stdout else "No output\n")
             if result.stderr:
                 self.output_display.insert("end", f"\nErrors:\n{result.stderr}")
-            self.output_display.config(state=DISABLED)
+            self.output_display.configure(state=DISABLED)
 
         except Exception as e:
-            self.output_display.config(state=NORMAL)
+            self.output_display.configure(state=NORMAL)
             self.output_display.insert("end", f"Failed to run script:\n{e}")
-            self.output_display.config(state=DISABLED)
+            self.output_display.configure(state=DISABLED)
 
     def launch_server(self):
         """Launch a Python web server or Flask server on the specified port."""
@@ -377,7 +379,7 @@ class LaTeXMarkdownEditor:
             return
 
         # Ensure the editor is editable before recompiling
-        self.editor.config(state='normal')
+        self.editor.configure(state='normal')
 
         file_ext = Path(self.current_file).suffix.lower()
 
@@ -396,13 +398,13 @@ class LaTeXMarkdownEditor:
         else:
             content = self.editor.get("1.0", "end-1c")  # If no file is provided, use the editor's content
 
-        self.preview.config(state='normal')
+        self.preview.configure(state='normal')
         self.preview.delete("1.0", "end")
 
         # Convert Markdown to HTML using markdown library
         html_content = markdown.markdown(content)
         self.preview.insert("1.0", html_content)
-        self.preview.config(state='disabled')
+        self.preview.configure(state='disabled')
 
         messagebox.showinfo("Recompiled", "Markdown has been recompiled to HTML.")
 
@@ -464,7 +466,7 @@ class LaTeXMarkdownEditor:
             images = convert_from_path(pdf_path)
 
             # Limpiar el área de vista previa y mostrar las páginas como imágenes
-            self.preview.config(state='normal')
+            self.preview.configure(state='normal')
             self.preview.delete("1.0", "end")  # Limpiar el contenido anterior en la vista previa
 
             # Mantener referencias a imágenes para evitar que sean recolectadas
@@ -482,7 +484,7 @@ class LaTeXMarkdownEditor:
                 # Mantener referencia para evitar eliminación por recolección de basura
                 self.preview_image_refs.append(tk_image)
 
-            self.preview.config(state='disabled')
+            self.preview.configure(state='disabled')
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load PDF preview: {str(e)}")
@@ -593,7 +595,7 @@ class LaTeXMarkdownEditor:
         self.editor.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Make sure the editor is enabled
-        self.editor.config(state='normal')
+        self.editor.configure(state='normal')
 
         # Scrollbar that controls both editor and line numbers
         editor_scroll = Scrollbar(editor_container, orient=VERTICAL)
@@ -635,10 +637,10 @@ class LaTeXMarkdownEditor:
         def update():
             lines = self.editor.get("1.0", "end-1c").split("\n")
             line_numbers_text = "\n".join(str(i + 1) for i in range(len(lines)))
-            self.line_numbers.config(state="normal")
+            self.line_numbers.configure(state="normal")
             self.line_numbers.delete("1.0", "end")
             self.line_numbers.insert("1.0", line_numbers_text)
-            self.line_numbers.config(state="disabled")
+            self.line_numbers.configure(state="disabled")
 
         # Schedule the update to happen after the key event is fully processed
         self.window.after(1, update)
@@ -841,7 +843,7 @@ class LaTeXMarkdownEditor:
 
     def show_compilation_error(self, error_message):
         """Display LaTeX compilation errors in the errors text widget with improved formatting"""
-        self.errors_text.config(state='normal')
+        self.errors_text.configure(state='normal')
         self.errors_text.delete("1.0", "end")
 
         # Format the error message for better readability
@@ -860,13 +862,13 @@ class LaTeXMarkdownEditor:
             formatted_error += error_message
 
         self.errors_text.insert("1.0", formatted_error)
-        self.errors_text.config(state='disabled')
+        self.errors_text.configure(state='disabled')
 
         # Update preview panel to show error state
-        self.preview.config(state='normal')
+        self.preview.configure(state='normal')
         self.preview.delete("1.0", "end")
         self.preview.insert("1.0", "Compilation failed. Check the Errors/Warnings panel below.")
-        self.preview.config(state='disabled')
+        self.preview.configure(state='disabled')
 
     def setup_details_panel(self):
         """Setup the details panel (third column) to show file information and errors"""
@@ -912,7 +914,7 @@ class LaTeXMarkdownEditor:
                 content = f.read()
 
                 # Always enable the editor for editing when switching files
-                self.editor.config(state='normal')  # Enable editing for both LaTeX and Markdown files
+                self.editor.configure(state='normal')  # Enable editing for both LaTeX and Markdown files
 
                 # Clear the editor and load the new content
                 self.editor.delete("1.0", "end")
@@ -920,7 +922,7 @@ class LaTeXMarkdownEditor:
                 self.last_saved_content = content  # Keep track of the last saved content
 
             # Update the current file label
-            self.current_file_label.config(text=os.path.basename(file_path))
+            self.current_file_label.configure(text=os.path.basename(file_path))
             self.modified = False
 
             # Show "Run Python" button if it is a Python file, otherwise hide it
@@ -947,12 +949,12 @@ class LaTeXMarkdownEditor:
 
         try:
             if file_ext in ['.md', '.markdown']:
-                self.preview_type_label.config(text="Markdown Preview")
+                self.preview_type_label.configure(text="Markdown Preview")
                 html_content = markdown.markdown(content, extensions=['fenced_code'])
                 self.render_html_in_preview(html_content)
 
             elif file_ext in ['.tex', '.latex']:
-                self.preview_type_label.config(text="LaTeX Preview")
+                self.preview_type_label.configure(text="LaTeX Preview")
                 self.render_html_in_preview("LaTeX preview available after compilation (F5)")
 
         except Exception as e:
@@ -978,12 +980,12 @@ class LaTeXMarkdownEditor:
         chars = len(content)
 
         # Update statistics display
-        self.stats_text.config(state='normal')
+        self.stats_text.configure(state='normal')
         self.stats_text.delete("1.0", "end")
         self.stats_text.insert("1.0", f"Lines: {lines}\n")
         self.stats_text.insert("end", f"Words: {words}\n")
         self.stats_text.insert("end", f"Characters: {chars}\n")
-        self.stats_text.config(state='disabled')
+        self.stats_text.configure(state='disabled')
 
     def save_current_file(self):
         if self.current_file and self.modified:
@@ -1002,3 +1004,4 @@ class LaTeXMarkdownEditor:
             self.project_tree.insert('', 'end', text=os.path.basename(file), values=[file])
 
     # Additional methods for editor, syntax highlighting, preview updates, and error handling follow.
+

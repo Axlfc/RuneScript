@@ -1,5 +1,6 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import Toplevel, Label, Button, Frame, LEFT, RIGHT, messagebox
+from src.config.fonts import AppFonts
 import tkinter.font as font
 import pyperclip
 import webbrowser
@@ -24,9 +25,9 @@ class AboutWindow:
         self.center_window(500, 400)
 
         # Define fonts
-        self.title_font = font.Font(family="Arial", size=18, weight="bold")
-        self.header_font = font.Font(family="Arial", size=14, weight="bold")
-        self.normal_font = font.Font(family="Arial", size=12)
+        self.title_font = AppFonts.TITLE
+        self.header_font = AppFonts.HEADER
+        self.normal_font = AppFonts.NORMAL
 
         # Create and pack the main frame
         self.main_frame = Frame(self.about_window, padx=20, pady=20)
@@ -78,3 +79,4 @@ class AboutWindow:
             webbrowser.open(url)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open web browser: {e}")
+

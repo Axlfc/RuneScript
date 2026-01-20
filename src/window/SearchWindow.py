@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Entry, Button, END
+﻿from tkinter import Toplevel, Label, Entry, Button, END
 from src.views.tk_utils import script_text
 
 
@@ -57,4 +57,5 @@ class SearchWindow:
     def cancel(self):
         self.script_text.tag_remove("found", "1.0", END)
         self.search_toplevel.destroy()
+
 

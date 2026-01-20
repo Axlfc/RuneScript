@@ -1,4 +1,4 @@
-import os
+﻿import os
 import platform
 import re
 import subprocess
@@ -131,8 +131,7 @@ def run_script_windows():
         command,
         stdout=subprocess.PIPE if generate_stdout else None,
         stderr=subprocess.PIPE if generate_stderr else None,
-        text=True,
-    )
+        text=True)
     stdout_data, stderr_data = process.communicate()
     if generate_stdout:
         script_out_name = script_name_label.cget("text") + ".out"
@@ -173,7 +172,7 @@ def find_python_venv(project_dir):
             if os.path.exists(venv_path):
                 return venv_path
 
-    # Búsqueda recursiva más profunda
+    # BÃºsqueda recursiva mÃ¡s profunda
     for root, dirs, files in os.walk(project_dir):
         for dir_name in dirs:
             if dir_name in venv_names or 'venv' in dir_name.lower():
@@ -187,7 +186,7 @@ def find_python_venv(project_dir):
 
 def run_script_with_venv(script_path, arguments=None, project_dir=None):
     """
-    Ejecuta un script de Python utilizando un entorno virtual si está disponible.
+    Ejecuta un script de Python utilizando un entorno virtual si estÃ¡ disponible.
 
     Args:
         script_path (str): Ruta al script a ejecutar
@@ -195,7 +194,7 @@ def run_script_with_venv(script_path, arguments=None, project_dir=None):
         project_dir (str, optional): Directorio del proyecto
 
     Returns:
-        subprocess.CompletedProcess: Resultado de la ejecución del script
+        subprocess.CompletedProcess: Resultado de la ejecuciÃ³n del script
     """
     if project_dir is None:
         project_dir = os.path.dirname(script_path)
@@ -203,13 +202,13 @@ def run_script_with_venv(script_path, arguments=None, project_dir=None):
     # Buscar ejecutable de Python del entorno virtual
     venv_python = find_python_venv(project_dir)
 
-    # Preparar comando de ejecución
+    # Preparar comando de ejecuciÃ³n
     if venv_python:
         cmd = [venv_python, script_path]
     else:
         cmd = [sys.executable, script_path]
 
-    # Añadir argumentos si están presentes
+    # AÃ±adir argumentos si estÃ¡n presentes
     if arguments:
         cmd.extend(arguments)
 
@@ -255,8 +254,7 @@ def run_script():
             + [directory_label.cget("text") + "/" + script_name_label.cget("text")]
             + arguments.split(),
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+            stderr=subprocess.PIPE)
         stdout_data, stderr_data = process.communicate()
         if generate_stdout:
             script_out_name = script_name_label.cget("text") + ".out"
@@ -295,8 +293,7 @@ def run_script_with_timeout(timeout_seconds):
             + [directory_label.cget("text") + "/" + script_name_label.cget("text")]
             + arguments.split(),
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+            stderr=subprocess.PIPE)
         sleep(timeout_seconds)
         stdout_data, stderr_data = process.communicate()
         if generate_stdout:
@@ -369,8 +366,7 @@ EOF"""
         messagebox.showerror(
             "Error Scheduling Script",
             f"""An error occurred while scheduling the script:
-{str(e)}""",
-        )
+{str(e)}""")
 
 
 def run_script_crontab(minute, hour, day, month, day_of_week):
@@ -417,8 +413,7 @@ def run_script_crontab(minute, hour, day, month, day_of_week):
         messagebox.showerror(
             "Error Scheduling Script",
             f"""An error occurred while scheduling the script:
-{str(e)}""",
-        )
+{str(e)}""")
 
 
 def see_stdout():
@@ -489,3 +484,4 @@ def get_operative_system():
         return "Windows"
     else:
         return platform.system()
+

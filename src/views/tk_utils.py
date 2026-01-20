@@ -1,16 +1,18 @@
-import customtkinter
+﻿import customtkinter
 from tkinter.ttk import Treeview
+from tkinter import ttk
 from src.controllers.parameters import (
     ensure_user_config,
     load_theme_setting,
-    get_scriptsstudio_directory, read_config_parameter,
-)
+    get_scriptsstudio_directory, read_config_parameter)
 from src.localization import load_localization
 
 from customtkinter import CTkLabel, CTkEntry
 from tkinter import StringVar, IntVar, BooleanVar, messagebox, font
+from src.config.fonts import AppFonts
 from customtkinter import CTkFrame, CTkTextbox
 from tkinter import Menu
+from src.config.fonts import AppFonts
 import os
 
 
@@ -71,10 +73,10 @@ toolbar = CTkFrame(root)
 # Create a new Font object with the desired font family and size
 my_font_size = read_config_parameter("options.editor_settings.font_size")
 my_font_family = read_config_parameter("options.editor_settings.font_family")
-my_font = font.Font(family=my_font_family, size=my_font_size)
+my_font = AppFonts.init_editor_font(my_font_family, my_font_size)
 
 menu = Menu(root)
-root.config(menu=menu)
+root.configure(menu=menu)
 
 frm = CTkFrame(root)
 directory_label = CTkLabel(frm, text=os.getcwd(), anchor="center")
@@ -85,11 +87,10 @@ script_text = CTkTextbox(
 )
 text = CTkTextbox(
     root,
-    wrap="word",
-    font=my_font,
-    border_width=0,
-    undo=True,
-)
+    font=('Consolas', 12),  # Formato: (nombre_fuente, tamaño_px)
+    wrap='word',
+    undo=True)
+
 status_label_var = StringVar()
 all_fonts = StringVar()
 all_size = StringVar()
@@ -119,5 +120,7 @@ filesystem_frm = CTkFrame(root)
 scheduled_tasks_frm = CTkFrame(root)
 tree_frame = CTkFrame(filesystem_frm)
 tree_frame.grid(row=0, column=0, sticky="nsew")
-tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
+tree = Treeview(tree_frame, columns=("fullpath"), displaycolumns=())
 configure_app()
+
+style = ttk.Style()

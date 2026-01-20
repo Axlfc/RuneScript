@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Label, Frame, Scrollbar, Canvas, LEFT, BOTH, VERTICAL, Y
+﻿from tkinter import Toplevel, Label, Frame, Scrollbar, Canvas, LEFT, BOTH, VERTICAL, Y
 
 
 class HelpWindow:
@@ -95,3 +95,4 @@ class HelpWindow:
                 row_frame.pack(fill="x", pady=2)
                 Label(row_frame, text=f"{action}:", anchor="w", width=30).pack(side=LEFT, padx=10)
                 Label(row_frame, text=shortcut, anchor="e", width=20).pack(side=LEFT)
+

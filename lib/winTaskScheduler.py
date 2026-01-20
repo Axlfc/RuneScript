@@ -1,16 +1,16 @@
-import subprocess
+﻿import subprocess
 import argparse
 import datetime
 import re
 
 """
-Lista de parámetros: 
+Lista de parÃ¡metros: 
 x /Create         Crea una nueva tarea programada.
 x /Delete         Elimina las tareas programadas.
 x /Query          Muestra todas las tareas programadas.
 /Change         Cambia las propiedades de la tarea programada.
-/Run            Ejecuta la tarea programada a petición.
-/End            Detiene la tarea programada que se está ejecutando actualmente.
+/Run            Ejecuta la tarea programada a peticiÃ³n.
+/End            Detiene la tarea programada que se estÃ¡ ejecutando actualmente.
 /ShowSid        Muestra el identificador de seguridad correspondiente al nombre de una tarea programada.
 
 # https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/?view=windowsserver2019-ps
@@ -355,8 +355,7 @@ def list_tasks():
                 detail_command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-            )
+                text=True)
             detail_output, detail_error = detail_process.communicate()
             if detail_error:
                 print(f"Error getting details for task {task_name}: {detail_error}")
@@ -370,7 +369,7 @@ def list_tasks():
                     else "Unknown Command"
                 )
                 next_run_time_match = re.search(
-                    "Hora pr¢xima ejecuci¢n:\\s*([^\\r\\n]+)", detail_output
+                    "Hora prÂ¢xima ejecuciÂ¢n:\\s*([^\\r\\n]+)", detail_output
                 )
                 next_run_time = (
                     next_run_time_match.group(1).strip()
@@ -657,9 +656,9 @@ def main():
             args.day,
             args.month,
             args.day_of_week,
-            args.script_path,
-        )
+            args.script_path)
 
 
 if __name__ == "__main__":
     main()
+

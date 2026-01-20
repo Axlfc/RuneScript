@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+﻿from typing import List, Dict, Any, Optional
 
 from src.controllers.parameters import read_config_parameter
 from src.utils.file_helpers import enrich_context_with_relevant_files, detect_relevant_files
@@ -101,12 +101,12 @@ class AutonomousProjectAgent:
             f.write("# Development Journal\n\n")
             f.write(f"Project initialized at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             f.write("## Project Phases\n\n")
-            f.write("1. 🔍 Requirement Analysis - Understanding what we need to build\n")
-            f.write("2. 📐 Architecture Design - Planning the structure\n")
-            f.write("3. 🧪 Test-Driven Development - Writing tests first\n")
-            f.write("4. ⚙️ Implementation - Building the actual code\n")
-            f.write("5. 🔧 Refactoring - Improving the code quality\n")
-            f.write("6. ✅ Validation - Ensuring everything works\n\n")
+            f.write("1. ðŸ” Requirement Analysis - Understanding what we need to build\n")
+            f.write("2. ðŸ“ Architecture Design - Planning the structure\n")
+            f.write("3. ðŸ§ª Test-Driven Development - Writing tests first\n")
+            f.write("4. âš™ï¸ Implementation - Building the actual code\n")
+            f.write("5. ðŸ”§ Refactoring - Improving the code quality\n")
+            f.write("6. âœ… Validation - Ensuring everything works\n\n")
             f.write("## Activity Log\n\n")
         logging.info(f"Created development journal at {journal_path}")
 
@@ -403,7 +403,7 @@ class AutonomousProjectAgent:
             f.write(f"Project started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             f.write(f"Requirements: {initial_requirements}\n\n")
             f.write("## Development Status\n\n")
-            f.write("🔄 Initializing autonomous development...\n")
+            f.write("ðŸ”„ Initializing autonomous development...\n")
             f.write("\n## Subtasks\n\n")
             f.write("| Task ID | Description | Status | Created | Updated |\n")
             f.write("|---------|-------------|--------|---------|--------|\n")
@@ -459,11 +459,11 @@ class AutonomousProjectAgent:
                 for task_id, task in self.subtask_manager.subtasks.items():
                     status = task["status"]
                     status_emoji = {
-                        "pending": "⏳",
-                        "in_progress": "🔄",
-                        "completed": "✅",
-                        "failed": "❌"
-                    }.get(status, "❓")
+                        "pending": "â³",
+                        "in_progress": "ðŸ”„",
+                        "completed": "âœ…",
+                        "failed": "âŒ"
+                    }.get(status, "â“")
 
                     created = datetime.fromisoformat(task["created_at"]).strftime("%H:%M:%S")
                     updated = datetime.fromisoformat(task["updated_at"]).strftime("%H:%M:%S")
@@ -494,11 +494,11 @@ class AutonomousProjectAgent:
                     for task_id, task in self.subtask_manager.subtasks.items():
                         status = task["status"]
                         status_emoji = {
-                            "pending": "⏳",
-                            "in_progress": "🔄",
-                            "completed": "✅",
-                            "failed": "❌"
-                        }.get(status, "❓")
+                            "pending": "â³",
+                            "in_progress": "ðŸ”„",
+                            "completed": "âœ…",
+                            "failed": "âŒ"
+                        }.get(status, "â“")
 
                         created = datetime.fromisoformat(task["created_at"]).strftime("%H:%M:%S")
                         updated = datetime.fromisoformat(task["updated_at"]).strftime("%H:%M:%S")
@@ -526,7 +526,7 @@ class AutonomousProjectAgent:
             if status_index >= 0:
                 # Replace or add the status line
                 if status_index + 1 < len(content) and content[status_index + 1].startswith(
-                        ("🔄", "🔍", "📐", "🧪", "⚙️", "🔧", "✅", "❌", "🎉")):
+                        ("ðŸ”„", "ðŸ”", "ðŸ“", "ðŸ§ª", "âš™ï¸", "ðŸ”§", "âœ…", "âŒ", "ðŸŽ‰")):
                     content[status_index + 1] = f"{status_message}\n"
                 else:
                     content.insert(status_index + 1, f"{status_message}\n")
@@ -628,7 +628,7 @@ class AutonomousProjectAgent:
         }
 
         thought = random.choice(creative_thoughts.get(context, ["Hmm, thinking about the best approach..."]))
-        self._update_development_journal(f"💭 {thought}", "Creative Thinking")
+        self._update_development_journal(f"ðŸ’­ {thought}", "Creative Thinking")
         logging.info(f"Creative thought: {thought}")
 
     def _add_spontaneous_improvement(self):
@@ -696,7 +696,7 @@ class AutonomousProjectAgent:
         try:
             # Phase 1: Requirement Analysis
             self.current_phase = "requirement_analysis"
-            self._update_readme_status("🔍 Analyzing requirements...")
+            self._update_readme_status("ðŸ” Analyzing requirements...")
             self._update_development_journal("Starting requirement analysis", "Requirement Analysis")
 
             self.project_scope = self.requirement_agent.analyze(initial_requirements)
@@ -705,7 +705,7 @@ class AutonomousProjectAgent:
             self.state.log_task("Analyzed Requirements")
             self._update_development_journal(
                 f"Project scope defined:\n```json\n{json.dumps(self.project_scope, indent=2)}\n```")
-            self._update_readme_status("✅ Requirements analyzed")
+            self._update_readme_status("âœ… Requirements analyzed")
 
             time.sleep(1)
 
@@ -719,7 +719,7 @@ class AutonomousProjectAgent:
 
                 # Phase 2: Architecture Design
                 self.current_phase = "architecture_design"
-                self._update_readme_status("📐 Designing architecture...")
+                self._update_readme_status("ðŸ“ Designing architecture...")
 
                 if random.random() < 0.7:
                     self._inject_creative_thought("architecture")
@@ -737,11 +737,11 @@ class AutonomousProjectAgent:
                 self.state.log_task("Designed Architecture")
                 self._update_development_journal(
                     f"Architecture design:\n```json\n{json.dumps(self.architecture, indent=2)}\n```")
-                self._update_readme_status("✅ Architecture designed")
+                self._update_readme_status("âœ… Architecture designed")
 
                 # Phase 3: Test-Driven Development (RED)
                 self.current_phase = "test_driven_development"
-                self._update_readme_status("🧪 Generating tests...")
+                self._update_readme_status("ðŸ§ª Generating tests...")
 
                 if random.random() < 0.5:
                     self._inject_creative_thought("testing")
@@ -777,13 +777,13 @@ class AutonomousProjectAgent:
                 if red_failed:
                     self._update_development_journal("Red phase confirmed: tests fail as expected.")
                 else:
-                    self._update_development_journal("Warning: RED tests unexpectedly passed!", "⚠️ TDD Violation")
+                    self._update_development_journal("Warning: RED tests unexpectedly passed!", "âš ï¸ TDD Violation")
 
-                self._update_readme_status("✅ Tests generated")
+                self._update_readme_status("âœ… Tests generated")
 
                 # Phase 4: Implementation (GREEN)
                 self.current_phase = "implementation"
-                self._update_readme_status("⚙️ Implementing features...")
+                self._update_readme_status("âš™ï¸ Implementing features...")
 
                 if random.random() < 0.8:
                     self._inject_creative_thought("implementation")
@@ -813,11 +813,11 @@ class AutonomousProjectAgent:
                         self.tdd.add_implementation(cycle_id, impl_code)
 
                 self.rag.embed_current_vault()
-                self._update_readme_status("✅ Features implemented")
+                self._update_readme_status("âœ… Features implemented")
 
                 # Phase 5: Refactoring (conditional)
                 self.current_phase = "refactoring"
-                self._update_readme_status("🔧 Evaluating need for refactoring...")
+                self._update_readme_status("ðŸ”§ Evaluating need for refactoring...")
 
                 if random.random() < 0.3:
                     self._inject_creative_thought("refactoring")
@@ -838,11 +838,11 @@ class AutonomousProjectAgent:
 
                     self.tdd.complete_cycle(cycle_id)
 
-                self._update_readme_status("✅ Code refactored")
+                self._update_readme_status("âœ… Code refactored")
 
                 # Phase 6: Validation
                 self.current_phase = "validation"
-                self._update_readme_status("✅ Validating code...")
+                self._update_readme_status("âœ… Validating code...")
 
                 success = self.testing_framework.run_tests()
                 self.state.add_test_result(f"iteration_{iteration_count}_validation", success)
@@ -850,7 +850,7 @@ class AutonomousProjectAgent:
 
                 if not success and iteration_count < max_iterations:
                     self._update_development_journal("Tests failed, need to fix implementation!", "Validation Failed")
-                    self._update_readme_status("❌ Tests failed, fixing issues...")
+                    self._update_readme_status("âŒ Tests failed, fixing issues...")
                     feedback = {"success": success, "needs_refinement": True}
                     self.feedback_buffer = feedback
                 else:
@@ -866,7 +866,7 @@ class AutonomousProjectAgent:
                 time.sleep(1)
 
             self.current_phase = "completed"
-            self._update_readme_status("🎉 Project development completed!")
+            self._update_readme_status("ðŸŽ‰ Project development completed!")
             self._update_development_journal("Autonomous project development completed.", "Project Completion")
             self._create_final_documentation()
             self.rag.embed_current_vault()
@@ -878,13 +878,13 @@ class AutonomousProjectAgent:
             logging.error(error_msg)
             self.state.log_error(error_msg)
             self.current_phase = "error"
-            self._update_readme_status(f"❌ Development error: {str(e)[:50]}...")
+            self._update_readme_status(f"âŒ Development error: {str(e)[:50]}...")
             self.state.export_state(os.path.join(self.project_path, "project_state_error.json"))
 
         # Final vault sync
         self.rag.embed_current_vault()
 
-        # 🔓 FIX: Re-enable prompt input at the end of dev
+        # ðŸ”“ FIX: Re-enable prompt input at the end of dev
         if hasattr(self, 'ide_instance') and self.ide_instance:
             if hasattr(self.ide_instance, "ai_response_queue"):
                 self.ide_instance.ai_response_queue.put(("completed", "Autonomous development finished"))
@@ -897,7 +897,7 @@ class AutonomousProjectAgent:
             self.state.export_state(checkpoint_path)
             logging.info(f"Checkpoint saved at: {checkpoint_path}")
         except Exception as e:
-            logging.error(f"❌ Failed to save checkpoint to {checkpoint_path}")
+            logging.error(f"âŒ Failed to save checkpoint to {checkpoint_path}")
             logging.error(f"Exception: {e}")
             logging.debug(traceback.format_exc())
 
@@ -1164,3 +1164,4 @@ class AutonomousProjectAgent:
             "total_files": len(self.state.state["code_files"]),
             "errors": len(self.state.state["errors"])
         }
+

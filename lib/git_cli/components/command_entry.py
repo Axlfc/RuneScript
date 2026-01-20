@@ -1,4 +1,4 @@
-from tkinter import Frame, Button, Entry, END
+﻿from tkinter import Frame, Button, Entry, END
 
 
 class CommandEntryView:
@@ -16,10 +16,10 @@ class CommandEntryView:
 
         # Git command buttons
         button_defs = [
-            ("💾 Commit", "commit"),
-            ("⬆️ Push", "push"),
-            ("⬇️ Pull", "pull"),
-            ("🔄 Fetch", "fetch"),
+            ("ðŸ’¾ Commit", "commit"),
+            ("â¬†ï¸ Push", "push"),
+            ("â¬‡ï¸ Pull", "pull"),
+            ("ðŸ”„ Fetch", "fetch"),
         ]
 
         # Common button styling

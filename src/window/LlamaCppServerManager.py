@@ -1,4 +1,4 @@
-
+﻿
 import io
 import os
 import signal
@@ -126,15 +126,15 @@ class LlamaCppServerManager:
             status = message.get('status', '')
             if status == 'starting':
                 status_label_var.set("Starting Server")
-                self.start_button.config(state="disabled")
+                self.start_button.configure(state="disabled")
             elif status == 'running':
                 status_label_var.set("Server Running")
-                self.start_button.config(state="disabled")
-                self.stop_button.config(state="normal")
+                self.start_button.configure(state="disabled")
+                self.stop_button.configure(state="normal")
             elif status == 'stopped':
                 status_label_var.set("Server Stopped")
-                self.start_button.config(state="normal")
-                self.stop_button.config(state="disabled")
+                self.start_button.configure(state="normal")
+                self.stop_button.configure(state="disabled")
             elif status == 'error':
                 status_label_var.set("Server Error")
 
@@ -461,7 +461,7 @@ class LlamaCppServerManager:
                         downloaded += len(data)
                         progress = (downloaded / total_size) * 100
                         progress_var.set(progress)
-                        status_label.config(
+                        status_label.configure(
                             text=f"Downloaded: {downloaded // 1024 // 1024}MB / {total_size // 1024 // 1024}MB")
     
                 self.scan_for_models()
@@ -556,8 +556,8 @@ class LlamaCppServerManager:
             )
 
             # Update UI to reflect server status
-            self.start_button.config(state="disabled")
-            self.stop_button.config(state="normal")
+            self.start_button.configure(state="disabled")
+            self.stop_button.configure(state="normal")
             status_label_var.set("Server Starting")
 
             # Start monitoring output
@@ -614,8 +614,8 @@ class LlamaCppServerManager:
         """
         Reset the UI buttons after the server stops.
         """
-        self.start_button.config(state="normal")
-        self.stop_button.config(state="disabled")
+        self.start_button.configure(state="normal")
+        self.stop_button.configure(state="disabled")
         status_label_var.set("Server Stopped")
 
     def monitor_output(self):
@@ -693,8 +693,8 @@ class LlamaCppServerManager:
 
                 # Reset UI and state
                 self.server_process = None
-                self.start_button.config(state="normal")
-                self.stop_button.config(state="disabled")
+                self.start_button.configure(state="normal")
+                self.stop_button.configure(state="disabled")
                 status_label_var.set("Server Stopped")
                 self.update_status("Server stopped")
 
@@ -740,3 +740,4 @@ def create_llama_cpp_menu(menu_bar):
         label="Llama.cpp Server Settings",
         command=lambda: LlamaCppServerManager()
     )
+

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import logging
 from tkinter import END
 
@@ -26,10 +26,10 @@ class ProjectFileManager:
             self.current_project_files.clear()
 
             for root, dirs, files in os.walk(self.current_project):
-                parent = self.tree.insert('', 'end', text=os.path.basename(root), values=(root,))
+                parent = self.tree.insert('', 'end', text=os.path.basename(root), values=(root))
                 for file in files:
                     file_path = os.path.join(root, file)
-                    file_id = self.tree.insert(parent, 'end', text=file, values=(file_path,))
+                    file_id = self.tree.insert(parent, 'end', text=file, values=(file_path))
                     self.current_project_files[file_id] = file_path
         except Exception as e:
             logging.error(f"Error populating tree view: {e}")
@@ -81,3 +81,4 @@ class ProjectFileManager:
         except Exception as e:
             logging.error(f"Failed to open file {relative_path}: {e}")
             self.log_fn(f"Failed to open file: {e}")
+

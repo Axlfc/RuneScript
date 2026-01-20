@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 from difflib import get_close_matches
 from typing import List, Dict, Optional, Tuple
@@ -128,3 +128,4 @@ def setup_prompt_completion(input_widget, prompt_interpreter):
         return None  # Allow default tab behavior
 
     input_widget.bind("<Tab>", handle_tab)
+

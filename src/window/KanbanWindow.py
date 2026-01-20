@@ -1,4 +1,4 @@
-import json
+﻿import json
 from tkinter import *
 
 
@@ -89,8 +89,8 @@ class KanbanWindow:
             if isinstance(target, Listbox):
                 for child in self.columns_frame.winfo_children():
                     if isinstance(child, Frame):
-                        child.config(bg="SystemButtonFace")
-                target.master.config(bg="lightgreen")
+                        child.configure(bg="SystemButtonFace")
+                target.master.configure(bg="lightgreen")
 
     def on_drop(self, event):
         """Handles the drop event for tasks"""
@@ -110,7 +110,7 @@ class KanbanWindow:
                 self.refresh_kanban_board()
             for child in self.columns_frame.winfo_children():
                 if isinstance(child, Frame):
-                    child.config(bg="SystemButtonFace")
+                    child.configure(bg="SystemButtonFace")
             if self.drag_label:
                 self.drag_label.destroy()
                 self.drag_label = None
@@ -143,8 +143,7 @@ class KanbanWindow:
         column_frame.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
         label = Label(
             column_frame,
-            text=f"{column_name} (Limit: {self.kanban_data['wip_limits'][column_name]})",
-        )
+            text=f"{column_name} (Limit: {self.kanban_data['wip_limits'][column_name]})")
         label.pack(pady=5)
         task_list = Listbox(column_frame, selectmode=SINGLE)
         task_list.pack(fill=BOTH, expand=True, padx=5, pady=5)
@@ -165,3 +164,4 @@ class KanbanWindow:
             entry_widget = column_frame.winfo_children()[-1]
             if isinstance(entry_widget, Entry):
                 entry_widget.delete(0, END)
+

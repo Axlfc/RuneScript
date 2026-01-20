@@ -1,4 +1,4 @@
-# git_cli/core/repository.py
+﻿# git_cli/core/repository.py
 from pathlib import Path
 from typing import Optional, Union, List, Dict, Any, Tuple
 

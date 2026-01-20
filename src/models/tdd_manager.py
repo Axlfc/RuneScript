@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 from typing import Optional, Dict, Any, List, Tuple, Union
 from datetime import datetime
@@ -880,3 +880,4 @@ class TDDManager:
 
         self._save_history()
         return next_stage
+

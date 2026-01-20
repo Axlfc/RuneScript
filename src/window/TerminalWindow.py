@@ -1,4 +1,4 @@
-# TerminalWindow.py
+﻿# TerminalWindow.py
 import os
 import subprocess
 from tkinter import Toplevel, Entry, END
@@ -44,8 +44,7 @@ class TerminalWindow:
                     stderr=subprocess.STDOUT,
                     shell=True,
                     text=True,
-                    cwd=os.getcwd(),
-                )
+                    cwd=os.getcwd())
                 # Insert command and its output into the text area
                 self.output_text.insert(END, f"{command}\n{output}\n")
             except subprocess.CalledProcessError as e:
@@ -71,4 +70,5 @@ class TerminalWindow:
             )
             self.entry.delete(0, END)
             self.entry.insert(0, command)
+
 

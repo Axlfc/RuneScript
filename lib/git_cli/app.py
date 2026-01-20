@@ -1,4 +1,4 @@
-import os
+﻿import os
 from pathlib import Path
 
 from lib.git_cli.utils.event_bus import EventBus

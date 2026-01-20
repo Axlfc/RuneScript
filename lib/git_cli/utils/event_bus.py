@@ -1,4 +1,4 @@
-class EventBus:
+﻿class EventBus:
     """
     Simple event bus implementation for decoupling components.
     Allows components to publish events and subscribe to them.

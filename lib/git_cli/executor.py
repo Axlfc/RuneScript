@@ -1,4 +1,4 @@
-# git_cli/core/executor.py
+﻿# git_cli/core/executor.py
 from pathlib import Path
 import subprocess
 from typing import List, Optional, Tuple, Union
@@ -79,3 +79,4 @@ class GitExecutor:
             encoding=encoding,
             check=check
         )
+

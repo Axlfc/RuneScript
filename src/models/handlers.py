@@ -1,4 +1,4 @@
-from langchain.callbacks.base import BaseCallbackHandler
+﻿from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema.messages import BaseMessage
 from langchain.schema import LLMResult
 from typing import Dict, List, Any
@@ -64,3 +64,4 @@ class MyCustomHandler(BaseCallbackHandler):
         ""\" """
         print("\n\ngeneration concluded")
         self._queue.put(self._stop_signal)
+

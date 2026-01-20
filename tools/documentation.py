@@ -1,4 +1,4 @@
-import os
+﻿import os
 import ast
 import lorem
 
@@ -104,16 +104,16 @@ Project Structure
 .. code-block:: text
 
     {project_name}/
-    ├── data/
-    ├── icons/
-    ├── images/
-    ├── lib/
-    ├── src/
-    │   ├── controllers/
-    │   ├── models/
-    │   └── views/
-    ├── test/
-    └── tools/
+    â”œâ”€â”€ data/
+    â”œâ”€â”€ icons/
+    â”œâ”€â”€ images/
+    â”œâ”€â”€ lib/
+    â”œâ”€â”€ src/
+    â”‚   â”œâ”€â”€ controllers/
+    â”‚   â”œâ”€â”€ models/
+    â”‚   â””â”€â”€ views/
+    â”œâ”€â”€ test/
+    â””â”€â”€ tools/
 
 Contents
 --------
@@ -220,7 +220,7 @@ License
 
 ScriptsEditor is released under the GNU General Public License, version 2.
 
-Copyright (c) 2024 Axel Fernández Curros
+Copyright (c) 2024 Axel FernÃ¡ndez Curros
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

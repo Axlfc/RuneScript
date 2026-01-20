@@ -1,4 +1,4 @@
-import os
+﻿import os
 import ast
 import sys
 import time
@@ -34,8 +34,7 @@ def process_chat_completions(client, history):
             messages=history,
             temperature=0.7,
             stream=True,
-            max_tokens=150,
-        )
+            max_tokens=150)
         assistant_response = ""
         for chunk in response:
             if chunk.choices[0].delta.content:
@@ -211,3 +210,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+﻿from abc import ABC, abstractmethod
 
 
 class CommunicationStrategy(ABC):
@@ -13,3 +13,4 @@ class CommunicationStrategy(ABC):
     @abstractmethod
     def get_responses(self, thread_id):
         pass
+

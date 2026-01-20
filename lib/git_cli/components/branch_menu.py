@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 from tkinter import Menu, simpledialog, END
 
 
@@ -20,7 +20,7 @@ class BranchMenuManager:
 
         # Add "Create new branch" option at the top
         self.branch_menu.add_command(
-            label="🌱 Create new branch",
+            label="ðŸŒ± Create new branch",
             command=self.create_new_branch
         )
         self.branch_menu.add_separator()
@@ -40,7 +40,7 @@ class BranchMenuManager:
             for branch in branches:
                 is_active = branch.startswith("*")
                 branch_name = branch[2:] if is_active else branch
-                display_name = f"✓ {branch_name}" if is_active else branch_name
+                display_name = f"âœ“ {branch_name}" if is_active else branch_name
                 self.branch_menu.add_command(
                     label=display_name,
                     command=lambda b=branch_name: self.checkout_branch(b)

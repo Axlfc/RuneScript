@@ -1,4 +1,4 @@
-import os
+﻿import os
 import subprocess
 import threading
 import queue
@@ -158,7 +158,7 @@ class SystemInfoWindow(Toplevel):
         frame = Frame(parent)
         frame.pack(fill="both", expand=True)
 
-        tree = Treeview(frame, columns=("Value",), show="tree")
+        tree = Treeview(frame, columns=("Value"), show="tree")
         tree.heading("#0", text="Property")
         tree.column("#0", width=250)
         tree.heading("Value", text="Value")
@@ -187,11 +187,11 @@ class SystemInfoWindow(Toplevel):
                         parent_item = tree_items[label]
                         tree.delete(*tree.get_children(parent_item))
                     for line in result.splitlines():
-                        tree.insert(parent_item, "end", text="", values=(line,))
+                        tree.insert(parent_item, "end", text="", values=(line))
                 elif label in tree_items:
-                    tree.item(tree_items[label], values=(result,))
+                    tree.item(tree_items[label], values=(result))
                 else:
-                    item_id = tree.insert("", "end", text=label, values=(result,))
+                    item_id = tree.insert("", "end", text=label, values=(result))
                     tree_items[label] = item_id
             frame.after(100, process_queue)
 
@@ -240,11 +240,11 @@ class SystemInfoWindow(Toplevel):
                             parent_item = tree_items[label]
                             tree.delete(*tree.get_children(parent_item))
                         for line in result.splitlines():
-                            tree.insert(parent_item, "end", text="", values=(line,))
+                            tree.insert(parent_item, "end", text="", values=(line))
                     elif label in tree_items:
-                        tree.item(tree_items[label], values=(result,))
+                        tree.item(tree_items[label], values=(result))
                     else:
-                        item_id = tree.insert("", "end", text=label, values=(result,))
+                        item_id = tree.insert("", "end", text=label, values=(result))
                         tree_items[label] = item_id
                 tree.after(100, process_queue)
 

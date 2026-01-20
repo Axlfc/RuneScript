@@ -1,4 +1,4 @@
-import os
+﻿import os
 import logging
 import tkinter as tk
 import uuid
@@ -136,4 +136,5 @@ class IDEController:
     def run(self):
         """Start the application main loop"""
         self.root.mainloop()
+
 

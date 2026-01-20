@@ -1,4 +1,4 @@
-class GitConfig:
+﻿class GitConfig:
     """Handles Git configuration"""
 
     def __init__(self, repo_dir):

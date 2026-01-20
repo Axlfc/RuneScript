@@ -1,4 +1,4 @@
-from tkinter import Listbox, Button, LabelFrame, END, Menu, Frame, messagebox
+﻿from tkinter import Listbox, Button, LabelFrame, END, Menu, Frame, messagebox
 from tkinter.ttk import PanedWindow
 
 
@@ -14,7 +14,7 @@ class StagingTab(Frame):
         self.ui_controller = ui_controller
         self._controller_attached = False
         self._ui_initialized = False
-        self.git_window = None  # si es necesario puedes recibirlo también como parámetro
+        self.git_window = None  # si es necesario puedes recibirlo tambiÃ©n como parÃ¡metro
 
         self.setup_staging_tab()
         self.setup_context_menus()
@@ -64,7 +64,6 @@ class StagingTab(Frame):
             selectmode="extended",
             background="#1E1E1E",
             foreground="#D4D4D4",
-            selectbackground="#264F78",
             selectforeground="#FFFFFF"
         )
         self.unstaged_files.pack(fill="both", expand=True, padx=5, pady=5)
@@ -116,7 +115,6 @@ class StagingTab(Frame):
             selectmode="extended",
             background="#1E1E1E",
             foreground="#D4D4D4",
-            selectbackground="#264F78",
             selectforeground="#FFFFFF"
         )
         self.staged_files.pack(fill="both", expand=True, padx=5, pady=5)

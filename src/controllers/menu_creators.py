@@ -1,4 +1,4 @@
-import os
+﻿import os
 from tkinter import Menu, messagebox
 
 from src.controllers.parameters import read_config_parameter, write_config_parameter
@@ -12,8 +12,7 @@ from src.controllers.script_tasks import (
     generate_latex_pdf,
     change_interpreter,
     run_python_script,
-    analyze_csv_data,
-)
+    analyze_csv_data)
 from src.views.tk_utils import local_python_var
 #from src.controllers.menu_functions import open_create_venv_window
 
@@ -221,23 +220,23 @@ def create_python_menu(parent_menu):
     python_menu = Menu(parent_menu, tearoff=0)
     parent_menu.add_cascade(label="Python", menu=python_menu)
 
-    # Si NO hay .venv, solo mostramos "Create New Virtual Environment…"
+    # Si NO hay .venv, solo mostramos "Create New Virtual Environmentâ€¦"
     if missing:
         from src.controllers.menu_functions import open_create_venv_window
         python_menu.add_command(
-            label="Create New Virtual Environment…",
+            label="Create New Virtual Environmentâ€¦",
             command=open_create_venv_window
         )
         return
 
-    # ————————— Si HAY venv, pintamos todo el menú completo —————————
+    # â€”â€”â€”â€”â€”â€”â€”â€”â€” Si HAY venv, pintamos todo el menÃº completo â€”â€”â€”â€”â€”â€”â€”â€”â€”
 
     interpreters = read_config_parameter("options.project_settings.interpreters") or []
     current      = read_config_parameter("options.project_settings.current_interpreter") or ""
 
-    # Submenú de selección de intérprete
+    # SubmenÃº de selecciÃ³n de intÃ©rprete
     interp_menu = Menu(python_menu, tearoff=0)
-    python_menu.add_cascade(label="Select Interpreter…", menu=interp_menu)
+    python_menu.add_cascade(label="Select Interpreterâ€¦", menu=interp_menu)
 
     for interp in interpreters:
         path = interp["path"]
@@ -246,30 +245,29 @@ def create_python_menu(parent_menu):
             label=name,
             value=path,
             variable=local_python_var,
-            command=lambda p=path: _on_switch_interpreter(p),
-        )
+            command=lambda p=path: _on_switch_interpreter(p))
 
     local_python_var.set(current)
 
     python_menu.add_separator()
     python_menu.add_command(
-        label="Manage pip packages…",
+        label="Manage pip packagesâ€¦",
         command=lambda: change_interpreter(current)
     )
     python_menu.add_command(
-        label="Install requirements.txt…",
+        label="Install requirements.txtâ€¦",
         command=lambda: install_reqs(current)
     )
     python_menu.add_separator()
     from src.controllers.menu_functions import open_create_venv_window
     python_menu.add_command(
-        label="Create New Virtual Environment…",
+        label="Create New Virtual Environmentâ€¦",
         command=open_create_venv_window
     )
 
 def _on_switch_interpreter(path):
     """
-    Callback al seleccionar un nuevo intérprete.
+    Callback al seleccionar un nuevo intÃ©rprete.
     Actualiza la config y notifica al usuario.
     """
     write_config_parameter("options.project_settings.current_interpreter", path)

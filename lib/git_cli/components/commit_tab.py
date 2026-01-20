@@ -1,4 +1,4 @@
-from tkinter import Frame, Label, Button, Text, LabelFrame, Listbox, END, WORD, Scrollbar, LEFT, RIGHT, Y, BOTH
+﻿from tkinter import Frame, Label, Button, Text, LabelFrame, Listbox, END, WORD, Scrollbar, LEFT, RIGHT, Y, BOTH
 
 
 class CommitTab(Frame):
@@ -13,7 +13,7 @@ class CommitTab(Frame):
         self.ui_controller = ui_controller
         self._controller_attached = False
         self._ui_initialized = False
-        self.git_window = None  # si es necesario puedes recibirlo también como parámetro
+        self.git_window = None  # si es necesario puedes recibirlo tambiÃ©n como parÃ¡metro
         self.setup_commit_tab()
 
     def attach_controller(self, ui_controller):
@@ -44,13 +44,12 @@ class CommitTab(Frame):
             selectmode="extended",
             background="#1E1E1E",
             foreground="#D4D4D4",
-            selectbackground="#264F78",
             selectforeground="#FFFFFF",
             height=5,
             yscrollcommand=scrollbar.set
         )
         self.changed_files.pack(side=LEFT, fill=BOTH, expand=True)
-        scrollbar.config(command=self.changed_files.yview)
+        scrollbar.configure(command=self.changed_files.yview)
 
         # Commit message section
         self.commit_message_frame = LabelFrame(container, text="Commit Message")

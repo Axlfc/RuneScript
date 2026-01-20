@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk
 import math
 import re
@@ -27,8 +27,7 @@ class CalculatorWindow(tk.Toplevel):
             font=("Arial", 18),
             borderwidth=2,
             relief="solid",
-            justify="right",
-        )
+            justify="right")
         self.expression_entry.grid(
             row=0, column=0, columnspan=5, padx=10, pady=10, sticky="nsew"
         )
@@ -42,8 +41,7 @@ class CalculatorWindow(tk.Toplevel):
             background="white",
             foreground="black",
             borderwidth=2,
-            relief="solid",
-        )
+            relief="solid")
         self.result_label.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky="nsew")
 
     def _setup_grid(self):
@@ -59,7 +57,7 @@ class CalculatorWindow(tk.Toplevel):
         self.bind("<Escape>", lambda event: self._clear_entry())
 
     def _update_result_display(self, message):
-        self.result_label.config(text=message)
+        self.result_label.configure(text=message)
 
     def _copy_result_to_clipboard(self, event):
         result = self.result_label.cget("text")
@@ -136,13 +134,13 @@ class CalculatorWindow(tk.Toplevel):
                 if btn not in self.original_states:
                     self.original_states[btn] = current_text, btn["command"]
                 new_text, new_command = toggle_map[current_text]
-                btn.config(text=new_text, command=new_command)
+                btn.configure(text=new_text, command=new_command)
             elif any(current_text == pair[0] for pair in toggle_map.values()):
                 reverse_map = {v[0]: (k, v[1]) for k, v in toggle_map.items()}
                 original_text, original_command = reverse_map[current_text]
                 if btn in self.original_states:
                     original_text, original_command = self.original_states[btn]
-                    btn.config(text=original_text, command=original_command)
+                    btn.configure(text=original_text, command=original_command)
 
     def _balance_parentheses(self, expr):
         open_count = expr.count("(")
@@ -286,8 +284,7 @@ class CalculatorWindow(tk.Toplevel):
                     text=text,
                     width=8,
                     height=2,
-                    command=self._evaluate_expression,
-                )
+                    command=self._evaluate_expression)
             elif text == "C":
                 btn = tk.Button(
                     self, text=text, width=8, height=2, command=self._clear_entry
@@ -298,16 +295,14 @@ class CalculatorWindow(tk.Toplevel):
                     text=text,
                     width=8,
                     height=2,
-                    command=self._clear_last_entry,
-                )
+                    command=self._clear_last_entry)
             elif text == "10ˣ":
                 btn = tk.Button(
                     self,
                     text=text,
                     width=8,
                     height=2,
-                    command=lambda: self._button_click("10**"),
-                )
+                    command=lambda: self._button_click("10**"))
             elif text in (
                     "sin",
                     "cos",
@@ -318,31 +313,27 @@ class CalculatorWindow(tk.Toplevel):
                     "asin",
                     "acos",
                     "atan",
-                    "√",
-            ):
+                    "√"):
                 btn = tk.Button(
                     self,
                     text=text,
                     width=8,
                     height=2,
-                    command=lambda t=text: self._scientific_function_click(t),
-                )
+                    command=lambda t=text: self._scientific_function_click(t))
             elif text in ("π", "e", "j"):
                 btn = tk.Button(
                     self,
                     text=text,
                     width=8,
                     height=2,
-                    command=lambda t=text: self._button_click(t),
-                )
+                    command=lambda t=text: self._button_click(t))
             elif text == "x!":
                 btn = tk.Button(
                     self,
                     text=text,
                     width=8,
                     height=2,
-                    command=lambda: self._button_click("!"),
-                )
+                    command=lambda: self._button_click("!"))
             elif text == "←":
                 btn = tk.Button(
                     self, text="←", width=8, height=2, command=self._backspace
@@ -353,16 +344,14 @@ class CalculatorWindow(tk.Toplevel):
                     text="↑",
                     width=8,
                     height=2,
-                    command=self._toggle_scientific_calculator_buttons,
-                )
+                    command=self._toggle_scientific_calculator_buttons)
             else:
                 btn = tk.Button(
                     self,
                     text=text,
                     width=8,
                     height=2,
-                    command=lambda t=text: self._button_click(t),
-                )
+                    command=lambda t=text: self._button_click(t))
 
             self.calculator_buttons.append(btn)
             btn.grid(row=row + 1, column=col, padx=2, pady=2)

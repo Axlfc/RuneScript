@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 from typing import Optional
 import logging
 import os
@@ -126,7 +126,7 @@ class StateManagementSystem:
         if self.state["errors"]:
             content += "## Issues\n"
             for error in self.state["errors"][-5:]:  # Show only last 5 errors
-                content += f"- ⚠️ {error}\n"
+                content += f"- âš ï¸ {error}\n"
             content += "\n"
 
         # Add timestamp
@@ -196,3 +196,4 @@ class StateManagementSystem:
         with open(path, 'r', encoding='utf-8') as f:
             self.state = json.load(f)
         self._notify_observers("state_loaded", path)
+
