@@ -1,5 +1,5 @@
+import customtkinter
 from tkinter.ttk import Treeview
-from ttkbootstrap import Style
 from src.controllers.parameters import (
     ensure_user_config,
     load_theme_setting,
@@ -7,8 +7,10 @@ from src.controllers.parameters import (
 )
 from src.localization import load_localization
 
-from tkinter import Label, StringVar, IntVar, Frame, BooleanVar, messagebox, font
-from tkinter import scrolledtext, Text, Entry, Menu
+from customtkinter import CTkLabel, CTkEntry
+from tkinter import StringVar, IntVar, BooleanVar, messagebox, font
+from customtkinter import CTkFrame, CTkTextbox
+from tkinter import Menu
 import os
 
 
@@ -57,20 +59,14 @@ fontColor = "#000000"
 fontBackground = "#FFFFFF"
 server_options = ["llama-cpp-python", "lmstudio", "ollama", "openai", "gemini"]
 get_scriptsstudio_directory()
-style = Style()
 current_theme = load_theme_setting()
-
-try:
-    style.theme_use(current_theme)
-except Exception as e:
-    messagebox.showerror(
-        "Theme Error", f"The theme '{current_theme}' is not available. ({e})"
-    )
-    style.theme_use("cosmo")
-
-root = style.master
+if current_theme == "cosmo":
+    customtkinter.set_appearance_mode("light")
+else:
+    customtkinter.set_appearance_mode("dark")
+root = customtkinter.CTk()
 # root.iconbitmap("src/views/icon.ico")
-toolbar = Frame(root, pady=2)
+toolbar = CTkFrame(root, pady=2)
 
 # Create a new Font object with the desired font family and size
 my_font_size = read_config_parameter("options.editor_settings.font_size")
@@ -80,17 +76,16 @@ my_font = font.Font(family=my_font_family, size=my_font_size)
 menu = Menu(root)
 root.config(menu=menu)
 
-frm = Frame(root)
-directory_label = Label(frm, text=os.getcwd(), anchor="center")
-script_frm = Frame(root)
-script_name_label = Label(script_frm, text="Script Name: ", anchor="center")
-script_text = scrolledtext.ScrolledText(
+frm = CTkFrame(root)
+directory_label = CTkLabel(frm, text=os.getcwd(), anchor="center")
+script_frm = CTkFrame(root)
+script_name_label = CTkLabel(script_frm, text="Script Name: ", anchor="center")
+script_text = CTkTextbox(
     root, wrap="word", height=20, width=60, undo=True
 )
-text = Text(
+text = CTkTextbox(
     wrap="word",
     font=my_font,
-    background="white",
     borderwidth=0,
     highlightthickness=0,
     undo=True,
@@ -101,8 +96,8 @@ all_size = StringVar()
 local_python_var = StringVar()
 selected_agent_var = "Assistant"
 entry_text = StringVar()
-content_frm = Frame(root)
-entry_arguments_entry = Entry(content_frm, textvariable=entry_text, width=40)
+content_frm = CTkFrame(root)
+entry_arguments_entry = CTkEntry(content_frm, textvariable=entry_text, width=40)
 generate_stdin = IntVar()
 generate_stdin_err = IntVar()
 show_directory_view_var = IntVar()
@@ -114,15 +109,15 @@ show_timeout_view_var = IntVar()
 show_interactive_view_var = IntVar()
 show_filesystem_view_var = IntVar()
 persistent_agent_selection_var = IntVar()
-interactive_frm = Frame(root)
-scrollbar_frm = Frame(root)
-run_frm = Frame(root)
-line_frm = Frame(root)
-one_time_frm = Frame(root)
-daily_frm = Frame(root)
-filesystem_frm = Frame(root)
-scheduled_tasks_frm = Frame(root)
-tree_frame = Frame(filesystem_frm)
+interactive_frm = CTkFrame(root)
+scrollbar_frm = CTkFrame(root)
+run_frm = CTkFrame(root)
+line_frm = CTkFrame(root)
+one_time_frm = CTkFrame(root)
+daily_frm = CTkFrame(root)
+filesystem_frm = CTkFrame(root)
+scheduled_tasks_frm = CTkFrame(root)
+tree_frame = CTkFrame(filesystem_frm)
 tree_frame.grid(row=0, column=0, sticky="nsew")
 tree = Treeview(tree_frame, columns=("fullpath",), displaycolumns=())
 configure_app()
