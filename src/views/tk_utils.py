@@ -66,7 +66,7 @@ else:
     customtkinter.set_appearance_mode("dark")
 root = customtkinter.CTk()
 # root.iconbitmap("src/views/icon.ico")
-toolbar = CTkFrame(root, pady=2)
+toolbar = CTkFrame(root)
 
 # Create a new Font object with the desired font family and size
 my_font_size = read_config_parameter("options.editor_settings.font_size")
@@ -84,10 +84,10 @@ script_text = CTkTextbox(
     root, wrap="word", height=20, width=60, undo=True
 )
 text = CTkTextbox(
+    root,
     wrap="word",
     font=my_font,
-    borderwidth=0,
-    highlightthickness=0,
+    border_width=0,
     undo=True,
 )
 status_label_var = StringVar()
