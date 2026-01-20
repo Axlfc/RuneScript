@@ -1,6 +1,5 @@
 ﻿from tkinter import (
     Button,
-    Scrollbar,
     HORIZONTAL,
     LEFT,
     BOTH,
@@ -38,6 +37,7 @@ from src.views.tree_functions import (
     on_item_select,
     on_double_click, show_context_menu)
 from src.views.ui_elements import Tooltip, LineNumberCanvas
+import customtkinter
 from src.views.tk_utils import *
 from src.controllers.file_operations import on_text_change
 
@@ -54,9 +54,9 @@ def create_app():
 def create_filesystem_window():
     tree_frame.grid_rowconfigure(0, weight=1)
     tree_frame.grid_columnconfigure(0, weight=1)
-    vsb = Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    vsb = customtkinter.CTkScrollbar(tree_frame, orientation="vertical", command=tree.yview)
     vsb.grid(row=0, column=1, sticky="ns")
-    hsb = Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+    hsb = customtkinter.CTkScrollbar(tree_frame, orientation="horizontal", command=tree.xview)
     hsb.grid(row=1, column=0, sticky="ew")
     tree.grid(row=0, column=0, sticky="nsew")
     tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)

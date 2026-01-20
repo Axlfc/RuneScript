@@ -147,3 +147,14 @@ def load_theme_setting():
         theme = "cosmo"
     return theme
 
+
+def get_appearance_mode(theme_name):
+    """
+    Map ttkbootstrap themes to customtkinter appearance modes.
+    """
+    dark_themes = [
+        "darkly", "superhero", "solar", "cyborg", "vapor"
+    ]
+    if theme_name in dark_themes:
+        return "dark"
+    return "light"

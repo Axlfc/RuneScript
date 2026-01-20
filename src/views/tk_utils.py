@@ -4,11 +4,11 @@ from tkinter import ttk
 from src.controllers.parameters import (
     ensure_user_config,
     load_theme_setting,
-    get_scriptsstudio_directory, read_config_parameter)
+    get_scriptsstudio_directory, read_config_parameter, get_appearance_mode)
 from src.localization import load_localization
 
 from customtkinter import CTkLabel, CTkEntry
-from tkinter import StringVar, IntVar, BooleanVar, messagebox, font
+from tkinter import StringVar, IntVar, BooleanVar, messagebox, font, Frame
 from src.config.fonts import AppFonts
 from customtkinter import CTkFrame, CTkTextbox
 from tkinter import Menu
@@ -62,10 +62,7 @@ fontBackground = "#FFFFFF"
 server_options = ["llama-cpp-python", "lmstudio", "ollama", "openai", "gemini"]
 get_scriptsstudio_directory()
 current_theme = load_theme_setting()
-if current_theme == "cosmo":
-    customtkinter.set_appearance_mode("light")
-else:
-    customtkinter.set_appearance_mode("dark")
+customtkinter.set_appearance_mode(get_appearance_mode(current_theme))
 root = customtkinter.CTk()
 # root.iconbitmap("src/views/icon.ico")
 toolbar = CTkFrame(root)
@@ -118,9 +115,26 @@ one_time_frm = CTkFrame(root)
 daily_frm = CTkFrame(root)
 filesystem_frm = CTkFrame(root)
 scheduled_tasks_frm = CTkFrame(root)
-tree_frame = CTkFrame(filesystem_frm)
+# Use a standard Frame for the tree container to ensure proper event propagation for ttk.Treeview
+tree_frame = Frame(filesystem_frm)
 tree_frame.grid(row=0, column=0, sticky="nsew")
 tree = Treeview(tree_frame, columns=("fullpath"), displaycolumns=())
 configure_app()
 
 style = ttk.Style()
+style.theme_use('clam')  # 'clam' theme allows for better customization of Treeview colors
+if get_appearance_mode(current_theme) == "dark":
+    style.configure("Treeview",
+                    background="#2b2b2b",
+                    foreground="white",
+                    fieldbackground="#2b2b2b",
+                    borderwidth=0)
+    style.map("Treeview",
+              background=[('selected', '#333333')],
+              foreground=[('selected', 'white')])
+else:
+    style.configure("Treeview",
+                    background="white",
+                    foreground="black",
+                    fieldbackground="white",
+                    borderwidth=0)
