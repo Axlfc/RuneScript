@@ -14,7 +14,11 @@ from datetime import datetime
 # from google.genai.types import GenerateContentConfig, Part, SafetySetting
 
 from dotenv import load_dotenv
-# import anthropic
+import anthropic
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 from src.controllers.parameters import read_config_parameter
 
 # Añade tu .venv/Lib/site-packages al path si no está ya
@@ -232,25 +236,22 @@ def chat_loop_gemini(prompt, client, system_prompt, session_id):
 
 
 def initialize_claude_client():
-    load_dotenv()
-    CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-    # return anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-    print("Not supported")
+    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
+    base_url = f"{ollama_url.rstrip('/')}/v1"
+    return anthropic.Anthropic(base_url=base_url, api_key="ollama")
 
 
-def process_claude_chat(client, prompt):
+def process_claude_chat(client, prompt, system_prompt=None):
     try:
-        response = client.completions.create(
-            model="claude-3-opus-20240229",
-            max_tokens_to_sample=1000,
-            temperature=0.7,
-            prompt=f"""
-
-Human: {prompt}
-
-Assistant:""",
+        messages = [{"role": "user", "content": prompt}]
+        response = client.messages.create(
+            model="qwen3-coder",  # o el modelo que tengas en Ollama
+            messages=messages,
+            system=system_prompt or "",
+            max_tokens=1000,
+            temperature=0.7
         )
-        return response.completion
+        return response.content[0].text
     except anthropic.APIError as e:
         return f"Error: Claude API request failed. Details: {str(e)}"
     except Exception as e:
@@ -260,6 +261,15 @@ Assistant:""",
 def initialize_ollama_client():
     # No specific client initialization needed for basic HTTP requests
     pass
+
+
+def chat_loop_claude(prompt, client, system_prompt, session_id):
+    response_text = process_claude_chat(client, prompt, system_prompt)
+    if response_text.startswith("Error:"):
+        print(f"An error occurred: {response_text}")
+    else:
+        print(response_text)
+    add_message(session_id, {"role": "assistant", "content": response_text})
 
 
 def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
@@ -357,39 +367,14 @@ def chat_loop_euriai(prompt, system_prompt, session_id):
         print(f"An unexpected error occurred in the EuriaAI chat loop: {e}")
 
 
-"""def chat_loop_ollama(prompt, system_prompt, session_id):
-    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
-    ollama_model = read_config_parameter("options.network_settings.ollama_model")
-    if not ollama_model:
-        print("Error: Ollama model not specified in the configuration.")
-        return
-    response = process_ollama_chat(prompt, system_prompt, ollama_url, ollama_model)
-    try:
-        parsed = json.loads(response)
-        print(json.dumps(parsed))  # Send clean JSON stdout
-    except json.JSONDecodeError:
-        # Attempt regex salvage (or fail cleanly)
-        import re
-        match = re.search(r"\{[\s\S]+\}", response)
-        if match:
-            try:
-                parsed = json.loads(match.group(0))
-                print(json.dumps(parsed))
-            except json.JSONDecodeError:
-                print(json.dumps({"error": "Failed to parse embedded JSON"}))
-        else:
-            print(json.dumps({"error": "No JSON found in response", "raw": response}))
-    print("\n> ")
-    print()
-    print("> ")
-"""
+
 
 
 def chat_loop_ollama(prompt, system_prompt, session_id):
     import re
     from datetime import datetime
 
-    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://192.168.1.30:11434"
+    ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
     ollama_model = read_config_parameter("options.network_settings.ollama_model")
     if not ollama_model:
         print("Error: Ollama model not specified in the configuration.")
