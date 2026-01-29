@@ -130,18 +130,32 @@ class Tooltip:
 
 class LineNumberCanvas(Canvas):
     def __init__(self, text_widget, *args, **kwargs):
+        # Set default background if not provided
+        if "highlightthickness" not in kwargs:
+            kwargs["highlightthickness"] = 0
         super().__init__(*args, **kwargs)
-        self.text_widget = text_widget
+
+        # Store both for reference
+        self.container = text_widget
+        # Handle CTkTextbox by getting its internal _textbox
+        self.text_widget = getattr(text_widget, "_textbox", text_widget)
         self._is_redrawing = False
 
         # Improve event bindings
         self.text_widget.bind("<<Modified>>", self._on_text_modified)
         self.text_widget.bind("<Configure>", self._on_configure, add="+")
 
-        # No <YView> event - we'll track scroll position differently
-
         # Initial draw
-        self.after(100, self.redraw)
+        self.after(200, self.redraw)
+
+    def get_font(self):
+        """Try to get font from the text widget or container"""
+        try:
+            if hasattr(self.container, "cget"):
+                return self.container.cget("font")
+            return self.text_widget.cget("font")
+        except:
+            return ("Consolas", 12)
 
     def _on_text_modified(self, event=None):
         # Reset the modified flag
@@ -153,7 +167,7 @@ class LineNumberCanvas(Canvas):
         self.after(50, self.redraw)
 
     def redraw(self):
-        """Redraw line numbers with improved performance"""
+        """Redraw line numbers with improved performance and alignment"""
         # Prevent recursive calls
         if self._is_redrawing:
             return
@@ -161,6 +175,22 @@ class LineNumberCanvas(Canvas):
         try:
             self._is_redrawing = True
             self.delete("all")
+
+            # Sync background color
+            try:
+                bg_color = self.container.cget("fg_color")
+                if isinstance(bg_color, (list, tuple)): # Handle CTk theme colors
+                    import customtkinter
+                    bg_color = customtkinter.ThemeManager.theme["CTkTextbox"]["fg_color"][1 if customtkinter.get_appearance_mode() == "Dark" else 0]
+                self.configure(bg=bg_color)
+            except:
+                pass
+
+            # Get vertical offset of internal textbox within the container
+            y_offset = self.text_widget.winfo_y()
+
+            # Get font
+            font = self.get_font()
 
             # Get visible information
             first_index = self.text_widget.index("@0,0")
@@ -174,13 +204,22 @@ class LineNumberCanvas(Canvas):
                 try:
                     dline = self.text_widget.dlineinfo(f"{line_num}.0")
                     if dline:  # Only draw if the line is actually visible
-                        y_pos = dline[1]
-                        self.create_text(2, y_pos, anchor="nw", text=str(line_num), fill="#CE9178")
+                        # y_pos is relative to the text widget.
+                        # We add y_offset to align with the text widget's position in the frame.
+                        y_pos = dline[1] + y_offset
+                        self.create_text(
+                            self.winfo_width() - 5,
+                            y_pos,
+                            anchor="ne",
+                            text=str(line_num),
+                            fill="#CE9178",
+                            font=font
+                        )
                 except Exception:
                     continue
 
             # Update canvas width if needed
-            width_needed = max(len(str(last_line)) * 8, 30)
+            width_needed = max(len(str(last_line)) * 10, 35)
             if self.winfo_width() != width_needed:
                 self.configure(width=width_needed)
 
