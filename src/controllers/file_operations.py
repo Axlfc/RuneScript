@@ -146,9 +146,14 @@ def update_menu_based_on_extension(ext, directory_path):
 
     jobs_menu_index = None
     for index in range(menu.index('end') + 1):
-        if localization_data["jobs"] in menu.entrycget(index, 'label'):
-            jobs_menu_index = index
-            break
+        try:
+            if menu.type(index) == "separator":
+                continue
+            if localization_data["jobs"] in menu.entrycget(index, 'label'):
+                jobs_menu_index = index
+                break
+        except TclError:
+            continue
 
     if jobs_menu_index is None:
         return
@@ -157,6 +162,8 @@ def update_menu_based_on_extension(ext, directory_path):
     possible_labels = list(file_type_labels.values()) + ["Other"]
     for index in range(menu.index('end') + 1):
         try:
+            if menu.type(index) == "separator":
+                continue
             if menu.entrycget(index, 'label') in possible_labels:
                 menu.delete(index)
                 break
