@@ -105,10 +105,13 @@ def create_content_file_window():
         # Allow event to continue for proper scrollbar update
         return
 
+    # Determine the actual text widget to bind events to (internal _textbox for CTkTextbox)
+    target_widget = getattr(script_text, "_textbox", script_text)
+
     # Bind mouse wheel events
-    script_text.bind("<MouseWheel>", on_mousewheel)  # Windows
-    script_text.bind("<Button-4>", on_mousewheel)  # Linux up
-    script_text.bind("<Button-5>", on_mousewheel)  # Linux down
+    target_widget.bind("<MouseWheel>", on_mousewheel)  # Windows
+    target_widget.bind("<Button-4>", on_mousewheel)  # Linux up
+    target_widget.bind("<Button-5>", on_mousewheel)  # Linux down
 
     # Handle keyboard navigation that may affect scrolling
     def on_key_scroll(event):
@@ -117,13 +120,13 @@ def create_content_file_window():
 
     # Bind key navigation events
     for key in ("<Key-Up>", "<Key-Down>", "<Key-Prior>", "<Key-Next>", "<Key-Home>", "<Key-End>"):
-        script_text.bind(key, on_key_scroll, add="+")
+        target_widget.bind(key, on_key_scroll, add="+")
 
     # Handle text widget resize
     def on_text_configure(event):
         root.after(10, line_numbers.redraw)
 
-    script_text.bind("<Configure>", on_text_configure, add="+")
+    target_widget.bind("<Configure>", on_text_configure, add="+")
 
     def show_context_menu(event):
         context_menu = Menu(root, tearoff=0)
@@ -185,8 +188,8 @@ def create_content_file_window():
         return "break"
 
     # Bind the scroll_lines functions
-    script_text.bind("<Control-Up>", scroll_lines_up)
-    script_text.bind("<Control-Down>", scroll_lines_down)
+    target_widget.bind("<Control-Up>", scroll_lines_up)
+    target_widget.bind("<Control-Down>", scroll_lines_down)
 
     # Show changes in text zone when line numbers width changes
     def show_changes_in_text_zone(event=None):
@@ -199,8 +202,8 @@ def create_content_file_window():
 
     script_text.configure()
 
-    script_text.bind("<Button-3>", show_context_menu)
-    script_text.bind("<Key>", on_text_change)
+    target_widget.bind("<Button-3>", show_context_menu)
+    target_widget.bind("<Key>", on_text_change)
 
     # Additional debugging for manual scrolling
     def scroll_lines_up(event):
@@ -216,8 +219,8 @@ def create_content_file_window():
         return "break"
 
     # Bind the debug scroll functions
-    script_text.bind("<Control-Up>", scroll_lines_up)
-    script_text.bind("<Control-Down>", scroll_lines_down)
+    target_widget.bind("<Control-Up>", scroll_lines_up)
+    target_widget.bind("<Control-Down>", scroll_lines_down)
 
     # Ensure the line numbers are drawn initially
     root.after(100, line_numbers.redraw)

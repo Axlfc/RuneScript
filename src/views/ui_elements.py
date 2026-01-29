@@ -131,7 +131,8 @@ class Tooltip:
 class LineNumberCanvas(Canvas):
     def __init__(self, text_widget, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.text_widget = text_widget
+        # Handle CTkTextbox by getting its internal _textbox
+        self.text_widget = getattr(text_widget, "_textbox", text_widget)
         self._is_redrawing = False
 
         # Improve event bindings
