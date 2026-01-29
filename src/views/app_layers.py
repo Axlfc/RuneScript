@@ -75,7 +75,7 @@ def create_filesystem_window():
 
 
 def create_content_file_window():
-    global is_modified, line_numbers
+    global line_numbers
 
     # Create the line numbers canvas
     line_numbers = LineNumberCanvas(script_text, width=30)
@@ -206,7 +206,7 @@ def create_content_file_window():
     script_text.configure()
 
     target_widget.bind("<Button-3>", show_context_menu)
-    target_widget.bind("<Key>", on_text_change)
+    target_widget.bind("<<Modified>>", on_text_change)
 
     # Additional debugging for manual scrolling
     def scroll_lines_up(event):

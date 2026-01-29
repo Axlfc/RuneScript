@@ -15,7 +15,8 @@ from src.views.tk_utils import (
     script_name_label,
     entry_arguments_entry,
     directory_label,
-    root, my_font, localization_data
+    root, my_font, localization_data,
+    editor_state
 )
 
 
@@ -110,12 +111,8 @@ def run_script_windows():
     entry_arguments = entry_arguments_entry.get().split()
     generate_stdout = generate_stdin.get()
     generate_stderr = generate_stdin_err.get()
-    file_name_with_prefix = script_name_label.cget("text")
-    file_name = file_name_with_prefix.replace(
-        localization_data["script_name_label"], ""
-    ).strip()
-    current_directory = directory_label.cget("text")
-    file_path = os.path.join(current_directory, file_name)
+    file_path = editor_state.file_name
+    file_name = os.path.basename(file_path) if file_path else "Untitled"
 
     interpreter_path = read_config_parameter("options.project_settings.current_interpreter")
     if not interpreter_path:
@@ -247,22 +244,22 @@ def run_script():
     generate_stderr = generate_stdin_err.get()
     try:
         print("WE ARE IN!!")
-        print(script_name_label.cget("text"))
+        print(editor_state.file_name)
         print("YEAH!!")
         process = subprocess.Popen(
             ["bash"]
-            + [directory_label.cget("text") + "/" + script_name_label.cget("text")]
+            + [editor_state.file_name]
             + arguments.split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdout_data, stderr_data = process.communicate()
         if generate_stdout:
-            script_out_name = script_name_label.cget("text") + ".out"
+            script_out_name = editor_state.file_name + ".out"
             print(script_out_name)
             p = open(script_out_name, "w+")
             p.write(stdout_data.decode())
         if generate_stderr:
-            script_err_name = script_name_label.cget("text") + ".err"
+            script_err_name = editor_state.file_name + ".err"
             p = open(script_err_name, "w+")
             p.write(stderr_data.decode())
         messagebox.showinfo("Script Execution", "Script executed successfully.")
@@ -290,19 +287,19 @@ def run_script_with_timeout(timeout_seconds):
     try:
         process = subprocess.Popen(
             ["bash"]
-            + [directory_label.cget("text") + "/" + script_name_label.cget("text")]
+            + [editor_state.file_name]
             + arguments.split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         sleep(timeout_seconds)
         stdout_data, stderr_data = process.communicate()
         if generate_stdout:
-            script_out_name = script_name_label.cget("text") + ".out"
+            script_out_name = editor_state.file_name + ".out"
             print(script_out_name)
             p = open(script_out_name, "w+")
             p.write(stdout_data.decode())
         if generate_stderr:
-            script_err_name = script_name_label.cget("text") + ".err"
+            script_err_name = editor_state.file_name + ".err"
             p = open(script_err_name, "w+")
             p.write(stderr_data.decode())
         messagebox.showinfo("Script Execution", "Script executed successfully.")
@@ -323,9 +320,7 @@ def run_script_once(schedule_time):
     Returns:
     None
     ""\" """
-    script_path = os.path.join(
-        directory_label.cget("text"), script_name_label.cget("text")
-    )
+    script_path = editor_state.file_name
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
     generate_stderr = generate_stdin_err.get()
@@ -347,10 +342,10 @@ def run_script_once(schedule_time):
     try:
         at_time = f"{hour:02d}:{minute:02d}"
         stdout_redirect = (
-            f">{script_name_label.cget('text')}.out" if generate_stdout else "/dev/null"
+            f">{editor_state.file_name}.out" if generate_stdout else "/dev/null"
         )
         stderr_redirect = (
-            f"2>{script_name_label.cget('text')}.err"
+            f"2>{editor_state.file_name}.err"
             if generate_stderr
             else "/dev/null"
         )
@@ -388,18 +383,12 @@ def run_script_crontab(minute, hour, day, month, day_of_week):
         )
         return
     cron_schedule = f"{minute} {hour} {day} {month} {day_of_week}"
-    script_path = os.path.join(
-        directory_label.cget("text"), script_name_label.cget("text")
-    )
+    script_path = editor_state.file_name
     arguments = entry_arguments_entry.get()
     generate_stdout = generate_stdin.get()
     generate_stderr = generate_stdin_err.get()
-    out_file = os.path.join(
-        directory_label.cget("text"), f"{script_name_label.cget('text')}.out"
-    )
-    err_file = os.path.join(
-        directory_label.cget("text"), f"{script_name_label.cget('text')}.err"
-    )
+    out_file = f"{editor_state.file_name}.out"
+    err_file = f"{editor_state.file_name}.err"
     try:
         stdout_redirect = f">{out_file}" if generate_stdout else "/dev/null"
         stderr_redirect = f"2>{err_file}" if generate_stderr else "/dev/null"
@@ -433,7 +422,7 @@ def see_stdout():
     stdout_window.title("Standard Output (stdout)")
     stdout_text = Text(stdout_window, font=my_font)
     stdout_text.pack()
-    script_out_name = script_name_label.cget("text") + ".out"
+    script_out_name = editor_state.file_name + ".out"
     try:
         with open(script_out_name, "r") as f:
             stdout_text.insert("1.0", f.read())
@@ -458,7 +447,7 @@ def see_stderr():
     stderr_window.title("Standard Error (stderr)")
     stderr_text = Text(stderr_window, font=my_font)
     stderr_text.pack()
-    script_err_name = script_name_label.cget("text") + ".err"
+    script_err_name = editor_state.file_name + ".err"
     try:
         with open(script_err_name, "r") as f:
             stderr_text.insert("1.0", f.read())
