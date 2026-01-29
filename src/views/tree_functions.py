@@ -53,8 +53,9 @@ def update_tree(path):
     """
     for item in tree.get_children():
         tree.delete(item)
-    abspath = os.path.abspath(path)
-    root_node = tree.insert("", "end", text=abspath, values=(abspath), open=True)
+    # Use forward slashes for better Tcl/Tk compatibility and normalize path
+    abspath = os.path.abspath(path).replace('\\', '/')
+    root_node = tree.insert("", "end", text=abspath, values=(abspath,), open=True)
     populate_tree(root_node, abspath)
 
 
@@ -69,12 +70,17 @@ def populate_tree(parent, path):
     Returns:
         None: Description of return value.
     """
-    for item in os.listdir(path):
-        if item != ".git" and item != ".idea":
-            abspath = os.path.join(path, item)
-            node = tree.insert(parent, "end", text=item, values=(abspath), open=False)
-            if os.path.isdir(abspath):
-                tree.insert(node, "end")
+    # Ensure path uses forward slashes
+    path = path.replace('\\', '/')
+    try:
+        for item in os.listdir(path):
+            if item != ".git" and item != ".idea":
+                abspath = os.path.join(path, item).replace('\\', '/')
+                node = tree.insert(parent, "end", text=item, values=(abspath,), open=False)
+                if os.path.isdir(abspath):
+                    tree.insert(node, "end")
+    except Exception as e:
+        print(f"Error populating tree at {path}: {e}")
 
 
 def item_opened(event):
