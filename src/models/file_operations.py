@@ -1,6 +1,6 @@
 ﻿from tkinter import messagebox, simpledialog
 import os
-from src.views.tk_utils import root, script_name_label
+from src.views.tk_utils import root, script_name_label, editor_state
 
 
 def validate_time(hour, minute):
@@ -18,8 +18,7 @@ def validate_time(hour, minute):
 
 
 def rename(event=None):
-    global file_name
-    if file_name == "":
+    if editor_state.file_name == "":
         file_path = simpledialog.askstring("Rename", "Enter file path or select a file")
         if not file_path:
             return
@@ -27,14 +26,14 @@ def rename(event=None):
         if not os.path.exists(file_path):
             messagebox.showerror("Error", "File does not exist")
             return
-        file_name = file_path
-    dir_path, old_name = os.path.split(file_name)
+        editor_state.file_name = file_path
+    dir_path, old_name = os.path.split(editor_state.file_name)
     new_name = simpledialog.askstring("Rename", "Enter new name")
     try:
         new_path = os.path.join(dir_path, new_name)
-        os.rename(file_name, new_path)
-        file_name = new_path
-        root.title(file_name + " - Script Editor")
+        os.rename(editor_state.file_name, new_path)
+        editor_state.file_name = new_path
+        root.title(editor_state.file_name + " - Script Editor")
     except OSError as e:
         messagebox.showerror("Error", f"Failed to rename file: {e}")
 
@@ -47,13 +46,12 @@ def prompt_rename_file():
 
 
 def rename_or_create_file(new_name):
-    global file_name
-    dir_path = os.path.dirname(file_name) if file_name else os.getcwd()
+    dir_path = os.path.dirname(editor_state.file_name) if editor_state.file_name else os.getcwd()
     new_path = os.path.join(dir_path, new_name)
-    if file_name and os.path.exists(file_name):
+    if editor_state.file_name and os.path.exists(editor_state.file_name):
         try:
-            os.rename(file_name, new_path)
-            file_name = new_path
+            os.rename(editor_state.file_name, new_path)
+            editor_state.file_name = new_path
             script_name_label.configure(text=f"File Name: {new_name}")
             messagebox.showinfo(
                 "Rename Successful", f"File has been renamed to {new_name}"
@@ -64,7 +62,7 @@ def rename_or_create_file(new_name):
         try:
             with open(new_path, "w") as new_file:
                 new_file.write("")
-            file_name = new_path
+            editor_state.file_name = new_path
             script_name_label.configure(text=f"File Name: {new_name}")
             messagebox.showinfo(
                 "File Created", f"New file has been created: {new_name}"

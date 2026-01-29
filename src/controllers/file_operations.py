@@ -21,9 +21,7 @@ from src.views.tk_utils import (
     script_text,
     root,
     menu,
-    is_modified,
-    file_name,
-    last_saved_content)
+    editor_state)
 from src.views.ui_elements import LineNumberCanvas
 
 file_types = [
@@ -52,18 +50,16 @@ file_types = [
 
 
 def open_file(file_path):
-    global is_modified, file_name, last_saved_content
     if not prompt_save_changes():
         return
     print("file_operations.py/open_file IS CALLED!")
-    last_saved_content = ""
-    file_name = file_path
+    editor_state.file_name = file_path
     directory_path = os.path.dirname(file_path)
     directory_label.configure(text=f"{directory_path}")
     write_config_parameter(
         "options.file_management.current_file_directory", directory_path
     )
-    write_config_parameter("options.file_management.last_opened_script", file_name)
+    write_config_parameter("options.file_management.last_opened_script", editor_state.file_name)
     script_name_label.configure(
         text=f"{localization_data['save_changes']} in {os.path.basename(file_path)}"
     )
@@ -78,14 +74,29 @@ def open_file(file_path):
     else:
         with open(file_path, "r", encoding="utf-8", errors="replace") as file:
             script_content = file.read()
+    # Reset internal modified flag during loading
+    try:
+        target_widget = getattr(script_text, "_textbox", script_text)
+        target_widget.edit_modified(False)
+    except Exception:
+        pass
+
     script_text.delete("1.0", END)
     script_text.insert("1.0", script_content)
+
     print("SAVING FILE CONTENT HERE TO LAST_SAVED_CONTENT")
-    last_saved_content = script_content
+    editor_state.update_original_content(script_content)
+
+    # Ensure the widget's internal modified flag is reset AFTER insertion
+    try:
+        target_widget = getattr(script_text, "_textbox", script_text)
+        target_widget.edit_modified(False)
+    except Exception:
+        pass
+
     ext = os.path.splitext(file_path)[1]
     print("EXT of Opened File IS:\t", ext)
     update_menu_based_on_extension(ext, directory_path)
-    is_modified = False
     update_title()
 
     # We need to trigger a redraw of the line numbers and adjust text position
@@ -166,7 +177,7 @@ def update_menu_based_on_extension(ext, directory_path):
 
 def open_script(event=None):
     print("OPEN SCRIPT IS CALLED!")
-    if is_modified:
+    if editor_state.is_modified:
         response = messagebox.askyesnocancel(
             localization_data["save_changes"], localization_data["save_confirmation"]
         )
@@ -184,10 +195,9 @@ def open_script(event=None):
             directory_label.cget("text"))
 
 def update_title():
-    global is_modified
-    print("RENAME MAIN WINDOW TRIGGERED, IS MODIFIED?", is_modified)
-    title = os.path.basename(file_name) if file_name else localization_data["untitled"]
-    if is_modified:
+    print("RENAME MAIN WINDOW TRIGGERED, IS MODIFIED?", editor_state.is_modified)
+    title = os.path.basename(editor_state.file_name) if editor_state.file_name else localization_data["untitled"]
+    if editor_state.is_modified:
         root.title(f"*{title} - {localization_data['scripts_editor']}")
     else:
         root.title(f"{title} - {localization_data['scripts_editor']}")
@@ -195,41 +205,51 @@ def update_title():
 
 
 def on_text_change(event=None):
-    global is_modified, last_saved_content
+    # This might be triggered by <<Modified>> event
+    try:
+        target_widget = getattr(script_text, "_textbox", script_text)
+        # If it was a real modification according to the widget
+        if not target_widget.edit_modified():
+            return
+    except Exception:
+        pass
+
     print("on_text_change triggered")
-    current_content = script_text.get("1.0", END)
-    if current_content != last_saved_content:
-        print("Content has been modified.")
-        if not is_modified:
-            is_modified = True
-            update_title()
-    else:
-        print("No changes detected.")
-        if not is_modified:
-            is_modified = False
-            update_title()
+    current_content = script_text.get("1.0", "end-1c")
+    was_modified = editor_state.is_modified
+    is_now_modified = editor_state.check_modified(current_content)
+
+    if was_modified != is_now_modified:
+        update_title()
+
+    # Reset the internal modified flag so we can receive the event again
+    try:
+        target_widget = getattr(script_text, "_textbox", script_text)
+        target_widget.edit_modified(False)
+    except Exception:
+        pass
 
 
 def prompt_save_changes():
-    if is_modified:
+    if editor_state.is_modified:
         response = messagebox.askyesnocancel(
             "Save Changes", "You have unsaved changes. Would you like to save them?"
         )
         if response is None:
             return False
         elif response:
-            save_file()
+            save_script()
     return True
 
 
 def save():
-    global is_modified, file_name
-    if not file_name or file_name == "Untitled":
+    if not editor_state.file_name or editor_state.file_name == "Untitled":
         return save_as()
     try:
-        with open(file_name, "w", encoding="utf-8") as file:
-            file.write(script_text.get("1.0", "end-1c"))
-            is_modified = False
+        content = script_text.get("1.0", "end-1c")
+        with open(editor_state.file_name, "w", encoding="utf-8") as file:
+            file.write(content)
+            editor_state.update_original_content(content)
             update_title()
             messagebox.showinfo("Save", "File saved successfully!")
             return True
@@ -243,14 +263,12 @@ def save_as():
     """
         Opens a 'Save As' dialog to save the current file with a specified name.
     """
-    global file_name
-    global is_modified
     new_file_name = filedialog.asksaveasfilename(
         defaultextension=".*", filetypes=file_types
     )
     if not new_file_name:
         return False
-    file_name = new_file_name
+    editor_state.file_name = new_file_name
     save()
     update_script_name_label(new_file_name)
     update_title()
@@ -268,32 +286,30 @@ def save_file(file_name, content):
 
 
 def save_script(event=None):
-    global file_name, is_modified
-    if not file_name or file_name == "Untitled":
+    if not editor_state.file_name or editor_state.file_name == "Untitled":
         print("Saving new script...")
         save_as_new_script()
     else:
         print("Saving existing script...")
         content = script_text.get("1.0", "end-1c")
         try:
-            with open(file_name, "w", encoding="utf-8") as file:
+            with open(editor_state.file_name, "w", encoding="utf-8") as file:
                 file.write(content)
-            is_modified = False
+            editor_state.update_original_content(content)
             update_title()
-            update_script_name_label(file_name)
+            update_script_name_label(editor_state.file_name)
             messagebox.showinfo("Save", "File saved successfully!")
         except Exception as e:
             messagebox.showerror("Save Error", f"An error occurred while saving: {e}")
 
 
 def save_as_new_script(event=None):
-    global file_name, is_modified
     new_file_name = filedialog.asksaveasfilename(
         defaultextension=".*", filetypes=file_types
     )
     if not new_file_name:
         return
-    file_name = new_file_name
+    editor_state.file_name = new_file_name
     save_script()
 
 
@@ -304,8 +320,7 @@ def update_script_name_label(file_path):
 
 
 def new(event=None):
-    global is_modified
-    if is_modified:
+    if editor_state.is_modified:
         response = messagebox.askyesnocancel(
             localization_data["save_file"],
             localization_data["save_changes_confirmation"])
@@ -316,15 +331,13 @@ def new(event=None):
             return
         elif not response:
             clear_editor()
-    file_name = ""
+    editor_state.file_name = ""
     clear_editor()
 
 
 def clear_editor():
-    global file_name
-    global is_modified
     script_text.delete("1.0", "end")
-    file_name = ""
-    is_modified = False
+    editor_state.file_name = ""
+    editor_state.update_original_content("")
     update_title()
 
