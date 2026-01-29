@@ -80,7 +80,7 @@ directory_label = CTkLabel(frm, text=os.getcwd(), anchor="center")
 script_frm = CTkFrame(root)
 script_name_label = CTkLabel(script_frm, text="Script Name: ", anchor="center")
 script_text = CTkTextbox(
-    root, wrap="word", height=20, width=60, undo=True
+    root, wrap="word", height=20, width=60, undo=True, font=my_font
 )
 text = CTkTextbox(
     root,

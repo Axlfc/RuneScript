@@ -100,6 +100,8 @@ def create_content_file_window():
         # Scroll the text widget
         script_text.yview_scroll(delta, "units")
         # Update line numbers after scrolling
+        # Redraw immediately for better responsiveness, then again after a short delay
+        line_numbers.redraw()
         root.after(10, line_numbers.redraw)
 
         # Allow event to continue for proper scrollbar update
@@ -116,6 +118,7 @@ def create_content_file_window():
     # Handle keyboard navigation that may affect scrolling
     def on_key_scroll(event):
         # Schedule line numbers update after key navigation
+        line_numbers.redraw()
         root.after(10, line_numbers.redraw)
 
     # Bind key navigation events
