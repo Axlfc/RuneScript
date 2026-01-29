@@ -43,10 +43,33 @@ def configure_app():
 
 SIMILARITY_THRESHOLD = 0.8
 
+
+class EditorState:
+    def __init__(self):
+        self.file_name = ""
+        self.last_saved_content = ""
+        self.is_modified = False
+
+    def normalize(self, content):
+        if content is None:
+            return ""
+        # Remove trailing newlines for comparison
+        return content.rstrip('\n')
+
+    def update_original_content(self, content):
+        self.last_saved_content = self.normalize(content)
+        self.is_modified = False
+
+    def check_modified(self, current_content):
+        normalized_current = self.normalize(current_content)
+        self.is_modified = (normalized_current != self.last_saved_content)
+        return self.is_modified
+
+
+editor_state = EditorState()
+
 new_name = ""
-last_saved_content = None
 context_menu = None
-is_modified = False
 markdown_render_enabled = False
 add_current_main_opened_script_var = False
 include_selected_text_in_command = False
@@ -54,7 +77,6 @@ original_md_content = None
 render_markdown_var = None
 rendered_html_content = None
 current_session = None
-file_name = ""
 current_font_family = "Liberation Mono"
 current_font_size = 12
 fontColor = "#000000"
