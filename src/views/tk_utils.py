@@ -175,26 +175,38 @@ style = ttk.Style()
 style.theme_use('clam')  # 'clam' theme allows for better customization of Treeview colors
 
 def update_treeview_style():
-    if customtkinter.get_appearance_mode().lower() == "dark":
-        style.configure("Treeview",
-                        background="#2b2b2b",
-                        foreground="white",
-                        fieldbackground="#2b2b2b",
-                        borderwidth=0)
-        style.map("Treeview",
-                  background=[('selected', '#333333')],
-                  foreground=[('selected', 'white')])
-    else:
-        style.configure("Treeview",
-                        background="white",
-                        foreground="black",
-                        fieldbackground="white",
-                        borderwidth=0)
-        style.map("Treeview",
-                  background=[('selected', '#eeeeee')],
-                  foreground=[('selected', 'black')])
+    is_dark = customtkinter.get_appearance_mode().lower() == "dark"
+    try:
+        theme = customtkinter.ThemeManager.theme
+        bg_color = theme["CTkFrame"]["fg_color"][1 if is_dark else 0]
+        fg_color = theme["CTkLabel"]["text_color"][1 if is_dark else 0]
+        selected_color = theme["CTkButton"]["fg_color"][1 if is_dark else 0]
+    except:
+        bg_color = "#2b2b2b" if is_dark else "white"
+        fg_color = "white" if is_dark else "black"
+        selected_color = "#333333" if is_dark else "#eeeeee"
+
+    style.configure("Treeview",
+                    background=bg_color,
+                    foreground=fg_color,
+                    fieldbackground=bg_color,
+                    borderwidth=0)
+    style.map("Treeview",
+              background=[('selected', selected_color)],
+              foreground=[('selected', fg_color)])
 
 update_treeview_style()
+
+# Global list of windows that should be updated when the theme changes
+registered_windows = []
+
+def register_window_for_theme(window):
+    if window not in registered_windows:
+        registered_windows.append(window)
+
+def unregister_window_for_theme(window):
+    if window in registered_windows:
+        registered_windows.remove(window)
 
 def apply_theme(theme_name, mode=None):
     """
@@ -202,20 +214,19 @@ def apply_theme(theme_name, mode=None):
     """
     from src.controllers.parameters import get_theme_path, get_appearance_mode
 
-    # 1. Update appearance mode (works immediately)
+    # 1. Update appearance mode (works immediately for CTk widgets)
     if mode is None:
         mode = get_appearance_mode(theme_name)
     customtkinter.set_appearance_mode(mode)
 
     # 2. Update color theme
-    # Note: set_default_color_theme may not apply to existing widgets automatically
     theme_path = get_theme_path(theme_name)
     try:
         customtkinter.set_default_color_theme(theme_path)
-    except:
-        pass
+    except Exception as e:
+        print(f"Error setting default color theme: {e}")
 
-    # 3. Update Treeview style
+    # 3. Update Treeview style (non-CTk)
     update_treeview_style()
 
     # 4. Refresh some critical components
@@ -232,6 +243,19 @@ def apply_theme(theme_name, mode=None):
             tab_manager.refresh_tab_bar()
     except:
         pass
+
+    # 6. Update all registered windows/widgets that might need manual refreshing
+    for window in registered_windows[:]:
+        try:
+            if hasattr(window, "winfo_exists") and window.winfo_exists():
+                # If it's a CTk widget, it might already have updated its appearance,
+                # but we might need to trigger custom logic.
+                if hasattr(window, "refresh_theme"):
+                    window.refresh_theme()
+            else:
+                registered_windows.remove(window)
+        except:
+            registered_windows.remove(window)
 
     # Force a redraw of the root
     root.update()

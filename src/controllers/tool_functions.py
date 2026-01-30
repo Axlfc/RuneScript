@@ -184,11 +184,16 @@ def open_ai_server_settings_window():
         settings_window.destroy()
 
     server_details = load_server_details()
-    settings_window = Toplevel()
+    settings_window = customtkinter.CTkToplevel()
     settings_window.title(localization_data["ai_server_settings_title"])
-    settings_window.geometry("400x300")
-    Label(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
-        row=0, column=0, sticky="w", padx=5, pady=5
+    settings_window.geometry("400x350")
+
+    from src.views.tk_utils import register_window_for_theme, unregister_window_for_theme
+    register_window_for_theme(settings_window)
+    settings_window.protocol("WM_DELETE_WINDOW", lambda: (unregister_window_for_theme(settings_window), settings_window.destroy()))
+
+    customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
+        row=0, column=0, sticky="w", padx=10, pady=10
     )
     selected_server = StringVar(settings_window)
     last_selected = read_config_parameter(
@@ -200,25 +205,27 @@ def open_ai_server_settings_window():
         else next(iter(server_details), "")
     )
     server_options = list(server_details.keys())
-    server_dropdown = OptionMenu(settings_window, selected_server, *server_options)
-    server_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
-    server_url_label = Label(settings_window, text=localization_data["ai_server_url_label"])
-    server_url_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-    server_url_entry = Entry(settings_window, width=25)
-    server_url_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-    api_key_label = Label(settings_window, text=localization_data["ai_server_api_key_label"])
-    api_key_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-    api_key_entry = Entry(settings_window, width=25, show="*")
-    api_key_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+    server_dropdown = customtkinter.CTkComboBox(settings_window, variable=selected_server, values=server_options)
+    server_dropdown.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
-    euriai_model_label = Label(settings_window, text="EuriaAI Model:")
+    server_url_label = customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_url_label"])
+    server_url_label.grid(row=1, column=0, sticky="w", padx=10, pady=10)
+    server_url_entry = customtkinter.CTkEntry(settings_window, width=200)
+    server_url_entry.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
+
+    api_key_label = customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_api_key_label"])
+    api_key_label.grid(row=2, column=0, sticky="w", padx=10, pady=10)
+    api_key_entry = customtkinter.CTkEntry(settings_window, width=200, show="*")
+    api_key_entry.grid(row=2, column=1, sticky="ew", padx=10, pady=10)
+
+    euriai_model_label = customtkinter.CTkLabel(settings_window, text="EuriaAI Model:")
     euriai_models = ["qwen/qwen3-32b", "deepseek-r1-distill-llama-70b", "gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.5-flash-lite-preview-06-17", "gemini-embedding-001", "gemini-3-pro-image-preview", "groq/compound", "groq/compound-mini", "llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-guard-4-12b", "gpt-5-nano-2025-08-07", "gpt-5-mini-2025-08-07", "gpt-4.1-nano", "gpt-4.1-mini", "openai/gpt-oss-20b", "openai/gpt-oss-120b", "text-embedding-3-small", "togethercomputer/m2-bert-80M-32k-retrieval"]
     selected_euriai_model = StringVar(settings_window)
     selected_euriai_model.set(read_config_parameter("options.network_settings.euriai_model") or euriai_models[0])
-    euriai_model_dropdown = OptionMenu(settings_window, selected_euriai_model, *euriai_models)
+    euriai_model_dropdown = customtkinter.CTkComboBox(settings_window, variable=selected_euriai_model, values=euriai_models)
 
-    Button(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
-        row=4, column=0, columnspan=2, pady=10
+    customtkinter.CTkButton(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
+        row=4, column=0, columnspan=2, pady=20
     )
     selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
     toggle_display(selected_server.get())
@@ -274,33 +281,37 @@ def open_ai_server_agent_settings_window(localization_data, persistent_agent_sel
     if not agents:
         return
 
-    settings_window = Toplevel()
+    settings_window = customtkinter.CTkToplevel()
     settings_window.title(localization_data["ai_server_agent_settings_title"])
 
-    Label(settings_window, text=localization_data["ai_server_select_agent_label"]).grid(row=0, column=0)
+    from src.views.tk_utils import register_window_for_theme, unregister_window_for_theme
+    register_window_for_theme(settings_window)
+    settings_window.protocol("WM_DELETE_WINDOW", lambda: (unregister_window_for_theme(settings_window), settings_window.destroy()))
+
+    customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_select_agent_label"]).grid(row=0, column=0, padx=10, pady=10)
 
     selected_agent_var = StringVar(settings_window)
     selected_agent_var.set(agents[0]["name"])
     agent_options = [agent["name"] for agent in agents]
-    agent_dropdown = OptionMenu(settings_window, selected_agent_var, *agent_options, command=update_instructions)
-    agent_dropdown.grid(row=0, column=1)
+    agent_dropdown = customtkinter.CTkComboBox(settings_window, variable=selected_agent_var, values=agent_options, command=update_instructions)
+    agent_dropdown.grid(row=0, column=1, padx=10, pady=10)
 
-    Label(settings_window, text=localization_data["ai_server_agent_instructions_label"]).grid(row=1, column=0)
-    instructions_text = scrolledtext.ScrolledText(settings_window, height=7, width=50)
-    instructions_text.grid(row=1, column=1, columnspan=2)
+    customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_agent_instructions_label"]).grid(row=1, column=0, padx=10, pady=10)
+    instructions_text = customtkinter.CTkTextbox(settings_window, height=150, width=400)
+    instructions_text.grid(row=1, column=1, columnspan=2, padx=10, pady=10)
 
-    Label(settings_window, text=localization_data["ai_server_agent_temperature_label"]).grid(row=2, column=0)
-    temperature_entry = Entry(settings_window)
-    temperature_entry.grid(row=2, column=1)
+    customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_agent_temperature_label"]).grid(row=2, column=0, padx=10, pady=10)
+    temperature_entry = customtkinter.CTkEntry(settings_window)
+    temperature_entry.grid(row=2, column=1, padx=10, pady=10)
 
-    persistent_agent_selection_checkbox = Checkbutton(
+    persistent_agent_selection_checkbox = customtkinter.CTkCheckBox(
         settings_window,
         text=localization_data["ai_server_agent_persistent_checkbutton"],
         variable=persistent_agent_selection_var)
-    persistent_agent_selection_checkbox.grid(row=3, columnspan=2)
+    persistent_agent_selection_checkbox.grid(row=3, columnspan=2, padx=10, pady=10)
 
-    Button(settings_window, text=localization_data["save"], command=save_agent_settings).grid(row=4, column=0)
-    Button(settings_window, text=localization_data["cancel"], command=settings_window.destroy).grid(row=4, column=1)
+    customtkinter.CTkButton(settings_window, text=localization_data["save"], command=save_agent_settings).grid(row=4, column=0, padx=10, pady=20)
+    customtkinter.CTkButton(settings_window, text=localization_data["cancel"], command=settings_window.destroy).grid(row=4, column=1, padx=10, pady=20)
 
     # Prepopulate the fields for the first agent
     update_instructions(selected_agent_var.get())
@@ -411,13 +422,17 @@ def open_ai_assistant_window(session_id=None):
     markdown_render_enabled = False
     session_data = []
     url_data = []
-    ai_assistant_window = Toplevel()
+    ai_assistant_window = customtkinter.CTkToplevel()
     ai_assistant_window.title("AI Assistant")
-    ai_assistant_window.geometry("800x600")
+    ai_assistant_window.geometry("1000x700")
+
+    from src.views.tk_utils import register_window_for_theme, unregister_window_for_theme
+    register_window_for_theme(ai_assistant_window)
+    ai_assistant_window.protocol("WM_DELETE_WINDOW", lambda: (unregister_window_for_theme(ai_assistant_window), ai_assistant_window.destroy()))
+
     menu_bar = Menu(ai_assistant_window)
     ai_assistant_window.configure(menu=menu_bar)
     settings_menu = Menu(menu_bar, tearoff=0)
-    menu_bar.add_cascade(label="Settings", menu=settings_menu)
     menu_bar.add_command(
         label="Agent Options",
         command=lambda: open_ai_server_agent_settings_window(
@@ -464,22 +479,41 @@ def open_ai_assistant_window(session_id=None):
     )"""
 
     # Left side frame for sessions, links, and documents
-    session_list_frame = Frame(ai_assistant_window)
-    session_list_frame.pack(side="left", fill="y")
+    session_list_frame = customtkinter.CTkFrame(ai_assistant_window, width=250)
+    session_list_frame.pack(side="left", fill="y", padx=5, pady=5)
 
     # Sessions List
-    Label(session_list_frame, text=localization_data["ai_server_agent_sessions_label"], font=("Helvetica", 10, "bold")).pack(fill="x")
-    sessions_list = Listbox(session_list_frame)
-    sessions_list.pack(fill="both", expand=True)
+    customtkinter.CTkLabel(session_list_frame, text=localization_data["ai_server_agent_sessions_label"], font=("Helvetica", 12, "bold")).pack(fill="x", pady=(10, 5))
 
-    Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
+    # We use a standard Listbox wrapped in a CTkFrame for now, as CTk doesn't have a Listbox
+    sessions_container = customtkinter.CTkFrame(session_list_frame)
+    sessions_container.pack(fill="both", expand=True, padx=5, pady=5)
+    sessions_list = Listbox(sessions_container, borderwidth=0, highlightthickness=0)
+    sessions_list.pack(side="left", fill="both", expand=True)
+    sessions_scrollbar = customtkinter.CTkScrollbar(sessions_container, command=sessions_list.yview)
+    sessions_scrollbar.pack(side="right", fill="y")
+    sessions_list.configure(yscrollcommand=sessions_scrollbar.set)
 
     # Links List
-    Label(session_list_frame, text=localization_data["ai_server_agent_links_label"], font=("Helvetica", 10, "bold")).pack(fill="x")
-    links_frame = Frame(session_list_frame)
-    links_frame.pack(fill="both", expand=True)
-    links_list = Listbox(links_frame)
-    links_list.pack(fill="both", expand=True)
+    customtkinter.CTkLabel(session_list_frame, text=localization_data["ai_server_agent_links_label"], font=("Helvetica", 12, "bold")).pack(fill="x", pady=(10, 5))
+    links_container = customtkinter.CTkFrame(session_list_frame)
+    links_container.pack(fill="both", expand=True, padx=5, pady=5)
+    links_list = Listbox(links_container, borderwidth=0, highlightthickness=0)
+    links_list.pack(side="left", fill="both", expand=True)
+    links_scrollbar = customtkinter.CTkScrollbar(links_container, command=links_list.yview)
+    links_scrollbar.pack(side="right", fill="y")
+    links_list.configure(yscrollcommand=links_scrollbar.set)
+
+    def refresh_ai_assistant_theme():
+        is_dark = customtkinter.get_appearance_mode().lower() == "dark"
+        theme = customtkinter.ThemeManager.theme
+        bg_color = theme["CTkFrame"]["fg_color"][1 if is_dark else 0]
+        fg_color = theme["CTkLabel"]["text_color"][1 if is_dark else 0]
+        sessions_list.configure(bg=bg_color, fg=fg_color, selectbackground=theme["CTkButton"]["fg_color"][1 if is_dark else 0])
+        links_list.configure(bg=bg_color, fg=fg_color, selectbackground=theme["CTkButton"]["fg_color"][1 if is_dark else 0])
+
+    ai_assistant_window.refresh_theme = refresh_ai_assistant_theme
+    refresh_ai_assistant_theme()
 
     def refresh_links_list():
         links_list.delete(0, END)
@@ -829,49 +863,24 @@ def open_ai_assistant_window(session_id=None):
     Separator(session_list_frame, orient="horizontal").pack(fill="x", pady=5)
 
     # Documents List
-    Label(session_list_frame, text=localization_data["ai_server_agent_documents_label"], font=("Helvetica", 10, "bold")).pack(fill="x")
-    documents_frame = Frame(session_list_frame)
-    documents_frame.pack(fill="both", expand=True)
+    customtkinter.CTkLabel(session_list_frame, text=localization_data["ai_server_agent_documents_label"], font=("Helvetica", 12, "bold")).pack(fill="x", pady=(10, 5))
+    documents_frame = customtkinter.CTkFrame(session_list_frame)
+    documents_frame.pack(fill="both", expand=True, padx=5, pady=5)
     document_paths = []
     document_checkbuttons = []
 
-    # Function to change the button's appearance on hover
-    def on_button_enter(e):
-        ingest_button.configure(background='#2E86C1', foreground='white', relief=RAISED)
-
-    # Function to revert the button's appearance when the mouse leaves
-    def on_button_leave(e):
-        ingest_button.configure(background='SystemButtonFace', foreground='black', relief=FLAT)
-
-    # Create a frame for the ingest button at the bottom
-    ingest_frame = Frame(session_list_frame)
-    ingest_frame.pack(side="bottom", fill="x")
-
     # INGEST Button (Restored)
     # Button to ingest documents
-    ingest_button = Button(ai_assistant_window, text=localization_data["ai_server_agent_ingest_button"], command=ingest_documents)
-
-    # Bind hover events to the button
-    ingest_button.bind("<Enter>", on_button_enter)  # Mouse enters the button area
-    ingest_button.bind("<Leave>", on_button_leave)  # Mouse leaves the button area
-
-    ingest_button.pack(side="top")
+    ingest_button = customtkinter.CTkButton(session_list_frame, text=localization_data["ai_server_agent_ingest_button"], command=ingest_documents)
+    ingest_button.pack(side="bottom", fill="x", padx=10, pady=10)
 
     def refresh_documents_list():
         for widget in documents_frame.winfo_children():
             widget.destroy()
 
-        # Create a canvas inside the documents_frame to allow scrolling
-        documents_canvas = Canvas(documents_frame)
-        documents_scrollbar = Scrollbar(documents_frame, orient="vertical", command=documents_canvas.yview)
-        documents_canvas.configure(yscrollcommand=documents_scrollbar.set)
-
-        documents_container = Frame(documents_canvas)  # Frame inside the canvas to hold the document checkbuttons
-        documents_canvas.create_window((0, 0), window=documents_container, anchor="nw")
-
-        # Pack the canvas and scrollbar
-        documents_canvas.pack(side="left", fill="both", expand=True)
-        documents_scrollbar.pack(side="right", fill="y")
+        # Create a scrollable frame for documents
+        documents_scrollable = customtkinter.CTkScrollableFrame(documents_frame)
+        documents_scrollable.pack(fill="both", expand=True)
 
         if current_session:
             for idx, doc_data in enumerate(current_session.documents):
@@ -880,23 +889,12 @@ def open_ai_assistant_window(session_id=None):
                 if doc_path:
                     doc_name = os.path.basename(doc_path)
                     var = IntVar(value=int(is_checked))
-                    checkbutton = Checkbutton(documents_container, text=doc_name, variable=var,
-                                              command=lambda idx=idx, v=var: on_document_checkbox_change(idx, v))
-                    checkbutton.pack(anchor="w")
+                    checkbutton = customtkinter.CTkCheckBox(documents_scrollable, text=doc_name, variable=var,
+                                                            command=lambda idx=idx, v=var: on_document_checkbox_change(idx, v))
+                    checkbutton.pack(anchor="w", padx=5, pady=2)
                     checkbutton.bind("<Button-3>",
                                      lambda event, idx=idx, doc_name=doc_name: on_document_right_click(event, idx,
                                                                                                        doc_name))
-
-        # Update scrollregion after adding all widgets
-        documents_container.update_idletasks()  # Force the system to recalculate layout sizes
-        documents_canvas.configure(scrollregion=documents_canvas.bbox("all"))
-
-        # Bind mousewheel scrolling to the canvas
-        documents_canvas.bind_all("<MouseWheel>",
-                                  lambda event: documents_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
-
-        # Bind right-click to show context menu when right-clicking on empty space in the document container
-        documents_canvas.bind("<Button-3>", show_documents_context_menu_empty_space)
 
     def on_document_checkbox_change(document_index, var):
         is_checked = bool(var.get())
@@ -989,16 +987,16 @@ def open_ai_assistant_window(session_id=None):
     # Initialize the context menu
     documents_context_menu = Menu(ai_assistant_window, tearoff=0)
 
-    output_text = scrolledtext.ScrolledText(ai_assistant_window, height=20, width=80)
-    output_text.pack(fill="both", expand=True)
+    output_text = customtkinter.CTkTextbox(ai_assistant_window, height=200, width=500)
+    output_text.pack(fill="both", expand=True, padx=5, pady=5)
     html_display = HTMLLabel(ai_assistant_window, html="")
     html_display.pack(side="left", fill="both", expand=False)
     html_display.pack_forget()
-    entry = Entry(ai_assistant_window, width=30)
-    entry.pack(side="bottom", fill="x")
+    entry = customtkinter.CTkEntry(ai_assistant_window, width=30)
+    entry.pack(side="bottom", fill="x", padx=10, pady=10)
     Tooltip(entry, "Input text prompt")
-    status_label = Label(ai_assistant_window, textvariable=status_label_var)
-    status_label.pack(side="bottom")
+    status_label = customtkinter.CTkLabel(ai_assistant_window, textvariable=status_label_var)
+    status_label.pack(side="bottom", pady=(0, 5))
     status_label_var.set("READY")
     output_text.tag_configure("user", foreground="#a84699")
     output_text.tag_configure("ai", foreground="#6a7fd2")

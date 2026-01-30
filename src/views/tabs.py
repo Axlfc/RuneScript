@@ -107,6 +107,7 @@ class TabManager:
         # Get frame color for background
         bg_color = theme["CTkFrame"]["fg_color"][1 if is_dark else 0]
         self.scroll_canvas.configure(bg=bg_color)
+        self.tabs_container.configure(fg_color=bg_color)
 
         # Update each tab button colors
         for i, (btn_frame, tab_btn, close_btn) in enumerate(self.tab_buttons):
@@ -116,13 +117,20 @@ class TabManager:
                     active_color = theme["CTkButton"]["fg_color"][1 if is_dark else 0]
                     border_color = theme["CTkButton"]["border_color"][1 if is_dark else 0]
                     btn_frame.configure(fg_color=active_color, border_width=1, border_color=border_color)
-                    tab_btn.configure(text_color=theme["CTkButton"]["text_color"][1 if is_dark else 0])
-                    close_btn.configure(text_color=theme["CTkButton"]["text_color"][1 if is_dark else 0])
+                    text_color = theme["CTkButton"]["text_color"][1 if is_dark else 0]
+                    tab_btn.configure(text_color=text_color)
+                    close_btn.configure(text_color=text_color)
                 else:
                     # Inactive tab colors
                     btn_frame.configure(fg_color="transparent", border_width=0)
-                    tab_btn.configure(text_color=theme["CTkLabel"]["text_color"][1 if is_dark else 0])
-                    close_btn.configure(text_color=theme["CTkLabel"]["text_color"][1 if is_dark else 0])
+                    # Use CTkLabel text_color for contrast against CTkFrame background
+                    text_color = theme["CTkLabel"]["text_color"][1 if is_dark else 0]
+                    tab_btn.configure(text_color=text_color)
+                    close_btn.configure(text_color=text_color)
+
+                # Ensure hover effect is consistent
+                hover_color = theme["CTkButton"]["hover_color"][1 if is_dark else 0]
+                tab_btn.configure(hover_color=hover_color)
 
     def refresh_tab_bar(self):
         # Ensure we have enough buttons

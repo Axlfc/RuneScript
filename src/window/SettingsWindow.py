@@ -1,37 +1,33 @@
 ﻿import json
 import os
 from tkinter import (
-    Toplevel,
-    Label,
-    Entry,
-    Button,
     StringVar,
     messagebox,
-    Frame,
     font,
     BOTH,
     LEFT,
     X,
     BooleanVar,
-    BOTTOM, Checkbutton
+    BOTTOM
 )
-from tkinter.ttk import Notebook, Combobox
+from tkinter.ttk import Notebook
 
 from src.controllers.parameters import (read_config_parameter, write_config_parameter,
                                         get_appearance_mode)
 from src.models.LanguageManager import LanguageManager
 import customtkinter
-from src.views.tk_utils import style
+from src.views.tk_utils import style, register_window_for_theme, unregister_window_for_theme
 from src.views.ui_elements import ScrollableFrame
 
 
-class SettingsWindow(Toplevel):
+class SettingsWindow(customtkinter.CTkToplevel):
     def __init__(self):
         super().__init__()
         self.language_code_map = None
         self.title("ScriptsEditor Settings")
         self.geometry("800x600")
-        self.style = style
+        register_window_for_theme(self)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Configuration file paths
         self.default_config_file = "data/config.json"
@@ -62,42 +58,64 @@ class SettingsWindow(Toplevel):
             return None
 
     def load_themes_from_json(self, file_path):
-        """Load themes from JSON file."""
+        """Load themes from JSON file and custom themes directory."""
+        themes = []
         try:
-            with open(file_path, "r") as file:
-                data = json.load(file)
-                return data.get("themes", [])
-        except FileNotFoundError:
-            messagebox.showerror("Error", "Themes file not found.")
-            return []
-        except json.JSONDecodeError:
-            messagebox.showerror("Error", "Error decoding themes file.")
-            return []
+            if os.path.exists(file_path):
+                with open(file_path, "r") as file:
+                    data = json.load(file)
+                    themes.extend(data.get("themes", []))
+        except Exception as e:
+            print(f"Error loading themes.json: {e}")
+
+        # Also load all .json files from data/themes/
+        themes_dir = "data/themes"
+        if os.path.exists(themes_dir):
+            for filename in os.listdir(themes_dir):
+                if filename.endswith(".json"):
+                    theme_name = filename[:-5]
+                    if theme_name not in themes:
+                        themes.append(theme_name)
+
+        # Add default built-in themes if not already present
+        for default in ["blue", "green", "dark-blue"]:
+            if default not in themes:
+                themes.append(default)
+
+        return sorted(list(set(themes)))
+
+    def on_close(self):
+        unregister_window_for_theme(self)
+        self.destroy()
 
     def setup_ui(self):
         """Setup the main UI components."""
         # Main frame
-        self.main_frame = Frame(self)
+        self.main_frame = customtkinter.CTkFrame(self)
         self.main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
         # Notebook for tabs
-        self.notebook = Notebook(self.main_frame)
-        self.notebook.pack(fill=BOTH, expand=True)
+        # Note: CTk doesn't have a Notebook, so we use a Frame with segmented buttons or just keep ttk Notebook
+        # To keep it simple and consistent with other IDEs, let's use a Tabview
+        self.tabview = customtkinter.CTkTabview(self.main_frame)
+        self.tabview.pack(fill=BOTH, expand=True)
 
         # Bottom frame for buttons
-        self.bottom_frame = Frame(self)
+        self.bottom_frame = customtkinter.CTkFrame(self)
         self.bottom_frame.pack(fill=X, side=BOTTOM, padx=10, pady=10)
 
         self.create_settings_sections()
         self.create_buttons()
 
     def create_settings_sections(self):
-        """Create settings sections in the notebook."""
+        """Create settings sections in the tabview."""
         for section, options in self.config_data["options"].items():
-            section_frame = Frame(self.notebook)
-            self.notebook.add(section_frame, text=section.capitalize())
+            tab_name = section.capitalize()
+            self.tabview.add(tab_name)
+            tab_frame = self.tabview.tab(tab_name)
 
-            scrollable_frame = ScrollableFrame(section_frame)
+            # Use CTkScrollableFrame
+            scrollable_frame = customtkinter.CTkScrollableFrame(tab_frame)
             scrollable_frame.pack(fill=BOTH, expand=True)
 
             self.create_option_widgets(scrollable_frame, section, options)
@@ -105,21 +123,21 @@ class SettingsWindow(Toplevel):
     def create_option_widgets(self, scrollable_frame, section, options):
         """Create widgets for each option in a section."""
         for row, (option_name, default_value) in enumerate(options.items()):
-            label = Label(
-                scrollable_frame.scrollable_frame,
+            label = customtkinter.CTkLabel(
+                scrollable_frame,
                 text=option_name.replace("_", " ").capitalize()
             )
             label.grid(row=row, column=0, padx=5, pady=5, sticky="w")
 
             widget, var = self.create_appropriate_widget(
-                scrollable_frame.scrollable_frame,
+                scrollable_frame,
                 option_name,
                 default_value
             )
 
             if widget:
                 widget.grid(row=row, column=1, padx=5, pady=5, sticky="ew")
-                scrollable_frame.scrollable_frame.grid_columnconfigure(1, weight=1)
+                scrollable_frame.grid_columnconfigure(1, weight=1)
                 self.setting_entries[section, option_name] = var
 
     def create_appropriate_widget(self, parent, option_name, default_value):
@@ -141,7 +159,7 @@ class SettingsWindow(Toplevel):
             )
 
             var = StringVar(value=current_lang_name)
-            widget = Combobox(parent, textvariable=var, values=language_display_list)
+            widget = customtkinter.CTkComboBox(parent, variable=var, values=language_display_list)
 
             # Store the reverse mapping for saving
             self._orig_language_var = var
@@ -155,17 +173,23 @@ class SettingsWindow(Toplevel):
             return widget, var
 
         elif option_name.lower() == "font_family":
-            font_families = font.families()
+            font_families = list(font.families())
             default_font = default_value if default_value in font_families else "Courier New"
             var = StringVar(value=default_font)
-            widget = Combobox(parent, textvariable=var, values=font_families)
+            widget = customtkinter.CTkComboBox(parent, variable=var, values=font_families)
             return widget, var
 
         elif option_name.lower() == "theme":
             themes = self.load_themes_from_json("data/themes.json")
             default_theme = default_value if default_value in themes else themes[0]
             var = StringVar(value=default_theme)
-            widget = Combobox(parent, textvariable=var, values=themes)
+            widget = customtkinter.CTkComboBox(parent, variable=var, values=themes)
+            return widget, var
+
+        elif option_name.lower() == "mode":
+            modes = ["System", "Light", "Dark"]
+            var = StringVar(value=default_value)
+            widget = customtkinter.CTkComboBox(parent, variable=var, values=modes)
             return widget, var
 
         elif option_name.lower() == "mode":
@@ -176,22 +200,22 @@ class SettingsWindow(Toplevel):
 
         elif isinstance(default_value, bool):
             var = BooleanVar(value=default_value)
-            widget = Checkbutton(parent, variable=var)
+            widget = customtkinter.CTkCheckBox(parent, text="", variable=var)
             return widget, var
 
         elif isinstance(default_value, (str, int)):
             var = StringVar(value=str(default_value))
-            widget = Entry(parent, textvariable=var)
+            widget = customtkinter.CTkEntry(parent, textvariable=var)
             return widget, var
 
         return None, None
 
     def create_buttons(self):
         """Create save and reset buttons."""
-        save_button = Button(self.bottom_frame, text="Save Settings", command=self.save_settings)
+        save_button = customtkinter.CTkButton(self.bottom_frame, text="Save Settings", command=self.save_settings)
         save_button.pack(side=LEFT, padx=5)
 
-        reset_button = Button(self.bottom_frame, text="Reset Settings", command=self.reset_settings)
+        reset_button = customtkinter.CTkButton(self.bottom_frame, text="Reset Settings", command=self.reset_settings)
         reset_button.pack(side=LEFT, padx=5)
 
     def save_settings(self):

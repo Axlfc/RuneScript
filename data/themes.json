@@ -1,8 +1,26 @@
 {
   "themes": [
+    "cosmo",
+    "flatly",
+    "litera",
+    "minty",
+    "lumen",
+    "sandstone",
+    "yeti",
+    "pulse",
+    "united",
+    "morph",
+    "journal",
+    "darkly",
+    "superhero",
+    "solar",
+    "cyborg",
+    "vapor",
+    "simplex",
+    "cerulean",
+    "dracula",
     "blue",
-    "dark-blue",
     "green",
-    "dracula"
+    "dark-blue"
   ]
 }
