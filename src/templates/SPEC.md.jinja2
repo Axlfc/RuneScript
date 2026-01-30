@@ -2,3 +2,24 @@
 
 ## Objective
 {{ objective }}
+
+## Core Functionalities
+{% for feature in features %}
+{{ loop.index }}. {{ feature }}
+{% endfor %}
+
+## Tech Stack
+- Language: {{ language }}
+- Framework: {{ framework }}
+- Database: {{ database }}
+- Testing: {{ testing_framework }}
+
+## Success Criteria
+{% for criterion in success_criteria %}
+- [ ] {{ criterion }}
+{% endfor %}
+
+## Out of Scope (v1)
+{% for item in out_of_scope %}
+- {{ item }}
+{% endfor %}

@@ -9,6 +9,8 @@ from colorama import init
 from colorama import Fore, Back, Style
 import time
 import json
+import io
+import contextlib
 from datetime import datetime
 # from google import genai
 # from google.genai.types import GenerateContentConfig, Part, SafetySetting
@@ -427,6 +429,41 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
     except Exception as e:
         print(json.dumps({"error": f"Unexpected error: {str(e)}"}))
 
+
+class AIAssistant:
+    """Class-based wrapper for AI assistant functionality."""
+    def __init__(self):
+        self.provider = read_config_parameter("options.network_settings.last_selected_llm_server_provider")
+        self.server_url = read_config_parameter("options.network_settings.server_url")
+        self.api_key = read_config_parameter("options.network_settings.api_key")
+        self.system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
+
+    def generate(self, prompt: str, system_prompt: str = None) -> str:
+        """Generate a response from the selected AI provider."""
+        current_system = system_prompt or self.system_prompt
+        session_id = datetime.now().strftime("%Y%m%d%H%M%S")
+
+        # Capture stdout to return it as a string
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            if self.provider == "llama-cpp-python":
+                client = initialize_client_with_parameters(self.server_url, self.api_key)
+                model_path = find_gguf_file()
+                chat_loop(prompt, client, model_path, current_system, session_id)
+            elif self.provider == "gemini":
+                client = initialize_gemini20_client()
+                chat_loop_gemini20(prompt, client, current_system, session_id)
+            elif self.provider == "claude":
+                client = initialize_claude_client()
+                chat_loop_claude(prompt, client, current_system, session_id)
+            elif self.provider == "ollama":
+                chat_loop_ollama(prompt, current_system, session_id)
+            elif self.provider == "euriai":
+                chat_loop_euriai(prompt, current_system, session_id)
+            else:
+                return "Error: UNSUPPORTED LLM SERVER PROVIDER"
+
+        return f.getvalue().strip()
 
 def main():
     if len(sys.argv) < 2:
