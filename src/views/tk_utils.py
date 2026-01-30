@@ -67,6 +67,7 @@ class EditorState:
 
 
 editor_state = EditorState()
+tab_manager = None
 
 new_name = ""
 context_menu = None
@@ -101,9 +102,34 @@ frm = CTkFrame(root)
 directory_label = CTkLabel(frm, text=os.getcwd(), anchor="center")
 script_frm = CTkFrame(root)
 script_name_label = CTkLabel(script_frm, text="Script Name: ", anchor="center")
-script_text = CTkTextbox(
+class WidgetProxy:
+    def __init__(self, initial_widget):
+        self.__dict__['_widget'] = initial_widget
+
+    def set_widget(self, widget):
+        self.__dict__['_widget'] = widget
+
+    def __getattr__(self, name):
+        return getattr(self._widget, name)
+
+    def __setattr__(self, name, value):
+        if name == '_widget':
+            self.__dict__['_widget'] = value
+        else:
+            setattr(self._widget, name, value)
+
+    def __hash__(self):
+        return hash(self._widget)
+
+    def __eq__(self, other):
+        return self._widget == other
+
+
+_script_text = CTkTextbox(
     root, wrap="word", height=20, width=60, undo=True, font=my_font
 )
+script_text = WidgetProxy(_script_text)
+
 text = CTkTextbox(
     root,
     font=('Consolas', 12),  # Formato: (nombre_fuente, tamaño_px)

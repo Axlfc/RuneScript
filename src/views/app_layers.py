@@ -42,13 +42,76 @@ from src.views.tk_utils import *
 from src.controllers.file_operations import on_text_change
 
 
+def on_tab_change(tab):
+    from src.views.tk_utils import script_text, editor_state, root, my_font
+    from src.controllers.file_operations import update_title, update_menu_based_on_extension, on_text_change
+    import os
+
+    # If tab has no textbox, create it
+    if tab.textbox is None:
+        tab.textbox = customtkinter.CTkTextbox(
+            root, wrap="word", height=20, width=60, undo=True, font=my_font
+        )
+        tab.textbox.configure(fg_color="#1f1f1f", text_color="white")
+        tab.textbox.insert("1.0", tab.content)
+        # Clear undo stack after initial insert
+        tab.textbox._textbox.edit_reset()
+        tab.textbox._textbox.edit_modified(False)
+        setup_textbox_bindings(tab.textbox)
+
+    # Swap current visible textbox
+    old_textbox = script_text._widget
+    old_textbox.grid_forget()
+
+    script_text.set_widget(tab.textbox)
+
+    # Update editor_state
+    editor_state.file_name = tab.file_path if tab.file_path else ""
+    editor_state.last_saved_content = tab.original_content
+    editor_state.is_modified = tab.is_modified
+
+    # Grid new textbox
+    # Use after to ensure winfo_width is correct or use a default
+    offset = line_numbers.winfo_width()
+    if offset <= 1: offset = 38 # Default if not yet rendered
+    offset += 8
+    tab.textbox.grid(row=2, column=0, padx=(offset, 0), pady=0, sticky="nsew")
+
+    # Update line numbers
+    line_numbers.set_text_widget(script_text)
+    line_numbers.redraw()
+
+    # Update UI
+    update_title()
+    if tab.file_path:
+        ext = os.path.splitext(tab.file_path)[1]
+        dir_path = os.path.dirname(tab.file_path)
+        from src.views.tk_utils import directory_label
+        directory_label.configure(text=dir_path)
+        update_menu_based_on_extension(ext, dir_path)
+    else:
+        update_menu_based_on_extension("", "")
+
+
 def create_app():
+    # Initialize tab manager early to be available for menu creation
+    from src.views.tabs import TabManager
+    import src.views.tk_utils as tk_utils
+    tk_utils.tab_manager = TabManager(root, script_frm, on_tab_change)
+
     print("app_layers: CREATE MENU TRIGGERED")
     create_menu()
+
     print("app_layers: CREATE CONTENT FILE WINDOW TRIGGERED")
     create_content_file_window()
     print("app_layers: CREATE CONTENT FILE WINDOW")
     create_filesystem_window()
+
+    # Load session after everything is set up
+    tk_utils.tab_manager.load_session()
+
+    # Set up session saving on close
+    root.protocol("WM_DELETE_WINDOW", lambda: (tk_utils.tab_manager.save_session(), root.destroy()))
 
 
 def create_filesystem_window():
@@ -74,14 +137,12 @@ def create_filesystem_window():
     return filesystem_frm, update_tree
 
 
-def create_content_file_window():
-    global line_numbers
+def setup_textbox_bindings(textbox):
+    from src.controllers.file_operations import on_text_change
 
-    # Create the line numbers canvas
-    line_numbers = LineNumberCanvas(script_text, width=30)
-    line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
+    # Determine the actual text widget to bind events to (internal _textbox for CTkTextbox)
+    target_widget = getattr(textbox, "_textbox", textbox)
 
-    # Debug mouse wheel events
     # Handle mouse wheel events
     def on_mousewheel(event):
         # Calculate scroll direction
@@ -98,17 +159,11 @@ def create_content_file_window():
             return
 
         # Scroll the text widget
-        script_text.yview_scroll(delta, "units")
+        textbox.yview_scroll(delta, "units")
         # Update line numbers after scrolling
-        # Redraw immediately for better responsiveness, then again after a short delay
         line_numbers.redraw()
         root.after(10, line_numbers.redraw)
-
-        # Allow event to continue for proper scrollbar update
-        return
-
-    # Determine the actual text widget to bind events to (internal _textbox for CTkTextbox)
-    target_widget = getattr(script_text, "_textbox", script_text)
+        return "break"
 
     # Bind mouse wheel events
     target_widget.bind("<MouseWheel>", on_mousewheel)  # Windows
@@ -117,7 +172,6 @@ def create_content_file_window():
 
     # Handle keyboard navigation that may affect scrolling
     def on_key_scroll(event):
-        # Schedule line numbers update after key navigation
         line_numbers.redraw()
         root.after(10, line_numbers.redraw)
 
@@ -160,39 +214,41 @@ def create_content_file_window():
             command=open_search_replace_window,
             compound="left",
             accelerator="Ctrl+R")
-        """git_submenu.add_command(label="Unstash Changes...", command=duplicate, compound='left',
-                                accelerator='Ctrl+Alt+A')"""
         context_menu.post(event.x_root, event.y_root)
         context_menu.focus_set()
 
         def destroy_menu():
-            """ ""\"
-            destroy_menu
-
-                    Args:
-                        None
-
-                    Returns:
-                        None: Description of return value.
-            ""\" """
             context_menu.unpost()
 
         context_menu.bind("<Leave>", lambda e: destroy_menu())
         context_menu.bind("<FocusOut>", lambda e: destroy_menu())
 
     def scroll_lines_up(event):
-        script_text.yview_scroll(-5, "units")  # Scroll up 5 lines
+        textbox.yview_scroll(-5, "units")
         root.after(10, lambda: line_numbers.redraw())
         return "break"
 
     def scroll_lines_down(event):
-        script_text.yview_scroll(5, "units")  # Scroll down 5 lines
+        textbox.yview_scroll(5, "units")
         root.after(10, lambda: line_numbers.redraw())
         return "break"
 
     # Bind the scroll_lines functions
     target_widget.bind("<Control-Up>", scroll_lines_up)
     target_widget.bind("<Control-Down>", scroll_lines_down)
+    target_widget.bind("<Button-3>", show_context_menu)
+    target_widget.bind("<<Modified>>", on_text_change)
+
+
+def create_content_file_window():
+    global line_numbers
+
+    # Create the line numbers canvas
+    line_numbers = LineNumberCanvas(script_text, width=30)
+    line_numbers.grid(row=2, column=0, padx=0, pady=0, sticky="nsw")
+
+    # Set up initial bindings for the default script_text
+    setup_textbox_bindings(script_text)
 
     # Show changes in text zone when line numbers width changes
     def show_changes_in_text_zone(event=None):
@@ -202,28 +258,6 @@ def create_content_file_window():
     line_numbers.bind("<Configure>", show_changes_in_text_zone)
 
     script_text.configure(fg_color="#1f1f1f", text_color="white")
-
-    script_text.configure()
-
-    target_widget.bind("<Button-3>", show_context_menu)
-    target_widget.bind("<<Modified>>", on_text_change)
-
-    # Additional debugging for manual scrolling
-    def scroll_lines_up(event):
-        script_text.yview_scroll(-5, "units")
-        # Update line numbers and scroll position
-        root.after(10, line_numbers.redraw)
-        return "break"
-
-    def scroll_lines_down(event):
-        script_text.yview_scroll(5, "units")
-        # Update line numbers and scroll position
-        root.after(10, line_numbers.redraw)
-        return "break"
-
-    # Bind the debug scroll functions
-    target_widget.bind("<Control-Up>", scroll_lines_up)
-    target_widget.bind("<Control-Down>", scroll_lines_down)
 
     # Ensure the line numbers are drawn initially
     root.after(100, line_numbers.redraw)
