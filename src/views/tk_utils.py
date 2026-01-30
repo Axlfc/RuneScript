@@ -27,7 +27,16 @@ def verify_theme_integrity():
             "CTkFrame": ["fg_color", "top_fg_color", "border_color", "corner_radius", "border_width"],
             "CTkLabel": ["text_color", "corner_radius"],
             "CTkButton": ["fg_color", "hover_color", "text_color", "corner_radius", "border_width"],
-            "CTkEntry": ["fg_color", "border_color", "text_color", "corner_radius", "border_width"]
+            "CTkEntry": ["fg_color", "border_color", "text_color", "corner_radius", "border_width"],
+            "CTkCheckBox": ["fg_color", "border_color", "text_color", "corner_radius", "border_width", "checkmark_color"],
+            "CTkSwitch": ["fg_color", "progress_color", "button_color", "corner_radius", "border_width"],
+            "CTkRadioButton": ["fg_color", "border_color", "text_color", "corner_radius", "border_width_checked"],
+            "CTkProgressBar": ["fg_color", "progress_color", "corner_radius"],
+            "CTkSlider": ["fg_color", "progress_color", "button_color", "corner_radius"],
+            "CTkOptionMenu": ["fg_color", "button_color", "corner_radius"],
+            "CTkComboBox": ["fg_color", "border_color", "button_color", "corner_radius"],
+            "CTkScrollbar": ["fg_color", "button_color", "corner_radius"],
+            "CTkTextbox": ["fg_color", "border_color", "text_color", "corner_radius"]
         }
 
         for widget, keys in required.items():
