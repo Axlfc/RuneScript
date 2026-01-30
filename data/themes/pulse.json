@@ -15,6 +15,14 @@
     "fg_color": [
       "#F9F8FC",
       "#24222D"
+    ],
+    "top_fg_color": [
+      "#F9F8FC",
+      "#24222D"
+    ],
+    "border_color": [
+      "#979797",
+      "#44475a"
     ]
   },
   "CTkButton": {

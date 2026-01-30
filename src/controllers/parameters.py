@@ -167,14 +167,16 @@ def get_appearance_mode(theme_name=None):
 def get_theme_path(theme_name):
     """
     Returns the path to the theme JSON or the name of the built-in theme.
+    Prioritizes local JSON files in data/themes/.
     """
-    built_in = ["blue", "green", "dark-blue"]
-    if theme_name in built_in:
-        return theme_name
-
-    # Check for custom theme file
+    # Check for custom theme file first
     theme_path = os.path.join("data", "themes", f"{theme_name}.json")
     if os.path.exists(theme_path):
         return theme_path
+
+    # Fallback to built-in names if they exist and no local file was found
+    built_in = ["blue", "green", "dark-blue"]
+    if theme_name in built_in:
+        return theme_name
 
     return "blue" # Default
