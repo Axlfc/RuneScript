@@ -144,17 +144,37 @@ def ensure_user_config():
 def load_theme_setting():
     theme = read_config_parameter("options.theme_appearance.theme")
     if theme is None:
-        theme = "cosmo"
+        theme = "dark-blue"
     return theme
 
 
-def get_appearance_mode(theme_name):
+def get_appearance_mode(theme_name=None):
     """
-    Map ttkbootstrap themes to customtkinter appearance modes.
+    Get appearance mode (System, Light, Dark).
+    For now, it defaults to System or can be derived from theme.
     """
-    dark_themes = [
-        "darkly", "superhero", "solar", "cyborg", "vapor"
-    ]
+    mode = read_config_parameter("options.theme_appearance.mode")
+    if mode in ["System", "Light", "Dark"]:
+        return mode
+
+    # Fallback/Legacy: map some themes to dark by default
+    dark_themes = ["dark-blue", "dracula"]
     if theme_name in dark_themes:
-        return "dark"
-    return "light"
+        return "Dark"
+    return "System"
+
+
+def get_theme_path(theme_name):
+    """
+    Returns the path to the theme JSON or the name of the built-in theme.
+    """
+    built_in = ["blue", "green", "dark-blue"]
+    if theme_name in built_in:
+        return theme_name
+
+    # Check for custom theme file
+    theme_path = os.path.join("data", "themes", f"{theme_name}.json")
+    if os.path.exists(theme_path):
+        return theme_path
+
+    return "blue" # Default

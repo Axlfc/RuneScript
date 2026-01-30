@@ -42,7 +42,7 @@ class TabManager:
         self.left_arrow.pack(side="right", padx=2)
 
         # Scrollable container for tabs
-        self.scroll_canvas = tk.Canvas(self.tab_bar_frame, height=35, highlightthickness=0, bg="#2b2b2b")
+        self.scroll_canvas = tk.Canvas(self.tab_bar_frame, height=35, highlightthickness=0)
         self.scroll_canvas.pack(side="left", fill="both", expand=True)
 
         self.tabs_container = customtkinter.CTkFrame(self.scroll_canvas, height=30)
@@ -99,6 +99,31 @@ class TabManager:
 
         self.tab_buttons.append((btn_frame, tab_btn, close_btn))
 
+    def refresh_colors(self):
+        """Update colors of the tab bar components based on current theme."""
+        is_dark = customtkinter.get_appearance_mode().lower() == "dark"
+        theme = customtkinter.ThemeManager.theme
+
+        # Get frame color for background
+        bg_color = theme["CTkFrame"]["fg_color"][1 if is_dark else 0]
+        self.scroll_canvas.configure(bg=bg_color)
+
+        # Update each tab button colors
+        for i, (btn_frame, tab_btn, close_btn) in enumerate(self.tab_buttons):
+            if i < len(self.tabs):
+                if i == self.active_tab_index:
+                    # Active tab colors
+                    active_color = theme["CTkButton"]["fg_color"][1 if is_dark else 0]
+                    border_color = theme["CTkButton"]["border_color"][1 if is_dark else 0]
+                    btn_frame.configure(fg_color=active_color, border_width=1, border_color=border_color)
+                    tab_btn.configure(text_color=theme["CTkButton"]["text_color"][1 if is_dark else 0])
+                    close_btn.configure(text_color=theme["CTkButton"]["text_color"][1 if is_dark else 0])
+                else:
+                    # Inactive tab colors
+                    btn_frame.configure(fg_color="transparent", border_width=0)
+                    tab_btn.configure(text_color=theme["CTkLabel"]["text_color"][1 if is_dark else 0])
+                    close_btn.configure(text_color=theme["CTkLabel"]["text_color"][1 if is_dark else 0])
+
     def refresh_tab_bar(self):
         # Ensure we have enough buttons
         while len(self.tab_buttons) < len(self.tabs):
@@ -107,6 +132,9 @@ class TabManager:
         # Hide extra buttons
         for i in range(len(self.tabs), len(self.tab_buttons)):
             self.tab_buttons[i][0].pack_forget()
+
+        # Update colors based on theme
+        self.refresh_colors()
 
         # Update and show relevant buttons
         for i, tab in enumerate(self.tabs):
@@ -117,12 +145,10 @@ class TabManager:
             tab_btn.configure(text=name, command=lambda i=i: self.switch_to_tab(i))
             close_btn.configure(command=lambda i=i: self.close_tab(i))
 
-            # Highlight active tab
+            # Update font weight
             if i == self.active_tab_index:
-                btn_frame.configure(fg_color="#3a3a3a", border_width=1, border_color="#555555")
                 tab_btn.configure(font=customtkinter.CTkFont(weight="bold"))
             else:
-                btn_frame.configure(fg_color="#2b2b2b", border_width=0)
                 tab_btn.configure(font=customtkinter.CTkFont(weight="normal"))
 
     def save_current_tab_state(self):

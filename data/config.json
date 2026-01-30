@@ -37,7 +37,8 @@
             "syntax_highlighting_performance": "auto"
         },
         "theme_appearance": {
-            "theme": "darkly",
+            "theme": "dark-blue",
+            "mode": "System",
             "high_contrast_mode": false
         },
         "file_management": {

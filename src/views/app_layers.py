@@ -52,7 +52,6 @@ def on_tab_change(tab):
         tab.textbox = customtkinter.CTkTextbox(
             root, wrap="word", height=20, width=60, undo=True, font=my_font
         )
-        tab.textbox.configure(fg_color="#1f1f1f", text_color="white")
 
         # Support undoing back to original content even after restart
         if tab.is_modified and tab.original_content and tab.original_content != tab.content:
@@ -276,8 +275,6 @@ def create_content_file_window():
             last_offset[0] = offset
 
     line_numbers.bind("<Configure>", show_changes_in_text_zone)
-
-    script_text.configure(fg_color="#1f1f1f", text_color="white")
 
     # Ensure the line numbers are drawn initially
     root.after(100, line_numbers.redraw)
