@@ -57,13 +57,14 @@ def init(
 
 @app.command()
 def nia_mode(
-    path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Project directory"),
+    path: Optional[Path] = typer.Option(None, "--path", "-p", help="Project directory"),
     iterations: int = typer.Option(20, "--iterations", "-i", help="Max iterations")
 ):
     """Launch nIA autonomous loop."""
-    console.print(Panel(f"Launching nIA loop in [bold cyan]{path}[/bold cyan]", title="nIA Autonomous Mode"))
+    project_path = path or Path.cwd()
+    console.print(Panel(f"Launching nIA loop in [bold cyan]{project_path}[/bold cyan]", title="nIA Autonomous Mode"))
 
-    orchestrator = LoopOrchestrator(path)
+    orchestrator = LoopOrchestrator(project_path)
 
     def log_cb(msg: str):
         if "===" in msg:
@@ -86,12 +87,13 @@ def nia_mode(
 
 @app.command()
 def status(
-    path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Project directory")
+    path: Optional[Path] = typer.Option(None, "--path", "-p", help="Project directory")
 ):
     """Show project status."""
-    plan_path = path / "IMPLEMENTATION_PLAN.md"
+    project_path = path or Path.cwd()
+    plan_path = project_path / "IMPLEMENTATION_PLAN.md"
     if not plan_path.exists():
-        console.print("[red]IMPLEMENTATION_PLAN.md not found.[/red]")
+        console.print(f"[red]IMPLEMENTATION_PLAN.md not found at {plan_path}.[/red]")
         return
 
     parser = PlanParser()
@@ -99,7 +101,7 @@ def status(
     stats = parser.get_statistics(tasks)
 
     console.print(Panel(f"""
-[bold]Project:[/bold] {path.name}
+[bold]Project:[/bold] {project_path.name}
 [bold]Progress:[/bold] {stats['percent']:.1f}% ({stats['completed']}/{stats['total']})
 
 [green]Completed:[/green] {stats['completed']}
