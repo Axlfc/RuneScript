@@ -175,6 +175,12 @@ class LineNumberCanvas(Canvas):
             return
 
         try:
+            if not self.winfo_exists() or not self.text_widget.winfo_exists():
+                return
+        except Exception:
+            return
+
+        try:
             self._is_redrawing = True
             self.delete("all")
 
