@@ -1,0 +1,54 @@
+{
+  "CTk": {
+    "fg_color": [
+      "#FFFFFF",
+      "#111111"
+    ]
+  },
+  "CTkToplevel": {
+    "fg_color": [
+      "#FFFFFF",
+      "#111111"
+    ]
+  },
+  "CTkFrame": {
+    "fg_color": [
+      "#F7F7F7",
+      "#242424"
+    ],
+    "border_color": [
+      "#E95420",
+      "#E95420"
+    ]
+  },
+  "CTkButton": {
+    "fg_color": [
+      "#E95420",
+      "#E95420"
+    ],
+    "hover_color": [
+      "#C34113",
+      "#C34113"
+    ],
+    "text_color": [
+      "#FFFFFF",
+      "#FFFFFF"
+    ]
+  },
+  "CTkProgressBar": {
+    "progress_color": [
+      "#E95420",
+      "#E95420"
+    ]
+  },
+  "CTkTextbox": {
+    "fg_color": [
+      "#FFFFFF",
+      "#282a36"
+    ],
+    "text_color": [
+      "#1a1a1a",
+      "#f8f8f2"
+    ]
+  }
+}
