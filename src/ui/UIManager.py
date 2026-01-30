@@ -61,7 +61,7 @@ class UIManager:
             )
 
             # Create command bar
-            self.prompt_entry, self.generate_btn, self.pause_btn, self.stop_btn = create_command_bar(
+            self.prompt_entry, self.generate_btn, self.nia_btn, self.pause_btn, self.stop_btn = create_command_bar(
                 self.controller.root,
                 on_generate=self.controller.project_manager.generate_project_with_ai,
                 on_pause=self.controller.project_manager.pause_project,
@@ -173,6 +173,7 @@ class UIManager:
         state = tk.NORMAL if enabled else tk.DISABLED
         self.prompt_entry.configure(state=state)
         self.generate_btn.configure(state=state)
+        self.nia_btn.configure(state=state)
 
         # Pause and stop buttons are enabled during generation and disabled otherwise
         pause_stop_state = tk.NORMAL if not enabled else tk.DISABLED

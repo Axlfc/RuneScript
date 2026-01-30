@@ -1,6 +1,7 @@
 ﻿import os
 import logging
 import threading
+import subprocess
 import uuid
 from tkinter import messagebox
 from typing import Dict, Any
@@ -19,7 +20,7 @@ class ProjectLifecycleManager:
         self.controller = controller
         self.generation_in_progress = False
 
-    def generate_project_with_ai(self):
+    def generate_project_with_ai(self, nia_mode: bool = False):
         """Start autonomous project generation with AI"""
         raw_prompt = self.controller.ui_manager.prompt_entry.get()
         prompt = AIResponseParser.sanitize_prompt(raw_prompt)
@@ -39,15 +40,24 @@ class ProjectLifecycleManager:
         try:
             # Create new project
             project_id = str(uuid.uuid4())
-            project_path = os.path.join(self.controller.projects_base_dir, project_id)
+            project_path = os.path.normpath(os.path.join(self.controller.projects_base_dir, project_id))
             os.makedirs(project_path, exist_ok=True)
             self.controller.current_project = project_path
 
-            # Start AI generation thread
-            thread = threading.Thread(
-                target=self.controller.ai_orchestrator.threaded_ai_generation,
-                args=(prompt)
-            )
+            if nia_mode:
+                # Start nIA autonomous loop
+                self.controller.ui_manager.log_output(f"Launching nIA Autonomous Loop for: {prompt}")
+                thread = threading.Thread(
+                    target=self._run_nia_autonomous_loop,
+                    args=(prompt, project_path)
+                )
+            else:
+                # Start standard AI generation thread
+                thread = threading.Thread(
+                    target=self.controller.ai_orchestrator.threaded_ai_generation,
+                    args=(prompt,)
+                )
+
             thread.daemon = True
             thread.start()
 
@@ -293,4 +303,83 @@ class ProjectLifecycleManager:
         self.controller.ui_manager.log_output("Project generation stopped.")
         self.controller.ui_manager.toggle_generation_ui(True)
         self.generation_in_progress = False
-        # Additional logic to actually stop the generation would go here
+
+        # Stop orchestrator if running
+        if hasattr(self.controller, 'ai_orchestrator'):
+            self.controller.ai_orchestrator.stop_generation()
+
+    def _run_nia_autonomous_loop(self, prompt: str, project_path: str):
+        """Internal method to orchestrate the full nIA cycle from initial prompt."""
+        from src.generators.spec_generator import SpecGenerator
+        from src.generators.plan_generator import PlanGenerator
+        from src.core.loop_orchestrator import LoopOrchestrator
+        from pathlib import Path
+
+        path = Path(project_path)
+
+        try:
+            # 1. Initialize Git
+            subprocess.run(["git", "init"], cwd=project_path, capture_output=True)
+
+            # 2. Generate SPEC.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 1: Generating Specification...")
+            spec_gen = SpecGenerator()
+            spec_content = spec_gen.generate(prompt)
+            (path / "SPEC.md").write_text(spec_content)
+            self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+
+            # 3. Generate IMPLEMENTATION_PLAN.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2: Generating Implementation Plan...")
+            plan_gen = PlanGenerator()
+            plan_content = plan_gen.generate(spec_content)
+            (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content)
+            self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+
+            # Initial plan list update
+            from src.core.plan_parser import PlanParser
+            parser = PlanParser()
+            tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
+            plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
+            self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
+
+            # 4. Create NIA_PROMPT.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 3: Setting up nIA Prompt...")
+            template_dir = Path("src/templates")
+            prompt_template = template_dir / "NIA_PROMPT.md.jinja2"
+            if prompt_template.exists():
+                (path / "NIA_PROMPT.md").write_text(prompt_template.read_text())
+
+            # Initial Commit
+            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True)
+            subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True)
+
+            # 5. Launch nIA Loop
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Launching nIA Autonomous Loop...")
+            orchestrator = LoopOrchestrator(path)
+
+            def log_cb(msg: str):
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, msg)
+                # If message indicates progress or failure, refresh UI components
+                should_refresh = any(indicator in msg for indicator in ["✅", "❌", "Task completed", "Phase", "Target Task"])
+
+                if should_refresh:
+                    self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+
+                    # Update AI Plan listbox with current status
+                    from src.core.plan_parser import PlanParser
+                    parser = PlanParser()
+                    tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
+                    if tasks:
+                        plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
+                        self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
+
+            result = orchestrator.run(max_iterations=50, log_callback=log_cb)
+
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"nIA Loop Finished: {result.message}")
+
+        except Exception as e:
+            logging.error(f"nIA Loop Error: {e}")
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"❌ nIA Loop Error: {e}")
+        finally:
+            self.generation_in_progress = False
+            self.controller.safe_ui_call(self.controller.ui_manager.toggle_generation_ui, True)
