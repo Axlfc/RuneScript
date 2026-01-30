@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "TDD IDE with autonomous AI loop"
 requires-python = ">=3.11"
 dependencies = [
-    "typer>=0.12.1",
+    "typer>=0.21.1",
     "rich>=13.7.0",
     "gitpython>=3.1.40",
     "jinja2>=3.1.2",
@@ -26,5 +26,4 @@ test = [
 rgr = "src.cli.commands:app"
 
 [tool.setuptools]
-package-dir = {"" = "."}
-packages = ["src", "src.cli", "src.core", "src.utils", "src.views", "src.controllers", "src.models", "src.config", "src.window", "src.ide", "src.ai", "src.ui", "src.agents"]
+packages = {find = {where = ["."], include = ["src*"]}}
