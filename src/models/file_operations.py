@@ -52,6 +52,13 @@ def rename_or_create_file(new_name):
         try:
             os.rename(editor_state.file_name, new_path)
             editor_state.file_name = new_path
+
+            from src.views.tk_utils import tab_manager
+            if tab_manager and tab_manager.active_tab_index != -1:
+                tab = tab_manager.tabs[tab_manager.active_tab_index]
+                tab.file_path = new_path
+                tab_manager.refresh_tab_bar()
+
             script_name_label.configure(text=f"File Name: {new_name}")
             messagebox.showinfo(
                 "Rename Successful", f"File has been renamed to {new_name}"
@@ -63,6 +70,13 @@ def rename_or_create_file(new_name):
             with open(new_path, "w") as new_file:
                 new_file.write("")
             editor_state.file_name = new_path
+
+            from src.views.tk_utils import tab_manager
+            if tab_manager and tab_manager.active_tab_index != -1:
+                tab = tab_manager.tabs[tab_manager.active_tab_index]
+                tab.file_path = new_path
+                tab_manager.refresh_tab_bar()
+
             script_name_label.configure(text=f"File Name: {new_name}")
             messagebox.showinfo(
                 "File Created", f"New file has been created: {new_name}"
