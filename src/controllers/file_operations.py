@@ -267,7 +267,7 @@ def save():
                 tab = tab_manager.tabs[tab_manager.active_tab_index]
                 tab.file_path = editor_state.file_name
                 tab.is_modified = False
-                tab.original_content = content
+                tab.original_content = editor_state.last_saved_content
                 tab_manager.refresh_tab_bar()
 
             messagebox.showinfo("Save", "File saved successfully!")
@@ -323,7 +323,7 @@ def save_script(event=None):
                 tab = tab_manager.tabs[tab_manager.active_tab_index]
                 tab.file_path = editor_state.file_name
                 tab.is_modified = False
-                tab.original_content = content
+                tab.original_content = editor_state.last_saved_content
                 tab_manager.refresh_tab_bar()
 
             messagebox.showinfo("Save", "File saved successfully!")

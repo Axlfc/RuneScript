@@ -53,9 +53,17 @@ def on_tab_change(tab):
             root, wrap="word", height=20, width=60, undo=True, font=my_font
         )
         tab.textbox.configure(fg_color="#1f1f1f", text_color="white")
-        tab.textbox.insert("1.0", tab.content)
-        # Clear undo stack after initial insert
-        tab.textbox._textbox.edit_reset()
+
+        # Support undoing back to original content even after restart
+        if tab.is_modified and tab.original_content and tab.original_content != tab.content:
+            tab.textbox.insert("1.0", tab.original_content)
+            tab.textbox._textbox.edit_reset()
+            tab.textbox.delete("1.0", "end-1c")
+            tab.textbox.insert("1.0", tab.content)
+        else:
+            tab.textbox.insert("1.0", tab.content)
+            tab.textbox._textbox.edit_reset()
+
         tab.textbox._textbox.edit_modified(False)
         setup_textbox_bindings(tab.textbox)
 
@@ -67,7 +75,7 @@ def on_tab_change(tab):
 
     # Update editor_state
     editor_state.file_name = tab.file_path if tab.file_path else ""
-    editor_state.last_saved_content = tab.original_content
+    editor_state.update_original_content(tab.original_content)
     editor_state.is_modified = tab.is_modified
 
     # Grid new textbox

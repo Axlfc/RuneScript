@@ -68,7 +68,9 @@ class TabManager:
                         self.switch_to_tab(i)
                     return tab
 
-        new_tab = EditorTab(file_path, content, is_modified, original_content)
+        from src.views.tk_utils import editor_state
+        normalized_original = editor_state.normalize(original_content)
+        new_tab = EditorTab(file_path, content, is_modified, normalized_original)
         self.tabs.append(new_tab)
 
         tab_idx = len(self.tabs) - 1

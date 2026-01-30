@@ -53,8 +53,8 @@ class EditorState:
     def normalize(self, content):
         if content is None:
             return ""
-        # Remove trailing newlines for comparison
-        return content.rstrip('\n')
+        # Normalize line endings to \n and remove ALL trailing newlines for comparison
+        return content.replace('\r\n', '\n').replace('\r', '\n').rstrip('\n')
 
     def update_original_content(self, content):
         self.last_saved_content = self.normalize(content)
