@@ -56,10 +56,15 @@ def on_tab_change(tab):
 
         # Support undoing back to original content even after restart
         if tab.is_modified and tab.original_content and tab.original_content != tab.content:
-            tab.textbox.insert("1.0", tab.original_content)
-            tab.textbox._textbox.edit_reset()
-            tab.textbox.delete("1.0", "end-1c")
-            tab.textbox.insert("1.0", tab.content)
+            target = tab.textbox._textbox
+            target.insert("1.0", tab.original_content)
+            target.edit_reset()
+            # Group delete and insert into a single undo step
+            target.configure(autoseparators=False)
+            target.delete("1.0", "end-1c")
+            target.insert("1.0", tab.content)
+            target.edit_separator()
+            target.configure(autoseparators=True)
         else:
             tab.textbox.insert("1.0", tab.content)
             tab.textbox._textbox.edit_reset()
@@ -69,7 +74,8 @@ def on_tab_change(tab):
 
     # Swap current visible textbox
     old_textbox = script_text._widget
-    old_textbox.grid_forget()
+    if old_textbox and old_textbox.winfo_exists():
+        old_textbox.grid_forget()
 
     script_text.set_widget(tab.textbox)
 
@@ -312,11 +318,14 @@ def ensure_scroll_sync():
     """Make sure text widget, scrollbar and line numbers stay in sync"""
     # This function can be called periodically to ensure synchronization
     global line_numbers
-    if line_numbers:
-        # Get current text widget view
-        first, last = script_text.yview()
-        # Update line numbers
-        line_numbers.redraw()
+    try:
+        if line_numbers and line_numbers.winfo_exists() and script_text._widget.winfo_exists():
+            # Get current text widget view
+            first, last = script_text.yview()
+            # Update line numbers
+            line_numbers.redraw()
+    except Exception:
+        pass
 
     # Schedule next check
     root.after(500, ensure_scroll_sync)
