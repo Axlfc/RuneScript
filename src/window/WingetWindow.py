@@ -1,6 +1,7 @@
 ﻿import re
 import subprocess
 import threading
+from src.utils.thread_manager import thread_manager
 from tkinter import Button, LEFT, X, Frame, BOTH, WORD, scrolledtext, RIGHT, VERTICAL, Scrollbar, Canvas, Label, \
     Listbox, Y, END, simpledialog, NORMAL, DISABLED, messagebox, BooleanVar, Toplevel, Checkbutton
 
@@ -19,42 +20,55 @@ class WingetWindow:
 Use the buttons to perform WinGet operations."""
         )
 
-    def run_command(self, command):
-        try:
-            command += " --disable-interactivity"
-            result = subprocess.run(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                shell=True)
-            output = result.stdout
-            spinner_chars = {"\\", "-", "|", "/", "█", "▒"}
-            filtered_output = "\n".join(
-                line
-                for line in output.splitlines()
-                if not set(line.strip()).issubset(spinner_chars) and line.strip() != ""
-            )
-            return filtered_output
-        except Exception as e:
-            return f"Error: {str(e)}"
+    def run_command_async(self, command, task_id, on_complete):
+        thread_manager.update_status_bar(f"Running winget command...", show_progress=True)
+
+        def worker(stop_event):
+            try:
+                full_command = command + " --disable-interactivity"
+                result = subprocess.run(
+                    full_command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    shell=True)
+                output = result.stdout
+                spinner_chars = {"\\", "-", "|", "/", "█", "▒"}
+                filtered_output = "\n".join(
+                    line
+                    for line in output.splitlines()
+                    if not set(line.strip()).issubset(spinner_chars) and line.strip() != ""
+                )
+                self.winget_window.after(0, lambda: [
+                    thread_manager.update_status_bar("Ready"),
+                    on_complete(filtered_output)
+                ])
+            except Exception as e:
+                self.winget_window.after(0, lambda: messagebox.showerror("Error", str(e)))
+
+        thread_manager.run_in_thread(worker, task_id)
 
     def list_programs(self):
-        output = self.run_command("winget search --exact")
-        self.insert_output(output)
+        self.run_command_async("winget search --exact", "winget_list_all", self.insert_output)
 
     def list_installed(self):
-        output = self.run_command('winget list --source "winget"')
-        self.installed_listbox.delete(0, END)
-        lines = output.splitlines()
-        for line in lines[1:]:
-            program_info = " ".join(line.split()).strip()
-            if program_info:
-                self.installed_listbox.insert(END, program_info)
+        def update_installed(output):
+            if not self.winget_window.winfo_exists(): return
+            self.installed_listbox.delete(0, END)
+            lines = output.splitlines()
+            for line in lines[1:]:
+                program_info = " ".join(line.split()).strip()
+                if program_info:
+                    self.installed_listbox.insert(END, program_info)
+
+        self.run_command_async('winget list --source "winget"', "winget_list_installed", update_installed)
 
     def list_upgradable(self):
-        output = self.run_command("winget upgrade --include-unknown")
+        self.run_command_async("winget upgrade --include-unknown", "winget_list_upgradable", self._process_upgradable)
+
+    def _process_upgradable(self, output):
+        if not self.winget_window.winfo_exists(): return
         removed_text = "winget"
         for widget in self.upgrade_checkboxes_frame.winfo_children():
             widget.destroy()
@@ -143,31 +157,37 @@ Use the buttons to perform WinGet operations."""
         self.output_text.see(END)
 
     def upgrade_selected(self):
-        self.disable_upgrade_buttons()
+        selected_programs = [info for var, info in self.upgrade_vars if var.get()]
+        if not selected_programs:
+            messagebox.showinfo("No Selection", "Please select programs to upgrade.")
+            return
 
-        def upgrade_thread():
-            selected_programs = [info for var, info in self.upgrade_vars if var.get()]
-            if not selected_programs:
-                messagebox.showinfo(
-                    "No Selection", "Please select programs to upgrade."
-                )
-                self.enable_upgrade_buttons()
-                return
+        self.disable_upgrade_buttons()
+        task_id = "winget_upgrade"
+
+        def worker(stop_event):
             successfully_upgraded = []
             for program_info in selected_programs:
+                if stop_event.is_set(): break
                 program_id = program_info.split()[0]
-                self.update_output(f"\nUpgrading {program_id}...")
-                output = self.run_command(f'winget upgrade --include-unknown --id "{program_id}"')
-                self.update_output(output)
-                successfully_upgraded.append(program_id)
-            self.list_upgradable()
-            summary = (
-                f"Programs {', '.join(successfully_upgraded)} successfully upgraded."
-            )
-            self.update_output(summary)
-            self.enable_upgrade_buttons()
+                self.winget_window.after(0, lambda p=program_id: self.update_output(f"\nUpgrading {p}..."))
 
-        threading.Thread(target=upgrade_thread).start()
+                # We use blocking run here because it's already in a worker thread
+                try:
+                    res = subprocess.run(f'winget upgrade --include-unknown --id "{program_id}" --disable-interactivity',
+                                       stdout=subprocess.PIPE, text=True, shell=True)
+                    self.winget_window.after(0, lambda o=res.stdout: self.update_output(o))
+                    successfully_upgraded.append(program_id)
+                except Exception as e:
+                    self.winget_window.after(0, lambda err=str(e): self.update_output(f"Error: {err}"))
+
+            self.winget_window.after(0, lambda: [
+                self.list_upgradable(),
+                self.update_output(f"Programs {', '.join(successfully_upgraded)} successfully upgraded."),
+                self.enable_upgrade_buttons()
+            ])
+
+        thread_manager.run_in_thread(worker, task_id)
 
     def disable_upgrade_buttons(self):
         self.select_all_button.configure(state=DISABLED)
@@ -196,26 +216,27 @@ Use the buttons to perform WinGet operations."""
     def search_program(self):
         search_term = simpledialog.askstring("Search", "Enter program name to search:")
         if search_term:
-            output = self.run_command(f'winget search --exact "{search_term}"')
-            self.insert_output(output)
+            self.run_command_async(f'winget search --exact "{search_term}"', "winget_search", self.insert_output)
 
     def install_program(self):
         program_id = simpledialog.askstring("Install", "Enter program ID to install:")
         if program_id:
-            output = self.run_command(f'winget install -s "winget" "{program_id}"')
-            self.insert_output(f"Installing {program_id}...\n{output}")
-            self.list_installed()
-            self.list_upgradable()
+            def on_complete(output):
+                self.insert_output(f"Installing {program_id}...\n{output}")
+                self.list_installed()
+                self.list_upgradable()
+            self.run_command_async(f'winget install -s "winget" "{program_id}"', "winget_install", on_complete)
 
     def uninstall_program(self):
         program_id = simpledialog.askstring(
             "Uninstall", "Enter program ID to uninstall:"
         )
         if program_id:
-            output = self.run_command(f'winget uninstall "{program_id}"')
-            self.insert_output(f"Uninstalling {program_id}...\n{output}")
-            self.list_installed()
-            self.list_upgradable()
+            def on_complete(output):
+                self.insert_output(f"Uninstalling {program_id}...\n{output}")
+                self.list_installed()
+                self.list_upgradable()
+            self.run_command_async(f'winget uninstall "{program_id}"', "winget_uninstall", on_complete)
 
     def get_program_description(self, program_id):
         return self.run_command(f'winget show "{program_id}"')
@@ -225,9 +246,10 @@ Use the buttons to perform WinGet operations."""
             "Description of Program", "Enter program ID to get its description:"
         )
         if program_id:
-            output = self.get_program_description(program_id)
-            self.insert_output(output)
-            self.list_installed()
+            def on_complete(output):
+                self.insert_output(output)
+                self.list_installed()
+            self.run_command_async(f'winget show "{program_id}"', "winget_show", on_complete)
 
     def insert_output(self, output):
         self.output_text.delete(1.0, END)

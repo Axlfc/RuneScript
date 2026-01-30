@@ -72,6 +72,7 @@ from src.controllers.parameters import read_config_parameter, write_config_param
 
 from src.views.tree_functions import update_tree
 from src.views.ui_elements import Tooltip
+from src.utils.thread_manager import thread_manager
 from src.controllers.file_operations import (
     open_file,
     open_script,
@@ -775,7 +776,7 @@ def toggle_interactive_view_visibility(frame):
                                 prompt_text = result
 
                                 # Send prompt to AI assistant, along with selected text (if any)
-                                threading.Thread(target=process_prompt_and_apply_changes, args=(prompt_text, editor_context, selected_text)).start()
+                                thread_manager.run_in_thread(process_prompt_and_apply_changes, "ai_prompt", prompt_text, editor_context, selected_text)
 
                     else:
                         print(text)
@@ -786,7 +787,7 @@ def toggle_interactive_view_visibility(frame):
 
             return "break"
 
-        def process_prompt_and_apply_changes(prompt_text, editor_context, selected_text):
+        def process_prompt_and_apply_changes(stop_event, prompt_text, editor_context, selected_text):
             # Build the input for the AI assistant
             if selected_text:
                 # If there is selected text, we send that as context

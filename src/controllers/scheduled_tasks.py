@@ -2,6 +2,7 @@
 import subprocess
 import tempfile
 from tkinter import END, Toplevel, Listbox, Button, messagebox, Label, Entry
+from src.utils.thread_manager import thread_manager
 from src.views.tk_utils import root, localization_data
 from lib.winTaskScheduler import list_tasks, delete_task, at_function, crontab_function
 
@@ -25,22 +26,30 @@ def open_at_window():
         command=lambda: remove_selected_at_job(listbox))
     remove_button.pack(side="bottom")
     at_window.after(0, update_at_jobs)
-    at_window.mainloop()
 
 
 def populate_at_jobs(listbox):
-    try:
-        at_output = subprocess.check_output(["atq"], text=True).splitlines()
-        if not at_output:
+    def worker(stop_event):
+        try:
+            at_output = subprocess.check_output(["atq"], text=True).splitlines()
+            root.after(0, lambda: _update_listbox(listbox, at_output, "no_at_jobs_found"))
+        except Exception:
+            root.after(0, lambda: messagebox.showerror(localization_data["error"], localization_data["failed_to_remove_at_job"]))
+
+    thread_manager.run_in_thread(worker, "populate_at")
+
+def _update_listbox(listbox, items, no_items_key):
+    if not listbox.winfo_exists(): return
+    listbox.delete(0, END)
+    if not items:
+        try:
             username = subprocess.check_output(["whoami"], text=True).strip()
-            message = localization_data["no_at_jobs_found"] + " " + username + "."
-            listbox.insert(END, message)
-        else:
-            for line in at_output:
-                listbox.insert(END, line)
-    except subprocess.CalledProcessError:
-        messagebox.showerror(localization_data["error"],
-                             localization_data["failed_to_remove_at_job"])
+        except: username = "user"
+        message = localization_data.get(no_items_key, "No items found") + " " + username + "."
+        listbox.insert(END, message)
+    else:
+        for line in items:
+            listbox.insert(END, line)
 
 
 def remove_selected_at_job(listbox):
@@ -81,23 +90,17 @@ def open_cron_window():
         command=lambda: remove_selected_cron_job(listbox))
     remove_button.pack(side="bottom")
     crontab_window.after(0, update_cron_jobs)
-    crontab_window.mainloop()
 
 
 def populate_cron_jobs(listbox):
-    try:
-        cron_output = subprocess.check_output(["crontab", "-l"], text=True).splitlines()
-        if not cron_output:
-            username = subprocess.check_output(["whoami"], text=True).strip()
-            message = localization_data["no_crontab_jobs_found"] + " " + username + "."
-            listbox.insert(END, message)
-        else:
-            for line in cron_output:
-                listbox.insert(END, line)
-    except subprocess.CalledProcessError:
-        username = subprocess.check_output(["whoami"], text=True).strip()
-        message = localization_data["no_crontab_jobs_found"] + " " + username + "."
-        listbox.insert(END, message)
+    def worker(stop_event):
+        try:
+            cron_output = subprocess.check_output(["crontab", "-l"], text=True).splitlines()
+            root.after(0, lambda: _update_listbox(listbox, cron_output, "no_crontab_jobs_found"))
+        except Exception:
+            root.after(0, lambda: _update_listbox(listbox, [], "no_crontab_jobs_found"))
+
+    thread_manager.run_in_thread(worker, "populate_cron")
 
 
 def remove_selected_cron_job(listbox):
@@ -170,7 +173,6 @@ def open_scheduled_tasks_window():
     update_tasks()
     delete_button = Button(window, text=localization_data["delete_selected"], command=delete_selected_task)
     delete_button.pack()
-    window.mainloop()
 
 
 def open_new_at_task_window(event=None):
@@ -205,7 +207,6 @@ def open_new_at_task_window(event=None):
     Button(new_task_window, text=localization_data["create_at_job"], command=create_at_job).grid(
         row=3, column=0
     )
-    new_task_window.mainloop()
 
 
 def open_new_crontab_task_window(event=None):
@@ -255,5 +256,4 @@ def open_new_crontab_task_window(event=None):
     Button(
         new_cron_task_window, text=localization_data["create_crontab_job_button"], command=create_crontab_job
     ).grid(row=7, column=0, columnspan=2)
-    new_cron_task_window.mainloop()
 

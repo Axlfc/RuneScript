@@ -87,37 +87,41 @@ def test_{module_name}_creation():
 
         return module_path, test_path
 
-    def run_tests(self, project_path=None):
-        """Run pytest on the project"""
+    def run_tests(self, project_path=None, on_complete=None):
+        """Run pytest on the project asynchronously if on_complete is provided"""
         if not project_path:
             self.log("No project path specified")
+            if on_complete:
+                on_complete(False, "", "No project path specified")
             return False, "", "No project path specified"
 
-        try:
-            # Run pytest with detailed output
-            result = subprocess.run(
-                ["pytest", "-v"],
-                cwd=project_path,
-                capture_output=True,
-                text=True
-            )
+        command = ["pytest", "-v"]
 
-            # Log the command output
-            self.log(f"Test command exit code: {result.returncode}")
+        # If on_complete is provided, we use ThreadManager
+        if on_complete:
+            from src.utils.thread_manager import thread_manager
+            task_id = f"tests_{os.path.basename(project_path)}"
 
-            if result.stdout:
-                self.log("Test output:\n" + result.stdout)
+            def handle_complete(ret, stdout, stderr):
+                self.log(f"Test command finished with code: {ret}")
+                if stdout: self.log("Test output:\n" + stdout)
+                if stderr: self.log("Test errors:\n" + stderr)
+                on_complete(ret == 0, stdout, stderr)
 
-            if result.stderr:
-                self.log("Test errors:\n" + result.stderr)
-
-            # Tests pass if return code is 0
-            return result.returncode == 0, result.stdout, result.stderr
-
-        except Exception as e:
-            error_msg = f"Error running tests: {str(e)}"
-            self.log(error_msg)
-            return False, "", error_msg
+            thread_manager.run_subprocess(command, task_id, on_complete=handle_complete, cwd=project_path)
+            return True # Indicates started
+        else:
+            try:
+                # Fallback to blocking for non-UI/legacy use cases
+                result = subprocess.run(
+                    command,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True
+                )
+                return result.returncode == 0, result.stdout, result.stderr
+            except Exception as e:
+                return False, "", str(e)
 
     def get_implementation_for_test(self, test_file_path):
         """Get the implementation file path corresponding to a test file"""
