@@ -58,15 +58,18 @@ def on_tab_change(tab):
         if tab.is_modified and tab.original_content and tab.original_content != tab.content:
             target = tab.textbox._textbox
             target.insert("1.0", tab.original_content)
+            target.mark_set("insert", "1.0")
             target.edit_reset()
             # Group delete and insert into a single undo step
             target.configure(autoseparators=False)
             target.delete("1.0", "end-1c")
             target.insert("1.0", tab.content)
+            target.mark_set("insert", "1.0")
             target.edit_separator()
             target.configure(autoseparators=True)
         else:
             tab.textbox.insert("1.0", tab.content)
+            tab.textbox.mark_set("insert", "1.0")
             tab.textbox._textbox.edit_reset()
 
         tab.textbox._textbox.edit_modified(False)
@@ -265,9 +268,12 @@ def create_content_file_window():
     setup_textbox_bindings(script_text)
 
     # Show changes in text zone when line numbers width changes
+    last_offset = [None]
     def show_changes_in_text_zone(event=None):
         offset = line_numbers.winfo_width() + 8
-        script_text.grid(row=2, column=0, padx=(offset, 0), pady=0, sticky="nsew")
+        if offset != last_offset[0]:
+            script_text.grid(row=2, column=0, padx=(offset, 0), pady=0, sticky="nsew")
+            last_offset[0] = offset
 
     line_numbers.bind("<Configure>", show_changes_in_text_zone)
 

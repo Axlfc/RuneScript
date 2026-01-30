@@ -160,8 +160,6 @@ class LineNumberCanvas(Canvas):
             return ("Consolas", 12)
 
     def _on_text_modified(self, event=None):
-        # Reset the modified flag
-        self.text_widget.edit_modified(False)
         self.redraw()
 
     def _on_configure(self, event=None):

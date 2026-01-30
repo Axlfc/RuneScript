@@ -90,6 +90,8 @@ def open_file(file_path):
 
     script_text.delete("1.0", END)
     script_text.insert("1.0", script_content)
+    script_text.mark_set("insert", "1.0")
+    script_text.see("1.0")
 
     print("SAVING FILE CONTENT HERE TO LAST_SAVED_CONTENT")
     editor_state.update_original_content(script_content)
