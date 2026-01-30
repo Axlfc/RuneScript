@@ -1,10 +1,11 @@
-﻿import customtkinter
+import customtkinter
 from tkinter.ttk import Treeview
 from tkinter import ttk
 from src.controllers.parameters import (
     ensure_user_config,
     load_theme_setting,
-    get_scriptsstudio_directory, read_config_parameter, get_appearance_mode)
+    get_scriptsstudio_directory, read_config_parameter, get_appearance_mode,
+    get_theme_path)
 from src.localization import load_localization
 
 from customtkinter import CTkLabel, CTkEntry
@@ -85,6 +86,7 @@ fontBackground = "#FFFFFF"
 server_options = ["llama-cpp-python", "lmstudio", "ollama", "openai", "gemini"]
 get_scriptsstudio_directory()
 current_theme = load_theme_setting()
+customtkinter.set_default_color_theme(get_theme_path(current_theme))
 customtkinter.set_appearance_mode(get_appearance_mode(current_theme))
 root = customtkinter.CTk()
 # root.iconbitmap("src/views/icon.ico")
@@ -171,18 +173,65 @@ configure_app()
 
 style = ttk.Style()
 style.theme_use('clam')  # 'clam' theme allows for better customization of Treeview colors
-if get_appearance_mode(current_theme) == "dark":
-    style.configure("Treeview",
-                    background="#2b2b2b",
-                    foreground="white",
-                    fieldbackground="#2b2b2b",
-                    borderwidth=0)
-    style.map("Treeview",
-              background=[('selected', '#333333')],
-              foreground=[('selected', 'white')])
-else:
-    style.configure("Treeview",
-                    background="white",
-                    foreground="black",
-                    fieldbackground="white",
-                    borderwidth=0)
+
+def update_treeview_style():
+    if customtkinter.get_appearance_mode().lower() == "dark":
+        style.configure("Treeview",
+                        background="#2b2b2b",
+                        foreground="white",
+                        fieldbackground="#2b2b2b",
+                        borderwidth=0)
+        style.map("Treeview",
+                  background=[('selected', '#333333')],
+                  foreground=[('selected', 'white')])
+    else:
+        style.configure("Treeview",
+                        background="white",
+                        foreground="black",
+                        fieldbackground="white",
+                        borderwidth=0)
+        style.map("Treeview",
+                  background=[('selected', '#eeeeee')],
+                  foreground=[('selected', 'black')])
+
+update_treeview_style()
+
+def apply_theme(theme_name, mode=None):
+    """
+    Apply theme and appearance mode to the application.
+    """
+    from src.controllers.parameters import get_theme_path, get_appearance_mode
+
+    # 1. Update appearance mode (works immediately)
+    if mode is None:
+        mode = get_appearance_mode(theme_name)
+    customtkinter.set_appearance_mode(mode)
+
+    # 2. Update color theme
+    # Note: set_default_color_theme may not apply to existing widgets automatically
+    theme_path = get_theme_path(theme_name)
+    try:
+        customtkinter.set_default_color_theme(theme_path)
+    except:
+        pass
+
+    # 3. Update Treeview style
+    update_treeview_style()
+
+    # 4. Refresh some critical components
+    try:
+        from src.views.app_layers import line_numbers
+        if line_numbers and line_numbers.winfo_exists():
+            line_numbers.redraw()
+    except:
+        pass
+
+    # 5. Refresh tabs
+    try:
+        if tab_manager:
+            tab_manager.refresh_tab_bar()
+    except:
+        pass
+
+    # Force a redraw of the root
+    root.update()

@@ -168,6 +168,12 @@ class SettingsWindow(Toplevel):
             widget = Combobox(parent, textvariable=var, values=themes)
             return widget, var
 
+        elif option_name.lower() == "mode":
+            modes = ["System", "Light", "Dark"]
+            var = StringVar(value=default_value)
+            widget = Combobox(parent, textvariable=var, values=modes)
+            return widget, var
+
         elif isinstance(default_value, bool):
             var = BooleanVar(value=default_value)
             widget = Checkbutton(parent, variable=var)
@@ -189,30 +195,32 @@ class SettingsWindow(Toplevel):
         reset_button.pack(side=LEFT, padx=5)
 
     def save_settings(self):
-        """Save settings to user config file."""
-        updated_config_data = {"options": {}}
+        """Save settings using write_config_parameter to ensure persistence and merging."""
         for (section, option_name), var in self.setting_entries.items():
             value = var.get()
-            if isinstance(value, str) and value.isdigit():
+
+            # Convert to boolean if it's a BooleanVar
+            if isinstance(var, BooleanVar):
+                value = var.get()
+            elif isinstance(value, str) and value.isdigit():
                 value = int(value)
-            updated_config_data["options"].setdefault(section, {})[option_name] = value
+            elif value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
 
-        with open(self.user_config_file, "w") as user_config:
-            json.dump(updated_config_data, user_config, indent=4)
+            write_config_parameter(f"options.{section}.{option_name}", value)
 
-        # Apply theme if available
-        theme = updated_config_data["options"].get("theme_appearance", {}).get("theme", None)
+        # Apply theme and mode immediately
+        theme = read_config_parameter("options.theme_appearance.theme")
+        mode = read_config_parameter("options.theme_appearance.mode")
+
         if theme:
             try:
-                customtkinter.set_appearance_mode(get_appearance_mode(theme))
+                from src.views.tk_utils import apply_theme
+                apply_theme(theme, mode)
             except Exception as e:
-                messagebox.showerror("Theme Error", f"The theme '{theme}' is not available. ({e})")
-
-        # Save language and font settings
-        write_config_parameter("options.editor_settings.language",
-                               updated_config_data["options"]["editor_settings"]["language"])
-        write_config_parameter("options.editor_settings.font_family",
-                               updated_config_data["options"]["editor_settings"]["font_family"])
+                messagebox.showerror("Theme Error", f"Error applying theme: {e}")
 
         messagebox.showinfo("Settings Saved", "Settings saved successfully!")
 
@@ -230,9 +238,11 @@ class SettingsWindow(Toplevel):
 
         # default_theme = self.config_data["options"].get("theme_appearance", {}).get("theme", "default")
         default_theme = read_config_parameter("options.theme_appearance.theme")
+        default_mode = read_config_parameter("options.theme_appearance.mode")
         try:
-            customtkinter.set_appearance_mode(get_appearance_mode(default_theme))
+            from src.views.tk_utils import apply_theme
+            apply_theme(default_theme, default_mode)
         except Exception as e:
-            messagebox.showerror("Theme Error", f"The default theme '{default_theme}' is not available. ({e})")
+            messagebox.showerror("Theme Error", f"Error resetting theme: {e}")
 
         messagebox.showinfo("Reset Settings", "Settings reset to defaults. User configuration file deleted.")

@@ -184,10 +184,12 @@ class LineNumberCanvas(Canvas):
 
             # Sync background color
             try:
+                import customtkinter
                 bg_color = self.container.cget("fg_color")
-                if isinstance(bg_color, (list, tuple)): # Handle CTk theme colors
-                    import customtkinter
-                    bg_color = customtkinter.ThemeManager.theme["CTkTextbox"]["fg_color"][1 if customtkinter.get_appearance_mode() == "Dark" else 0]
+                if isinstance(bg_color, (list, tuple)) or bg_color == "transparent":
+                    # Get color from theme
+                    is_dark = customtkinter.get_appearance_mode().lower() == "dark"
+                    bg_color = customtkinter.ThemeManager.theme["CTkTextbox"]["fg_color"][1 if is_dark else 0]
                 self.configure(bg=bg_color)
             except:
                 pass
@@ -213,12 +215,19 @@ class LineNumberCanvas(Canvas):
                         # y_pos is relative to the text widget.
                         # We add y_offset to align with the text widget's position in the frame.
                         y_pos = dline[1] + y_offset
+                        # Use a color that contrasts with the background
+                        try:
+                            is_dark = customtkinter.get_appearance_mode().lower() == "dark"
+                            text_color = customtkinter.ThemeManager.theme["CTkTextbox"]["text_color"][1 if is_dark else 0]
+                        except:
+                            text_color = "#CE9178" # Fallback to original color if theme fails
+
                         self.create_text(
                             self.winfo_width() - 5,
                             y_pos,
                             anchor="ne",
                             text=str(line_num),
-                            fill="#CE9178",
+                            fill=text_color,
                             font=font
                         )
                 except Exception:
