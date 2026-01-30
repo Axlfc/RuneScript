@@ -40,6 +40,7 @@ from src.views.ui_elements import Tooltip, LineNumberCanvas
 import customtkinter
 from src.views.tk_utils import *
 from src.controllers.file_operations import on_text_change
+from src.utils.thread_manager import thread_manager, show_debug_threads_window
 
 
 def on_tab_change(tab):
@@ -118,6 +119,16 @@ def create_app():
     print("app_layers: CREATE MENU TRIGGERED")
     create_menu()
 
+    # Configure Status Bar
+    status_bar.grid(row=10, column=0, sticky="ew") # Use a high row number to stay at bottom
+    status_label.pack(side=LEFT, padx=10)
+    progress_bar.pack(side=RIGHT, padx=10)
+    progress_bar.set(0)
+    # Hide progress and cancel by default
+    progress_bar.pack_forget()
+    cancel_button.pack_forget()
+    status_label_var.set("Ready")
+
     print("app_layers: CREATE CONTENT FILE WINDOW TRIGGERED")
     create_content_file_window()
     print("app_layers: CREATE CONTENT FILE WINDOW")
@@ -126,8 +137,17 @@ def create_app():
     # Load session after everything is set up
     tk_utils.tab_manager.load_session()
 
-    # Set up session saving on close
-    root.protocol("WM_DELETE_WINDOW", lambda: (tk_utils.tab_manager.save_session(), root.destroy()))
+    # Bind debug threads window
+    root.bind("<Control-Shift-D>", lambda e: show_debug_threads_window())
+    root.bind("<Control-Shift-d>", lambda e: show_debug_threads_window())
+
+    # Set up session saving and thread cleanup on close
+    def on_app_close():
+        tk_utils.tab_manager.save_session()
+        thread_manager.shutdown()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_app_close)
 
 
 def create_filesystem_window():

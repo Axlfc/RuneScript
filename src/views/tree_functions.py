@@ -8,6 +8,7 @@ from datetime import datetime
 from src.controllers.file_operations import open_file
 from src.controllers.parameters import write_config_parameter, read_config_parameter
 from src.views.tk_utils import tree, menu
+from src.utils.thread_manager import thread_manager
 
 
 def get_project_root():
@@ -61,26 +62,38 @@ def update_tree(path):
 
 def populate_tree(parent, path):
     """
-    populate_tree
-
-    Args:
-        parent (Any): Description of parent.
-        path (Any): Description of path.
-
-    Returns:
-        None: Description of return value.
+    populate_tree asynchronously to avoid UI freezes.
     """
-    # Ensure path uses forward slashes
     path = path.replace('\\', '/')
-    try:
-        for item in os.listdir(path):
-            if item != ".git" and item != ".idea":
-                abspath = os.path.join(path, item).replace('\\', '/')
-                node = tree.insert(parent, "end", text=item, values=(abspath,), open=False)
-                if os.path.isdir(abspath):
-                    tree.insert(node, "end")
-    except Exception as e:
-        print(f"Error populating tree at {path}: {e}")
+
+    def fetch_items(stop_event):
+        try:
+            items = os.listdir(path)
+            # Filter and prepare data in background
+            results = []
+            for item in items:
+                if item != ".git" and item != ".idea":
+                    abspath = os.path.join(path, item).replace('\\', '/')
+                    is_dir = os.path.isdir(abspath)
+                    results.append((item, abspath, is_dir))
+
+            # Update UI in main thread
+            from src.views.tk_utils import root
+            root.after(0, lambda: _apply_tree_items(parent, results))
+        except Exception as e:
+            print(f"Error listing directory {path}: {e}")
+
+    thread_manager.run_in_thread(fetch_items, f"list_dir_{os.path.basename(path)}")
+
+def _apply_tree_items(parent, results):
+    """Helper to insert items into the tree from the main thread"""
+    if not tree.exists(parent) and parent != "":
+        return
+
+    for item_text, abspath, is_dir in results:
+        node = tree.insert(parent, "end", text=item_text, values=(abspath,), open=False)
+        if is_dir:
+            tree.insert(node, "end")
 
 
 def item_opened(event):
@@ -174,26 +187,57 @@ def show_context_menu(event):
 
 
 def _count_file_lines(file_path):
-    """Count number of lines in a text file"""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            line_count = sum(1 for _ in f)
-        messagebox.showinfo("Line Count", f"Total lines: {line_count}")
-    except Exception as e:
-        messagebox.showerror("Error", f"Could not count lines: {str(e)}")
+    """Count number of lines in a text file asynchronously"""
+    task_id = f"count_lines_{os.path.basename(file_path)}"
+    thread_manager.update_status_bar(f"Counting lines in {os.path.basename(file_path)}...", show_progress=True)
+
+    def worker(stop_event):
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                line_count = 0
+                for _ in f:
+                    if stop_event.is_set(): return
+                    line_count += 1
+
+            from src.views.tk_utils import root
+            root.after(0, lambda: [
+                thread_manager.update_status_bar("Ready"),
+                messagebox.showinfo("Line Count", f"Total lines: {line_count}")
+            ])
+        except Exception as e:
+            from src.views.tk_utils import root
+            root.after(0, lambda: messagebox.showerror("Error", f"Could not count lines: {str(e)}"))
+
+    thread_manager.run_in_thread(worker, task_id)
 
 
 def _run_python_script(file_path):
-    """Run a Python script"""
-    try:
-        import subprocess
-        result = subprocess.run(['python', file_path], capture_output=True, text=True)
-        if result.returncode == 0:
-            messagebox.showinfo("Success", f"Output:\n{result.stdout}")
+    """Run a Python script asynchronously"""
+    import sys
+    python_exe = sys.executable
+    file_name = os.path.basename(file_path)
+    task_id = f"tree_run_{file_name}"
+
+    thread_manager.update_status_bar(f"Running {file_name}...", show_progress=True, show_cancel=True, task_id=task_id)
+
+    def on_complete(return_code, stdout, stderr):
+        thread_manager.update_status_bar(f"Finished {file_name} with exit code {return_code}")
+        if return_code == 0:
+            messagebox.showinfo("Success", f"Output:\n{stdout}")
         else:
-            messagebox.showerror("Error", f"Error running script:\n{result.stderr}")
-    except Exception as e:
+            messagebox.showerror("Error", f"Error running script (Code {return_code}):\n{stderr}")
+
+    def on_error(e):
+        thread_manager.update_status_bar(f"Error running {file_name}")
         messagebox.showerror("Error", f"Could not run script: {str(e)}")
+
+    thread_manager.run_subprocess(
+        [python_exe, file_path],
+        task_id=task_id,
+        on_complete=on_complete,
+        on_error=on_error,
+        cwd=os.path.dirname(file_path)
+    )
 
 
 def _view_image(file_path):
@@ -351,28 +395,45 @@ def _extract_pdf_text(file_path):
 
 def _run_script(file_path):
     """
-    Run a script file (.bat, .sh, .ps1).
+    Run a script file (.bat, .sh, .ps1) asynchronously.
     """
-    try:
-        # Windows Batch Script
-        if file_path.endswith('.bat') and os.name == 'nt':
-            subprocess.call([file_path], shell=True)
-
-        # Shell Script
-        elif file_path.endswith('.sh'):
-            if os.name == 'posix':
-                subprocess.call(['bash', file_path])
-            else:
-                messagebox.showerror("Error", "Shell scripts are not supported on this OS.")
-
-        # PowerShell Script
-        elif file_path.endswith('.ps1') and os.name == 'nt':
-            subprocess.call(['powershell', '-ExecutionPolicy', 'Bypass', '-File', file_path])
-
+    command = []
+    if file_path.endswith('.bat') and os.name == 'nt':
+        command = [file_path]
+    elif file_path.endswith('.sh'):
+        if os.name == 'posix':
+            command = ['bash', file_path]
         else:
-            messagebox.showerror("Error", "Unsupported script type or operating system.")
-    except Exception as e:
+            messagebox.showerror("Error", "Shell scripts are not supported on this OS.")
+            return
+    elif file_path.endswith('.ps1') and os.name == 'nt':
+        command = ['powershell', '-ExecutionPolicy', 'Bypass', '-File', file_path]
+    else:
+        messagebox.showerror("Error", "Unsupported script type or operating system.")
+        return
+
+    file_name = os.path.basename(file_path)
+    task_id = f"tree_run_script_{file_name}"
+    thread_manager.update_status_bar(f"Running {file_name}...", show_progress=True, show_cancel=True, task_id=task_id)
+
+    def on_complete(return_code, stdout, stderr):
+        thread_manager.update_status_bar(f"Finished {file_name}")
+        if return_code == 0:
+            messagebox.showinfo("Success", f"Script executed successfully.\n{stdout}")
+        else:
+            messagebox.showerror("Error", f"Script failed (Code {return_code}):\n{stderr}")
+
+    def on_error(e):
+        thread_manager.update_status_bar(f"Error running {file_name}")
         messagebox.showerror("Error", f"Unable to run script: {e}")
+
+    thread_manager.run_subprocess(
+        command,
+        task_id=task_id,
+        on_complete=on_complete,
+        on_error=on_error,
+        cwd=os.path.dirname(file_path)
+    )
 
 
 def get_file_extension_operations(file_path):

@@ -4,6 +4,7 @@ import time
 import json
 import threading
 import os
+from src.utils.thread_manager import thread_manager
 
 from src.window.Notificador import Notificador
 
@@ -106,33 +107,53 @@ class PlannerWindow(tk.Toplevel):
             return
         self.data.setdefault("cronometros", []).append({"nombre": nombre, "tipo": tipo, "duracion": duracion, "comando": comando})
         guardar_datos(self.data)
-        func = self._pomodoro_crono if tipo == "Pomodoro" else self._simple_crono
-        threading.Thread(target=func, args=(nombre, duracion, comando)).start()
+
+        task_id = f"crono_{nombre}"
+        if tipo == "Pomodoro":
+            thread_manager.run_in_thread(self._pomodoro_crono, task_id, nombre, duracion, comando)
+        else:
+            thread_manager.run_in_thread(self._simple_crono, task_id, nombre, duracion, comando)
 
     def _mostrar_guardados(self):
         c = self.data.get("cronometros", [])
         texto = "\n".join([f"{x['nombre']} - {x['tipo']} - {x['duracion']//60} min" for x in c])
         messagebox.showinfo("CronÃ³metros", texto or "No hay cronÃ³metros guardados.")
 
-    def _simple_crono(self, nombre, duracion, comando):
-        time.sleep(duracion)
+    def _simple_crono(self, stop_event, nombre, duracion, comando):
+        for _ in range(duracion):
+            if stop_event.is_set(): return
+            time.sleep(1)
+
         Notificador.enviar_titulo_mensaje("Alarma", f"Fin del cronÃ³metro: {nombre}")
         if comando:
-            try: os.system(comando)
-            except Exception as e: messagebox.showerror("Error", f"Error ejecutando: {e}")
+            try:
+                import subprocess
+                subprocess.run(comando, shell=True)
+            except Exception as e:
+                self.after(0, lambda: messagebox.showerror("Error", f"Error ejecutando: {e}"))
 
-    def _pomodoro_crono(self, nombre, duracion, comando):
+    def _pomodoro_crono(self, stop_event, nombre, duracion, comando):
         try:
             for i in range(4):
+                if stop_event.is_set(): return
                 Notificador.enviar_titulo_mensaje("Pomodoro", f"Inicio trabajo {i+1}")
-                time.sleep(duracion)
+                for _ in range(duracion):
+                    if stop_event.is_set(): return
+                    time.sleep(1)
+
+                if stop_event.is_set(): return
                 Notificador.enviar_titulo_mensaje("Descanso", "5 minutos de pausa")
-                time.sleep(300)
+                for _ in range(300):
+                    if stop_event.is_set(): return
+                    time.sleep(1)
+
+            if stop_event.is_set(): return
             Notificador.enviar_titulo_mensaje("Pomodoro", f"Finalizado: {nombre}")
             if comando:
-                os.system(comando)
+                import subprocess
+                subprocess.run(comando, shell=True)
         except Exception as e:
-            messagebox.showerror("Error", f"Error durante Pomodoro: {e}")
+            self.after(0, lambda: messagebox.showerror("Error", f"Error durante Pomodoro: {e}"))
 
     def _comidas_ui(self, frame):
         ttk.Label(frame, text="PlanificaciÃ³n de Comidas (Markdown)").pack(pady=10)

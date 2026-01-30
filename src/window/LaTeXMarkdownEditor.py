@@ -10,6 +10,7 @@ from tkinter.font import Font
 import os
 import subprocess
 import markdown
+from src.utils.thread_manager import thread_manager
 import re
 from pathlib import Path
 from pdf2image import convert_from_path
@@ -283,37 +284,40 @@ class LaTeXMarkdownEditor:
         self.output_display.pack(fill=BOTH, expand=True, padx=5, pady=(5, 0))
 
     def run_python_script(self):
-        """Run the current Python script and display output in the output_display widget."""
+        """Run the current Python script asynchronously."""
         if not self.current_file or not self.current_file.endswith('.py'):
             messagebox.showwarning("Warning", "No Python file is open to run.")
             return
 
-        try:
-            # Clear previous output
+        # Clear previous output
+        self.output_display.configure(state=NORMAL)
+        self.output_display.delete("1.0", END)
+        self.output_display.insert("1.0", "Running Python script...\n")
+        self.output_display.configure(state=DISABLED)
+
+        task_id = f"latex_run_{os.path.basename(self.current_file)}"
+
+        def on_complete(ret, stdout, stderr):
+            if not self.window.winfo_exists(): return
             self.output_display.configure(state=NORMAL)
-            self.output_display.delete("1.0", END)
-            self.output_display.insert("1.0", "Running Python script...\n")
+            self.output_display.insert("end", stdout if stdout else "No output\n")
+            if stderr:
+                self.output_display.insert("end", f"\nErrors:\n{stderr}")
             self.output_display.configure(state=DISABLED)
 
-            # Run the Python file and capture output
-            result = subprocess.run(
-                ['python', self.current_file],
-                capture_output=True,
-                text=True,
-                cwd=os.path.dirname(self.current_file)
-            )
-
-            # Display the output in the output_display widget
-            self.output_display.configure(state=NORMAL)
-            self.output_display.insert("end", result.stdout if result.stdout else "No output\n")
-            if result.stderr:
-                self.output_display.insert("end", f"\nErrors:\n{result.stderr}")
-            self.output_display.configure(state=DISABLED)
-
-        except Exception as e:
+        def on_error(e):
+            if not self.window.winfo_exists(): return
             self.output_display.configure(state=NORMAL)
             self.output_display.insert("end", f"Failed to run script:\n{e}")
             self.output_display.configure(state=DISABLED)
+
+        thread_manager.run_subprocess(
+            ['python', self.current_file],
+            task_id=task_id,
+            on_complete=on_complete,
+            on_error=on_error,
+            cwd=os.path.dirname(self.current_file)
+        )
 
     def launch_server(self):
         """Launch a Python web server or Flask server on the specified port."""
@@ -409,7 +413,7 @@ class LaTeXMarkdownEditor:
         messagebox.showinfo("Recompiled", "Markdown has been recompiled to HTML.")
 
     def compile_latex(self, file_path=None):
-        """Compile LaTeX to PDF and display it in the preview"""
+        """Compile LaTeX to PDF asynchronously"""
         if not self.check_latex_installed():
             error_msg = """LaTeX compiler (pdflatex) not found. Please ensure that:
         1. You have a LaTeX distribution installed (e.g., MiKTeX for Windows, TexLive for Linux/Mac)
@@ -427,37 +431,37 @@ class LaTeXMarkdownEditor:
         if not latex_file:
             return False
 
-        try:
-            # Save current content before compilation
-            if self.modified:
-                self.save_current_file()
+        # Save current content before compilation
+        if self.modified:
+            self.save_current_file()
 
-            # Compile LaTeX to PDF using pdflatex
-            working_dir = os.path.dirname(latex_file)
-            result = subprocess.run(
-                ['pdflatex', '-interaction=nonstopmode', latex_file],
-                cwd=working_dir,
-                capture_output=True,
-                text=True,
-                timeout=30  # Add timeout to prevent hanging
-            )
+        task_id = f"compile_latex_{os.path.basename(latex_file)}"
+        thread_manager.update_status_bar(f"Compiling LaTeX: {os.path.basename(latex_file)}...", show_progress=True, show_cancel=True, task_id=task_id)
 
-            if result.returncode == 0:
+        def on_complete(ret, stdout, stderr):
+            if not self.window.winfo_exists(): return
+            thread_manager.update_status_bar("Ready")
+            if ret == 0:
                 pdf_path = os.path.splitext(latex_file)[0] + ".pdf"
                 if os.path.exists(pdf_path):
-                    # Render the PDF in the preview panel
                     self.show_pdf_in_preview(pdf_path)
-                    return True
+                    return
 
-            self.show_compilation_error(result.stderr)
-            return False
+            self.show_compilation_error(stderr or stdout)
 
-        except subprocess.TimeoutExpired:
-            self.show_compilation_error("LaTeX compilation timed out after 30 seconds")
-            return False
-        except Exception as e:
-            self.show_compilation_error(f"Compilation error: {str(e)}")
-            return False
+        def on_error(e):
+            if not self.window.winfo_exists(): return
+            thread_manager.update_status_bar("Error in compilation")
+            self.show_compilation_error(str(e))
+
+        thread_manager.run_subprocess(
+            ['pdflatex', '-interaction=nonstopmode', latex_file],
+            task_id=task_id,
+            on_complete=on_complete,
+            on_error=on_error,
+            cwd=os.path.dirname(latex_file)
+        )
+        return True
 
     def show_pdf_in_preview(self, pdf_path):
         """Convert PDF pages to images and display them in the preview pane."""

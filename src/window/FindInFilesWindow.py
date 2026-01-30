@@ -1,6 +1,8 @@
 ﻿import os
 import re
 import threading
+import fnmatch
+from src.utils.thread_manager import thread_manager
 from tkinter import (
     Toplevel, Label, Entry, Button, Checkbutton, BooleanVar, END, filedialog, StringVar,
     Frame, Scrollbar
@@ -114,14 +116,16 @@ class FindInFilesWindow:
 
     def start_search(self):
         """Start the search in a separate thread"""
-        threading.Thread(target=self.search_worker, daemon=True).start()
-
-    def search_worker(self):
-        """Worker function to run the search in a separate thread"""
         # Clear previous results
         for item in self.results_tree.get_children():
             self.results_tree.delete(item)
 
+        task_id = "search_in_files"
+        thread_manager.update_status_bar("Searching in files...", show_progress=True, show_cancel=True, task_id=task_id)
+        thread_manager.run_in_thread(self.search_worker, task_id, on_complete=lambda _: thread_manager.update_status_bar("Search complete"))
+
+    def search_worker(self, stop_event):
+        """Worker function to run the search in a separate thread"""
         search_text = self.search_entry.get()
         search_path = self.path_entry.get()
         file_filter = self.filter_entry.get()
@@ -140,36 +144,44 @@ class FindInFilesWindow:
             self.progress_var.set("Invalid search pattern")
             return
 
-        # Convert wildcard pattern to regex
-        file_pattern = re.compile(file_filter.replace(".", "\\.").replace("*", ".*"))
-
         # Collect files to search
         files_to_process = []
-        for root, dirs, files in os.walk(search_path):
-            dirs[:] = [d for d in dirs if d != "__pycache__" and not d.startswith(".")]
-            for file in files:
-                if file_pattern.match(file):
-                    files_to_process.append(os.path.join(root, file))
-            if not include_subdirs:
-                break
+        try:
+            for root, dirs, files in os.walk(search_path):
+                if stop_event.is_set(): break
+                dirs[:] = [d for d in dirs if d != "__pycache__" and not d.startswith(".")]
+                for file in files:
+                    if fnmatch.fnmatch(file, file_filter):
+                        files_to_process.append(os.path.join(root, file))
+                if not include_subdirs:
+                    break
+        except Exception as e:
+            self.find_window.after(0, lambda: self.progress_var.set(f"Error: {str(e)}"))
+            return
 
         if not files_to_process:
-            self.progress_var.set("No matching files found")
+            self.find_window.after(0, lambda: self.progress_var.set("No matching files found"))
             return
 
         # Update progress
-        self.progress_var.set(f"Searching {len(files_to_process)} files...")
-        self.find_window.update_idletasks()
+        self.find_window.after(0, lambda: self.progress_var.set(f"Searching {len(files_to_process)} files..."))
 
-        # Process files in chunks
+        # Process files
         total_results = 0
-        for filepath in files_to_process:
+        for i, filepath in enumerate(files_to_process):
+            if stop_event.is_set(): break
+
+            if i % 10 == 0: # Update progress every 10 files
+                self.find_window.after(0, lambda idx=i: self.progress_var.set(f"Searching {idx}/{len(files_to_process)} files..."))
+
             results = self.search_file(filepath, pattern)
             if results:
-                self.update_results(results)
+                self.find_window.after(0, lambda res=results: self.update_results(res))
                 total_results += len(results)
 
-        self.progress_var.set(f"Found {total_results} matches in {len(files_to_process)} files")
+        self.find_window.after(0, lambda: self.progress_var.set(
+            f"Found {total_results} matches in {len(files_to_process)} files" if not stop_event.is_set() else "Search cancelled"
+        ))
 
     def search_file(self, filepath, pattern):
         """Search a single file for matches"""
@@ -185,10 +197,12 @@ class FindInFilesWindow:
 
     def update_results(self, results):
         """Update results in the main thread"""
+        if not self.find_window.winfo_exists(): return
         for filepath, line_num, line in results:
-            rel_path = os.path.relpath(filepath, self.path_entry.get())
-            self.results_tree.insert("", "end", values=(rel_path, line_num, line))
-        self.find_window.update_idletasks()
+            try:
+                rel_path = os.path.relpath(filepath, self.path_entry.get())
+                self.results_tree.insert("", "end", values=(rel_path, line_num, line))
+            except: pass
 
     def on_double_click(self, event):
         selection = self.results_tree.selection()
