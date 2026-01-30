@@ -48,11 +48,14 @@ def create_command_bar(parent, on_generate, on_pause, on_stop):
     generate_btn = ttk.Button(button_frame, text="Generate Project", command=on_generate)
     generate_btn.pack(side=tk.LEFT, padx=2)
 
+    nia_btn = ttk.Button(button_frame, text="nIA Mode", command=lambda: on_generate(nia_mode=True))
+    nia_btn.pack(side=tk.LEFT, padx=2)
+
     pause_btn = ttk.Button(button_frame, text="Pause", command=on_pause, state=tk.DISABLED)
     pause_btn.pack(side=tk.LEFT, padx=2)
 
     stop_btn = ttk.Button(button_frame, text="Stop", command=on_stop, state=tk.DISABLED)
     stop_btn.pack(side=tk.LEFT, padx=2)
 
-    return prompt_entry, generate_btn, pause_btn, stop_btn
+    return prompt_entry, generate_btn, nia_btn, pause_btn, stop_btn
 

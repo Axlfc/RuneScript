@@ -1,7 +1,24 @@
-# Implementation Plan - {{ project_name }}
+# Implementation Plan
 
 ## Progress
 - Total Tasks: {{ total_tasks }}
 - Completed: {{ completed_tasks }}
 - Remaining: {{ remaining_tasks }}
-- Blocked: {{ blocked_tasks }}
+- Blocked: {{ blocked_tasks | length }}
+
+---
+
+{% for phase in phases %}
+## PHASE {{ loop.index }}: {{ phase.name }}
+{% for task in phase.tasks %}
+- [ ] Test: {{ task.description }}
+{% endfor %}
+
+{% endfor %}
+
+---
+
+## Blocked Tasks
+{% for task in blocked_tasks %}
+- [?] {{ task.description }} - BLOCKED: {{ task.reason }}
+{% endfor %}
