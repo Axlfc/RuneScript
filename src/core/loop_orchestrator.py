@@ -6,7 +6,7 @@ from typing import Optional, List
 from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
-from .nia_claude_client import nIAClaudeClient, nIAResponse
+from .nia_ai_client import nIAAIClient, nIAResponse
 
 class LoopResult:
     def __init__(self, status: str, iterations: int, message: str):
@@ -20,7 +20,7 @@ class LoopOrchestrator:
         self.parser = PlanParser()
         self.tracker = TaskTracker()
         self.validator = TDDValidator()
-        self.claude = nIAClaudeClient()
+        self.ai_client = nIAAIClient()
 
         self.spec_path = project_path / "SPEC.md"
         self.plan_path = project_path / "IMPLEMENTATION_PLAN.md"
@@ -48,9 +48,9 @@ class LoopOrchestrator:
             # 3. Get context (all project files)
             context = self._get_project_context()
 
-            # 4. Ask Claude for solution
+            # 4. Ask AI for solution
             try:
-                response = self.claude.execute_nia_iteration(
+                response = self.ai_client.execute_nia_iteration(
                     spec=spec,
                     plan=self.plan_path.read_text(),
                     prompt=prompt,

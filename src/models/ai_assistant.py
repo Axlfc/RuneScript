@@ -460,10 +460,39 @@ class AIAssistant:
                 chat_loop_ollama(prompt, current_system, session_id)
             elif self.provider == "euriai":
                 chat_loop_euriai(prompt, current_system, session_id)
+            elif self.provider in ["openai", "lmstudio"]:
+                client = initialize_client_with_parameters(self.server_url, self.api_key)
+                chat_loop(prompt, client, "gpt-3.5-turbo", current_system, session_id)
             else:
-                return "Error: UNSUPPORTED LLM SERVER PROVIDER"
+                return f"Error: UNSUPPORTED LLM SERVER PROVIDER: {self.provider}"
 
-        return f.getvalue().strip()
+        output = f.getvalue().strip()
+
+        # Robustness: Handle JSON wrapping from certain providers (like Ollama)
+        try:
+            # Some providers might print extra newlines or prompts like "> "
+            # Try to find the JSON part
+            start = output.find('{')
+            end = output.rindex('}') + 1
+            if start != -1 and end != -1:
+                json_part = output[start:end]
+                data = json.loads(json_part)
+            else:
+                data = json.loads(output)
+
+            if isinstance(data, dict):
+                # If it's a dict with a 'response' or 'raw' key, that's likely the actual content
+                if "response" in data:
+                    return str(data["response"]).strip()
+                if "raw" in data:
+                    return str(data["raw"]).strip()
+                # If it's a dict but not our expected format, it might be the AI's JSON response (e.g. for SpecGenerator)
+                # In that case, we keep it as is (as a string)
+        except (ValueError, json.JSONDecodeError):
+            # Not a JSON string, return as is
+            pass
+
+        return output
 
 def main():
     if len(sys.argv) < 2:
@@ -503,8 +532,11 @@ def main():
         chat_loop_ollama(user_input, system_prompt, session_id)
     elif selected_llm_server_provider == "euriai":
         chat_loop_euriai(user_input, system_prompt, session_id)
+    elif selected_llm_server_provider in ["openai", "lmstudio"]:
+        client = initialize_client_with_parameters(server_url, api_key)
+        chat_loop(user_input, client, "gpt-3.5-turbo", system_prompt, session_id)
     else:
-        print("UNSUPPORTED LLM SERVER PROVIDER")
+        print(f"UNSUPPORTED LLM SERVER PROVIDER: {selected_llm_server_provider}")
 
 
 if __name__ == "__main__":

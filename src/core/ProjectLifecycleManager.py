@@ -335,6 +335,13 @@ class ProjectLifecycleManager:
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content)
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
+            # Initial plan list update
+            from src.core.plan_parser import PlanParser
+            parser = PlanParser()
+            tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
+            plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
+            self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
+
             # 4. Create NIA_PROMPT.md
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 3: Setting up nIA Prompt...")
             template_dir = Path("src/templates")
@@ -352,9 +359,19 @@ class ProjectLifecycleManager:
 
             def log_cb(msg: str):
                 self.controller.safe_ui_call(self.controller.ui_manager.log_output, msg)
-                # If message contains file changes, refresh tree
-                if "✅" in msg:
+                # If message indicates progress or failure, refresh UI components
+                should_refresh = any(indicator in msg for indicator in ["✅", "❌", "Task completed", "Phase", "Target Task"])
+
+                if should_refresh:
                     self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+
+                    # Update AI Plan listbox with current status
+                    from src.core.plan_parser import PlanParser
+                    parser = PlanParser()
+                    tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
+                    if tasks:
+                        plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
+                        self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
 
             result = orchestrator.run(max_iterations=50, log_callback=log_cb)
 

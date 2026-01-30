@@ -16,7 +16,15 @@ class IDEController:
     """
 
     def __init__(self, root=None):
-        self.root = root or tk.Tk()
+        if root:
+            self.root = tk.Toplevel(root)
+        else:
+            try:
+                # Try to get the existing root if any
+                self.root = tk.Toplevel()
+            except Exception:
+                self.root = tk.Tk()
+
         self.root.title("Red-Green-Refactor IDE")
         self.root.geometry("1400x900")
 
@@ -135,6 +143,13 @@ class IDEController:
 
     def run(self):
         """Start the application main loop"""
-        self.root.mainloop()
+        # If it's a Toplevel, we don't necessarily need a new mainloop
+        # but calling it is harmless and allows it to run standalone.
+        if isinstance(self.root, tk.Tk):
+            self.root.mainloop()
+        else:
+            # For Toplevel, just ensure it's visible and focused
+            self.root.deiconify()
+            self.root.focus_set()
 
 
