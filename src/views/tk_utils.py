@@ -17,6 +17,42 @@ from src.config.fonts import AppFonts
 import os
 
 
+def verify_theme_integrity():
+    """
+    Verifies that the currently loaded theme has all necessary keys to avoid KeyErrors.
+    """
+    try:
+        theme = customtkinter.ThemeManager.theme
+        required = {
+            "CTkFrame": ["fg_color", "top_fg_color", "border_color", "corner_radius", "border_width"],
+            "CTkLabel": ["text_color", "corner_radius"],
+            "CTkButton": ["fg_color", "hover_color", "text_color", "corner_radius", "border_width"],
+            "CTkEntry": ["fg_color", "border_color", "text_color", "corner_radius", "border_width"],
+            "CTkCheckBox": ["fg_color", "border_color", "text_color", "corner_radius", "border_width", "checkmark_color"],
+            "CTkSwitch": ["fg_color", "progress_color", "button_color", "corner_radius", "border_width"],
+            "CTkRadioButton": ["fg_color", "border_color", "text_color", "corner_radius", "border_width_checked"],
+            "CTkProgressBar": ["fg_color", "progress_color", "corner_radius"],
+            "CTkSlider": ["fg_color", "progress_color", "button_color", "corner_radius"],
+            "CTkOptionMenu": ["fg_color", "button_color", "corner_radius"],
+            "CTkComboBox": ["fg_color", "border_color", "button_color", "corner_radius"],
+            "CTkScrollbar": ["fg_color", "button_color", "corner_radius"],
+            "CTkTextbox": ["fg_color", "border_color", "text_color", "corner_radius"]
+        }
+
+        for widget, keys in required.items():
+            if widget not in theme:
+                print(f"DEBUG: Theme validation failed - Missing widget class: {widget}")
+                return False
+            for key in keys:
+                if key not in theme[widget]:
+                    print(f"DEBUG: Theme validation failed - Widget '{widget}' missing key: '{key}'")
+                    return False
+        return True
+    except Exception as e:
+        print(f"DEBUG: Theme integrity check encountered an error: {e}")
+        return False
+
+
 ensure_user_config()
 language_selected_option = read_config_parameter("options.editor_settings.language")
 localization_data = load_localization(f"data/locales/{language_selected_option}.json")
@@ -86,7 +122,19 @@ fontBackground = "#FFFFFF"
 server_options = ["llama-cpp-python", "lmstudio", "ollama", "openai", "gemini"]
 get_scriptsstudio_directory()
 current_theme = load_theme_setting()
-customtkinter.set_default_color_theme(get_theme_path(current_theme))
+print(f"DEBUG: Loading theme: {current_theme}")
+theme_path = get_theme_path(current_theme)
+print(f"DEBUG: Theme path: {theme_path}")
+
+try:
+    customtkinter.set_default_color_theme(theme_path)
+    if not verify_theme_integrity():
+        print(f"DEBUG: Theme '{current_theme}' is incomplete. Falling back to 'blue'.")
+        customtkinter.set_default_color_theme("blue")
+except Exception as e:
+    print(f"DEBUG: Failed to load theme '{current_theme}': {e}. Falling back to 'blue'.")
+    customtkinter.set_default_color_theme("blue")
+
 customtkinter.set_appearance_mode(get_appearance_mode(current_theme))
 root = customtkinter.CTk()
 # root.iconbitmap("src/views/icon.ico")
@@ -223,8 +271,12 @@ def apply_theme(theme_name, mode=None):
     theme_path = get_theme_path(theme_name)
     try:
         customtkinter.set_default_color_theme(theme_path)
+        if not verify_theme_integrity():
+            print(f"DEBUG: Theme '{theme_name}' is incomplete. Falling back to 'blue'.")
+            customtkinter.set_default_color_theme("blue")
     except Exception as e:
-        print(f"Error setting default color theme: {e}")
+        print(f"Error setting default color theme: {e}. Falling back to 'blue'.")
+        customtkinter.set_default_color_theme("blue")
 
     # 3. Update Treeview style (non-CTk)
     update_treeview_style()
