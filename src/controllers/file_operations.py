@@ -50,20 +50,18 @@ file_types = [
 
 
 def open_file(file_path):
-    if not prompt_save_changes():
-        return
+    from src.views.tk_utils import tab_manager
     print("file_operations.py/open_file IS CALLED!")
-    editor_state.file_name = file_path
-    directory_path = os.path.dirname(file_path)
-    directory_label.configure(text=f"{directory_path}")
-    write_config_parameter(
-        "options.file_management.current_file_directory", directory_path
-    )
-    write_config_parameter("options.file_management.last_opened_script", editor_state.file_name)
-    script_name_label.configure(
-        text=f"{localization_data['save_changes']} in {os.path.basename(file_path)}"
-    )
+
+    # Check if already open
+    if tab_manager:
+        for i, tab in enumerate(tab_manager.tabs):
+            if tab.file_path == file_path:
+                tab_manager.switch_to_tab(i)
+                return
+
     encodings = ["utf-8", "cp1252", "ISO-8859-1", "utf-16"]
+    script_content = ""
     for encoding in encodings:
         try:
             with open(file_path, "r", encoding=encoding) as file:
@@ -74,6 +72,15 @@ def open_file(file_path):
     else:
         with open(file_path, "r", encoding="utf-8", errors="replace") as file:
             script_content = file.read()
+
+    if tab_manager:
+        tab_manager.add_tab(file_path, script_content, is_modified=False, original_content=script_content)
+        directory_path = os.path.dirname(file_path)
+        directory_label.configure(text=f"{directory_path}")
+        write_config_parameter("options.file_management.current_file_directory", directory_path)
+        write_config_parameter("options.file_management.last_opened_script", file_path)
+        return
+
     # Reset internal modified flag during loading
     try:
         target_widget = getattr(script_text, "_textbox", script_text)
@@ -83,6 +90,8 @@ def open_file(file_path):
 
     script_text.delete("1.0", END)
     script_text.insert("1.0", script_content)
+    script_text.mark_set("insert", "1.0")
+    script_text.see("1.0")
 
     print("SAVING FILE CONTENT HERE TO LAST_SAVED_CONTENT")
     editor_state.update_original_content(script_content)
@@ -184,15 +193,6 @@ def update_menu_based_on_extension(ext, directory_path):
 
 def open_script(event=None):
     print("OPEN SCRIPT IS CALLED!")
-    if editor_state.is_modified:
-        response = messagebox.askyesnocancel(
-            localization_data["save_changes"], localization_data["save_confirmation"]
-        )
-        if response:
-            if not save():
-                return
-        elif response is None:
-            return
     file_path = filedialog.askopenfilename(filetypes=file_types)
     if file_path:
         open_file(file_path)
@@ -228,6 +228,11 @@ def on_text_change(event=None):
 
     if was_modified != is_now_modified:
         update_title()
+        from src.views.tk_utils import tab_manager
+        if tab_manager and tab_manager.active_tab_index != -1:
+            tab = tab_manager.tabs[tab_manager.active_tab_index]
+            tab.is_modified = is_now_modified
+            tab_manager.refresh_tab_bar()
 
     # Reset the internal modified flag so we can receive the event again
     try:
@@ -258,6 +263,15 @@ def save():
             file.write(content)
             editor_state.update_original_content(content)
             update_title()
+
+            from src.views.tk_utils import tab_manager
+            if tab_manager and tab_manager.active_tab_index != -1:
+                tab = tab_manager.tabs[tab_manager.active_tab_index]
+                tab.file_path = editor_state.file_name
+                tab.is_modified = False
+                tab.original_content = editor_state.last_saved_content
+                tab_manager.refresh_tab_bar()
+
             messagebox.showinfo("Save", "File saved successfully!")
             return True
     except Exception as e:
@@ -305,6 +319,15 @@ def save_script(event=None):
             editor_state.update_original_content(content)
             update_title()
             update_script_name_label(editor_state.file_name)
+
+            from src.views.tk_utils import tab_manager
+            if tab_manager and tab_manager.active_tab_index != -1:
+                tab = tab_manager.tabs[tab_manager.active_tab_index]
+                tab.file_path = editor_state.file_name
+                tab.is_modified = False
+                tab.original_content = editor_state.last_saved_content
+                tab_manager.refresh_tab_bar()
+
             messagebox.showinfo("Save", "File saved successfully!")
         except Exception as e:
             messagebox.showerror("Save Error", f"An error occurred while saving: {e}")
@@ -327,19 +350,23 @@ def update_script_name_label(file_path):
 
 
 def new(event=None):
-    if editor_state.is_modified:
-        response = messagebox.askyesnocancel(
-            localization_data["save_file"],
-            localization_data["save_changes_confirmation"])
-        if response:
-            save()
-            clear_editor()
-        elif response is None:
-            return
-        elif not response:
-            clear_editor()
-    editor_state.file_name = ""
-    clear_editor()
+    from src.views.tk_utils import tab_manager
+    if tab_manager:
+        tab_manager.add_tab()
+    else:
+        if editor_state.is_modified:
+            response = messagebox.askyesnocancel(
+                localization_data["save_file"],
+                localization_data["save_changes_confirmation"])
+            if response:
+                save()
+                clear_editor()
+            elif response is None:
+                return
+            elif not response:
+                clear_editor()
+        editor_state.file_name = ""
+        clear_editor()
 
 
 def clear_editor():

@@ -137,16 +137,18 @@ class LineNumberCanvas(Canvas):
 
         # Store both for reference
         self.container = text_widget
-        # Handle CTkTextbox by getting its internal _textbox
-        self.text_widget = getattr(text_widget, "_textbox", text_widget)
         self._is_redrawing = False
-
-        # Improve event bindings
-        self.text_widget.bind("<<Modified>>", self._on_text_modified)
-        self.text_widget.bind("<Configure>", self._on_configure, add="+")
+        self.set_text_widget(text_widget)
 
         # Initial draw
         self.after(200, self.redraw)
+
+    def set_text_widget(self, text_widget):
+        self.container = text_widget
+        self.text_widget = getattr(text_widget, "_textbox", text_widget)
+        # Improve event bindings
+        self.text_widget.bind("<<Modified>>", self._on_text_modified, add="+")
+        self.text_widget.bind("<Configure>", self._on_configure, add="+")
 
     def get_font(self):
         """Try to get font from the text widget or container"""
@@ -158,8 +160,6 @@ class LineNumberCanvas(Canvas):
             return ("Consolas", 12)
 
     def _on_text_modified(self, event=None):
-        # Reset the modified flag
-        self.text_widget.edit_modified(False)
         self.redraw()
 
     def _on_configure(self, event=None):
@@ -170,6 +170,12 @@ class LineNumberCanvas(Canvas):
         """Redraw line numbers with improved performance and alignment"""
         # Prevent recursive calls
         if self._is_redrawing:
+            return
+
+        try:
+            if not self.winfo_exists() or not self.text_widget.winfo_exists():
+                return
+        except Exception:
             return
 
         try:

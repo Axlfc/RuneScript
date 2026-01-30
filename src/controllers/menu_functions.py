@@ -587,9 +587,15 @@ def toggle_file_view_visibility(frame):
         Tooltip(open_button, localization_data["open_script"])
         open_button.grid(column=0, row=0)
         Tooltip(open_button, localization_data["open_script"])
-        script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)
-        script_name_label.bind("<Double-1>", lambda event: prompt_rename_file())
-        Tooltip(script_name_label, localization_data["file_name"])
+
+        from src.views.tk_utils import tab_manager
+        if tab_manager:
+            tab_manager.tab_bar_frame.grid(column=2, row=0, sticky="we", padx=5, pady=5)
+        else:
+            script_name_label.grid(column=2, row=0, sticky="we", padx=5, pady=5)
+            script_name_label.bind("<Double-1>", lambda event: prompt_rename_file())
+            Tooltip(script_name_label, localization_data["file_name"])
+
         save_button = Button(frame, text=save_icon, command=save_script)
         save_button.grid(column=3, row=0, sticky="e")
         Tooltip(save_button, localization_data["save_script"])
