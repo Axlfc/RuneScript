@@ -2,11 +2,15 @@ from pathlib import Path
 import time
 import os
 import subprocess
+import threading
 from typing import Optional, List
 from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
-from .nia_ai_client import nIAAIClient, nIAResponse
+from .nia_claude_client import nIAClaudeClient, nIAResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LoopResult:
     def __init__(self, status: str, iterations: int, message: str):
@@ -20,23 +24,35 @@ class LoopOrchestrator:
         self.parser = PlanParser()
         self.tracker = TaskTracker()
         self.validator = TDDValidator()
-        self.ai_client = nIAAIClient()
+        self.ai_client = nIAClaudeClient()
 
         self.spec_path = project_path / "SPEC.md"
         self.plan_path = project_path / "IMPLEMENTATION_PLAN.md"
         self.prompt_path = project_path / "NIA_PROMPT.md"
 
-    def run(self, max_iterations: int = 20, log_callback=None) -> LoopResult:
+    def run(self, max_iterations: int = 20, log_callback=None, stop_event: threading.Event = None) -> LoopResult:
+        if stop_event is None:
+            stop_event = threading.Event()
+
         if not self.spec_path.exists() or not self.plan_path.exists() or not self.prompt_path.exists():
             return LoopResult("ERROR", 0, "Missing required nIA files (SPEC.md, IMPLEMENTATION_PLAN.md, or NIA_PROMPT.md)")
 
         for iteration in range(max_iterations):
+            # CHECK STOP EVENT
+            if stop_event.is_set():
+                self._log(f"Loop stopped by user at iteration {iteration}", log_callback)
+                return LoopResult("STOPPED", iteration, "Loop stopped by user")
+
             self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
 
             # 1. Load fresh state
-            spec = self.spec_path.read_text()
-            tasks = self.parser.parse(self.plan_path)
-            prompt = self.prompt_path.read_text()
+            try:
+                spec = self.spec_path.read_text()
+                tasks = self.parser.parse(self.plan_path)
+                prompt = self.prompt_path.read_text()
+            except Exception as e:
+                self._log(f"❌ Error loading files: {str(e)}", log_callback)
+                return LoopResult("ERROR", iteration, f"File loading error: {e}")
 
             # 2. Find next task
             next_task = self.parser.find_next_pending(tasks)
@@ -58,6 +74,9 @@ class LoopOrchestrator:
                     context=context
                 )
 
+                if stop_event.is_set():
+                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
+
                 if not response.files:
                     self._log("❌ AI provided no code changes.", log_callback)
                     self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes.")
@@ -73,9 +92,9 @@ class LoopOrchestrator:
                     val_red = self.validator.validate_red(str(self.project_path / response.test_file), response.test_name)
                     if not val_red.success:
                         self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
-                        # Maybe the implementation already existed?
-                        # Continue to GREEN anyway if it passes, but TDD says it should fail.
-                        # For now, we follow strict TDD.
+
+                if stop_event.is_set():
+                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
                 # 6. TDD Cycle: GREEN Phase
                 self._log("Applying implementation code...", log_callback)
@@ -89,6 +108,9 @@ class LoopOrchestrator:
                         self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
                         return LoopResult("BLOCKED", iteration, "GREEN phase failed.")
                     self._log("✅ GREEN phase passed.", log_callback)
+
+                if stop_event.is_set():
+                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
                 # 7. TDD Cycle: REFACTOR Phase
                 self._log("Verifying all tests...", log_callback)
@@ -141,15 +163,25 @@ class LoopOrchestrator:
         full_path.write_text(content)
 
     def _git_commit(self, message: str):
+        """Safe git commit."""
         try:
+            # Check if git is installed
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+
             # Check if git repo
             if not (self.project_path / ".git").exists():
-                subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True)
+                logger.info("Initializing new git repository")
+                subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, check=True)
 
-            subprocess.run(["git", "add", "."], cwd=self.project_path, capture_output=True)
-            subprocess.run(["git", "commit", "-m", message], cwd=self.project_path, capture_output=True)
-        except Exception:
-            pass
+            subprocess.run(["git", "add", "."], cwd=self.project_path, capture_output=True, check=True)
+            subprocess.run(["git", "commit", "-m", message], cwd=self.project_path, capture_output=True, check=True)
+            logger.info(f"Git commit successful: {message}")
+        except FileNotFoundError:
+            logger.warning("Git binary not found. Skipping commit.")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Git operation failed: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error during git commit: {e}")
 
     def _log(self, message: str, callback):
         if callback:

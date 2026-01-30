@@ -1,4 +1,4 @@
-﻿import os
+import os
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -65,7 +65,7 @@ class UIManager:
                 self.controller.root,
                 on_generate=self.controller.project_manager.generate_project_with_ai,
                 on_pause=self.controller.project_manager.pause_project,
-                on_stop=self.controller.project_manager.stop_project
+                on_stop=self.on_stop_button_click
             )
 
             # ✅ Add TDD Test Result Panel
@@ -93,6 +93,12 @@ class UIManager:
                 str(e)
             )
             logging.critical(f"Layout creation failed: {e}")
+
+    def on_stop_button_click(self):
+        """Handle stop button click."""
+        self.log_output("Stop button clicked...")
+        if self.controller.project_manager:
+            self.controller.project_manager.stop_project()
 
     def update_phase_ui(self, phase_name: str, test_status: Optional[str] = None) -> None:
         """

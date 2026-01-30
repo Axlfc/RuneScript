@@ -2,6 +2,9 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Literal, List
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Task(BaseModel):
     """Represents a single task in the implementation plan."""
@@ -22,44 +25,52 @@ class PlanParser:
         - [x] Task description  → completed
         - [?] Task description  → blocked
         """
-        if not plan_path.exists():
+        try:
+            if not plan_path.exists():
+                logger.error(f"Plan file not found: {plan_path}")
+                return []
+
+            content = plan_path.read_text()
+            if not content.strip():
+                logger.warning("Plan file is empty")
+                return []
+
+            tasks = []
+            current_phase = "Unknown"
+
+            for line_num, line in enumerate(content.split('\n'), 1):
+                # Detect phase headers
+                if line.startswith('## PHASE'):
+                    current_phase = line.replace('## PHASE', '').strip()
+                    continue
+
+                # Parse task
+                if '- [ ]' in line:
+                    tasks.append(Task(
+                        status="pending",
+                        description=line.replace('- [ ]', '').strip(),
+                        phase=current_phase,
+                        line_number=line_num
+                    ))
+                elif '- [x]' in line:
+                    tasks.append(Task(
+                        status="completed",
+                        description=line.replace('- [x]', '').strip(),
+                        phase=current_phase,
+                        line_number=line_num
+                    ))
+                elif '- [?]' in line:
+                    tasks.append(Task(
+                        status="blocked",
+                        description=line.replace('- [?]', '').strip(),
+                        phase=current_phase,
+                        line_number=line_num
+                    ))
+
+            return tasks
+        except Exception as e:
+            logger.error(f"Error parsing plan: {e}")
             return []
-
-        tasks = []
-        content = plan_path.read_text()
-        current_phase = "Unknown"
-
-        for line_num, line in enumerate(content.split('\n'), 1):
-            line = line.strip()
-            # Detect phase headers
-            if line.startswith('## PHASE'):
-                current_phase = line.replace('## PHASE', '').strip()
-                continue
-
-            # Parse task
-            if line.startswith('- [ ]'):
-                tasks.append(Task(
-                    status="pending",
-                    description=line.replace('- [ ]', '').strip(),
-                    phase=current_phase,
-                    line_number=line_num
-                ))
-            elif line.startswith('- [x]'):
-                tasks.append(Task(
-                    status="completed",
-                    description=line.replace('- [x]', '').strip(),
-                    phase=current_phase,
-                    line_number=line_num
-                ))
-            elif line.startswith('- [?]'):
-                tasks.append(Task(
-                    status="blocked",
-                    description=line.replace('- [?]', '').strip(),
-                    phase=current_phase,
-                    line_number=line_num
-                ))
-
-        return tasks
 
     def find_next_pending(self, tasks: List[Task]) -> Task | None:
         """Return first pending task or None if all complete."""

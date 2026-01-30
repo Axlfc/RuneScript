@@ -1,4 +1,4 @@
-﻿import os
+import os
 import logging
 import threading
 import subprocess
@@ -19,6 +19,7 @@ class ProjectLifecycleManager:
     def __init__(self, controller):
         self.controller = controller
         self.generation_in_progress = False
+        self.stop_event = threading.Event()
 
     def generate_project_with_ai(self, nia_mode: bool = False):
         """Start autonomous project generation with AI"""
@@ -36,6 +37,7 @@ class ProjectLifecycleManager:
         self.controller.ui_manager.log_output("Starting AI-based autonomous project generation...")
         self.controller.ui_manager.toggle_generation_ui(False)
         self.generation_in_progress = True
+        self.stop_event.clear()
 
         try:
             # Create new project
@@ -300,7 +302,9 @@ class ProjectLifecycleManager:
             self.controller.ui_manager.log_output("No active generation to stop.")
             return
 
-        self.controller.ui_manager.log_output("Project generation stopped.")
+        self.controller.ui_manager.log_output("Stopping project generation...")
+        self.stop_event.set()
+
         self.controller.ui_manager.toggle_generation_ui(True)
         self.generation_in_progress = False
 
@@ -321,10 +325,15 @@ class ProjectLifecycleManager:
             # 1. Initialize Git
             subprocess.run(["git", "init"], cwd=project_path, capture_output=True)
 
+            # Check for stop before starting phases
+            if self.stop_event.is_set():
+                return
+
             # 2. Generate SPEC.md
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 1: Generating Specification...")
             spec_gen = SpecGenerator()
             spec_content = spec_gen.generate(prompt)
+            if self.stop_event.is_set(): return
             (path / "SPEC.md").write_text(spec_content)
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
@@ -332,6 +341,7 @@ class ProjectLifecycleManager:
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2: Generating Implementation Plan...")
             plan_gen = PlanGenerator()
             plan_content = plan_gen.generate(spec_content)
+            if self.stop_event.is_set(): return
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content)
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
@@ -373,7 +383,7 @@ class ProjectLifecycleManager:
                         plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
                         self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
 
-            result = orchestrator.run(max_iterations=50, log_callback=log_cb)
+            result = orchestrator.run(max_iterations=50, log_callback=log_cb, stop_event=self.stop_event)
 
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"nIA Loop Finished: {result.message}")
 
