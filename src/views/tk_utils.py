@@ -24,9 +24,10 @@ def verify_theme_integrity():
     try:
         theme = customtkinter.ThemeManager.theme
         required = {
-            "CTkFrame": ["fg_color", "top_fg_color", "border_color"],
-            "CTkLabel": ["text_color"],
-            "CTkButton": ["fg_color", "hover_color", "text_color"]
+            "CTkFrame": ["fg_color", "top_fg_color", "border_color", "corner_radius", "border_width"],
+            "CTkLabel": ["text_color", "corner_radius"],
+            "CTkButton": ["fg_color", "hover_color", "text_color", "corner_radius", "border_width"],
+            "CTkEntry": ["fg_color", "border_color", "text_color", "corner_radius", "border_width"]
         }
 
         for widget, keys in required.items():
