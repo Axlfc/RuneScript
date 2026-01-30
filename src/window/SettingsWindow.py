@@ -192,6 +192,12 @@ class SettingsWindow(customtkinter.CTkToplevel):
             widget = customtkinter.CTkComboBox(parent, variable=var, values=modes)
             return widget, var
 
+        elif option_name.lower() == "mode":
+            modes = ["System", "Light", "Dark"]
+            var = StringVar(value=default_value)
+            widget = Combobox(parent, textvariable=var, values=modes)
+            return widget, var
+
         elif isinstance(default_value, bool):
             var = BooleanVar(value=default_value)
             widget = customtkinter.CTkCheckBox(parent, text="", variable=var)
