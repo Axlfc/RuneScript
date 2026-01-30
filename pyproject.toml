@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "red-green-refactor-ide"
+version = "0.1.0"
+description = "TDD IDE with autonomous AI loop"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12.1",
+    "rich>=13.7.0",
+    "gitpython>=3.1.40",
+    "jinja2>=3.1.2",
+    "pydantic>=2.5.0",
+    "pyyaml>=6.0.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.scripts]
+rgr = "src.cli.commands:app"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["src", "src.cli", "src.core", "src.utils", "src.views", "src.controllers", "src.models", "src.config", "src.window", "src.ide", "src.ai", "src.ui", "src.agents"]
