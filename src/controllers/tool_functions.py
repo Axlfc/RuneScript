@@ -78,6 +78,12 @@ def open_ai_server_settings_window():
         if not base_url.startswith("http"):
             base_url = "http://" + base_url
 
+        def update_ui(values, new_model=None):
+            if settings_window.winfo_exists():
+                ollama_model_dropdown.configure(values=values)
+                if new_model:
+                    selected_ollama_model.set(new_model)
+
         try:
             base_url = base_url.rstrip("/")
             response = requests.get(f"{base_url}/api/tags", timeout=5)
@@ -85,16 +91,16 @@ def open_ai_server_settings_window():
                 data = response.json()
                 models = [m["name"] for m in data.get("models", [])]
                 if models:
-                    ollama_model_dropdown.configure(values=models)
                     current_model = selected_ollama_model.get()
-                    if current_model not in models:
-                        selected_ollama_model.set(models[0])
+                    target_model = current_model if current_model in models else models[0]
+                    settings_window.after(0, lambda: update_ui(models, target_model))
                 else:
-                    ollama_model_dropdown.configure(values=["No models found"])
+                    settings_window.after(0, lambda: update_ui(["No models found"]))
             else:
-                ollama_model_dropdown.configure(values=[f"Error: {response.status_code}"])
+                settings_window.after(0, lambda: update_ui([f"Error: {response.status_code}"]))
         except Exception:
-            ollama_model_dropdown.configure(values=["Server unreachable"])
+            if settings_window.winfo_exists():
+                settings_window.after(0, lambda: update_ui(["Server unreachable"]))
 
     def fetch_ollama_models_async():
         threading.Thread(target=fetch_ollama_models, daemon=True).start()
