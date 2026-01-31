@@ -1,27 +1,38 @@
 ﻿# TerminalWindow.py
 import os
 import subprocess
-from tkinter import Toplevel, Entry, END
-from tkinter import scrolledtext
+import tkinter as tk
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
-class TerminalWindow:
-    def __init__(self):
+class TerminalWindow(ThemedWindow):
+    def __init__(self, parent=None):
         """Initialize the Terminal window."""
-        self.terminal_window = Toplevel()
-        self.terminal_window.title("Terminal")
-        self.terminal_window.geometry("600x400")
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.terminal_window = self # self is the window
+        self.title("Terminal")
+        self.geometry("600x450")
+
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Output text area with scroll
-        self.output_text = scrolledtext.ScrolledText(self.terminal_window, height=20, width=80)
-        self.output_text.pack(fill="both", expand=True)
+        self.output_text = ctk.CTkTextbox(self.main_container, height=350)
+        self.output_text.pack(fill="both", expand=True, padx=5, pady=5)
 
         # Command history and pointer for navigation
         self.command_history = []
         self.history_pointer = [0]
 
         # Entry widget for command input
-        self.entry = Entry(self.terminal_window, width=80)
-        self.entry.pack(side="bottom", fill="x")
+        self.entry = ctk.CTkEntry(self.main_container)
+        self.entry.pack(side="bottom", fill="x", padx=5, pady=5)
         self.entry.focus()
 
         # Key bindings for command execution and history navigation

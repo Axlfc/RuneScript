@@ -15,19 +15,24 @@ from tkinter.ttk import Notebook
 from src.controllers.parameters import (read_config_parameter, write_config_parameter,
                                         get_appearance_mode)
 from src.models.LanguageManager import LanguageManager
-import customtkinter
-from src.views.tk_utils import style, register_window_for_theme, unregister_window_for_theme
+import customtkinter as ctk
+from src.views.tk_utils import style
 from src.views.ui_elements import ScrollableFrame
+from src.ui.themed_window import ThemedWindow
 
 
-class SettingsWindow(customtkinter.CTkToplevel):
-    def __init__(self):
-        super().__init__()
+class SettingsWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
         self.language_code_map = None
         self.title("ScriptsEditor Settings")
         self.geometry("800x600")
-        register_window_for_theme(self)
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Configuration file paths
         self.default_config_file = "data/config.json"

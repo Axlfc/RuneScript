@@ -1,16 +1,27 @@
 ﻿import re
 import subprocess
 import threading
+import tkinter as tk
+import customtkinter as ctk
 from src.utils.thread_manager import thread_manager
-from tkinter import Button, LEFT, X, Frame, BOTH, WORD, scrolledtext, RIGHT, VERTICAL, Scrollbar, Canvas, Label, \
-    Listbox, Y, END, simpledialog, NORMAL, DISABLED, messagebox, BooleanVar, Toplevel, Checkbutton
+from tkinter import (
+    BooleanVar, END, simpledialog, messagebox
+)
+from src.ui.themed_window import ThemedWindow
 
 
-class WingetWindow:
-    def __init__(self):
-        self.winget_window = Toplevel()
-        self.winget_window.title("WinGet Package Manager")
-        self.winget_window.geometry("1000x700")
+class WingetWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.winget_window = self # self is the window
+        self.title("WinGet Package Manager")
+        self.geometry("1000x800")
         self.upgrade_vars = []
         self.setup_ui()
         self.list_installed()
@@ -138,19 +149,13 @@ Use the buttons to perform WinGet operations."""
                         f"{program_id:<40} {from_version:<15} {to_version:<15}"
                     )
                     var = BooleanVar()
-                    checkbox = Checkbutton(
+                    checkbox = ctk.CTkCheckBox(
                         self.upgrade_checkboxes_frame,
                         text=display_text,
                         variable=var,
-                        anchor="w",
-                        justify=LEFT,
-                        font=("Courier", 10))
-                    checkbox.grid(row=i, column=0, sticky="w")
+                        font=("Courier", 12))
+                    checkbox.pack(anchor="w", pady=2)
                     self.upgrade_vars.append((var, program_id))
-        self.upgrade_checkboxes_frame.update_idletasks()
-        self.upgrade_checkboxes_canvas.configure(
-            scrollregion=self.upgrade_checkboxes_canvas.bbox("all")
-        )
 
     def update_output(self, output):
         self.output_text.insert(END, output + "\n")
@@ -190,20 +195,20 @@ Use the buttons to perform WinGet operations."""
         thread_manager.run_in_thread(worker, task_id)
 
     def disable_upgrade_buttons(self):
-        self.select_all_button.configure(state=DISABLED)
-        self.deselect_all_button.configure(state=DISABLED)
-        self.upgrade_selected_button.configure(state=DISABLED)
+        self.select_all_button.configure(state=tk.DISABLED)
+        self.deselect_all_button.configure(state=tk.DISABLED)
+        self.upgrade_selected_button.configure(state=tk.DISABLED)
         for widget in self.upgrade_checkboxes_frame.winfo_children():
-            if isinstance(widget, Checkbutton):
-                widget.configure(state=DISABLED)
+            if isinstance(widget, ctk.CTkCheckBox):
+                widget.configure(state=tk.DISABLED)
 
     def enable_upgrade_buttons(self):
-        self.select_all_button.configure(state=NORMAL)
-        self.deselect_all_button.configure(state=NORMAL)
-        self.upgrade_selected_button.configure(state=NORMAL)
+        self.select_all_button.configure(state=tk.NORMAL)
+        self.deselect_all_button.configure(state=tk.NORMAL)
+        self.upgrade_selected_button.configure(state=tk.NORMAL)
         for widget in self.upgrade_checkboxes_frame.winfo_children():
-            if isinstance(widget, Checkbutton):
-                widget.configure(state=NORMAL)
+            if isinstance(widget, ctk.CTkCheckBox):
+                widget.configure(state=tk.NORMAL)
 
     def select_all(self):
         for var, _ in self.upgrade_vars:
@@ -265,85 +270,82 @@ Use the buttons to perform WinGet operations."""
         self.upgrade_checkboxes_canvas.unbind_all("<MouseWheel>")
 
     def setup_ui(self):
-        main_frame = Frame(self.winget_window)
-        main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Top frame setup
+        top_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        top_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left frame setup
-        left_frame = Frame(main_frame)
-        left_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        installed_label = Label(left_frame, text="Installed Programs")
-        installed_label.pack()
-        self.installed_listbox = Listbox(left_frame, height=20, width=50)
-        self.installed_listbox.pack(side=LEFT, fill=BOTH, expand=True)
-        installed_scrollbar = Scrollbar(left_frame)
-        installed_scrollbar.pack(side=RIGHT, fill=Y)
+        left_frame = ctk.CTkFrame(top_frame)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        ctk.CTkLabel(left_frame, text="Installed Programs", font=("Segoe UI", 12, "bold")).pack(pady=5)
+
+        # Listbox still needed, wrap it
+        self.installed_listbox = tk.Listbox(left_frame, borderwidth=0, highlightthickness=0)
+        self.installed_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        installed_scrollbar = ctk.CTkScrollbar(left_frame, orientation="vertical", command=self.installed_listbox.yview)
+        installed_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.installed_listbox.configure(yscrollcommand=installed_scrollbar.set)
-        installed_scrollbar.configure(command=self.installed_listbox.yview)
 
         # Right frame setup
-        right_frame = Frame(main_frame)
-        right_frame.pack(side=RIGHT, fill=BOTH, expand=True)
-        upgradable_label = Label(right_frame, text="Upgradable Programs")
-        upgradable_label.pack()
+        right_frame = ctk.CTkFrame(top_frame)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        ctk.CTkLabel(right_frame, text="Upgradable Programs", font=("Segoe UI", 12, "bold")).pack(pady=5)
 
-        self.upgrade_checkboxes_canvas = Canvas(right_frame)
-        self.upgrade_checkboxes_canvas.pack(side=LEFT, fill=BOTH, expand=True)
-        upgrade_checkboxes_scrollbar = Scrollbar(
-            right_frame, orient=VERTICAL, command=self.upgrade_checkboxes_canvas.yview
-        )
-        upgrade_checkboxes_scrollbar.pack(side=RIGHT, fill=Y)
-        self.upgrade_checkboxes_canvas.configure(yscrollcommand=upgrade_checkboxes_scrollbar.set)
-        self.upgrade_checkboxes_frame = Frame(self.upgrade_checkboxes_canvas)
-        self.upgrade_checkboxes_canvas.create_window(
-            (0, 0), window=self.upgrade_checkboxes_frame, anchor="nw"
-        )
-
-        # Bind mouse wheel events
-        self.upgrade_checkboxes_canvas.bind("<Enter>", self.bind_mousewheel)
-        self.upgrade_checkboxes_canvas.bind("<Leave>", self.unbind_mousewheel)
+        # Use CTkScrollableFrame for upgradable list
+        self.upgrade_checkboxes_frame = ctk.CTkScrollableFrame(right_frame)
+        self.upgrade_checkboxes_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Output text setup
-        self.output_text = scrolledtext.ScrolledText(
-            self.winget_window, wrap=WORD, height=10, width=120
+        self.output_text = ctk.CTkTextbox(
+            self.main_container, height=200
         )
-        self.output_text.pack(fill=BOTH, expand=True, padx=10, pady=10)
+        self.output_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Button frame setup
-        button_frame = Frame(self.winget_window)
-        button_frame.pack(fill=X, padx=10, pady=10)
+        button_frame = ctk.CTkFrame(self.main_container)
+        button_frame.pack(fill=tk.X, padx=10, pady=10)
 
         # Create buttons
-        Button(
-            button_frame, text="List All Programs", command=self.list_programs
-        ).pack(side=LEFT, padx=5)
+        ctk.CTkButton(
+            button_frame, text="List All", width=100, command=self.list_programs
+        ).pack(side=tk.LEFT, padx=2)
 
-        Button(
-            button_frame, text="Search Program", command=self.search_program
-        ).pack(side=LEFT, padx=5)
+        ctk.CTkButton(
+            button_frame, text="Search", width=100, command=self.search_program
+        ).pack(side=tk.LEFT, padx=2)
 
-        Button(
-            button_frame, text="Program Description", command=self.program_description
-        ).pack(side=LEFT, padx=5)
+        ctk.CTkButton(
+            button_frame, text="Description", width=100, command=self.program_description
+        ).pack(side=tk.LEFT, padx=2)
 
-        Button(
-            button_frame, text="Install Program", command=self.install_program
-        ).pack(side=LEFT, padx=5)
+        ctk.CTkButton(
+            button_frame, text="Install", width=100, command=self.install_program
+        ).pack(side=tk.LEFT, padx=2)
 
-        Button(
-            button_frame, text="Uninstall Program", command=self.uninstall_program
-        ).pack(side=LEFT, padx=5)
+        ctk.CTkButton(
+            button_frame, text="Uninstall", width=100, command=self.uninstall_program
+        ).pack(side=tk.LEFT, padx=2)
 
-        self.select_all_button = Button(
-            button_frame, text="Select All", command=self.select_all
+        self.select_all_button = ctk.CTkButton(
+            button_frame, text="Select All", width=100, command=self.select_all
         )
-        self.select_all_button.pack(side=LEFT, padx=5)
+        self.select_all_button.pack(side=tk.LEFT, padx=2)
 
-        self.deselect_all_button = Button(
-            button_frame, text="Deselect All", command=self.deselect_all
+        self.deselect_all_button = ctk.CTkButton(
+            button_frame, text="Deselect All", width=100, command=self.deselect_all
         )
-        self.deselect_all_button.pack(side=LEFT, padx=5)
+        self.deselect_all_button.pack(side=tk.LEFT, padx=2)
 
-        self.upgrade_selected_button = Button(
-            button_frame, text="Upgrade Selected", command=self.upgrade_selected
+        self.upgrade_selected_button = ctk.CTkButton(
+            button_frame, text="Upgrade", width=100, command=self.upgrade_selected
         )
-        self.upgrade_selected_button.pack(side=LEFT, padx=5)
+        self.upgrade_selected_button.pack(side=tk.LEFT, padx=2)
+
+        # Apply simple theme to Listbox
+        is_dark = ctk.get_appearance_mode().lower() == "dark"
+        self.installed_listbox.configure(bg="#2b2b2b" if is_dark else "#f0f0f0",
+                                         fg="white" if is_dark else "black")

@@ -8,13 +8,22 @@ import os
 import time
 
 from src.views.tk_utils import my_font
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
 
-class TranslatorWindow:
-    def __init__(self):
-        self.translator_win = Toplevel()
-        self.translator_win.title("Real-time Translator")
-        self.translator_win.geometry("600x400")
+class TranslatorWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.translator_win = self # self is the window
+        self.title("Real-time Translator")
+        self.geometry("600x500")
 
         # Initialize instance variables
         self.last_translation = {"input": None}

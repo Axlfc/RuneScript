@@ -2,15 +2,23 @@
 import queue
 import threading
 import subprocess
-from tkinter import Toplevel, Label, Entry, Button, END, messagebox, filedialog, NORMAL, DISABLED
-import queue
+import tkinter as tk
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
 
-class AudioGenerationWindow:
-    def __init__(self):
-        self.generation_window = Toplevel()
-        self.generation_window.title("Audio Generation")
-        self.generation_window.geometry("480x580")
+class AudioGenerationWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.generation_window = self # self is the window
+        self.title("Audio Generation")
+        self.geometry("600x650")
 
         # UI elements and layout
         self.setup_ui()

@@ -8,25 +8,27 @@ import queue
 from src.ai.AIAgentOrchestrator import AIAgentOrchestrator
 from src.core.ProjectLifecycleManager import ProjectLifecycleManager
 from src.ui.UIManager import UIManager
+from src.ui.themed_window import ThemedWindow
 
 
-class IDEController:
+class IDEController(ThemedWindow):
     """
     Central controller coordinating all IDE components and managing application lifecycle.
     """
 
     def __init__(self, root=None):
-        if root:
-            self.root = tk.Toplevel(root)
-        else:
+        if root is None:
             try:
-                # Try to get the existing root if any
-                self.root = tk.Toplevel()
-            except Exception:
-                self.root = tk.Tk()
+                from src.views.tk_utils import root as tk_root
+                root = tk_root
+            except ImportError:
+                pass
 
-        self.root.title("Red-Green-Refactor IDE")
-        self.root.geometry("1400x900")
+        super().__init__(root)
+        self.root = self # In this architecture, self IS the window
+
+        self.title("Red-Green-Refactor IDE")
+        self.geometry("1400x900")
 
         # Initialize queues for asynchronous communication
         self.ai_task_queue = queue.Queue()

@@ -1,8 +1,8 @@
 ﻿from tkinter import *
 from src.config.fonts import AppFonts
-from tkinter import scrolledtext, filedialog, ttk
-from src.config.fonts import AppFonts
-from tkinter.font import Font
+from tkinter import filedialog, ttk
+import tkinter as tk
+import customtkinter as ctk
 import sys
 import io
 import json
@@ -10,13 +10,21 @@ import markdown
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 import re
+from src.ui.themed_window import ThemedWindow
 
 
-class IPythonNotebookTerminal:
-    def __init__(self):
-        self.window = Toplevel()
-        self.window.title("IPython Notebook Terminal")
-        self.window.geometry("1024x768")
+class IPythonNotebookTerminal(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.window = self # self is the window
+        self.title("IPython Notebook Terminal")
+        self.geometry("1024x800")
 
         # Variables de estado
         self.cells = []  # Lista de celdas (código y markdown)
@@ -30,25 +38,27 @@ class IPythonNotebookTerminal:
 
     def setup_ui(self):
         """Configura la interfaz de usuario"""
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
         # Barra de herramientas
-        self.toolbar = Frame(self.window)
-        self.toolbar.pack(fill=X, padx=5, pady=5)
+        self.toolbar = ctk.CTkFrame(self.main_container)
+        self.toolbar.pack(fill=tk.X, padx=5, pady=5)
 
         # Botones de la barra de herramientas
-        ttk.Button(self.toolbar, text="Nueva celda código", command=self.add_code_cell).pack(side=LEFT, padx=2)
-        ttk.Button(self.toolbar, text="Nueva celda Markdown", command=self.add_markdown_cell).pack(side=LEFT, padx=2)
-        ttk.Button(self.toolbar, text="Ejecutar celda", command=self.execute_current_cell).pack(side=LEFT, padx=2)
-        ttk.Button(self.toolbar, text="Guardar", command=self.save_notebook).pack(side=LEFT, padx=2)
-        ttk.Button(self.toolbar, text="Abrir", command=self.load_notebook).pack(side=LEFT, padx=2)
-
-        # Panel principal con scroll
-        self.main_frame = Frame(self.window)
-        self.main_frame.pack(fill=BOTH, expand=True)
+        ctk.CTkButton(self.toolbar, text="Nueva celda código", width=140, command=self.add_code_cell).pack(side=tk.LEFT, padx=5, pady=5)
+        ctk.CTkButton(self.toolbar, text="Nueva celda Markdown", width=140, command=self.add_markdown_cell).pack(side=tk.LEFT, padx=5, pady=5)
+        ctk.CTkButton(self.toolbar, text="Ejecutar celda", width=120, command=self.execute_current_cell).pack(side=tk.LEFT, padx=5, pady=5)
+        ctk.CTkButton(self.toolbar, text="Guardar", width=80, command=self.save_notebook).pack(side=tk.LEFT, padx=5, pady=5)
+        ctk.CTkButton(self.toolbar, text="Abrir", width=80, command=self.load_notebook).pack(side=tk.LEFT, padx=5, pady=5)
 
         # Canvas y scrollbar para el contenido
-        self.canvas = Canvas(self.main_frame, bg='white')
-        self.scrollbar = ttk.Scrollbar(self.main_frame, orient=VERTICAL, command=self.canvas.yview)
-        self.scrollable_frame = Frame(self.canvas, bg='white')
+        self.scroll_container = ctk.CTkFrame(self.main_container)
+        self.scroll_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.canvas = tk.Canvas(self.scroll_container, highlightthickness=0)
+        self.scrollbar = ctk.CTkScrollbar(self.scroll_container, orientation="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ctk.CTkFrame(self.canvas)
 
         self.scrollable_frame.bind(
             "<Configure>",
@@ -68,31 +78,31 @@ class IPythonNotebookTerminal:
 
     def create_cell(self, cell_type="code"):
         """Crea una nueva celda del tipo especificado"""
-        cell_frame = Frame(self.scrollable_frame, bg='white', pady=5)
-        cell_frame.pack(fill=X, padx=10)
+        cell_frame = ctk.CTkFrame(self.scrollable_frame, corner_radius=6)
+        cell_frame.pack(fill=tk.X, padx=10, pady=10)
 
         # Barra de herramientas de la celda
-        cell_toolbar = Frame(cell_frame, bg='#f0f0f0')
-        cell_toolbar.pack(fill=X)
+        cell_toolbar = ctk.CTkFrame(cell_frame, height=30)
+        cell_toolbar.pack(fill=tk.X)
 
         # Etiqueta que muestra el tipo de celda
-        Label(cell_toolbar, text=f"[{cell_type}]", bg='#f0f0f0').pack(side=LEFT)
+        ctk.CTkLabel(cell_toolbar, text=f"[{cell_type}]", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=10)
 
         # Botones de la celda
-        ttk.Button(cell_toolbar, text="Ejecutar",
-                   command=lambda: self.execute_cell(cell_frame)).pack(side=RIGHT)
-        ttk.Button(cell_toolbar, text="Eliminar",
-                   command=lambda: self.delete_cell(cell_frame)).pack(side=RIGHT)
+        ctk.CTkButton(cell_toolbar, text="Eliminar", width=80, height=24, fg_color="transparent", border_width=1,
+                   command=lambda: self.delete_cell(cell_frame)).pack(side=tk.RIGHT, padx=5, pady=3)
+        ctk.CTkButton(cell_toolbar, text="Ejecutar", width=80, height=24,
+                   command=lambda: self.execute_cell(cell_frame)).pack(side=tk.RIGHT, padx=5, pady=3)
 
         # Área de entrada
-        input_text = Text(cell_frame, height=4, width=80,
+        input_text = ctk.CTkTextbox(cell_frame, height=100,
                           font=self.code_font if cell_type == "code" else self.markdown_font)
-        input_text.pack(fill=X, padx=5, pady=5)
+        input_text.pack(fill=tk.X, padx=10, pady=5)
 
         # Área de salida
-        output_text = Text(cell_frame, height=4, width=80,
+        output_text = ctk.CTkTextbox(cell_frame, height=100,
                            font=self.code_font, state='disabled')
-        output_text.pack(fill=X, padx=5, pady=5)
+        output_text.pack(fill=tk.X, padx=10, pady=5)
 
         # Guardar información de la celda
         cell_info = {

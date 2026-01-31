@@ -1,14 +1,21 @@
 ﻿import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 import math
 import re
+from src.ui.themed_window import ThemedWindow
 
 
-class CalculatorWindow(tk.Toplevel):
-    def __init__(self):
-        super().__init__()
+class CalculatorWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
         self.title("Advanced Scientific Calculator")
-        self.geometry("500x600")
+        self.geometry("500x650")
 
         # Initialize instance variables
         self.original_states = {}
