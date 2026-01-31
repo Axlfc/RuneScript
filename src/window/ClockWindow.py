@@ -1,43 +1,51 @@
-﻿import tkinter as tk
+import tkinter as tk
+import customtkinter as ctk
 from time import strftime
 import datetime
+from src.ui.themed_window import ThemedWindow
 
 
-class ClockWindow(tk.Toplevel):
-    def __init__(self):
-        super().__init__()
+class ClockWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
         self.title("Elegant Digital Clock")
         self.geometry("600x300")
-        self.configure(background='black')
+
+        # Use a consistent background from theme if possible, but clock often looks better black
+        # self.configure(background='black')
 
         # Configure grid to be fully expandable
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         # Create a frame to center the clock
-        self.clock_frame = tk.Frame(self, bg='black')
-        self.clock_frame.grid(row=0, column=0, sticky='nsew')
+        self.clock_frame = ctk.CTkFrame(self)
+        self.clock_frame.grid(row=0, column=0, sticky='nsew', padx=20, pady=20)
         self.clock_frame.grid_rowconfigure(0, weight=1)
         self.clock_frame.grid_rowconfigure(1, weight=1)
         self.clock_frame.grid_columnconfigure(0, weight=1)
 
         # Time Label with dynamic font sizing
-        self.time_label = tk.Label(
+        self.time_label = ctk.CTkLabel(
             self.clock_frame,
-            font=('DS-Digital', 60, 'bold'),
-            background='black',
-            foreground='#00FF00',
-            anchor='center'
+            text="",
+            font=('Arial', 60, 'bold'), # Default font if DS-Digital missing
+            text_color='#00FF00'
         )
         self.time_label.grid(row=0, column=0, sticky='nsew', padx=20, pady=10)
 
         # Date Label with dynamic font sizing
-        self.date_label = tk.Label(
+        self.date_label = ctk.CTkLabel(
             self.clock_frame,
+            text="",
             font=('Arial', 20, 'bold'),
-            background='black',
-            foreground='#00FF00',
-            anchor='center'
+            text_color='#00FF00'
         )
         self.date_label.grid(row=1, column=0, sticky='nsew', padx=20, pady=10)
 
@@ -53,16 +61,19 @@ class ClockWindow(tk.Toplevel):
         height = self.winfo_height()
 
         # Calculate font sizes dynamically
-        time_font_size = min(int(width / 15), int(height / 4))
-        date_font_size = min(int(width / 30), int(height / 10))
+        time_font_size = min(int(width / 10), int(height / 3))
+        date_font_size = min(int(width / 25), int(height / 8))
 
-        self.time_label.configure(font=('DS-Digital', time_font_size, 'bold'))
-        self.date_label.configure(font=('Arial', date_font_size, 'bold'))
+        if time_font_size > 0:
+            self.time_label.configure(font=('Arial', time_font_size, 'bold'))
+        if date_font_size > 0:
+            self.date_label.configure(font=('Arial', date_font_size, 'bold'))
 
     def update_clock(self):
         # Get current time and format
-        current_time = strftime('%H:%M:%S %p')
-        current_date = datetime.datetime.now().strftime('%A, %B %d, %Y')
+        now = datetime.datetime.now()
+        current_time = now.strftime('%H:%M:%S %p')
+        current_date = now.strftime('%A, %B %d, %Y')
 
         # Update labels
         self.time_label.configure(text=current_time)

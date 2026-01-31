@@ -2,47 +2,58 @@
 import queue
 import threading
 import subprocess
-from tkinter import Toplevel, Label, Entry, Button, END, messagebox, filedialog, NORMAL, DISABLED
+import tkinter as tk
+import customtkinter as ctk
 from PIL import Image, ImageTk
-import queue
+from src.ui.themed_window import ThemedWindow
 
 
-class ImageGenerationWindow:
-    def __init__(self):
-        self.generation_window = Toplevel()
-        self.generation_window.title("Image Generation")
-        self.generation_window.geometry("480x580")
+class ImageGenerationWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.generation_window = self # self is the window
+        self.title("Image Generation")
+        self.geometry("600x700")
 
         # Setup UI
         self.setup_ui()
 
     def setup_ui(self):
         """Sets up the UI components."""
-        Label(self.generation_window, text="Model Path:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
-        self.model_path_entry = Entry(self.generation_window, width=30)
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        ctk.CTkLabel(self.main_container, text="Model Path:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
+        self.model_path_entry = ctk.CTkEntry(self.main_container, width=250)
         self.model_path_entry.grid(row=0, column=1, padx=10, pady=5)
-        Button(self.generation_window, text="Browse", command=self.select_model_path).grid(row=0, column=2, padx=10,
+        ctk.CTkButton(self.main_container, text="Browse", width=80, command=self.select_model_path).grid(row=0, column=2, padx=10,
                                                                                            pady=5)
 
-        Label(self.generation_window, text="Prompt:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
-        self.prompt_entry = Entry(self.generation_window, width=30)
+        ctk.CTkLabel(self.main_container, text="Prompt:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+        self.prompt_entry = ctk.CTkEntry(self.main_container, width=250)
         self.prompt_entry.grid(row=1, column=1, padx=10, pady=5)
 
-        Label(self.generation_window, text="Output Path:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
-        self.output_path_entry = Entry(self.generation_window, width=30)
+        ctk.CTkLabel(self.main_container, text="Output Path:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+        self.output_path_entry = ctk.CTkEntry(self.main_container, width=250)
         self.output_path_entry.grid(row=2, column=1, padx=10, pady=5)
-        Button(self.generation_window, text="Save As", command=self.select_output_path).grid(row=2, column=2, padx=10,
+        ctk.CTkButton(self.main_container, text="Save As", width=80, command=self.select_output_path).grid(row=2, column=2, padx=10,
                                                                                              pady=5)
 
-        self.generate_button = Button(self.generation_window, text="Generate Image", command=self.generate_image)
-        self.generate_button.grid(row=3, column=0, columnspan=3, pady=10)
+        self.generate_button = ctk.CTkButton(self.main_container, text="Generate Image", command=self.generate_image)
+        self.generate_button.grid(row=3, column=0, columnspan=3, pady=20)
 
-        self.status_label = Label(self.generation_window, text="Status: Waiting to start...", width=60, anchor="w")
-        self.status_label.grid(row=4, column=0, columnspan=3, padx=10, pady=10)
+        self.status_label = ctk.CTkLabel(self.main_container, text="Status: Waiting to start...", width=400, anchor="w")
+        self.status_label.grid(row=4, column=0, columnspan=3, padx=10, pady=5)
 
-        Label(self.generation_window, text="Image Preview:").grid(row=5, column=0, columnspan=3, pady=10)
-        self.image_label = Label(self.generation_window, text="No image generated yet", width=40, height=20,
-                                 relief="sunken")
+        ctk.CTkLabel(self.main_container, text="Image Preview:").grid(row=5, column=0, columnspan=3, pady=(10, 0))
+        self.image_label = ctk.CTkLabel(self.main_container, text="No image generated yet", width=400, height=200,
+                                 fg_color=("gray85", "gray15"), corner_radius=6)
         self.image_label.grid(row=6, column=0, columnspan=3, padx=10, pady=10)
 
     def generate_image(self):
@@ -56,7 +67,7 @@ class ImageGenerationWindow:
             return
 
         self.status_label.configure(text="Starting image generation...")
-        self.generate_button.configure(state=DISABLED)
+        self.generate_button.configure(state=tk.DISABLED)
 
         self.output_queue = queue.Queue()
         threading.Thread(
@@ -108,7 +119,7 @@ class ImageGenerationWindow:
 
                 if "Image generation completed" in line:
                     self.status_label.configure(text=line)
-                    self.generate_button.configure(state=NORMAL)
+                    self.generate_button.configure(state=tk.NORMAL)
                     break
 
         except queue.Empty:
@@ -132,13 +143,13 @@ class ImageGenerationWindow:
     def select_model_path(self):
         """Opens file dialog to select model path."""
         path = filedialog.askopenfilename(filetypes=[("Checkpoint Files", "*.ckpt")])
-        self.model_path_entry.delete(0, END)
+        self.model_path_entry.delete(0, tk.END)
         self.model_path_entry.insert(0, path)
 
     def select_output_path(self):
         """Opens file dialog to select output path."""
         path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Files", "*.png")])
-        self.output_path_entry.delete(0, END)
+        self.output_path_entry.delete(0, tk.END)
         self.output_path_entry.insert(0, path)
 
 

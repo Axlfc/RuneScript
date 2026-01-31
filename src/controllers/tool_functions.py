@@ -9,7 +9,7 @@ import threading
 import requests
 import hashlib
 import markdown
-import customtkinter
+import customtkinter as ctk
 
 from tkinter import (
     END,
@@ -53,6 +53,7 @@ from src.models.embeddings import generate_embedding
 from src.views.tk_utils import script_text, root, SIMILARITY_THRESHOLD, status_label_var, \
     localization_data, persistent_agent_selection_var, current_session
 from src.views.ui_elements import Tooltip
+from src.ui.themed_window import ThemedWindow
 from difflib import SequenceMatcher
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -185,15 +186,11 @@ def open_ai_server_settings_window():
         settings_window.destroy()
 
     server_details = load_server_details()
-    settings_window = customtkinter.CTkToplevel()
+    settings_window = ThemedWindow()
     settings_window.title(localization_data["ai_server_settings_title"])
-    settings_window.geometry("400x350")
+    settings_window.geometry("450x400")
 
-    from src.views.tk_utils import register_window_for_theme, unregister_window_for_theme
-    register_window_for_theme(settings_window)
-    settings_window.protocol("WM_DELETE_WINDOW", lambda: (unregister_window_for_theme(settings_window), settings_window.destroy()))
-
-    customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
+    ctk.CTkLabel(settings_window, text=localization_data["ai_server_select_server_label"]).grid(
         row=0, column=0, sticky="w", padx=10, pady=10
     )
     selected_server = StringVar(settings_window)
@@ -282,14 +279,10 @@ def open_ai_server_agent_settings_window(localization_data, persistent_agent_sel
     if not agents:
         return
 
-    settings_window = customtkinter.CTkToplevel()
+    settings_window = ThemedWindow()
     settings_window.title(localization_data["ai_server_agent_settings_title"])
 
-    from src.views.tk_utils import register_window_for_theme, unregister_window_for_theme
-    register_window_for_theme(settings_window)
-    settings_window.protocol("WM_DELETE_WINDOW", lambda: (unregister_window_for_theme(settings_window), settings_window.destroy()))
-
-    customtkinter.CTkLabel(settings_window, text=localization_data["ai_server_select_agent_label"]).grid(row=0, column=0, padx=10, pady=10)
+    ctk.CTkLabel(settings_window, text=localization_data["ai_server_select_agent_label"]).grid(row=0, column=0, padx=10, pady=10)
 
     selected_agent_var = StringVar(settings_window)
     selected_agent_var.set(agents[0]["name"])
@@ -423,13 +416,9 @@ def open_ai_assistant_window(session_id=None):
     markdown_render_enabled = False
     session_data = []
     url_data = []
-    ai_assistant_window = customtkinter.CTkToplevel()
+    ai_assistant_window = ThemedWindow()
     ai_assistant_window.title("AI Assistant")
-    ai_assistant_window.geometry("1000x700")
-
-    from src.views.tk_utils import register_window_for_theme, unregister_window_for_theme
-    register_window_for_theme(ai_assistant_window)
-    ai_assistant_window.protocol("WM_DELETE_WINDOW", lambda: (unregister_window_for_theme(ai_assistant_window), ai_assistant_window.destroy()))
+    ai_assistant_window.geometry("1000x800")
 
     menu_bar = Menu(ai_assistant_window)
     ai_assistant_window.configure(menu=menu_bar)
@@ -2054,9 +2043,8 @@ def open_ai_assistant_window(session_id=None):
 
     def rename_session(session_index):
         session = session_data[session_index]
-        new_name = simpledialog.askstring(
-            "Rename Session", "Enter new session name:", initialvalue=session.name
-        )
+        dialog = ctk.CTkInputDialog(text="Enter new session name:", title="Rename Session")
+        new_name = dialog.get_input()
         if new_name:
             session.name = new_name
             session.save()

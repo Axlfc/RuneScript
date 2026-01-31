@@ -265,6 +265,11 @@ def create_settings_window(event=None):
     return SettingsWindow()
 
 
+def open_theme_settings(event=None):
+    from src.ui.theme_settings_dialog import ThemeSettingsDialog
+    return ThemeSettingsDialog()
+
+
 def create_web3_window(event=None):
     pass
     # return Web3DevStudio()
@@ -1582,6 +1587,11 @@ def create_menu():
     root.bind("<Control-comma>", create_settings_window)
 
     tool_menu.add_command(
+        label="Theme Settings...",
+        command=open_theme_settings
+    )
+
+    tool_menu.add_command(
         label="Graphic Engine",
         command=create_graphic_engine_window,
         accelerator="Ctrl+W+3")
@@ -1673,6 +1683,8 @@ def create_menu():
         command=about,
         accelerator="Ctrl+G")
     root.bind("<Control-g>", about)
+
+    # Add Theme Settings to Help or Tools? Let's put it in Tools -> Options
 
 
 def refresh_python_submenu():

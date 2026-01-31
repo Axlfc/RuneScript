@@ -1,12 +1,13 @@
+import tkinter as tk
 ﻿import json
 import os
 from tkinter import (
     StringVar,
     messagebox,
     font,
-    BOTH,
-    LEFT,
-    X,
+    tk.BOTH,
+    tk.LEFT,
+    tk.X,
     BooleanVar,
     BOTTOM
 )
@@ -15,19 +16,24 @@ from tkinter.ttk import Notebook
 from src.controllers.parameters import (read_config_parameter, write_config_parameter,
                                         get_appearance_mode)
 from src.models.LanguageManager import LanguageManager
-import customtkinter
-from src.views.tk_utils import style, register_window_for_theme, unregister_window_for_theme
+import customtkinter as ctk
+from src.views.tk_utils import style
 from src.views.ui_elements import ScrollableFrame
+from src.ui.themed_window import ThemedWindow
 
 
-class SettingsWindow(customtkinter.CTkToplevel):
-    def __init__(self):
-        super().__init__()
+class SettingsWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
         self.language_code_map = None
         self.title("ScriptsEditor Settings")
         self.geometry("800x600")
-        register_window_for_theme(self)
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Configuration file paths
         self.default_config_file = "data/config.json"
@@ -92,17 +98,17 @@ class SettingsWindow(customtkinter.CTkToplevel):
         """Setup the main UI components."""
         # Main frame
         self.main_frame = customtkinter.CTkFrame(self)
-        self.main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Notebook for tabs
         # Note: CTk doesn't have a Notebook, so we use a Frame with segmented buttons or just keep ttk Notebook
         # To keep it simple and consistent with other IDEs, let's use a Tabview
         self.tabview = customtkinter.CTkTabview(self.main_frame)
-        self.tabview.pack(fill=BOTH, expand=True)
+        self.tabview.pack(fill=tk.BOTH, expand=True)
 
         # Bottom frame for buttons
         self.bottom_frame = customtkinter.CTkFrame(self)
-        self.bottom_frame.pack(fill=X, side=BOTTOM, padx=10, pady=10)
+        self.bottom_frame.pack(fill=tk.X, side=BOTTOM, padx=10, pady=10)
 
         self.create_settings_sections()
         self.create_buttons()
@@ -116,7 +122,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
 
             # Use CTkScrollableFrame
             scrollable_frame = customtkinter.CTkScrollableFrame(tab_frame)
-            scrollable_frame.pack(fill=BOTH, expand=True)
+            scrollable_frame.pack(fill=tk.BOTH, expand=True)
 
             self.create_option_widgets(scrollable_frame, section, options)
 
@@ -158,12 +164,12 @@ class SettingsWindow(customtkinter.CTkToplevel):
                 language_display_list[0]
             )
 
-            var = StringVar(value=current_lang_name)
+            var = tk.StringVar(value=current_lang_name)
             widget = customtkinter.CTkComboBox(parent, variable=var, values=language_display_list)
 
             # Store the reverse mapping for saving
             self._orig_language_var = var
-            var = StringVar()
+            var = tk.StringVar()
 
             def on_language_select(*args):
                 selected_name = self._orig_language_var.get()
@@ -175,36 +181,36 @@ class SettingsWindow(customtkinter.CTkToplevel):
         elif option_name.lower() == "font_family":
             font_families = list(font.families())
             default_font = default_value if default_value in font_families else "Courier New"
-            var = StringVar(value=default_font)
+            var = tk.StringVar(value=default_font)
             widget = customtkinter.CTkComboBox(parent, variable=var, values=font_families)
             return widget, var
 
         elif option_name.lower() == "theme":
             themes = self.load_themes_from_json("data/themes.json")
             default_theme = default_value if default_value in themes else themes[0]
-            var = StringVar(value=default_theme)
+            var = tk.StringVar(value=default_theme)
             widget = customtkinter.CTkComboBox(parent, variable=var, values=themes)
             return widget, var
 
         elif option_name.lower() == "mode":
             modes = ["System", "Light", "Dark"]
-            var = StringVar(value=default_value)
+            var = tk.StringVar(value=default_value)
             widget = customtkinter.CTkComboBox(parent, variable=var, values=modes)
             return widget, var
 
         elif option_name.lower() == "mode":
             modes = ["System", "Light", "Dark"]
-            var = StringVar(value=default_value)
+            var = tk.StringVar(value=default_value)
             widget = Combobox(parent, textvariable=var, values=modes)
             return widget, var
 
         elif isinstance(default_value, bool):
-            var = BooleanVar(value=default_value)
+            var = tk.BooleanVar(value=default_value)
             widget = customtkinter.CTkCheckBox(parent, text="", variable=var)
             return widget, var
 
         elif isinstance(default_value, (str, int)):
-            var = StringVar(value=str(default_value))
+            var = tk.StringVar(value=str(default_value))
             widget = customtkinter.CTkEntry(parent, textvariable=var)
             return widget, var
 
@@ -213,10 +219,10 @@ class SettingsWindow(customtkinter.CTkToplevel):
     def create_buttons(self):
         """Create save and reset buttons."""
         save_button = customtkinter.CTkButton(self.bottom_frame, text="Save Settings", command=self.save_settings)
-        save_button.pack(side=LEFT, padx=5)
+        save_button.pack(side=tk.LEFT, padx=5)
 
         reset_button = customtkinter.CTkButton(self.bottom_frame, text="Reset Settings", command=self.reset_settings)
-        reset_button.pack(side=LEFT, padx=5)
+        reset_button.pack(side=tk.LEFT, padx=5)
 
     def save_settings(self):
         """Save settings using write_config_parameter to ensure persistence and merging."""

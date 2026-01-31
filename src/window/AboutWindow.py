@@ -1,14 +1,15 @@
-﻿import tkinter as tk
-from tkinter import Toplevel, Label, Button, Frame, LEFT, RIGHT, messagebox
+import tkinter as tk
+from tkinter import messagebox
+import customtkinter as ctk
 from src.config.fonts import AppFonts
-import tkinter.font as font
 import pyperclip
 import webbrowser
 
 from src.views.tk_utils import localization_data
+from src.ui.themed_window import ThemedWindow
 
 
-class AboutWindow:
+class AboutWindow(ThemedWindow):
     def __init__(self, parent):
         """
         Initializes the AboutWindow.
@@ -16,10 +17,9 @@ class AboutWindow:
         Args:
             parent (tk.Tk or tk.Toplevel): The parent window.
         """
-        self.parent = parent
-        self.about_window = Toplevel()
-        self.about_window.title(localization_data["about_scripts_editor_about"])
-        self.about_window.resizable(False, False)
+        super().__init__(parent)
+        self.title(localization_data["about_scripts_editor_about"])
+        self.resizable(False, False)
 
         # Center the window on the screen
         self.center_window(500, 400)
@@ -30,42 +30,41 @@ class AboutWindow:
         self.normal_font = AppFonts.NORMAL
 
         # Create and pack the main frame
-        self.main_frame = Frame(self.about_window, padx=20, pady=20)
-        self.main_frame.pack(fill='both', expand=True)
+        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame.pack(fill='both', expand=True, padx=20, pady=20)
 
         # Application Title
-        Label(self.main_frame, text=localization_data["application_title"], font=self.title_font).pack(pady=(0, 10))
+        ctk.CTkLabel(self.main_frame, text=localization_data["application_title"], font=self.title_font).pack(pady=(0, 10))
 
         # Application Information
         app_info = localization_data["application_info"]
-        Label(self.main_frame, text=app_info, font=self.normal_font, justify='left', wraplength=460).pack(pady=(0, 20))
+        ctk.CTkLabel(self.main_frame, text=app_info, font=self.normal_font, justify='left', wraplength=460).pack(pady=(0, 20))
 
         # Close Button
-        Button(self.main_frame, text=localization_data["close"], command=self.about_window.destroy, width=10).pack(pady=(30, 0))
+        ctk.CTkButton(self.main_frame, text=localization_data["close"], command=self.destroy, width=100).pack(pady=(30, 0))
 
         # Make the window modal
-        self.about_window.transient(self.parent)
-        self.about_window.grab_set()
-        self.parent.wait_window(self.about_window)
+        self.transient(parent)
+        self.grab_set()
 
     def center_window(self, width, height):
-        screen_width = self.about_window.winfo_screenwidth()
-        screen_height = self.about_window.winfo_screenheight()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
-        self.about_window.geometry(f"{width}x{height}+{x}+{y}")
+        self.geometry(f"{width}x{height}+{x}+{y}")
 
     def add_donation_option(self, parent, crypto_name, address, explorer_url):
-        frame = Frame(parent)
+        frame = ctk.CTkFrame(parent)
         frame.pack(fill='x', pady=5)
 
-        Label(frame, text=f"{crypto_name}:", font=self.normal_font).pack(side=LEFT)
+        ctk.CTkLabel(frame, text=f"{crypto_name}:", font=self.normal_font).pack(side=tk.LEFT, padx=5)
 
-        address_label = Label(frame, text=address, font=self.normal_font, fg="blue", cursor="hand2")
-        address_label.pack(side=LEFT, padx=(5, 0))
+        address_label = ctk.CTkLabel(frame, text=address, font=self.normal_font, text_color="blue", cursor="hand2")
+        address_label.pack(side=tk.LEFT, padx=(5, 0))
         address_label.bind("<Button-1>", lambda e: self.open_in_explorer(explorer_url))
 
-        Button(frame, text="Copy", command=lambda: self.copy_to_clipboard(address)).pack(side=RIGHT)
+        ctk.CTkButton(frame, text="Copy", command=lambda: self.copy_to_clipboard(address), width=60).pack(side=tk.RIGHT, padx=5)
 
     def copy_to_clipboard(self, address):
         try:
@@ -79,4 +78,3 @@ class AboutWindow:
             webbrowser.open(url)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open web browser: {e}")
-

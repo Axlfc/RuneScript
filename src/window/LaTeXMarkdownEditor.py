@@ -1,29 +1,43 @@
 ﻿import tempfile
 import webbrowser
-from tkhtmlview import HTMLLabel
+try:
+    from tkhtmlview import HTMLLabel
+except ImportError:
+    HTMLLabel = None
+import tkinter as tk
+from tkinter import Menu, END, BOTH, HORIZONTAL, X, Y, LEFT, RIGHT, DISABLED, NORMAL, WORD, PanedWindow
+import customtkinter as ctk
 
-from tkinter import *
 from src.config.fonts import AppFonts
-from tkinter import ttk, filedialog, messagebox
-from src.config.fonts import AppFonts
-from tkinter.font import Font
+from tkinter import filedialog, messagebox
 import os
 import subprocess
 import markdown
 from src.utils.thread_manager import thread_manager
 import re
 from pathlib import Path
-from pdf2image import convert_from_path
+try:
+    from pdf2image import convert_from_path
+except ImportError:
+    convert_from_path = None
 from PIL import ImageTk, Image
 
 from src.views.tk_utils import my_font
+from src.ui.themed_window import ThemedWindow
 
 
-class LaTeXMarkdownEditor:
-    def __init__(self):
-        self.window = Toplevel()
-        self.window.title("LaTeX & Markdown Editor")
-        self.window.geometry("1400x800")
+class LaTeXMarkdownEditor(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.window = self # self is the window
+        self.title("LaTeX & Markdown Editor")
+        self.geometry("1400x850")
 
         # Project state
         self.current_project_path = None
@@ -41,6 +55,19 @@ class LaTeXMarkdownEditor:
 
         # Initialize last saved content
         self.last_saved_content = ""
+
+    def _apply_theme(self, theme: str) -> None:
+        """Apply theme to editor widgets."""
+        super()._apply_theme(theme)
+        if hasattr(self, 'editor'):
+            is_dark = theme.lower() == "dark"
+            bg = "#1e1e1e" if is_dark else "white"
+            fg = "#d4d4d4" if is_dark else "black"
+            insert_bg = "white" if is_dark else "black"
+
+            self.editor.configure(bg=bg, fg=fg, insertbackground=insert_bg)
+            self.line_numbers.configure(bg="#2d2d2d" if is_dark else "lightgray",
+                                        fg="#858585" if is_dark else "black")
 
     def setup_fonts(self):
         self.editor_font = AppFonts.CODE_NORMAL
@@ -166,10 +193,10 @@ class LaTeXMarkdownEditor:
         # Bind F5 to recompile the document
         self.window.bind('<F5>', lambda e: self.recompile_document())
 
-        # Bind Ctrl+S to save the current file
+        # Bind Ctrl+tk.S to save the current file
         self.window.bind('<Control-s>', lambda e: self.save_current_file())
 
-        # Bind Ctrl+N to create a new project
+        # Bind Ctrl+tk.N to create a new project
         self.window.bind('<Control-n>', lambda e: self.new_project())
 
         # Bind Ctrl+F to open the find dialog
@@ -234,54 +261,57 @@ class LaTeXMarkdownEditor:
 
     def setup_ui(self):
         # Main container
-        self.main_container = PanedWindow(self.window, orient=HORIZONTAL)
-        self.main_container.pack(fill=BOTH, expand=True, padx=5, pady=5)
+        self.main_outer = ctk.CTkFrame(self)
+        self.main_outer.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.main_container = tk.PanedWindow(self.main_outer, orient=tk.HORIZONTAL)
+        self.main_container.pack(fill=tk.BOTH, expand=True)
 
         # Left panel (Project Files)
         self.setup_project_panel()
 
         # Right panel (Editor, Preview, Details)
-        self.right_paned = PanedWindow(self.main_container, orient=HORIZONTAL)
-        self.main_container.add(self.right_paned)  # eliminamos weight
+        self.right_paned = tk.PanedWindow(self.main_container, orient=tk.HORIZONTAL)
+        self.main_container.add(self.right_paned)
 
         self.setup_editor_panel()
         self.setup_preview_panel()
         self.setup_details_panel()
 
     def setup_preview_panel(self):
-        preview_frame = Frame(self.right_paned)
-        self.right_paned.add(preview_frame, stretch="always")
+        preview_frame = ctk.CTkFrame(self.right_paned)
+        self.right_paned.add(preview_frame)
 
         # Preview header
-        header_frame = Frame(preview_frame)
-        header_frame.pack(fill=X, pady=(0, 5))
+        header_frame = ctk.CTkFrame(preview_frame)
+        header_frame.pack(fill=tk.X, pady=(5, 5))
 
-        Label(header_frame, text="Preview", font=self.tree_font).pack(side=LEFT)
-        self.preview_type_label = Label(header_frame, text="")
-        self.preview_type_label.pack(side=RIGHT)
+        ctk.CTkLabel(header_frame, text="Preview", font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=10)
+        self.preview_type_label = ctk.CTkLabel(header_frame, text="")
+        self.preview_type_label.pack(side=tk.RIGHT, padx=10)
 
         # Preview area
-        self.preview = Frame(preview_frame)
-        self.preview.pack(fill=BOTH, expand=True)
+        self.preview = ctk.CTkFrame(preview_frame)
+        self.preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Control buttons
-        btn_frame = Frame(preview_frame)
-        btn_frame.pack(fill=X, pady=5)
+        btn_frame = ctk.CTkFrame(preview_frame)
+        btn_frame.pack(fill=tk.X, pady=5)
 
-        self.recompile_btn = Button(btn_frame, text="RECOMPILE (F5)", command=self.recompile_document)
-        self.recompile_btn.pack(side=LEFT, padx=5)
+        self.recompile_btn = ctk.CTkButton(btn_frame, text="RECOMPILE (F5)", width=120, command=self.recompile_document)
+        self.recompile_btn.pack(side=tk.LEFT, padx=5)
 
-        self.export_btn = Button(btn_frame, text="Export", command=self.export_preview)
-        self.export_btn.pack(side=RIGHT, padx=5)
+        self.export_btn = ctk.CTkButton(btn_frame, text="Export", width=80, command=self.export_preview)
+        self.export_btn.pack(side=tk.RIGHT, padx=5)
 
         # Add Run Python button (initially hidden) and output display for Python files
-        self.run_python_btn = Button(btn_frame, text="Run Python", command=self.run_python_script)
-        self.run_python_btn.pack(side=LEFT, padx=5)
+        self.run_python_btn = ctk.CTkButton(btn_frame, text="Run Python", width=100, command=self.run_python_script)
+        self.run_python_btn.pack(side=tk.LEFT, padx=5)
         self.run_python_btn.pack_forget()  # Hide initially, only shown for Python files
 
         # Python output display area
-        self.output_display = Text(preview_frame, height=10, wrap=WORD, state=DISABLED, font=my_font)
-        self.output_display.pack(fill=BOTH, expand=True, padx=5, pady=(5, 0))
+        self.output_display = ctk.CTkTextbox(preview_frame, height=150, wrap=tk.WORD, state=tk.DISABLED, font=my_font)
+        self.output_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=(5, 0))
 
     def run_python_script(self):
         """Run the current Python script asynchronously."""
@@ -540,13 +570,13 @@ class LaTeXMarkdownEditor:
 
     def show_find_dialog(self):
         """Open a dialog window to find text in the editor"""
-        find_window = Toplevel(self.window)
+        find_window = ctk.CTkToplevel(self.window)
         find_window.title("Find Text")
         find_window.geometry("300x100")
 
         Label(find_window, text="Find:").pack(anchor="w", padx=10, pady=10)
 
-        find_entry = Entry(find_window, width=30)
+        find_entry = tk.Entry(find_window, width=30)
         find_entry.pack(padx=10, fill=X)
 
         def find_text():
@@ -575,35 +605,35 @@ class LaTeXMarkdownEditor:
         find_window.protocol("WM_DELETE_WINDOW", close_find_window)
 
     def setup_editor_panel(self):
-        editor_frame = Frame(self.right_paned)
-        self.right_paned.add(editor_frame, stretch="always")
+        editor_frame = ctk.CTkFrame(self.right_paned)
+        self.right_paned.add(editor_frame)
 
         # Editor toolbar
-        toolbar = Frame(editor_frame)
-        toolbar.pack(fill=X)
+        toolbar = ctk.CTkFrame(editor_frame)
+        toolbar.pack(fill=tk.X, padx=5, pady=5)
 
-        Button(toolbar, text="Save", command=self.save_current_file).pack(side=LEFT, padx=2)
-        Button(toolbar, text="Find", command=self.show_find_dialog).pack(side=LEFT, padx=2)
+        ctk.CTkButton(toolbar, text="Save", width=80, command=self.save_current_file).pack(side=tk.LEFT, padx=2)
+        ctk.CTkButton(toolbar, text="Find", width=80, command=self.show_find_dialog).pack(side=tk.LEFT, padx=2)
 
         # Source editor with line numbers
-        editor_container = Frame(editor_frame)
-        editor_container.pack(fill=BOTH, expand=True)
+        editor_container = ctk.CTkFrame(editor_frame)
+        editor_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Line numbers
-        self.line_numbers = Text(editor_container, width=4, padx=3, takefocus=0, border=0,
+        self.line_numbers = tk.Text(editor_container, width=4, padx=3, takefocus=0, border=0,
                                  background='lightgray', state='disabled', font=my_font)
-        self.line_numbers.pack(side=LEFT, fill=Y)
+        self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
 
         # Main editor
-        self.editor = Text(editor_container, wrap=WORD, font=self.editor_font, undo=True)
-        self.editor.pack(side=LEFT, fill=BOTH, expand=True)
+        self.editor = tk.Text(editor_container, wrap=tk.WORD, font=self.editor_font, undo=True)
+        self.editor.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Make sure the editor is enabled
         self.editor.configure(state='normal')
 
         # Scrollbar that controls both editor and line numbers
-        editor_scroll = Scrollbar(editor_container, orient=VERTICAL)
-        editor_scroll.pack(side=RIGHT, fill=Y)
+        editor_scroll = ctk.CTkScrollbar(editor_container, orientation="vertical")
+        editor_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Configure scrollbar
         self.editor['yscrollcommand'] = self.on_editor_scroll
@@ -651,21 +681,23 @@ class LaTeXMarkdownEditor:
         return "break"
 
     def setup_project_panel(self):
-        project_frame = Frame(self.main_container, width=250)
-        project_frame.pack_propagate(False)
-        self.main_container.add(project_frame)  # eliminamos weight
+        project_frame = ctk.CTkFrame(self.main_container, width=250)
+        self.main_container.add(project_frame)
 
         # Project tree
-        tree_frame = Frame(project_frame)
-        tree_frame.pack(fill=BOTH, expand=True)
+        tree_frame = ctk.CTkFrame(project_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
+        ctk.CTkLabel(tree_frame, text="Project Files", font=("Segoe UI", 12, "bold")).pack(pady=5)
+
+        from tkinter import ttk
         self.project_tree = ttk.Treeview(tree_frame, selectmode='browse')
         self.project_tree.heading('#0', text='Project Files', anchor='w')
-        self.project_tree.pack(side=LEFT, fill=BOTH, expand=True)
+        self.project_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Scrollbar
-        tree_scroll = Scrollbar(tree_frame, orient=VERTICAL, command=self.project_tree.yview)
-        tree_scroll.pack(side=RIGHT, fill=Y)
+        tree_scroll = ctk.CTkScrollbar(tree_frame, orientation="vertical", command=self.project_tree.yview)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.project_tree.configure(yscrollcommand=tree_scroll.set)
 
     def setup_context_menu(self):
@@ -876,23 +908,23 @@ class LaTeXMarkdownEditor:
 
     def setup_details_panel(self):
         """Setup the details panel (third column) to show file information and errors"""
-        details_frame = Frame(self.right_paned)
-        self.right_paned.add(details_frame, stretch="always")
+        details_frame = ctk.CTkFrame(self.right_paned)
+        self.right_paned.add(details_frame)
 
         # Current file label
-        Label(details_frame, text="Current File:").pack(anchor=W, pady=5)
-        self.current_file_label = Label(details_frame, text="None")
-        self.current_file_label.pack(anchor=W)
+        ctk.CTkLabel(details_frame, text="Current File:", font=("Segoe UI", 11, "bold")).pack(anchor=tk.W, pady=(10, 2), padx=10)
+        self.current_file_label = ctk.CTkLabel(details_frame, text="None")
+        self.current_file_label.pack(anchor=tk.W, padx=10)
 
         # Statistics section (lines, words, characters)
-        Label(details_frame, text="Statistics:", font=self.tree_font).pack(anchor=W, pady=5)
-        self.stats_text = Text(details_frame, height=5, width=30, state='disabled', font=my_font)
-        self.stats_text.pack(fill=X)
+        ctk.CTkLabel(details_frame, text="Statistics:", font=("Segoe UI", 11, "bold")).pack(anchor=tk.W, pady=(10, 2), padx=10)
+        self.stats_text = ctk.CTkTextbox(details_frame, height=100, width=200, state=tk.DISABLED, font=my_font)
+        self.stats_text.pack(fill=tk.X, padx=10)
 
         # Errors/Warnings section
-        Label(details_frame, text="Errors/Warnings:", font=self.tree_font).pack(anchor=W, pady=5)
-        self.errors_text = Text(details_frame, height=10, width=30, state='disabled', font=my_font)
-        self.errors_text.pack(fill=X)
+        ctk.CTkLabel(details_frame, text="Errors/Warnings:", font=("Segoe UI", 11, "bold")).pack(anchor=tk.W, pady=(10, 2), padx=10)
+        self.errors_text = ctk.CTkTextbox(details_frame, height=200, width=200, state=tk.DISABLED, font=my_font)
+        self.errors_text.pack(fill=tk.X, padx=10)
 
     def open_selected_file(self):
         selected = self.project_tree.selection()
@@ -971,8 +1003,18 @@ class LaTeXMarkdownEditor:
             widget.destroy()
 
         # Create a new HTMLLabel widget to display the HTML content
-        html_label = HTMLLabel(self.preview, html=html_content)
-        html_label.pack(fill=BOTH, expand=True)
+        if HTMLLabel:
+            try:
+                html_label = HTMLLabel(self.preview, html=html_content)
+                html_label.pack(fill=BOTH, expand=True)
+            except Exception as e:
+                fallback = ctk.CTkTextbox(self.preview)
+                fallback.insert("1.0", f"Error rendering HTML: {e}\n\nRaw HTML:\n{html_content}")
+                fallback.pack(fill=BOTH, expand=True)
+        else:
+            fallback = ctk.CTkTextbox(self.preview)
+            fallback.insert("1.0", f"HTML Preview not available (tkhtmlview missing).\n\nRaw HTML:\n{html_content}")
+            fallback.pack(fill=BOTH, expand=True)
 
     def update_statistics(self):
         """Update the statistics in the details panel based on the editor content"""

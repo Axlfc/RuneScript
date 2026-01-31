@@ -1,20 +1,30 @@
-﻿import os
+import os
 import subprocess
 import threading
 import queue
-from tkinter import Toplevel, Frame, Button, Scrollbar
-from tkinter.ttk import Notebook
-from tkinter.ttk import Treeview
+import tkinter as tk
+from tkinter import ttk
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
 
-class SystemInfoWindow(Toplevel):
-    def __init__(self):
-        super().__init__()
+class SystemInfoWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
         self.title("System Information Viewer")
-        self.geometry("800x600")
+        self.geometry("800x650")
 
-        self.notebook = Notebook(self)
-        self.notebook.pack(expand=True, fill="both", padx=10, pady=10)
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.tabview = ctk.CTkTabview(self.main_container)
+        self.tabview.pack(expand=True, fill="both", padx=10, pady=10)
 
         # Initialize commands dictionaries
         self._init_commands()
@@ -23,7 +33,7 @@ class SystemInfoWindow(Toplevel):
         self._create_tabs()
 
         # Add refresh button
-        self.refresh_button = Button(self, text="Refresh All", command=self.refresh_all)
+        self.refresh_button = ctk.CTkButton(self.main_container, text="Refresh All", command=self.refresh_all)
         self.refresh_button.pack(pady=10)
 
     def _init_commands(self):
@@ -115,36 +125,27 @@ class SystemInfoWindow(Toplevel):
         }
 
     def _run_command(self, command, result_queue, label):
-        print("_RUN_COMMAND CALL")
         try:
-            # Use list arguments instead of shell=True for better security and reliability
-            powershell_path = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-
-            # Check if PowerShell path exists
-            if not os.path.exists(powershell_path):
-                # Try alternative path for Windows 11
-                powershell_path = "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-                if not os.path.exists(powershell_path):
-                    # As a fallback, let Windows find PowerShell in the PATH
-                    powershell_path = "powershell.exe"
-
-            # Use list format for arguments (more reliable)
-            args = [powershell_path, "-Command", command]
-
-            result = subprocess.run(
-                args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                shell=False  # Important: don't use shell when using list arguments
-            )
-
-            if result.returncode == 0:
-                output = result.stdout.strip()
+            if platform.system() != "Windows":
+                # Fallback for non-windows systems if they open this window
+                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                output = result.stdout.strip() or result.stderr.strip()
             else:
-                output = f"Error: {result.stderr.strip()}"
+                powershell_path = "powershell.exe"
+                args = [powershell_path, "-Command", command]
+                result = subprocess.run(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    shell=False
+                )
+                if result.returncode == 0:
+                    output = result.stdout.strip()
+                else:
+                    output = f"Error: {result.stderr.strip()}"
         except Exception as e:
             output = f"Error: {str(e)}"
 
@@ -154,18 +155,27 @@ class SystemInfoWindow(Toplevel):
         for label, cmd in commands.items():
             self._run_command(cmd, result_queue, label)
 
-    def _create_info_frame(self, parent, commands):
-        frame = Frame(parent)
-        frame.pack(fill="both", expand=True)
+    def _create_info_frame(self, parent_tab_name, commands):
+        tab = self.tabview.tab(parent_tab_name)
+        frame = ctk.CTkFrame(tab)
+        frame.pack(fill="both", expand=True, padx=5, pady=5)
 
-        tree = Treeview(frame, columns=("Value"), show="tree")
+        # Treeview styling
+        style = ttk.Style()
+        is_dark = ctk.get_appearance_mode().lower() == "dark"
+        bg = "#2b2b2b" if is_dark else "white"
+        fg = "white" if is_dark else "black"
+
+        style.configure("SystemInfo.Treeview", background=bg, foreground=fg, fieldbackground=bg)
+
+        tree = ttk.Treeview(frame, columns=("Value"), show="tree headings", style="SystemInfo.Treeview")
         tree.heading("#0", text="Property")
         tree.column("#0", width=250)
         tree.heading("Value", text="Value")
         tree.column("Value", width=500)
         tree.pack(side="left", fill="both", expand=True)
 
-        scrollbar = Scrollbar(frame, orient="vertical", command=tree.yview)
+        scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=tree.yview)
         scrollbar.pack(side="right", fill="y")
         tree.configure(yscrollcommand=scrollbar.set)
 
@@ -187,13 +197,14 @@ class SystemInfoWindow(Toplevel):
                         parent_item = tree_items[label]
                         tree.delete(*tree.get_children(parent_item))
                     for line in result.splitlines():
-                        tree.insert(parent_item, "end", text="", values=(line))
+                        tree.insert(parent_item, "end", text="", values=(line,))
                 elif label in tree_items:
-                    tree.item(tree_items[label], values=(result))
+                    tree.item(tree_items[label], values=(result,))
                 else:
-                    item_id = tree.insert("", "end", text=label, values=(result))
+                    item_id = tree.insert("", "end", text=label, values=(result,))
                     tree_items[label] = item_id
-            frame.after(100, process_queue)
+            if self.winfo_exists():
+                self.after(100, process_queue)
 
         process_queue()
         return frame
@@ -212,40 +223,16 @@ class SystemInfoWindow(Toplevel):
 
         self.tabs = {}
         for tab_name, commands in tabs_config:
-            tab = self._create_info_frame(self.notebook, commands)
-            self.notebook.add(tab, text=tab_name)
-            self.tabs[tab_name] = tab
+            self.tabview.add(tab_name)
+            tab_frame = self._create_info_frame(tab_name, commands)
+            self.tabs[tab_name] = tab_frame
 
     def refresh_all(self):
-        for tab_name, tab in self.tabs.items():
-            tree = tab.winfo_children()[0]
-            tree.delete(*tree.get_children())
+        self.tabview.destroy()
+        self.tabview = ctk.CTkTabview(self.main_container)
+        self.tabview.pack(expand=True, fill="both", padx=10, pady=10)
+        self._create_tabs()
 
-            commands = getattr(self, f"{tab_name.lower()}_commands")
-            result_queue = queue.Queue()
-            thread = threading.Thread(target=self._worker, args=(commands, result_queue))
-            thread.daemon = True
-            thread.start()
-
-            tree_items = {}
-
-            def process_queue():
-                while not result_queue.empty():
-                    label, result = result_queue.get()
-                    if "\n" in result:
-                        if label not in tree_items:
-                            parent_item = tree.insert("", "end", text=label)
-                            tree_items[label] = parent_item
-                        else:
-                            parent_item = tree_items[label]
-                            tree.delete(*tree.get_children(parent_item))
-                        for line in result.splitlines():
-                            tree.insert(parent_item, "end", text="", values=(line))
-                    elif label in tree_items:
-                        tree.item(tree_items[label], values=(result))
-                    else:
-                        item_id = tree.insert("", "end", text=label, values=(result))
-                        tree_items[label] = item_id
-                tree.after(100, process_queue)
-
-            process_queue()
+    def _apply_theme(self, theme: str):
+        super()._apply_theme(theme)
+        # Force refresh of styles if needed
