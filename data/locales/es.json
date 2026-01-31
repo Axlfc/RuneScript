@@ -202,6 +202,7 @@
     "ai_server_select_server_label": "Seleccionar Servidor:",
     "ai_server_url_label": "URL del Servidor:",
     "ai_server_api_key_label": "Clave de API del Servidor:",
+    "ai_server_model_label": "Modelo:",
 
     "ai_server_agent_settings_title": "Configuración del Agente del Servidor de IA",
     "ai_server_select_agent_label": "Seleccionar Agente:",

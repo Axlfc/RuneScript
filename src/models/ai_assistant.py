@@ -393,7 +393,15 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
     }
 
     try:
-        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data)
+        if "/api/generate" in ollama_url:
+            full_url = ollama_url
+        else:
+            full_url = f"{ollama_url.rstrip('/')}/api/generate"
+
+        if not full_url.startswith("http"):
+            full_url = "http://" + full_url
+
+        response = requests.post(full_url, headers=headers, json=data)
         response.raise_for_status()
         # TODO: Only getting the content under 'response' but if it invents another it may not be properly parsing
         raw_response = response.json().get("response", "")
