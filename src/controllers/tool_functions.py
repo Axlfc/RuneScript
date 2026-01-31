@@ -9,6 +9,7 @@ import threading
 import requests
 import hashlib
 import markdown
+import customtkinter
 import customtkinter as ctk
 
 from tkinter import (
