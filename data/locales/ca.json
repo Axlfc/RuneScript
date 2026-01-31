@@ -177,5 +177,11 @@
     "about_scripts_editor_about": "Quant a Editor de Scripts",
     "application_title": "Editor de Scripts",
     "application_info": "Editor de Scripts és un editor de text versàtil i potent dissenyat per millorar la teva productivitat.\nAmb multitud de funcions i opcions de personalització, satisfà tant a principiants com a professionals.\n\nVersió: 1.0.0\nAutor: Axel Fernández Curros\nLlicència: Llicència GPL-2.0",
-    "close": "Tancar"
+    "close": "Tancar",
+
+    "ai_server_settings_title": "Configuració del Servidor d'IA",
+    "ai_server_select_server_label": "Seleccionar Servidor:",
+    "ai_server_url_label": "URL del Servidor:",
+    "ai_server_api_key_label": "Clau d'API del Servidor:",
+    "ai_server_model_label": "Model:"
 }

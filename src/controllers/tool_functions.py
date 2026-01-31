@@ -67,6 +67,44 @@ def open_llama_cpp_python_settings_window():
 def open_ai_server_settings_window():
     json_path = "data/llm_server_providers.json"
 
+    def fetch_ollama_models():
+        url = server_url_entry.get()
+        if not url:
+            return
+
+        base_url = url
+        if "/api/generate" in base_url:
+            base_url = base_url.replace("/api/generate", "")
+        if not base_url.startswith("http"):
+            base_url = "http://" + base_url
+
+        def update_ui(values, new_model=None):
+            if settings_window.winfo_exists():
+                ollama_model_dropdown.configure(values=values)
+                if new_model:
+                    selected_ollama_model.set(new_model)
+
+        try:
+            base_url = base_url.rstrip("/")
+            response = requests.get(f"{base_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                models = [m["name"] for m in data.get("models", [])]
+                if models:
+                    current_model = selected_ollama_model.get()
+                    target_model = current_model if current_model in models else models[0]
+                    settings_window.after(0, lambda: update_ui(models, target_model))
+                else:
+                    settings_window.after(0, lambda: update_ui(["No models found"]))
+            else:
+                settings_window.after(0, lambda: update_ui([f"Error: {response.status_code}"]))
+        except Exception:
+            if settings_window.winfo_exists():
+                settings_window.after(0, lambda: update_ui(["Server unreachable"]))
+
+    def fetch_ollama_models_async():
+        threading.Thread(target=fetch_ollama_models, daemon=True).start()
+
     def toggle_display(selected_server):
         server_info = server_details.get(selected_server, {})
         server_url = server_info.get("server_url", "")
@@ -101,6 +139,14 @@ def open_ai_server_settings_window():
         else:
             euriai_model_label.grid_remove()
             euriai_model_dropdown.grid_remove()
+
+        if selected_server == "ollama":
+            ollama_model_label.grid(row=3, column=0, sticky="w", padx=10, pady=10)
+            ollama_model_frame.grid(row=3, column=1, sticky="ew", padx=10, pady=10)
+            fetch_ollama_models_async()
+        else:
+            ollama_model_label.grid_remove()
+            ollama_model_frame.grid_remove()
 
     def load_server_details():
         try:
@@ -179,6 +225,9 @@ def open_ai_server_settings_window():
                 "No changes made. The API Key entered is a placeholder.")
         if selected == "euriai":
             write_config_parameter("options.network_settings.euriai_model", selected_euriai_model.get())
+        if selected == "ollama":
+            write_config_parameter("options.network_settings.ollama_model", selected_ollama_model.get())
+            write_config_parameter("options.network_settings.ollama_url", server_url)
         write_config_parameter(
             "options.network_settings.last_selected_llm_server_provider", selected
         )
@@ -223,8 +272,18 @@ def open_ai_server_settings_window():
     selected_euriai_model.set(read_config_parameter("options.network_settings.euriai_model") or euriai_models[0])
     euriai_model_dropdown = customtkinter.CTkComboBox(settings_window, variable=selected_euriai_model, values=euriai_models)
 
+    ollama_model_label = customtkinter.CTkLabel(settings_window, text=localization_data.get("ai_server_model_label", "Model:"))
+    selected_ollama_model = StringVar(settings_window)
+    selected_ollama_model.set(read_config_parameter("options.network_settings.ollama_model") or "")
+
+    ollama_model_frame = customtkinter.CTkFrame(settings_window, fg_color="transparent")
+    ollama_model_dropdown = customtkinter.CTkComboBox(ollama_model_frame, variable=selected_ollama_model, values=[])
+    ollama_model_dropdown.pack(side="left", fill="x", expand=True, padx=(0, 5))
+    ollama_refresh_button = customtkinter.CTkButton(ollama_model_frame, text="↻", width=30, command=fetch_ollama_models_async)
+    ollama_refresh_button.pack(side="left")
+
     customtkinter.CTkButton(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
-        row=4, column=0, columnspan=2, pady=20
+        row=5, column=0, columnspan=2, pady=20
     )
     selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
     toggle_display(selected_server.get())
