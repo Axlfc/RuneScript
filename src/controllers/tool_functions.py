@@ -999,9 +999,9 @@ def open_ai_assistant_window(session_id=None):
     status_label = customtkinter.CTkLabel(ai_assistant_window, textvariable=status_label_var)
     status_label.pack(side="bottom", pady=(0, 5))
     status_label_var.set("READY")
-    output_text.tag_configure("user", foreground="#a84699")
-    output_text.tag_configure("ai", foreground="#6a7fd2")
-    output_text.tag_configure("error", foreground="red")
+    output_text._textbox.tag_configure("user", foreground="#a84699")
+    output_text._textbox.tag_configure("ai", foreground="#6a7fd2")
+    output_text._textbox.tag_configure("error", foreground="red")
     output_text.insert(END, "> ", "ai")
     entry.focus()
 
@@ -1393,8 +1393,8 @@ def open_ai_assistant_window(session_id=None):
                 return (
                         "```\n"
                         + script_text.get(
-                    script_text.tag_ranges("sel")[0],
-                    script_text.tag_ranges("sel")[1])
+                    script_text._textbox.tag_ranges("sel")[0],
+                    script_text._textbox.tag_ranges("sel")[1])
                         + "```\n\n"
                 )
             except:
@@ -1609,7 +1609,7 @@ def open_ai_assistant_window(session_id=None):
 
     output_text.bind("<Button-3>", show_context_menu)
     output_text.bind("<<TextModified>>", on_md_content_change)
-    output_text.see(END)
+    output_text._textbox.see(END)
     '''entry.bind(
         "<Return>",
         lambda event: execute_ai_assistant_command(
@@ -1960,7 +1960,7 @@ def open_ai_assistant_window(session_id=None):
                 output_text.insert(
                     END, f"{message['role']}: {message['content']}\n", role_tag
                 )
-        output_text.see(END)
+        output_text._textbox.see(END)
 
     def load_session(session_id):
         global current_session

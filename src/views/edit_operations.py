@@ -80,7 +80,7 @@ def select_all():
     Returns:
         None: Description of return value.
     ""\" """
-    text.tag_add("start", "1.0", "end")
+    text._textbox.tag_add("start", "1.0", "end")
 
 
 def cut():

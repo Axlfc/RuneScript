@@ -69,7 +69,7 @@ def on_tab_change(tab):
             target.configure(autoseparators=True)
         else:
             tab.textbox.insert("1.0", tab.content)
-            tab.textbox.mark_set("insert", "1.0")
+            tab.textbox._textbox.mark_set("insert", "1.0")
             tab.textbox._textbox.edit_reset()
 
         tab.textbox._textbox.edit_modified(False)
@@ -344,7 +344,7 @@ def ensure_scroll_sync():
     try:
         if line_numbers and line_numbers.winfo_exists() and script_text._widget.winfo_exists():
             # Get current text widget view
-            first, last = script_text.yview()
+            first, last = script_text._textbox.yview()
             # Update line numbers
             line_numbers.redraw()
     except Exception:

@@ -19,11 +19,11 @@ def bold(event=None):
     None
     ""\"
     ""\" """
-    current_tags = text.tag_names()
+    current_tags = text._textbox.tag_names()
     if "bold" in current_tags:
-        text.tag_delete("bold", 1.0, END)
+        text._textbox.tag_delete("bold", 1.0, END)
     else:
-        text.tag_add("bold", 1.0, END)
+        text._textbox.tag_add("bold", 1.0, END)
     make_tag()
 
 
@@ -42,12 +42,12 @@ def italic(event=None):
     None
     ""\"
     ""\" """
-    current_tags = text.tag_names()
+    current_tags = text._textbox.tag_names()
     if "italic" in current_tags:
-        text.tag_add("roman", 1.0, END)
-        text.tag_delete("italic", 1.0, END)
+        text._textbox.tag_add("roman", 1.0, END)
+        text._textbox.tag_delete("italic", 1.0, END)
     else:
-        text.tag_add("italic", 1.0, END)
+        text._textbox.tag_add("italic", 1.0, END)
     make_tag()
 
 
@@ -66,11 +66,11 @@ def underline(event=None):
     None
     ""\"
     ""\" """
-    current_tags = text.tag_names()
+    current_tags = text._textbox.tag_names()
     if "underline" in current_tags:
-        text.tag_delete("underline", 1.0, END)
+        text._textbox.tag_delete("underline", 1.0, END)
     else:
-        text.tag_add("underline", 1.0, END)
+        text._textbox.tag_add("underline", 1.0, END)
     make_tag()
 
 
@@ -90,11 +90,11 @@ def strike():
     None
     ""\"
     ""\" """
-    current_tags = text.tag_names()
+    current_tags = text._textbox.tag_names()
     if "overstrike" in current_tags:
-        text.tag_delete("overstrike", "1.0", END)
+        text._textbox.tag_delete("overstrike", "1.0", END)
     else:
-        text.tag_add("overstrike", 1.0, END)
+        text._textbox.tag_add("overstrike", 1.0, END)
     make_tag()
 
 
@@ -117,11 +117,11 @@ def highlight():
     color_rgb = color[1]
     global fontBackground
     fontBackground = color_rgb
-    current_tags = text.tag_names()
+    current_tags = text._textbox.tag_names()
     if "background_color_change" in current_tags:
-        text.tag_delete("background_color_change", "1.0", END)
+        text._textbox.tag_delete("background_color_change", "1.0", END)
     else:
-        text.tag_add("background_color_change", "1.0", END)
+        text._textbox.tag_add("background_color_change", "1.0", END)
     make_tag()
 
 
@@ -141,8 +141,8 @@ def align_center(event=None):
     ""\"
     ""\" """
     remove_align_tags()
-    text.tag_configure("center", justify="center")
-    text.tag_add("center", 1.0, "end")
+    text._textbox.tag_configure("center", justify="center")
+    text._textbox.tag_add("center", 1.0, "end")
 
 
 def align_justify():
@@ -173,8 +173,8 @@ def align_left(event=None):
     ""\"
     ""\" """
     remove_align_tags()
-    text.tag_configure("left", justify="left")
-    text.tag_add("left", 1.0, "end")
+    text._textbox.tag_configure("left", justify="left")
+    text._textbox.tag_add("left", 1.0, "end")
 
 
 def align_right(event=None):
@@ -190,8 +190,8 @@ def align_right(event=None):
     ""\"
     ""\" """
     remove_align_tags()
-    text.tag_configure("right", justify="right")
-    text.tag_add("right", 1.0, "end")
+    text._textbox.tag_configure("right", justify="right")
+    text._textbox.tag_add("right", 1.0, "end")
 
 
 def change_font(event):
@@ -251,7 +251,7 @@ def make_tag():
     None
     ""\"
     ""\" """
-    current_tags = text.tag_names()
+    current_tags = text._textbox.tag_names()
     if "bold" in current_tags:
         weight = "bold"
     else:
@@ -277,12 +277,12 @@ def make_tag():
         overstrike=overstrike,
         family=current_font_family,
         size=current_font_size)
-    text.tag_config(
+    text._textbox.tag_config(
         "BigTag", font=big_font, foreground=fontColor, background=fontBackground
     )
     if "BigTag" in current_tags:
-        text.tag_remove("BigTag", 1.0, END)
-    text.tag_add("BigTag", 1.0, END)
+        text._textbox.tag_remove("BigTag", 1.0, END)
+    text._textbox.tag_add("BigTag", 1.0, END)
 
 
 def remove_align_tags():
@@ -300,13 +300,13 @@ def remove_align_tags():
     None
     ""\"
     ""\" """
-    all_tags = text.tag_names(index=None)
+    all_tags = text._textbox.tag_names(index=None)
     if "center" in all_tags:
-        text.tag_remove("center", "1.0", END)
+        text._textbox.tag_remove("center", "1.0", END)
     if "left" in all_tags:
-        text.tag_remove("left", "1.0", END)
+        text._textbox.tag_remove("left", "1.0", END)
     if "right" in all_tags:
-        text.tag_remove("right", "1.0", END)
+        text._textbox.tag_remove("right", "1.0", END)
 
 
 def validate_time(hour, minute):
