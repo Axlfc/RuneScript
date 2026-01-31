@@ -1,7 +1,10 @@
 from pydantic import BaseModel, Field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 import yaml
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Config(BaseModel):
     """nIA configuration."""
@@ -24,6 +27,11 @@ class Config(BaseModel):
     auto_commit: bool = Field(
         default=True,
         description="Automatically commit completed tasks"
+    )
+
+    theme: Literal["Dark", "Light", "System"] = Field(
+        default="Dark",
+        description="Application theme (Dark, Light, or System)"
     )
 
     @classmethod

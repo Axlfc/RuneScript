@@ -2,56 +2,68 @@
 import queue
 import threading
 import subprocess
-from tkinter import Toplevel, Label, Entry, Button, END, messagebox, filedialog, NORMAL, DISABLED, ttk
+import tkinter as tk
+import customtkinter as ctk
 from PIL import Image, ImageTk
-import queue
+from src.ui.themed_window import ThemedWindow
 
 
-class GenerationWindow:
-    def __init__(self):
-        self.generation_window = Toplevel()
-        self.generation_window.title("Generation Window")
-        self.generation_window.geometry("480x580")
+class GenerationWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.generation_window = self # self is the window
+        self.title("Generation Window")
+        self.geometry("600x700")
 
         # Setup UI
         self.setup_ui()
 
     def setup_ui(self):
         """Sets up the UI components."""
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
         # Model Path
-        Label(self.generation_window, text="Model Path:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
-        self.model_path_entry = Entry(self.generation_window, width=30)
+        ctk.CTkLabel(self.main_container, text="Model Path:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
+        self.model_path_entry = ctk.CTkEntry(self.main_container, width=250)
         self.model_path_entry.grid(row=0, column=1, padx=10, pady=5)
-        Button(self.generation_window, text="Browse", command=self.select_model_path).grid(row=0, column=2, padx=10, pady=5)
+        ctk.CTkButton(self.main_container, text="Browse", width=80, command=self.select_model_path).grid(row=0, column=2, padx=10, pady=5)
 
         # Prompt
-        Label(self.generation_window, text="Prompt:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
-        self.prompt_entry = Entry(self.generation_window, width=30)
+        ctk.CTkLabel(self.main_container, text="Prompt:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+        self.prompt_entry = ctk.CTkEntry(self.main_container, width=250)
         self.prompt_entry.grid(row=1, column=1, padx=10, pady=5)
 
         # Output Path
-        Label(self.generation_window, text="Output Path:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
-        self.output_path_entry = Entry(self.generation_window, width=30)
+        ctk.CTkLabel(self.main_container, text="Output Path:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+        self.output_path_entry = ctk.CTkEntry(self.main_container, width=250)
         self.output_path_entry.grid(row=2, column=1, padx=10, pady=5)
-        Button(self.generation_window, text="Save As", command=self.select_output_path).grid(row=2, column=2, padx=10, pady=5)
+        ctk.CTkButton(self.main_container, text="Save As", width=80, command=self.select_output_path).grid(row=2, column=2, padx=10, pady=5)
 
         # Media Type Selection
-        Label(self.generation_window, text="Media Type:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
-        self.media_type = ttk.Combobox(self.generation_window, values=["Text", "Image", "Audio", "Music", "Video", "3D Model", "Personalized Avatar"], width=27)
+        ctk.CTkLabel(self.main_container, text="Media Type:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
+        self.media_type = ctk.CTkComboBox(self.main_container, values=["Text", "Image", "Audio", "Music", "Video", "3D Model", "Personalized Avatar"], width=250)
         self.media_type.grid(row=3, column=1, padx=10, pady=5)
-        self.media_type.current(0)
+        self.media_type.set("Text")
 
         # Generate Button
-        self.generate_button = Button(self.generation_window, text="Generate", command=self.generate_media)
-        self.generate_button.grid(row=4, column=0, columnspan=3, pady=10)
+        self.generate_button = ctk.CTkButton(self.main_container, text="Generate", command=self.generate_media)
+        self.generate_button.grid(row=4, column=0, columnspan=3, pady=20)
 
         # Status Label
-        self.status_label = Label(self.generation_window, text="Status: Waiting to start...", width=60, anchor="w")
-        self.status_label.grid(row=5, column=0, columnspan=3, padx=10, pady=10)
+        self.status_label = ctk.CTkLabel(self.main_container, text="Status: Waiting to start...", width=400, anchor="w")
+        self.status_label.grid(row=5, column=0, columnspan=3, padx=10, pady=5)
 
         # Preview Area
-        Label(self.generation_window, text="Preview:").grid(row=6, column=0, columnspan=3, pady=10)
-        self.preview_area = Label(self.generation_window, text="No preview available", width=40, height=20, relief="sunken")
+        ctk.CTkLabel(self.main_container, text="Preview:").grid(row=6, column=0, columnspan=3, pady=(10, 0))
+        self.preview_area = ctk.CTkLabel(self.main_container, text="No preview available", width=400, height=200,
+                                 fg_color=("gray85", "gray15"), corner_radius=6)
         self.preview_area.grid(row=7, column=0, columnspan=3, padx=10, pady=10)
 
     def generate_media(self):
@@ -157,7 +169,7 @@ class GenerationWindow:
     def select_model_path(self):
         """Opens file dialog to select model path."""
         path = filedialog.askopenfilename(filetypes=[("Checkpoint Files", "*.ckpt"), ("GGUF Files", "*.gguf")])
-        self.model_path_entry.delete(0, END)
+        self.model_path_entry.delete(0, tk.END)
         self.model_path_entry.insert(0, path)
 
     def select_output_path(self):
@@ -176,7 +188,7 @@ class GenerationWindow:
         else:
             path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt")])
 
-        self.output_path_entry.delete(0, END)
+        self.output_path_entry.delete(0, tk.END)
         self.output_path_entry.insert(0, path)
 
 def open_generate_window(event=None):

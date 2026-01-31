@@ -249,43 +249,46 @@ def update_treeview_style():
 
 update_treeview_style()
 
-# Global list of windows that should be updated when the theme changes
-registered_windows = []
+from src.ui.theme_manager import ThemeManager
+theme_manager = ThemeManager.get_instance()
+
+# Keep track of callbacks to allow unregistration
+_theme_callbacks = {}
 
 def register_window_for_theme(window):
-    if window not in registered_windows:
-        registered_windows.append(window)
+    if window not in _theme_callbacks:
+        callback = lambda theme: _refresh_window(window)
+        _theme_callbacks[window] = callback
+        theme_manager.register_callback(callback)
+
+def _refresh_window(window):
+    try:
+        if hasattr(window, "winfo_exists") and window.winfo_exists():
+            if hasattr(window, "refresh_theme"):
+                window.refresh_theme()
+    except:
+        pass
 
 def unregister_window_for_theme(window):
-    if window in registered_windows:
-        registered_windows.remove(window)
+    if window in _theme_callbacks:
+        theme_manager.unregister_callback(_theme_callbacks[window])
+        del _theme_callbacks[window]
 
 def apply_theme(theme_name, mode=None):
     """
     Apply theme and appearance mode to the application.
     """
-    from src.controllers.parameters import get_theme_path, get_appearance_mode
-
-    # 1. Update appearance mode (works immediately for CTk widgets)
     if mode is None:
+        from src.controllers.parameters import get_appearance_mode
         mode = get_appearance_mode(theme_name)
-    customtkinter.set_appearance_mode(mode)
 
-    # 2. Update color theme
-    theme_path = get_theme_path(theme_name)
-    try:
-        customtkinter.set_default_color_theme(theme_path)
-        if not verify_theme_integrity():
-            print(f"DEBUG: Theme '{theme_name}' is incomplete. Falling back to 'blue'.")
-            customtkinter.set_default_color_theme("blue")
-    except Exception as e:
-        print(f"Error setting default color theme: {e}. Falling back to 'blue'.")
-        customtkinter.set_default_color_theme("blue")
+    if mode in ["Dark", "Light", "System"]:
+        theme_manager.set_theme(mode)
 
-    # 3. Update Treeview style (non-CTk)
+    # Update Treeview style (non-CTk)
     update_treeview_style()
 
-    # 4. Refresh some critical components
+    # Refresh some critical components
     try:
         from src.views.app_layers import line_numbers
         if line_numbers and line_numbers.winfo_exists():
@@ -293,25 +296,12 @@ def apply_theme(theme_name, mode=None):
     except:
         pass
 
-    # 5. Refresh tabs
+    # Refresh tabs
     try:
         if tab_manager:
             tab_manager.refresh_tab_bar()
     except:
         pass
-
-    # 6. Update all registered windows/widgets that might need manual refreshing
-    for window in registered_windows[:]:
-        try:
-            if hasattr(window, "winfo_exists") and window.winfo_exists():
-                # If it's a CTk widget, it might already have updated its appearance,
-                # but we might need to trigger custom logic.
-                if hasattr(window, "refresh_theme"):
-                    window.refresh_theme()
-            else:
-                registered_windows.remove(window)
-        except:
-            registered_windows.remove(window)
 
     # Force a redraw of the root
     root.update()

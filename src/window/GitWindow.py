@@ -20,17 +20,34 @@ from lib.git_cli.components.history_tab import HistoryTab
 from lib.git_cli.components.diff_tab import DiffTab
 from lib.git_cli.ui.tab_manager import TabManager
 from src.views.tk_utils import my_font
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
 
-class GitWindow:
+class GitWindow(ThemedWindow):
     """
     Main application window that manages the UI components.
     Delegates business logic to the Application and UIController classes.
     """
 
-    def __init__(self, repo_dir=None):
+    def __init__(self, repo_dir=None, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+
         self.app = Application(repo_dir=repo_dir)
-        self.create_window()
+        super().__init__(parent)
+        self.terminal_window = self # self is the window
+        self.title("Git Console")
+        self.geometry("600x512")
+
+        # Setup menubar
+        self.menubar = Menu(self)
+        self.configure(menu=self.menubar)
+
         self.setup_ui()
 
         self.tab_manager = TabManager(self.notebook)
