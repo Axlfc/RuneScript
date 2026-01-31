@@ -1,14 +1,22 @@
-﻿import os
+# Imports estándar
+import os
 import re
 import threading
 import fnmatch
+
+# Imports de tkinter
 import tkinter as tk
-import customtkinter as ctk
-from src.utils.thread_manager import thread_manager
-from tkinter import (
-    BooleanVar, tk.END, filedialog, StringVar
-)
+from tkinter import filedialog, BooleanVar, StringVar
 from tkinter.ttk import Treeview
+
+# Imports de customtkinter
+from customtkinter import (
+    CTkButton, CTkEntry, CTkLabel, CTkFrame,
+    CTkCheckBox, CTkScrollbar
+)
+
+# Imports locales
+from src.utils.thread_manager import thread_manager
 from src.ui.themed_window import ThemedWindow
 
 
@@ -34,7 +42,7 @@ class FindInFilesWindow(ThemedWindow):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.main_container = ctk.CTkFrame(self)
+        self.main_container = CTkFrame(self)
         self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Setup UI components
@@ -42,50 +50,50 @@ class FindInFilesWindow(ThemedWindow):
 
     def setup_ui(self):
         # Input frame
-        input_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        input_frame = CTkFrame(self.main_container, fg_color="transparent")
         input_frame.pack(fill=tk.X, padx=10, pady=10)
 
         # Search input
-        ctk.CTkLabel(input_frame, text="Search:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
-        self.search_entry = ctk.CTkEntry(input_frame, width=300)
+        CTkLabel(input_frame, text="Search:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.search_entry = CTkEntry(input_frame, width=300)
         self.search_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
         # Case sensitivity option
         self.case_sensitive_var = tk.BooleanVar()
-        ctk.CTkCheckBox(input_frame, text="Case Sensitive", variable=self.case_sensitive_var).grid(row=0, column=2,
+        CTkCheckBox(input_frame, text="Case Sensitive", variable=self.case_sensitive_var).grid(row=0, column=2,
                                                                                                     padx=5)
 
         # Path input
-        ctk.CTkLabel(input_frame, text="Path:").grid(row=1, column=0, sticky="e", padx=5, pady=5)
-        self.path_entry = ctk.CTkEntry(input_frame, width=300)
+        CTkLabel(input_frame, text="Path:").grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.path_entry = CTkEntry(input_frame, width=300)
         self.path_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
         self.path_entry.insert(0, os.getcwd())
 
         # Browse button
-        ctk.CTkButton(input_frame, text="Browse", width=80, command=self.browse_directory).grid(row=1, column=2, padx=5, pady=5)
+        CTkButton(input_frame, text="Browse", width=80, command=self.browse_directory).grid(row=1, column=2, padx=5, pady=5)
 
         # Filter input
-        ctk.CTkLabel(input_frame, text="Filter:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
-        self.filter_entry = ctk.CTkEntry(input_frame, width=300)
+        CTkLabel(input_frame, text="Filter:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.filter_entry = CTkEntry(input_frame, width=300)
         self.filter_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
         self.filter_entry.insert(0, "*.py")
 
         # Include subdirectories option
         self.include_subdirs_var = tk.BooleanVar(value=True)
-        ctk.CTkCheckBox(input_frame, text="Include Subdirectories", variable=self.include_subdirs_var).grid(row=2,
+        CTkCheckBox(input_frame, text="Include Subdirectories", variable=self.include_subdirs_var).grid(row=2,
                                                                                                              column=2,
                                                                                                              padx=5)
 
         # Button frame
-        button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        button_frame = CTkFrame(self.main_container, fg_color="transparent")
         button_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Find and Cancel buttons
-        ctk.CTkButton(button_frame, text="Find", width=100, command=self.start_search).pack(side=tk.RIGHT, padx=5)
-        ctk.CTkButton(button_frame, text="Cancel", width=100, command=self.destroy).pack(side=tk.RIGHT, padx=5)
+        CTkButton(button_frame, text="Find", width=100, command=self.start_search).pack(side=tk.RIGHT, padx=5)
+        CTkButton(button_frame, text="Cancel", width=100, command=self.destroy).pack(side=tk.RIGHT, padx=5)
 
         # Results frame with Treeview
-        self.results_frame = ctk.CTkFrame(self.main_container)
+        self.results_frame = CTkFrame(self.main_container)
         self.results_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Set up Treeview for results display
@@ -93,7 +101,7 @@ class FindInFilesWindow(ThemedWindow):
 
         # Progress label
         self.progress_var = tk.StringVar(value="Ready")
-        self.progress_label = ctk.CTkLabel(self.main_container, textvariable=self.progress_var)
+        self.progress_label = CTkLabel(self.main_container, textvariable=self.progress_var)
         self.progress_label.pack(fill=tk.X, pady=5)
 
     def setup_results_tree(self):
@@ -110,8 +118,8 @@ class FindInFilesWindow(ThemedWindow):
         self.results_tree.column("Text", width=400)
 
         # Add scrollbars
-        vsb = ctk.CTkScrollbar(self.results_frame, orientation="vertical", command=self.results_tree.yview)
-        hsb = ctk.CTkScrollbar(self.results_frame, orientation="horizontal", command=self.results_tree.xview)
+        vsb = CTkScrollbar(self.results_frame, orientation="vertical", command=self.results_tree.yview)
+        hsb = CTkScrollbar(self.results_frame, orientation="horizontal", command=self.results_tree.xview)
         self.results_tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         # Grid scrollbars and treeview
@@ -233,5 +241,3 @@ class FindInFilesWindow(ThemedWindow):
             file_path, line_num, _ = values
             full_path = os.path.join(self.path_entry.get(), file_path)
             print(f"Opening {full_path} at line {line_num}")
-
-

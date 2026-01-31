@@ -1,15 +1,20 @@
-import tkinter as tk
-﻿from tkinter import *
-from tkinter import scrolledtext
-from tkinter.ttk import Combobox
-from datetime import datetime
+# Imports estándar
+import os
 import subprocess
 import platform
-import os
 import time
+from datetime import datetime
 
-from src.views.tk_utils import my_font
+# Imports de tkinter
+import tkinter as tk
+from tkinter import scrolledtext
+from tkinter.ttk import Combobox
+
+# Imports de customtkinter
 import customtkinter as ctk
+
+# Imports locales
+from src.views.tk_utils import my_font
 from src.ui.themed_window import ThemedWindow
 
 
@@ -165,6 +170,3 @@ class TranslatorWindow(ThemedWindow):
             return [python_executable, ai_script_path, user_prompt, agent_name]
         else:
             return [python_executable, ai_script_path, user_prompt]
-
-
-
