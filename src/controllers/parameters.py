@@ -9,16 +9,17 @@ user_config_file_path = os.path.normpath(
 )
 
 
-def read_config_parameter(parameter_path):
+def read_config_parameter(parameter_path, default=None):
     """ ""\"
     ""\"
     Read a specific parameter from user_config.json (if available).
 
     Parameters:
     - parameter_path: Dot-separated path to the parameter (e.g., "view_options.is_directory_view_visible")
+    - default: The default value to return if the parameter is not found.
 
     Returns:
-    - The value of the parameter if found, otherwise None.
+    - The value of the parameter if found, otherwise the provided default value.
     ""\"
     ""\" """
 
@@ -48,10 +49,10 @@ def read_config_parameter(parameter_path):
         with open(user_config_file_path, "r") as user_config_file:
             user_config_data = json.load(user_config_file)
             value = get_nested_value(user_config_data, path_parts)
-            return value
+            return value if value is not None else default
     except Exception as e:
         print(f"Error reading user_config.json: {e}")
-        return None
+        return default
 
 
 def write_config_parameter(parameter_path, parameter_value):
