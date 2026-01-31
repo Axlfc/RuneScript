@@ -51,7 +51,7 @@ class SearchAndReplaceWindow:
         if search_text:
             start_index = "1.0"
             while True:
-                start_index = self.script_text.search(search_text, start_index, nocase=1, stopindex=END)
+                start_index = self.script_text._textbox.search(search_text, start_index, nocase=1, stopindex=END)
                 if not start_index:
                     break
                 end_index = f"{start_index}+{len(search_text)}c"

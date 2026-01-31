@@ -43,19 +43,19 @@ class SearchWindow:
 
     def find_text(self):
         value = self.search_entry_widget.get()
-        self.script_text.tag_remove("found", "1.0", END)
+        self.script_text._textbox.tag_remove("found", "1.0", END)
         if value:
-            self.script_text.tag_config("found", background="yellow")
+            self.script_text._textbox.tag_config("found", background="yellow")
             idx = "1.0"
             while idx:
-                idx = self.script_text.search(value, idx, nocase=1, stopindex=END)
+                idx = self.script_text._textbox.search(value, idx, nocase=1, stopindex=END)
                 if idx:
                     lastidx = f"{idx}+{len(value)}c"
-                    self.script_text.tag_add("found", idx, lastidx)
+                    self.script_text._textbox.tag_add("found", idx, lastidx)
                     idx = lastidx
 
     def cancel(self):
-        self.script_text.tag_remove("found", "1.0", END)
+        self.script_text._textbox.tag_remove("found", "1.0", END)
         self.search_toplevel.destroy()
 
 
