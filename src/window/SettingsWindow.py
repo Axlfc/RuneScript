@@ -1,24 +1,24 @@
-import tkinter as tk
-﻿import json
+# Imports estándar
 import os
-from tkinter import (
-    StringVar,
-    messagebox,
-    font,
-    tk.BOTH,
-    tk.LEFT,
-    tk.X,
-    BooleanVar,
-    BOTTOM
-)
-from tkinter.ttk import Notebook
+import json
 
-from src.controllers.parameters import (read_config_parameter, write_config_parameter,
-                                        get_appearance_mode)
+# Imports de tkinter
+import tkinter as tk
+from tkinter import StringVar, messagebox, font, BooleanVar
+from tkinter import BOTTOM
+
+# Imports de customtkinter
+from customtkinter import (
+    CTkFrame, CTkTabview, CTkScrollableFrame, CTkLabel,
+    CTkComboBox, CTkCheckBox, CTkEntry, CTkButton
+)
+
+# Imports locales
+from src.controllers.parameters import (
+    read_config_parameter, write_config_parameter, get_appearance_mode
+)
 from src.models.LanguageManager import LanguageManager
-import customtkinter as ctk
-from src.views.tk_utils import style
-from src.views.ui_elements import ScrollableFrame
+from src.views.tk_utils import style, unregister_window_for_theme
 from src.ui.themed_window import ThemedWindow
 
 
@@ -97,17 +97,17 @@ class SettingsWindow(ThemedWindow):
     def setup_ui(self):
         """Setup the main UI components."""
         # Main frame
-        self.main_frame = customtkinter.CTkFrame(self)
+        self.main_frame = CTkFrame(self)
         self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Notebook for tabs
         # Note: CTk doesn't have a Notebook, so we use a Frame with segmented buttons or just keep ttk Notebook
         # To keep it simple and consistent with other IDEs, let's use a Tabview
-        self.tabview = customtkinter.CTkTabview(self.main_frame)
+        self.tabview = CTkTabview(self.main_frame)
         self.tabview.pack(fill=tk.BOTH, expand=True)
 
         # Bottom frame for buttons
-        self.bottom_frame = customtkinter.CTkFrame(self)
+        self.bottom_frame = CTkFrame(self)
         self.bottom_frame.pack(fill=tk.X, side=BOTTOM, padx=10, pady=10)
 
         self.create_settings_sections()
@@ -121,7 +121,7 @@ class SettingsWindow(ThemedWindow):
             tab_frame = self.tabview.tab(tab_name)
 
             # Use CTkScrollableFrame
-            scrollable_frame = customtkinter.CTkScrollableFrame(tab_frame)
+            scrollable_frame = CTkScrollableFrame(tab_frame)
             scrollable_frame.pack(fill=tk.BOTH, expand=True)
 
             self.create_option_widgets(scrollable_frame, section, options)
@@ -129,7 +129,7 @@ class SettingsWindow(ThemedWindow):
     def create_option_widgets(self, scrollable_frame, section, options):
         """Create widgets for each option in a section."""
         for row, (option_name, default_value) in enumerate(options.items()):
-            label = customtkinter.CTkLabel(
+            label = CTkLabel(
                 scrollable_frame,
                 text=option_name.replace("_", " ").capitalize()
             )
@@ -165,7 +165,7 @@ class SettingsWindow(ThemedWindow):
             )
 
             var = tk.StringVar(value=current_lang_name)
-            widget = customtkinter.CTkComboBox(parent, variable=var, values=language_display_list)
+            widget = CTkComboBox(parent, variable=var, values=language_display_list)
 
             # Store the reverse mapping for saving
             self._orig_language_var = var
@@ -182,46 +182,40 @@ class SettingsWindow(ThemedWindow):
             font_families = list(font.families())
             default_font = default_value if default_value in font_families else "Courier New"
             var = tk.StringVar(value=default_font)
-            widget = customtkinter.CTkComboBox(parent, variable=var, values=font_families)
+            widget = CTkComboBox(parent, variable=var, values=font_families)
             return widget, var
 
         elif option_name.lower() == "theme":
             themes = self.load_themes_from_json("data/themes.json")
             default_theme = default_value if default_value in themes else themes[0]
             var = tk.StringVar(value=default_theme)
-            widget = customtkinter.CTkComboBox(parent, variable=var, values=themes)
+            widget = CTkComboBox(parent, variable=var, values=themes)
             return widget, var
 
         elif option_name.lower() == "mode":
             modes = ["System", "Light", "Dark"]
             var = tk.StringVar(value=default_value)
-            widget = customtkinter.CTkComboBox(parent, variable=var, values=modes)
-            return widget, var
-
-        elif option_name.lower() == "mode":
-            modes = ["System", "Light", "Dark"]
-            var = tk.StringVar(value=default_value)
-            widget = Combobox(parent, textvariable=var, values=modes)
+            widget = CTkComboBox(parent, variable=var, values=modes)
             return widget, var
 
         elif isinstance(default_value, bool):
             var = tk.BooleanVar(value=default_value)
-            widget = customtkinter.CTkCheckBox(parent, text="", variable=var)
+            widget = CTkCheckBox(parent, text="", variable=var)
             return widget, var
 
         elif isinstance(default_value, (str, int)):
             var = tk.StringVar(value=str(default_value))
-            widget = customtkinter.CTkEntry(parent, textvariable=var)
+            widget = CTkEntry(parent, textvariable=var)
             return widget, var
 
         return None, None
 
     def create_buttons(self):
         """Create save and reset buttons."""
-        save_button = customtkinter.CTkButton(self.bottom_frame, text="Save Settings", command=self.save_settings)
+        save_button = CTkButton(self.bottom_frame, text="Save Settings", command=self.save_settings)
         save_button.pack(side=tk.LEFT, padx=5)
 
-        reset_button = customtkinter.CTkButton(self.bottom_frame, text="Reset Settings", command=self.reset_settings)
+        reset_button = CTkButton(self.bottom_frame, text="Reset Settings", command=self.reset_settings)
         reset_button.pack(side=tk.LEFT, padx=5)
 
     def save_settings(self):
