@@ -1,61 +1,54 @@
-﻿from tkinter import Toplevel, Label, Entry, Button, END
-from src.views.tk_utils import script_text
+import tkinter as tk
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
+class SearchWindow(ThemedWindow):
+    def __init__(self, parent=None):
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.title("Find Text")
+        self.resizable(False, False)
 
-class SearchWindow:
-    def __init__(self):
-        self.script_text = script_text
+        # Access script_text from parent or global
+        try:
+            from src.views.tk_utils import script_text
+            self.script_text = script_text
+        except ImportError:
+            self.script_text = None
 
-        # Create the Toplevel window
-        self.search_toplevel = Toplevel()
-        self.search_toplevel.title("Find Text")
-        self.search_toplevel.resizable(False, False)
-        self.search_toplevel.transient()
-
-        # Center window on screen
-        self.center_window(300, 100)
-
-        # Set up UI components
+        self.geometry("350x120")
         self.setup_ui()
 
     def setup_ui(self):
-        Label(self.search_toplevel, text="Find All:").grid(row=0, column=0, sticky="e")
-        self.search_entry_widget = Entry(self.search_toplevel, width=25)
-        self.search_entry_widget.grid(row=0, column=1, padx=2, pady=2, sticky="we")
+        ctk.CTkLabel(self, text="Find All:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
+        self.search_entry_widget = ctk.CTkEntry(self, width=150)
+        self.search_entry_widget.grid(row=0, column=1, padx=10, pady=10, sticky="we")
         self.search_entry_widget.focus_set()
 
-        Button(
-            self.search_toplevel,
-            text="Ok",
-            command=self.find_text
-        ).grid(row=0, column=2, padx=2, pady=5)
+        ctk.CTkButton(self, text="Find", width=60, command=self.find_text).grid(row=0, column=2, padx=10, pady=10)
 
-        Button(
-            self.search_toplevel,
-            text="Cancel",
-            command=self.cancel
-        ).grid(row=1, column=1, columnspan=2, sticky="e" + "w", padx=2, pady=2)
-
-    def center_window(self, width, height):
-        x = (self.search_toplevel.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.search_toplevel.winfo_screenheight() // 2) - (height // 2)
-        self.search_toplevel.geometry(f"{width}x{height}+{x}+{y}")
+        ctk.CTkButton(self, text="Cancel", command=self.cancel).grid(row=1, column=1, columnspan=2, padx=10, pady=10, sticky="e")
 
     def find_text(self):
+        if not self.script_text: return
         value = self.search_entry_widget.get()
-        self.script_text._textbox.tag_remove("found", "1.0", END)
+        self.script_text._textbox.tag_remove("found", "1.0", "end")
         if value:
-            self.script_text._textbox.tag_config("found", background="yellow")
+            self.script_text._textbox.tag_config("found", background="yellow", foreground="black")
             idx = "1.0"
             while idx:
-                idx = self.script_text._textbox.search(value, idx, nocase=1, stopindex=END)
+                idx = self.script_text._textbox.search(value, idx, nocase=1, stopindex="end")
                 if idx:
                     lastidx = f"{idx}+{len(value)}c"
                     self.script_text._textbox.tag_add("found", idx, lastidx)
                     idx = lastidx
 
     def cancel(self):
-        self.script_text._textbox.tag_remove("found", "1.0", END)
-        self.search_toplevel.destroy()
-
-
+        if self.script_text:
+            self.script_text._textbox.tag_remove("found", "1.0", "end")
+        self.destroy()

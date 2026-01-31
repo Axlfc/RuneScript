@@ -1,3 +1,4 @@
+import tkinter as tk
 ﻿from tkinter import *
 from tkinter import scrolledtext
 from tkinter.ttk import Combobox
@@ -54,45 +55,45 @@ class TranslatorWindow(ThemedWindow):
         self.setup_input_frame()
 
     def setup_language_frame(self):
-        lang_frame = Frame(self.translator_win)
-        lang_frame.pack(fill=X, padx=10, pady=5)
+        lang_frame = tk.Frame(self.translator_win)
+        lang_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Language variables
-        self.input_lang_var = StringVar(value='Spanish')
-        self.output_lang_var = StringVar(value='English')
+        self.input_lang_var = tk.StringVar(value='Spanish')
+        self.output_lang_var = tk.StringVar(value='English')
 
         # Create dropdowns
         self.input_lang_dropdown = self.create_dropdown(lang_frame, "From:", self.input_lang_var)
         self.output_lang_dropdown = self.create_dropdown(lang_frame, "To:", self.output_lang_var)
 
         # Swap button
-        swap_button = Button(lang_frame, text="Swap Languages",
+        swap_button = tk.Button(lang_frame, text="Swap Languages",
                              command=self.swap_languages)
-        swap_button.pack(side=LEFT, padx=(10, 10))
+        swap_button.pack(side=tk.LEFT, padx=(10, 10))
 
     def setup_input_frame(self):
-        input_frame = Frame(self.translator_win)
-        input_frame.pack(fill=X, padx=10, pady=5)
+        input_frame = tk.Frame(self.translator_win)
+        input_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Input field
-        self.input_entry = Text(input_frame, width=70, height=4, wrap="word", font=my_font)
-        self.input_entry.pack(side=LEFT, padx=(0, 10))
+        self.input_entry = tk.Text(input_frame, width=70, height=4, wrap="word", font=my_font)
+        self.input_entry.pack(side=tk.LEFT, padx=(0, 10))
 
         # Translate button
-        translate_button = Button(input_frame, text="Translate",
+        translate_button = tk.Button(input_frame, text="Translate",
                                   command=self.translate_text)
-        translate_button.pack(side=LEFT, padx=(10, 10))
+        translate_button.pack(side=tk.LEFT, padx=(10, 10))
 
         # Bind keys
         self.input_entry.bind('<Return>', self.handle_enter)
-        self.input_entry.bind('<Shift-Return>', lambda event: self.input_entry.insert(END, "\n"))
+        self.input_entry.bind('<Shift-Return>', lambda event: self.input_entry.insert(tk.END, "\n"))
 
     def create_dropdown(self, frame, label_text, variable):
-        label = Label(frame, text=label_text)
-        label.pack(side=LEFT, padx=(0, 5))
+        label = tk.Label(frame, text=label_text)
+        label.pack(side=tk.LEFT, padx=(0, 5))
         dropdown = Combobox(frame, textvariable=variable, values=self.languages,
                             state="readonly", width=15)
-        dropdown.pack(side=LEFT, padx=(0, 10))
+        dropdown.pack(side=tk.LEFT, padx=(0, 10))
         return dropdown
 
     def swap_languages(self):
@@ -111,7 +112,7 @@ class TranslatorWindow(ThemedWindow):
             return 'break'
 
     def translate_text(self):
-        text = self.input_entry.get("1.0", END).strip()
+        text = self.input_entry.get("1.0", tk.END).strip()
 
         if text == self.last_translation.get("input"):
             return
@@ -133,7 +134,7 @@ class TranslatorWindow(ThemedWindow):
                 bufsize=1)
 
             translation = ""
-            self.output_text.insert(END,
+            self.output_text.insert(tk.END,
                                     f"\n[{datetime.now().strftime('%H:%M:%S')}] From {self.input_lang_var.get()} to {self.output_lang_var.get()}:\n")
             for line in process.stdout:
                 translation += line
@@ -142,15 +143,15 @@ class TranslatorWindow(ThemedWindow):
             process.wait()
 
         except Exception as e:
-            self.output_text.insert(END, f"Error: {e}\n")
+            self.output_text.insert(tk.END, f"Error: {e}\n")
 
         finally:
             self.input_entry.configure(state="normal")
 
     def stream_translation(self, translation):
         for char in translation:
-            self.output_text.insert(END, char)
-            self.output_text.see(END)
+            self.output_text.insert(tk.END, char)
+            self.output_text.see(tk.END)
             self.output_text.update()
             time.sleep(0.01)
 

@@ -2,4 +2,4 @@ auto_commit: true
 cost_limit: null
 max_iterations: 20
 sandbox_enabled: true
-theme: Light
+theme: Dark

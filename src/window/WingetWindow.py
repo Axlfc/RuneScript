@@ -66,12 +66,12 @@ Use the buttons to perform WinGet operations."""
     def list_installed(self):
         def update_installed(output):
             if not self.winget_window.winfo_exists(): return
-            self.installed_listbox.delete(0, END)
+            self.installed_listbox.delete(0, tk.END)
             lines = output.splitlines()
             for line in lines[1:]:
                 program_info = " ".join(line.split()).strip()
                 if program_info:
-                    self.installed_listbox.insert(END, program_info)
+                    self.installed_listbox.insert(tk.END, program_info)
 
         self.run_command_async('winget list --source "winget"', "winget_list_installed", update_installed)
 
@@ -148,7 +148,7 @@ Use the buttons to perform WinGet operations."""
                     display_text = (
                         f"{program_id:<40} {from_version:<15} {to_version:<15}"
                     )
-                    var = BooleanVar()
+                    var = tk.BooleanVar()
                     checkbox = ctk.CTkCheckBox(
                         self.upgrade_checkboxes_frame,
                         text=display_text,
@@ -158,8 +158,8 @@ Use the buttons to perform WinGet operations."""
                     self.upgrade_vars.append((var, program_id))
 
     def update_output(self, output):
-        self.output_text.insert(END, output + "\n")
-        self.output_text.see(END)
+        self.output_text.insert(tk.END, output + "\n")
+        self.output_text.see(tk.END)
 
     def upgrade_selected(self):
         selected_programs = [info for var, info in self.upgrade_vars if var.get()]
@@ -257,8 +257,8 @@ Use the buttons to perform WinGet operations."""
             self.run_command_async(f'winget show "{program_id}"', "winget_show", on_complete)
 
     def insert_output(self, output):
-        self.output_text.delete(1.0, END)
-        self.output_text.insert(END, output)
+        self.output_text.delete(1.0, tk.END)
+        self.output_text.insert(tk.END, output)
 
     def on_mousewheel(self, event):
         self.upgrade_checkboxes_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")

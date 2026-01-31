@@ -78,7 +78,7 @@ class GenerationWindow(ThemedWindow):
             return
 
         self.status_label.configure(text="Starting media generation...")
-        self.generate_button.configure(state=DISABLED)
+        self.generate_button.configure(state=tk.DISABLED)
 
         self.output_queue = queue.Queue()
         threading.Thread(
@@ -132,7 +132,7 @@ class GenerationWindow(ThemedWindow):
 
                 if f"{self.media_type.get()} generation completed" in line:
                     self.status_label.configure(text=line)
-                    self.generate_button.configure(state=NORMAL)
+                    self.generate_button.configure(state=tk.NORMAL)
                     break
 
         except queue.Empty:

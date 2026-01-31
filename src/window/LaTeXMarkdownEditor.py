@@ -1,7 +1,11 @@
 ﻿import tempfile
 import webbrowser
-from tkhtmlview import HTMLLabel
+try:
+    from tkhtmlview import HTMLLabel
+except ImportError:
+    HTMLLabel = None
 import tkinter as tk
+from tkinter import Menu, END, BOTH, HORIZONTAL, X, Y, LEFT, RIGHT, DISABLED, NORMAL, WORD, PanedWindow
 import customtkinter as ctk
 
 from src.config.fonts import AppFonts
@@ -12,7 +16,10 @@ import markdown
 from src.utils.thread_manager import thread_manager
 import re
 from pathlib import Path
-from pdf2image import convert_from_path
+try:
+    from pdf2image import convert_from_path
+except ImportError:
+    convert_from_path = None
 from PIL import ImageTk, Image
 
 from src.views.tk_utils import my_font
@@ -186,10 +193,10 @@ class LaTeXMarkdownEditor(ThemedWindow):
         # Bind F5 to recompile the document
         self.window.bind('<F5>', lambda e: self.recompile_document())
 
-        # Bind Ctrl+S to save the current file
+        # Bind Ctrl+tk.S to save the current file
         self.window.bind('<Control-s>', lambda e: self.save_current_file())
 
-        # Bind Ctrl+N to create a new project
+        # Bind Ctrl+tk.N to create a new project
         self.window.bind('<Control-n>', lambda e: self.new_project())
 
         # Bind Ctrl+F to open the find dialog
@@ -563,13 +570,13 @@ class LaTeXMarkdownEditor(ThemedWindow):
 
     def show_find_dialog(self):
         """Open a dialog window to find text in the editor"""
-        find_window = Toplevel(self.window)
+        find_window = ctk.CTkToplevel(self.window)
         find_window.title("Find Text")
         find_window.geometry("300x100")
 
         Label(find_window, text="Find:").pack(anchor="w", padx=10, pady=10)
 
-        find_entry = Entry(find_window, width=30)
+        find_entry = tk.Entry(find_window, width=30)
         find_entry.pack(padx=10, fill=X)
 
         def find_text():
@@ -996,8 +1003,18 @@ class LaTeXMarkdownEditor(ThemedWindow):
             widget.destroy()
 
         # Create a new HTMLLabel widget to display the HTML content
-        html_label = HTMLLabel(self.preview, html=html_content)
-        html_label.pack(fill=BOTH, expand=True)
+        if HTMLLabel:
+            try:
+                html_label = HTMLLabel(self.preview, html=html_content)
+                html_label.pack(fill=BOTH, expand=True)
+            except Exception as e:
+                fallback = ctk.CTkTextbox(self.preview)
+                fallback.insert("1.0", f"Error rendering HTML: {e}\n\nRaw HTML:\n{html_content}")
+                fallback.pack(fill=BOTH, expand=True)
+        else:
+            fallback = ctk.CTkTextbox(self.preview)
+            fallback.insert("1.0", f"HTML Preview not available (tkhtmlview missing).\n\nRaw HTML:\n{html_content}")
+            fallback.pack(fill=BOTH, expand=True)
 
     def update_statistics(self):
         """Update the statistics in the details panel based on the editor content"""

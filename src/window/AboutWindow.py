@@ -1,6 +1,5 @@
-﻿import tkinter as tk
 import tkinter as tk
-from tkinter import LEFT, RIGHT, messagebox
+from tkinter import messagebox
 import customtkinter as ctk
 from src.config.fonts import AppFonts
 import pyperclip
@@ -79,4 +78,3 @@ class AboutWindow(ThemedWindow):
             webbrowser.open(url)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open web browser: {e}")
-

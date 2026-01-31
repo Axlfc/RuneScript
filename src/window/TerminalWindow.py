@@ -1,6 +1,7 @@
-﻿# TerminalWindow.py
+# TerminalWindow.py
 import os
 import subprocess
+import threading
 import tkinter as tk
 import customtkinter as ctk
 from src.ui.themed_window import ThemedWindow
@@ -17,21 +18,21 @@ class TerminalWindow(ThemedWindow):
         super().__init__(parent)
         self.terminal_window = self # self is the window
         self.title("Terminal")
-        self.geometry("600x450")
+        self.geometry("800x600")
 
         self.main_container = ctk.CTkFrame(self)
         self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Output text area with scroll
-        self.output_text = ctk.CTkTextbox(self.main_container, height=350)
+        self.output_text = ctk.CTkTextbox(self.main_container, height=500)
         self.output_text.pack(fill="both", expand=True, padx=5, pady=5)
 
         # Command history and pointer for navigation
         self.command_history = []
-        self.history_pointer = [0]
+        self.history_pointer = 0
 
         # Entry widget for command input
-        self.entry = ctk.CTkEntry(self.main_container)
+        self.entry = ctk.CTkEntry(self.main_container, placeholder_text="Enter command here...")
         self.entry.pack(side="bottom", fill="x", padx=5, pady=5)
         self.entry.focus()
 
@@ -42,44 +43,61 @@ class TerminalWindow(ThemedWindow):
 
     def execute_command(self, event=None):
         """Execute the command entered in the terminal."""
-        command = self.entry.get()
-        if command.strip():
+        command = self.entry.get().strip()
+        if command:
             # Add command to history and update history pointer
             self.command_history.append(command)
-            self.history_pointer[0] = len(self.command_history)
+            self.history_pointer = len(self.command_history)
 
-            # Execute the command and capture output
-            try:
-                output = subprocess.check_output(
-                    command,
-                    stderr=subprocess.STDOUT,
-                    shell=True,
-                    text=True,
-                    cwd=os.getcwd())
-                # Insert command and its output into the text area
-                self.output_text.insert(END, f"{command}\n{output}\n")
-            except subprocess.CalledProcessError as e:
-                self.output_text.insert(END, f"Error: {e.output}", "error")
+            self.output_text.insert(tk.END, f"\n> {command}\n")
+            self.entry.delete(0, tk.END)
+            self.entry.configure(state=tk.DISABLED)
 
-            # Clear the entry widget and scroll output to the end
-            self.entry.delete(0, END)
-            self.output_text.see(END)
+            # Execute in a thread to avoid blocking UI
+            threading.Thread(target=self._run_command_thread, args=(command,), daemon=True).start()
+
+    def _run_command_thread(self, command):
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                shell=True,
+                text=True,
+                cwd=os.getcwd()
+            )
+
+            output, _ = process.communicate()
+
+            def update_ui():
+                if self.winfo_exists():
+                    self.output_text.insert(tk.END, output)
+                    self.output_text.see(tk.END)
+                    self.entry.configure(state=tk.NORMAL)
+                    self.entry.focus()
+
+            self.after(0, update_ui)
+
+        except Exception as e:
+            def update_ui_error():
+                if self.winfo_exists():
+                    self.output_text.insert(tk.END, f"Error: {str(e)}\n")
+                    self.entry.configure(state=tk.NORMAL)
+            self.after(0, update_ui_error)
 
     def navigate_history(self, event):
         """Navigate through the command history using arrow keys."""
         if self.command_history:
             if event.keysym == "Up":
-                self.history_pointer[0] = max(0, self.history_pointer[0] - 1)
+                self.history_pointer = max(0, self.history_pointer - 1)
             elif event.keysym == "Down":
-                self.history_pointer[0] = min(len(self.command_history), self.history_pointer[0] + 1)
+                self.history_pointer = min(len(self.command_history), self.history_pointer + 1)
 
             # Retrieve command from history or clear entry if at end of history
             command = (
-                self.command_history[self.history_pointer[0]]
-                if self.history_pointer[0] < len(self.command_history)
+                self.command_history[self.history_pointer]
+                if self.history_pointer < len(self.command_history)
                 else ""
             )
-            self.entry.delete(0, END)
+            self.entry.delete(0, tk.END)
             self.entry.insert(0, command)
-
-

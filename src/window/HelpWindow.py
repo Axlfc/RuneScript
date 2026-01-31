@@ -1,35 +1,28 @@
-﻿from tkinter import Toplevel, Label, Frame, Scrollbar, Canvas, LEFT, BOTH, VERTICAL, Y
+import tkinter as tk
+import customtkinter as ctk
+from src.ui.themed_window import ThemedWindow
 
-
-class HelpWindow:
-    def __init__(self):
+class HelpWindow(ThemedWindow):
+    def __init__(self, parent=None):
         """Initialize the Help Window to display detailed keyboard shortcuts."""
-        self.help_window = Toplevel()
-        self.help_window.title("Help - Keyboard Shortcuts")
-        self.help_window.geometry("600x600")
-        self.center_window(600, 600)
+        if parent is None:
+            try:
+                from src.views.tk_utils import root
+                parent = root
+            except ImportError:
+                pass
+        super().__init__(parent)
+        self.title("Help - Keyboard Shortcuts")
+        self.geometry("700x700")
         self.setup_ui()
-
-    def center_window(self, width, height):
-        """Center the window on the screen."""
-        x = (self.help_window.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.help_window.winfo_screenheight() // 2) - (height // 2)
-        self.help_window.geometry(f"{width}x{height}+{x}+{y}")
 
     def setup_ui(self):
         """Set up the UI with categorized shortcut information."""
-        Label(self.help_window, text="Keyboard Shortcuts", font=("Arial", 14, "bold")).pack(pady=10)
+        ctk.CTkLabel(self, text="Keyboard Shortcuts", font=("Arial", 16, "bold")).pack(pady=10)
 
-        # Scrollable frame for large content
-        canvas = Canvas(self.help_window)
-        scroll_y = Scrollbar(self.help_window, orient=VERTICAL, command=canvas.yview)
-        frame = Frame(canvas)
-        frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=frame, anchor="nw")
-        canvas.configure(yscrollcommand=scroll_y.set)
-
-        canvas.pack(side=LEFT, fill=BOTH, expand=True)
-        scroll_y.pack(side=LEFT, fill=Y)
+        # Use CTkScrollableFrame for automatic scrollbar handling
+        scroll_frame = ctk.CTkScrollableFrame(self)
+        scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Categories and shortcuts data
         categories = {
@@ -50,8 +43,8 @@ class HelpWindow:
                 ("Paste", "Ctrl + V"),
                 ("Duplicate", "Ctrl + D"),
                 ("Find", "Ctrl + F"),
-                ("Find And Replace", "Ctrl+R"),
-                ("Find In Files", "Ctrl+H")
+                ("Find And Replace", "Ctrl + R"),
+                ("Find In Files", "Ctrl + H")
             ],
             "View Controls": [
                 ("Toggle Directory Pane", "Ctrl + Shift + D"),
@@ -89,10 +82,9 @@ class HelpWindow:
 
         # Populate categories and shortcuts in the frame
         for category, shortcuts in categories.items():
-            Label(frame, text=category, font=("Arial", 12, "bold")).pack(anchor="w", pady=5, padx=10)
+            ctk.CTkLabel(scroll_frame, text=category, font=("Arial", 13, "bold"), text_color="#1f538d").pack(anchor="w", pady=(10, 5), padx=10)
             for action, shortcut in shortcuts:
-                row_frame = Frame(frame)
-                row_frame.pack(fill="x", pady=2)
-                Label(row_frame, text=f"{action}:", anchor="w", width=30).pack(side=LEFT, padx=10)
-                Label(row_frame, text=shortcut, anchor="e", width=20).pack(side=LEFT)
-
+                row_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+                row_frame.pack(fill="x", pady=1)
+                ctk.CTkLabel(row_frame, text=f"{action}:", anchor="w", width=250).pack(side="left", padx=20)
+                ctk.CTkLabel(row_frame, text=shortcut, anchor="e").pack(side="left")

@@ -67,7 +67,7 @@ class ImageGenerationWindow(ThemedWindow):
             return
 
         self.status_label.configure(text="Starting image generation...")
-        self.generate_button.configure(state=DISABLED)
+        self.generate_button.configure(state=tk.DISABLED)
 
         self.output_queue = queue.Queue()
         threading.Thread(
@@ -119,7 +119,7 @@ class ImageGenerationWindow(ThemedWindow):
 
                 if "Image generation completed" in line:
                     self.status_label.configure(text=line)
-                    self.generate_button.configure(state=NORMAL)
+                    self.generate_button.configure(state=tk.NORMAL)
                     break
 
         except queue.Empty:

@@ -6,7 +6,7 @@ import tkinter as tk
 import customtkinter as ctk
 from src.utils.thread_manager import thread_manager
 from tkinter import (
-    BooleanVar, END, filedialog, StringVar
+    BooleanVar, tk.END, filedialog, StringVar
 )
 from tkinter.ttk import Treeview
 from src.ui.themed_window import ThemedWindow
@@ -51,7 +51,7 @@ class FindInFilesWindow(ThemedWindow):
         self.search_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
         # Case sensitivity option
-        self.case_sensitive_var = BooleanVar()
+        self.case_sensitive_var = tk.BooleanVar()
         ctk.CTkCheckBox(input_frame, text="Case Sensitive", variable=self.case_sensitive_var).grid(row=0, column=2,
                                                                                                     padx=5)
 
@@ -71,7 +71,7 @@ class FindInFilesWindow(ThemedWindow):
         self.filter_entry.insert(0, "*.py")
 
         # Include subdirectories option
-        self.include_subdirs_var = BooleanVar(value=True)
+        self.include_subdirs_var = tk.BooleanVar(value=True)
         ctk.CTkCheckBox(input_frame, text="Include Subdirectories", variable=self.include_subdirs_var).grid(row=2,
                                                                                                              column=2,
                                                                                                              padx=5)
@@ -92,7 +92,7 @@ class FindInFilesWindow(ThemedWindow):
         self.setup_results_tree()
 
         # Progress label
-        self.progress_var = StringVar(value="Ready")
+        self.progress_var = tk.StringVar(value="Ready")
         self.progress_label = ctk.CTkLabel(self.main_container, textvariable=self.progress_var)
         self.progress_label.pack(fill=tk.X, pady=5)
 
@@ -129,7 +129,7 @@ class FindInFilesWindow(ThemedWindow):
     def browse_directory(self):
         directory = filedialog.askdirectory(initialdir=self.path_entry.get())
         if directory:
-            self.path_entry.delete(0, END)
+            self.path_entry.delete(0, tk.END)
             self.path_entry.insert(0, directory)
 
     def start_search(self):
