@@ -141,8 +141,11 @@ class LoopOrchestrator:
                     return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
                 # 7. TDD Cycle: REFACTOR Phase
+                self._log("=== STARTING REFACTOR PHASE ===", log_callback)
                 self._log("Verifying all tests...", log_callback)
                 val_refactor = self.validator.validate_refactor(self.project_path, self.venv_python)
+                self._log_validation_result(val_refactor, "REFACTOR", log_callback)
+
                 if not val_refactor.success:
                     self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
                     self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")

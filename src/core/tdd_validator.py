@@ -180,12 +180,24 @@ class TDDValidator:
             # For simplicity, return result of the first failing test or the last success
             last_result = None
             for py_file in test_dir.glob("**/test*.py"):
-                if venv_python:
-                    cmd = [venv_python, str(py_file)]
-                else:
-                    cmd = [sys.executable, str(py_file)]
+                # Use relative path for command if possible to avoid issues
+                try:
+                    rel_py_file = py_file.relative_to(project_path)
+                except ValueError:
+                    rel_py_file = py_file
 
-                last_result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace')
+                if venv_python:
+                    cmd = [venv_python, str(rel_py_file)]
+                else:
+                    cmd = [sys.executable, str(rel_py_file)]
+
+                last_result = subprocess.run(
+                    cmd,
+                    cwd=str(project_path),
+                    capture_output=True,
+                    encoding='utf-8',
+                    errors='replace'
+                )
                 if last_result.returncode != 0:
                     return last_result
 
