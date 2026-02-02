@@ -54,6 +54,7 @@ body {
   - If project is Python-only: Use `pytest path/to/test::test_name -v`
   - If project is Frontend (HTML/CSS/JS): Use a standalone Python script (e.g. `tests/test_structure.py`) with `BeautifulSoup` if needed. DO NOT use `import pytest` unless explicitly required. The script MUST be executable with `python path/to/test.py` and include `if __name__ == "__main__":`.
 - Verify FAILS for CORRECT reason
+- If the task is about creating a directory structure, ensure that every specified directory contains at least one file (e.g., '.gitkeep') so it is actually created on disk.
 
 ### 4. CYCLE GREEN (Minimal Code)
 - Write SIMPLEST code to pass test

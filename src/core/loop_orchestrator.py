@@ -110,15 +110,22 @@ class LoopOrchestrator:
                         # Write ONLY the test file
                         test_content = response.files[response.test_file]
                         self._write_file(response.test_file, test_content)
-                        # self._log_file_content(response.test_file, log_callback)
+                        self._log_file_content(response.test_file, log_callback)
+
+                        # DEBUG LOGS
+                        test_file_path = self.project_path / response.test_file
+                        self._log(f"DEBUG: About to execute test at: {test_file_path}", log_callback)
+                        self._log(f"DEBUG: Test file exists: {test_file_path.exists()}", log_callback)
+                        if test_file_path.exists():
+                            self._log(f"DEBUG: Test file size: {test_file_path.stat().st_size} bytes", log_callback)
 
                         val_red = self.validator.validate_red(
                             self.project_path,
-                            str(self.project_path / response.test_file),
+                            str(test_file_path),
                             response.test_name,
                             self.venv_python
                         )
-                        # self._log_validation_result(val_red, "RED", log_callback)
+                        self._log_validation_result(val_red, "RED", log_callback)
 
                         if not val_red.success:
                             self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
@@ -135,13 +142,19 @@ class LoopOrchestrator:
 
                     if response.test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
+
+                        # DEBUG LOGS
+                        test_file_path = self.project_path / response.test_file
+                        self._log(f"DEBUG: About to execute test at: {test_file_path}", log_callback)
+                        self._log(f"DEBUG: Test file exists: {test_file_path.exists()}", log_callback)
+
                         val_green = self.validator.validate_green(
                             self.project_path,
-                            str(self.project_path / response.test_file),
+                            str(test_file_path),
                             response.test_name,
                             self.venv_python
                         )
-                        # self._log_validation_result(val_green, "GREEN", log_callback)
+                        self._log_validation_result(val_green, "GREEN", log_callback)
 
                         if not val_green.success:
                             self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
