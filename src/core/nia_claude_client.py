@@ -82,7 +82,7 @@ IMPORTANT FOR FRONTEND PROJECTS:
 - Use 'assert' for validations and 'print("✅ ...")' for success messages.
 - Include 'if __name__ == "__main__":' to execute all test functions.
 - You can use 'from bs4 import BeautifulSoup' for HTML parsing.
-- If the task involves creating a project structure, ensure that your implementation code includes at least one file (it can be empty) for each directory that needs to exist.
+- If the task involves creating a project structure, ensure that your implementation code includes at least one file for each directory that needs to exist (use '.gitkeep' if the directory is intended to be empty).
 """
 
         full_prompt = f"""
