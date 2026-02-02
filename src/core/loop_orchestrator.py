@@ -91,16 +91,22 @@ class LoopOrchestrator:
 
                 # 5. TDD Cycle: RED Phase
                 if response.test_file:
+                    self._log(f"=== STARTING RED PHASE ===", log_callback)
+                    self._log_project_structure(log_callback)
+
                     self._log(f"Checking RED phase for {response.test_file}...", log_callback)
                     # Write ONLY the test file
                     test_content = response.files[response.test_file]
                     self._write_file(response.test_file, test_content)
+                    self._log_file_content(response.test_file, log_callback)
 
                     val_red = self.validator.validate_red(
                         str(self.project_path / response.test_file),
                         response.test_name,
                         self.venv_python
                     )
+                    self._log_validation_result(val_red, "RED", log_callback)
+
                     if not val_red.success:
                         self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
 
@@ -108,16 +114,21 @@ class LoopOrchestrator:
                     return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
                 # 6. TDD Cycle: GREEN Phase
-                self._log("Applying implementation code...", log_callback)
+                self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
                 for filename, content in response.files.items():
                     self._write_file(filename, content)
 
+                self._log_project_structure(log_callback)
+
                 if response.test_file:
+                    self._log(f"=== STARTING GREEN PHASE ===", log_callback)
                     val_green = self.validator.validate_green(
                         str(self.project_path / response.test_file),
                         response.test_name,
                         self.venv_python
                     )
+                    self._log_validation_result(val_green, "GREEN", log_callback)
+
                     if not val_green.success:
                         self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
                         self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
@@ -239,3 +250,59 @@ class LoopOrchestrator:
         if callback:
             callback(message)
         print(message)
+
+    def _log_project_structure(self, log_callback):
+        """Log current project file structure."""
+        self._log(f"\n{'='*60}", log_callback)
+        self._log("CURRENT PROJECT STRUCTURE:", log_callback)
+        self._log(f"{'='*60}", log_callback)
+
+        try:
+            for root, dirs, files in os.walk(self.project_path):
+                # Ignore common directories
+                dirs[:] = [d for d in dirs if d not in ['.venv', '.git', '__pycache__', 'node_modules']]
+
+                level = Path(root).relative_to(self.project_path).parts
+                indent = '  ' * len(level)
+                folder_name = os.path.basename(root) or os.path.basename(self.project_path)
+                self._log(f"{indent}📁 {folder_name}/", log_callback)
+
+                subindent = '  ' * (len(level) + 1)
+                for file in sorted(files):
+                    self._log(f"{subindent}📄 {file}", log_callback)
+        except Exception as e:
+            self._log(f"Error logging structure: {e}", log_callback)
+
+        self._log(f"{'='*60}\n", log_callback)
+
+    def _log_file_content(self, rel_path: str, log_callback):
+        """Log the content of a specific file."""
+        self._log(f"=== Content of {rel_path} ===", log_callback)
+        try:
+            full_path = self.project_path / rel_path
+            if full_path.exists():
+                content = full_path.read_text(encoding='utf-8')
+                self._log(content, log_callback)
+            else:
+                self._log(f"File {rel_path} does not exist.", log_callback)
+        except Exception as e:
+            self._log(f"Error reading file {rel_path}: {e}", log_callback)
+        self._log("=== End of file content ===\n", log_callback)
+
+    def _log_validation_result(self, result, phase_name: str, log_callback):
+        """Log detailed validation result."""
+        self._log(f"\n{'='*60}", log_callback)
+        self._log(f"{phase_name} TEST OUTPUT:", log_callback)
+        self._log(f"{'='*60}", log_callback)
+
+        if result.stdout:
+            for line in result.stdout.splitlines():
+                self._log(f"STDOUT: {line}", log_callback)
+
+        if result.stderr:
+            for line in result.stderr.splitlines():
+                self._log(f"STDERR: {line}", log_callback)
+
+        self._log(f"{'='*60}", log_callback)
+        self._log(f"Status: {'✅ PASSED' if result.success else '❌ FAILED'}", log_callback)
+        self._log(f"{'='*60}\n", log_callback)
