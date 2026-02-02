@@ -117,7 +117,8 @@ def test_{module_name}_creation():
                     command,
                     cwd=project_path,
                     capture_output=True,
-                    text=True
+                    encoding='utf-8',
+                    errors='replace'
                 )
                 return result.returncode == 0, result.stdout, result.stderr
             except Exception as e:

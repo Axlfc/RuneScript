@@ -18,7 +18,7 @@ logger = logging.getLogger("ThreadManager")
 logger.setLevel(logging.DEBUG)
 
 # File handler with rotation
-file_handler = RotatingFileHandler(LOG_FILE, maxBytes=1024 * 1024 * 5, backupCount=5)
+file_handler = RotatingFileHandler(LOG_FILE, maxBytes=1024 * 1024 * 5, backupCount=5, encoding='utf-8')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(threadName)s] - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
@@ -125,7 +125,8 @@ class ThreadManager:
                     command,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
                     cwd=cwd,
                     bufsize=1,
                     universal_newlines=True
