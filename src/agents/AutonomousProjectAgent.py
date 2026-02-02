@@ -130,12 +130,22 @@ class AutonomousProjectAgent:
         log_file = os.path.join(self.project_path, 'autonomous_agent.log')
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
+        # Force UTF-8 on Windows for stdout/stderr
+        if sys.platform == 'win32':
+            try:
+                if hasattr(sys.stdout, 'reconfigure'):
+                    sys.stdout.reconfigure(encoding='utf-8')
+                if hasattr(sys.stderr, 'reconfigure'):
+                    sys.stderr.reconfigure(encoding='utf-8')
+            except Exception:
+                pass
+
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s [AutonomousProjectAgent] %(levelname)s: %(message)s',
             handlers=[
-                logging.FileHandler(log_file),
-                logging.StreamHandler()
+                logging.FileHandler(log_file, encoding='utf-8'),
+                logging.StreamHandler(sys.stdout)
             ]
         )
 
@@ -312,8 +322,8 @@ class AutonomousProjectAgent:
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8'
+                encoding='utf-8',
+                errors='replace'
             )
 
             stdout_chunks, stderr_chunks = [], []
@@ -1101,9 +1111,10 @@ class AutonomousProjectAgent:
         """
         try:
             result = subprocess.run(
-                ['pytest', '--disable-warnings', '--quiet'],
+                [sys.executable, '-m', 'pytest', '--disable-warnings', '--quiet'],
                 capture_output=True,
-                text=True,
+                encoding='utf-8',
+                errors='replace',
                 cwd=self.project_path
             )
             # Basic test success rate calculation
@@ -1123,9 +1134,10 @@ class AutonomousProjectAgent:
         """
         try:
             result = subprocess.run(
-                ['pylint', self.project_path],
+                [sys.executable, '-m', 'pylint', self.project_path],
                 capture_output=True,
-                text=True
+                encoding='utf-8',
+                errors='replace'
             )
             # Parse pylint output and convert to quality score
             # This is a simplistic implementation and can be enhanced

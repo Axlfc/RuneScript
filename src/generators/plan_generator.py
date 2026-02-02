@@ -17,6 +17,7 @@ class PlanGenerator:
         Given a project specification, generate a detailed implementation plan in JSON format.
         Break it down into PHASES. Each phase should have a list of tasks.
         Each task should be specific and follow TDD principles (Test: description).
+        Ensure the tasks align with the chosen 'Testing' framework in the specification.
         JSON format:
         {
             "phases": [

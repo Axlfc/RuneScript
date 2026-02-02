@@ -1,4 +1,5 @@
 ﻿import os
+import sys
 import logging
 import tkinter as tk
 import uuid
@@ -130,10 +131,23 @@ class IDEController(ThemedWindow):
 
     def setup_logging(self):
         """Configure application logging"""
+        # Forzar UTF-8 en Windows para stdout/stderr para evitar UnicodeEncodeError con emojis
+        if sys.platform == 'win32':
+            try:
+                if hasattr(sys.stdout, 'reconfigure'):
+                    sys.stdout.reconfigure(encoding='utf-8')
+                if hasattr(sys.stderr, 'reconfigure'):
+                    sys.stderr.reconfigure(encoding='utf-8')
+            except Exception as e:
+                print(f"Warning: Could not reconfigure stdout/stderr to utf-8: {e}")
+
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s: %(message)s',
-            handlers=[logging.FileHandler('project.log'), logging.StreamHandler()]
+            handlers=[
+                logging.FileHandler('project.log', encoding='utf-8'),
+                logging.StreamHandler(sys.stdout)
+            ]
         )
 
     def show_about(self):
