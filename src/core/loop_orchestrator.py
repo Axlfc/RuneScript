@@ -101,6 +101,7 @@ class LoopOrchestrator:
                     self._log_file_content(response.test_file, log_callback)
 
                     val_red = self.validator.validate_red(
+                        self.project_path,
                         str(self.project_path / response.test_file),
                         response.test_name,
                         self.venv_python
@@ -123,6 +124,7 @@ class LoopOrchestrator:
                 if response.test_file:
                     self._log(f"=== STARTING GREEN PHASE ===", log_callback)
                     val_green = self.validator.validate_green(
+                        self.project_path,
                         str(self.project_path / response.test_file),
                         response.test_name,
                         self.venv_python

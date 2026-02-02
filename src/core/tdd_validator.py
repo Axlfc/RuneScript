@@ -19,11 +19,11 @@ class ValidationResult:
 class TDDValidator:
     """Validate each phase of TDD cycle."""
 
-    def validate_red(self, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
+    def validate_red(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
         """
         Validate RED phase: test must FAIL.
         """
-        result = self._run_test(test_file, test_name, venv_python)
+        result = self._run_test(project_path, test_file, test_name, venv_python)
 
         # In RED phase, returncode != 0 is GOOD (test failed)
         if result.returncode == 0:
@@ -41,11 +41,11 @@ class TDDValidator:
             stderr=result.stderr
         )
 
-    def validate_green(self, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
+    def validate_green(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
         """
         Validate GREEN phase: test must PASS.
         """
-        result = self._run_test(test_file, test_name, venv_python)
+        result = self._run_test(project_path, test_file, test_name, venv_python)
 
         if result.returncode != 0:
             return ValidationResult(
@@ -83,8 +83,14 @@ class TDDValidator:
             stderr=result.stderr
         )
 
-    def _run_test(self, test_file: str, test_name: str = None, venv_python: str = None):
+    def _run_test(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None):
         """Run single test with appropriate runner."""
+
+        # Make test_file relative to project_path if it's absolute
+        try:
+            rel_test_file = Path(test_file).relative_to(project_path)
+        except ValueError:
+            rel_test_file = Path(test_file)
 
         # Determine runner
         if test_file.endswith('.py'):
@@ -103,32 +109,33 @@ class TDDValidator:
                             logging.info(f"Installing pytest in venv: {venv_python}")
                             subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True, encoding='utf-8', errors='replace')
 
-                        cmd = [venv_python, "-m", "pytest", test_file]
+                        cmd = [venv_python, "-m", "pytest", str(rel_test_file)]
                         if test_name:
-                            # Ajustar comando para pytest con nombre de test específico
-                            cmd = [venv_python, "-m", "pytest", f"{test_file}::{test_name}", "-v"]
+                            # Adjust command for pytest with specific test name
+                            cmd = [venv_python, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
                         else:
                             cmd.append("-v")
                     else:
-                        # Ejecutar como script independiente
-                        cmd = [venv_python, test_file]
+                        # Execute as standalone script
+                        cmd = [venv_python, str(rel_test_file)]
                 except Exception as e:
                     logging.warning(f"Error deciding test runner for {test_file}: {e}")
                     cmd = [venv_python, test_file]
             else:
-                cmd = [sys.executable, test_file]
+                cmd = [sys.executable, str(rel_test_file)]
         elif test_file.endswith(('.js', '.ts')):
-            cmd = ["npm", "test", "--", test_file]
+            cmd = ["npm", "test", "--", str(rel_test_file)]
         else:
             # Default fallback using system python -m pytest to avoid [WinError 2]
-            cmd = [sys.executable, "-m", "pytest", test_file]
+            cmd = [sys.executable, "-m", "pytest", str(rel_test_file)]
             if test_name:
-                cmd = [sys.executable, "-m", "pytest", f"{test_file}::{test_name}", "-v"]
+                cmd = [sys.executable, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
             else:
                 cmd.append("-v")
 
         return subprocess.run(
             cmd,
+            cwd=str(project_path),
             capture_output=True,
             encoding='utf-8',
             errors='replace'
