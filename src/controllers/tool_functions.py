@@ -483,6 +483,7 @@ def open_ai_assistant_window(session_id=None):
     menu_bar = Menu(ai_assistant_window)
     ai_assistant_window.configure(menu=menu_bar)
     settings_menu = Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="Settings", menu=settings_menu)
     menu_bar.add_command(
         label="Agent Options",
         command=lambda: open_ai_server_agent_settings_window(
