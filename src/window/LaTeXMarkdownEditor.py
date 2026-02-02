@@ -56,11 +56,11 @@ class LaTeXMarkdownEditor(ThemedWindow):
         # Initialize last saved content
         self.last_saved_content = ""
 
-    def _apply_theme(self, theme: str) -> None:
+    def refresh_theme(self) -> None:
         """Apply theme to editor widgets."""
-        super()._apply_theme(theme)
+        super().refresh_theme()
         if hasattr(self, 'editor'):
-            is_dark = theme.lower() == "dark"
+            is_dark = self._theme_manager.get_current_mode().lower() == "dark"
             bg = "#1e1e1e" if is_dark else "white"
             fg = "#d4d4d4" if is_dark else "black"
             insert_bg = "white" if is_dark else "black"

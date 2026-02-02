@@ -15,6 +15,9 @@ from customtkinter import CTkFrame, CTkTextbox
 from tkinter import Menu
 from src.config.fonts import AppFonts
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def verify_theme_integrity():
@@ -135,8 +138,37 @@ except Exception as e:
     print(f"DEBUG: Failed to load theme '{current_theme}': {e}. Falling back to 'blue'.")
     customtkinter.set_default_color_theme("blue")
 
+from src.ui.themed_window import ThemedApp
+
+class ScriptsEditorApp(ThemedApp):
+    def refresh_theme(self) -> None:
+        """
+        Refresh theme for the main app window and its specific components.
+        """
+        super().refresh_theme()
+
+        # Update Treeview style (non-CTk)
+        update_treeview_style()
+
+        # Refresh line numbers
+        try:
+            from src.views.app_layers import line_numbers
+            if line_numbers and line_numbers.winfo_exists():
+                line_numbers.redraw()
+        except Exception:
+            pass
+
+        # Refresh tabs
+        try:
+            if tab_manager:
+                tab_manager.refresh_tab_bar()
+        except Exception:
+            pass
+
+        logger.debug("Main app theme refreshed")
+
 customtkinter.set_appearance_mode(get_appearance_mode(current_theme))
-root = customtkinter.CTk()
+root = ScriptsEditorApp()
 # root.iconbitmap("src/views/icon.ico")
 toolbar = CTkFrame(root)
 
@@ -252,56 +284,23 @@ update_treeview_style()
 from src.ui.theme_manager import ThemeManager
 theme_manager = ThemeManager.get_instance()
 
-# Keep track of callbacks to allow unregistration
-_theme_callbacks = {}
-
 def register_window_for_theme(window):
-    if window not in _theme_callbacks:
-        callback = lambda theme: _refresh_window(window)
-        _theme_callbacks[window] = callback
-        theme_manager.register_callback(callback)
-
-def _refresh_window(window):
-    try:
-        if hasattr(window, "winfo_exists") and window.winfo_exists():
-            if hasattr(window, "refresh_theme"):
-                window.refresh_theme()
-    except:
-        pass
+    """Legacy registration, delegates to ThemeManager."""
+    theme_manager.register_window(window)
 
 def unregister_window_for_theme(window):
-    if window in _theme_callbacks:
-        theme_manager.unregister_callback(_theme_callbacks[window])
-        del _theme_callbacks[window]
+    """Legacy unregistration, delegates to ThemeManager."""
+    theme_manager.unregister_window(window)
 
 def apply_theme(theme_name, mode=None):
     """
-    Apply theme and appearance mode to the application.
+    Apply theme and appearance mode to the application globally and in real-time.
     """
     if mode is None:
-        from src.controllers.parameters import get_appearance_mode
         mode = get_appearance_mode(theme_name)
 
-    if mode in ["Dark", "Light", "System"]:
-        theme_manager.set_theme(mode)
-
-    # Update Treeview style (non-CTk)
-    update_treeview_style()
-
-    # Refresh some critical components
-    try:
-        from src.views.app_layers import line_numbers
-        if line_numbers and line_numbers.winfo_exists():
-            line_numbers.redraw()
-    except:
-        pass
-
-    # Refresh tabs
-    try:
-        if tab_manager:
-            tab_manager.refresh_tab_bar()
-    except:
-        pass
+    # This will trigger refresh_theme() on all registered windows, including root
+    theme_manager.apply_theme(theme_name, mode)
 
     # Force a redraw of the root
     root.update()

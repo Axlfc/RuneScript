@@ -234,6 +234,14 @@ class SystemInfoWindow(ThemedWindow):
         self.tabview.pack(expand=True, fill="both", padx=10, pady=10)
         self._create_tabs()
 
-    def _apply_theme(self, theme: str):
-        super()._apply_theme(theme)
+    def refresh_theme(self):
+        super().refresh_theme()
         # Force refresh of styles if needed
+        try:
+            style = ttk.Style()
+            is_dark = ctk.get_appearance_mode().lower() == "dark"
+            bg = "#2b2b2b" if is_dark else "white"
+            fg = "white" if is_dark else "black"
+            style.configure("SystemInfo.Treeview", background=bg, foreground=fg, fieldbackground=bg)
+        except Exception:
+            pass

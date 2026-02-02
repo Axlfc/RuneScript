@@ -8,16 +8,16 @@ def test_theme_manager_is_singleton():
     manager2 = ThemeManager.get_instance()
     assert manager1 is manager2
 
-def test_get_current_theme_returns_valid_mode():
+def test_get_current_mode_returns_valid_mode():
     ThemeManager._instance = None
     manager = ThemeManager.get_instance()
-    theme = manager.get_current_theme()
-    assert theme in ["Dark", "Light", "System"]
+    mode = manager.get_current_mode()
+    assert mode in ["Dark", "Light", "System"]
 
-def test_set_theme_changes_appearance_mode():
+def test_apply_theme_changes_appearance_mode():
     ThemeManager._instance = None
     manager = ThemeManager.get_instance()
-    manager.set_theme("Dark")
-    assert ctk.get_appearance_mode() == "Dark"
-    manager.set_theme("Light")
-    assert ctk.get_appearance_mode() == "Light"
+    manager.apply_theme("blue", "Dark")
+    ctk.set_appearance_mode.assert_called_with("Dark")
+    manager.apply_theme("blue", "Light")
+    ctk.set_appearance_mode.assert_called_with("Light")

@@ -91,7 +91,7 @@ class SettingsWindow(ThemedWindow):
         return sorted(list(set(themes)))
 
     def on_close(self):
-        unregister_window_for_theme(self)
+        # ThemedWindow.destroy already handles unregistration
         self.destroy()
 
     def setup_ui(self):
@@ -241,8 +241,8 @@ class SettingsWindow(ThemedWindow):
 
         if theme:
             try:
-                from src.views.tk_utils import apply_theme
-                apply_theme(theme, mode)
+                from src.ui.theme_manager import ThemeManager
+                ThemeManager.get_instance().apply_theme(theme, mode)
             except Exception as e:
                 messagebox.showerror("Theme Error", f"Error applying theme: {e}")
 
@@ -264,8 +264,8 @@ class SettingsWindow(ThemedWindow):
         default_theme = read_config_parameter("options.theme_appearance.theme")
         default_mode = read_config_parameter("options.theme_appearance.mode")
         try:
-            from src.views.tk_utils import apply_theme
-            apply_theme(default_theme, default_mode)
+            from src.ui.theme_manager import ThemeManager
+            ThemeManager.get_instance().apply_theme(default_theme, default_mode)
         except Exception as e:
             messagebox.showerror("Theme Error", f"Error resetting theme: {e}")
 
