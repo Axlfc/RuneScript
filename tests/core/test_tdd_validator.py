@@ -55,26 +55,30 @@ def test_validate_green_fails_when_test_fails():
         assert result.success is False
         assert "still failing" in result.message.lower()
 
-def test_validate_refactor_passes_when_all_tests_pass():
+def test_validate_refactor_passes_when_all_tests_pass(tmp_path):
     """REFACTOR validation passes when all tests pass."""
     validator = TDDValidator()
+    # Create a dummy test file so it doesn't skip execution
+    (tmp_path / "test_dummy.py").write_text("def test_pass(): pass")
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = Mock(returncode=0, stderr="", stdout="")
 
-        result = validator.validate_refactor(Path("project/"))
+        result = validator.validate_refactor(tmp_path)
 
         assert result.success is True
         assert "REFACTOR" in result.message
 
-def test_validate_refactor_fails_on_regression():
+def test_validate_refactor_fails_on_regression(tmp_path):
     """REFACTOR validation fails when regression detected."""
     validator = TDDValidator()
+    # Create a dummy test file so it doesn't skip execution
+    (tmp_path / "test_dummy.py").write_text("def test_fail(): assert False")
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = Mock(returncode=1, stderr="Regression!", stdout="")
 
-        result = validator.validate_refactor(Path("project/"))
+        result = validator.validate_refactor(tmp_path)
 
         assert result.success is False
         assert "regression" in result.message.lower()
