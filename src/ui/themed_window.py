@@ -15,8 +15,8 @@ class ThemedWindow(ctk.CTkToplevel):
     Base class for themed windows.
 
     Features:
-    - Automatically applies current theme
-    - Registers for theme updates
+    - Automatically registers for theme updates
+    - Provides a refresh_theme method for in-place updates
     - Unregisters on destroy
     """
 
@@ -25,32 +25,24 @@ class ThemedWindow(ctk.CTkToplevel):
 
         self._theme_manager = ThemeManager.get_instance()
 
-        # Apply current theme
-        self._apply_theme(self._theme_manager.get_current_theme())
-
         # Register for theme updates
-        self._theme_manager.register_callback(self._on_theme_change)
+        self._theme_manager.register_window(self)
 
         logger.debug(f"ThemedWindow created: {self.__class__.__name__}")
 
-    def _apply_theme(self, theme: str) -> None:
+    def refresh_theme(self) -> None:
         """
-        Apply theme to this window.
-
-        Override this in subclasses to apply custom theming.
+        Actualiza TODOS los widgets de esta ventana con el nuevo tema.
+        Override this in subclasses for custom component updates.
         """
-        # Base implementation: CustomTkinter handles most styling automatically
-        logger.debug(f"Applying theme '{theme}' to {self.__class__.__name__}")
-
-    def _on_theme_change(self, new_theme: str) -> None:
-        """Called when theme changes."""
-        logger.debug(f"Theme changed to '{new_theme}' in {self.__class__.__name__}")
-        self._apply_theme(new_theme)
+        logger.debug(f"Refreshing theme for {self.__class__.__name__}")
+        self._theme_manager.refresh_widget_recursive(self)
+        self.update_idletasks()
 
     def destroy(self):
         """Clean up before destroying."""
         # Unregister from theme manager
-        self._theme_manager.unregister_callback(self._on_theme_change)
+        self._theme_manager.unregister_window(self)
         logger.debug(f"ThemedWindow destroying: {self.__class__.__name__}")
 
         # Call default destroy
@@ -67,24 +59,16 @@ class ThemedFrame(ctk.CTkFrame):
 
         self._theme_manager = ThemeManager.get_instance()
 
-        # Apply current theme
-        self._apply_theme(self._theme_manager.get_current_theme())
-
         # Register for theme updates
-        self._theme_manager.register_callback(self._on_theme_change)
+        self._theme_manager.register_window(self)
 
-    def _apply_theme(self, theme: str) -> None:
-        """Apply theme to this frame."""
-        # Override in subclasses if needed
-        pass
-
-    def _on_theme_change(self, new_theme: str) -> None:
-        """Called when theme changes."""
-        self._apply_theme(new_theme)
+    def refresh_theme(self) -> None:
+        """Refresh theme for this frame and its children."""
+        self._theme_manager.refresh_widget_recursive(self)
 
     def destroy(self):
         """Clean up before destroying."""
-        self._theme_manager.unregister_callback(self._on_theme_change)
+        self._theme_manager.unregister_window(self)
         super().destroy()
 
 
@@ -98,24 +82,18 @@ class ThemedApp(ctk.CTk):
 
         self._theme_manager = ThemeManager.get_instance()
 
-        # Apply current theme
-        self._apply_theme(self._theme_manager.get_current_theme())
-
         # Register for theme updates
-        self._theme_manager.register_callback(self._on_theme_change)
+        self._theme_manager.register_window(self)
 
         logger.debug(f"ThemedApp created: {self.__class__.__name__}")
 
-    def _apply_theme(self, theme: str) -> None:
-        """Apply theme to this window."""
-        logger.debug(f"Applying theme '{theme}' to {self.__class__.__name__}")
-
-    def _on_theme_change(self, new_theme: str) -> None:
-        """Called when theme changes."""
-        logger.debug(f"Theme changed to '{new_theme}' in {self.__class__.__name__}")
-        self._apply_theme(new_theme)
+    def refresh_theme(self) -> None:
+        """Refresh theme for the main app window."""
+        logger.debug(f"Refreshing theme for {self.__class__.__name__}")
+        self._theme_manager.refresh_widget_recursive(self)
+        self.update_idletasks()
 
     def destroy(self):
         """Clean up before destroying."""
-        self._theme_manager.unregister_callback(self._on_theme_change)
+        self._theme_manager.unregister_window(self)
         super().destroy()

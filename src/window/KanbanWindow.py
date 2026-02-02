@@ -44,6 +44,10 @@ class KanbanWindow(ThemedWindow):
         with open("data/kanban_tasks.json", "w") as f:
             json.dump(self.kanban_data, f, indent=4)
 
+    def refresh_theme(self):
+        super().refresh_theme()
+        self.refresh_kanban_board()
+
     def refresh_kanban_board(self):
         for widget in self.columns_frame.winfo_children():
             widget.destroy()
@@ -59,9 +63,14 @@ class KanbanWindow(ThemedWindow):
         limit = self.kanban_data['wip_limits'].get(column_name, "N/A")
         ctk.CTkLabel(col_frame, text=f"{column_name} ({limit})", font=("Arial", 12, "bold")).pack(pady=5)
 
+        # Get theme colors
+        is_dark = ctk.get_appearance_mode().lower() == "dark"
+        bg = "#2b2b2b" if is_dark else "white"
+        fg = "white" if is_dark else "black"
+
         # We'll use a standard Listbox for now as CTk doesn't have a direct equivalent easily draggable
         from tkinter import Listbox, SINGLE
-        task_list = Listbox(col_frame, selectmode=SINGLE, bg="#2b2b2b", fg="white", borderwidth=0, highlightthickness=0)
+        task_list = Listbox(col_frame, selectmode=SINGLE, bg=bg, fg=fg, borderwidth=0, highlightthickness=0)
         task_list.pack(fill="both", expand=True, padx=5, pady=5)
 
         for task in [t for t in self.kanban_data["tasks"] if t["column"] == column_name]:
