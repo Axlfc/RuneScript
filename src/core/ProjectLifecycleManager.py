@@ -3,6 +3,11 @@ import logging
 import threading
 import subprocess
 import uuid
+import time
+import json
+import re
+import glob
+from pathlib import Path
 from tkinter import messagebox
 from typing import Dict, Any
 
@@ -10,6 +15,11 @@ from src.utils.parser_utils import AIResponseParser
 from src.utils.ProjectIO import ProjectIO
 from src.utils.test_runner import run_pytest
 from src.models.WebProjectGenerator import WebProjectGenerator
+from src.generators.spec_generator import SpecGenerator
+from src.generators.plan_generator import PlanGenerator
+from src.generators.plan_reviewer import PlanReviewer
+from src.core.loop_orchestrator import LoopOrchestrator
+from src.core.plan_parser import PlanParser
 
 class ProjectLifecycleManager:
     """
@@ -312,13 +322,130 @@ class ProjectLifecycleManager:
         if hasattr(self.controller, 'ai_orchestrator'):
             self.controller.ai_orchestrator.stop_generation()
 
+    def _save_metrics(self, project_path, new_metrics):
+        """Save project metrics to nia_metrics.json"""
+        metrics_path = Path(project_path) / "nia_metrics.json"
+
+        current_metrics = {}
+        if metrics_path.exists():
+            try:
+                current_metrics = json.loads(metrics_path.read_text(encoding='utf-8'))
+            except:
+                pass
+
+        # Deep merge for top level keys
+        for key, value in new_metrics.items():
+            if key in current_metrics and isinstance(current_metrics[key], dict) and isinstance(value, dict):
+                current_metrics[key].update(value)
+            else:
+                current_metrics[key] = value
+
+        metrics_path.write_text(json.dumps(current_metrics, indent=2), encoding='utf-8')
+
+    def _initialize_project_files(self, project_path, spec_content):
+        """Generates automatically essential project files."""
+        import sys
+
+        self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Initializing project files...")
+
+        # 1. Detect project type
+        project_types = self._detect_project_type(spec_content)
+
+        # 2. Extract dependencies
+        dependencies = self._detect_dependencies(project_path, spec_content)
+
+        # 3. Create requirements.txt (Python)
+        requirements_path = Path(project_path) / "requirements.txt"
+        if 'python' in project_types or dependencies:
+            if not dependencies:
+                dependencies = ["pytest"]
+            requirements_path.write_text("\n".join(sorted(dependencies)) + "\n", encoding='utf-8')
+            self._save_metrics(project_path, {"dependencies": {"requirements_generated": True, "auto_detected": dependencies}})
+
+        # 4. Create .gitignore
+        self._create_gitignore(project_path, project_types)
+        self._save_metrics(project_path, {"dependencies": {"gitignore_generated": True}})
+
+        # 5. Setup venv and install requirements
+        setup_script = Path("scripts/setup_project_venv.py")
+        if setup_script.exists():
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Setting up virtual environment...")
+            cmd = [sys.executable, str(setup_script), str(project_path)]
+            if dependencies:
+                cmd.extend(dependencies)
+            subprocess.run(cmd, capture_output=True)
+
+        # Initial Git Commit for these files
+        try:
+            subprocess.run(["git", "add", "requirements.txt", ".gitignore"], cwd=str(project_path), capture_output=True)
+            subprocess.run(["git", "commit", "-m", "chore: Initialize project files (requirements, gitignore)"], cwd=str(project_path), capture_output=True)
+        except:
+            pass
+
+    def _detect_project_type(self, spec_content):
+        types = []
+        content = spec_content.lower()
+        if 'python' in content or '.py' in content:
+            types.append('python')
+        if any(kw in content for kw in ['node', 'npm', 'react', 'vue', 'nextjs']):
+            types.append('node')
+        if 'html' in content and 'node' not in types:
+            types.append('web')
+        return types if types else ['web']
+
+    def _detect_dependencies(self, project_path, spec_content):
+        deps = set()
+
+        # Phase 1: Scan test files
+        for test_file in glob.glob(os.path.join(project_path, "tests", "**", "*.py"), recursive=True):
+            try:
+                with open(test_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                # Simple regex for imports
+                matches = re.findall(r"^(?:from|import)\s+([a-zA-Z0-9_]+)", content, re.MULTILINE)
+                for m in matches:
+                    if m not in ['os', 'sys', 'time', 're', 'json', 'unittest', 'pytest', 'pathlib', 'logging', 'subprocess', 'threading', 'math', 'random']:
+                        deps.add(m)
+            except:
+                pass
+
+        # Phase 2: Fallback to spec hints
+        hints = {
+            "beautifulsoup": "beautifulsoup4",
+            "bs4": "beautifulsoup4",
+            "requests": "requests",
+            "pandas": "pandas",
+            "flask": "flask",
+            "django": "django",
+            "fastapi": "fastapi",
+            "numpy": "numpy"
+        }
+        spec_lower = spec_content.lower()
+        for hint, pkg in hints.items():
+            if hint in spec_lower:
+                deps.add(pkg)
+
+        return list(deps)
+
+    def _create_gitignore(self, project_path, project_types):
+        templates = {
+            'python': ['__pycache__/', '*.py[cod]', '*$py.class', '.venv/', 'venv/', 'env/', '.pytest_cache/', '*.egg-info/', '.env'],
+            'node': ['node_modules/', 'npm-debug.log*', 'yarn-debug.log*', 'yarn-error.log*', 'dist/', '.env'],
+            'web': ['.DS_Store', 'Thumbs.db', '.env']
+        }
+
+        lines = set()
+        for pt in project_types:
+            if pt in templates:
+                lines.update(templates[pt])
+
+        path = os.path.join(project_path, ".gitignore")
+        with open(path, 'w', encoding='utf-8') as f:
+            for line in sorted(list(lines)):
+                f.write(f"{line}\n")
+
     def _run_nia_autonomous_loop(self, prompt: str, project_path: str):
         """Internal method to orchestrate the full nIA cycle from initial prompt."""
-        from src.generators.spec_generator import SpecGenerator
-        from src.generators.plan_generator import PlanGenerator
-        from src.core.loop_orchestrator import LoopOrchestrator
-        from pathlib import Path
-
         path = Path(project_path)
 
         try:
@@ -345,8 +472,34 @@ class ProjectLifecycleManager:
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
+            # Phase 2.5: Plan Review & Critique
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2.5: Reviewing & Critiquing Plan...")
+            start_time = time.time()
+            reviewer = PlanReviewer()
+            approved, critique, improved_data, iterations = reviewer.review_and_improve(spec_content, plan_content, prompt)
+            duration = time.time() - start_time
+
+            if improved_data:
+                plan_content = plan_gen.env.get_template("IMPLEMENTATION_PLAN.md.jinja2").render(**improved_data)
+                (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Plan improved after {iterations} iterations.")
+
+            if not approved:
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, "⚠️ Plan review reached max iterations without full approval. Proceeding with last version.")
+
+            # Save metrics
+            self._save_metrics(path, {
+                "project_id": os.path.basename(project_path),
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "plan_review": {
+                    "iterations": iterations,
+                    "approval_time_seconds": duration,
+                    "final_approved": approved,
+                    "issues_found": [critique] if critique else []
+                }
+            })
+
             # Initial plan list update
-            from src.core.plan_parser import PlanParser
             parser = PlanParser()
             tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
             plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
@@ -365,6 +518,10 @@ class ProjectLifecycleManager:
 
             # 5. Launch nIA Loop
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Launching nIA Autonomous Loop...")
+
+            # Initialize project files (requirements.txt, .gitignore)
+            self._initialize_project_files(path, spec_content)
+
             orchestrator = LoopOrchestrator(path)
 
             def log_cb(msg: str):
@@ -376,7 +533,6 @@ class ProjectLifecycleManager:
                     self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
                     # Update AI Plan listbox with current status
-                    from src.core.plan_parser import PlanParser
                     parser = PlanParser()
                     tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
                     if tasks:
@@ -384,6 +540,21 @@ class ProjectLifecycleManager:
                         self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
 
             result = orchestrator.run(max_iterations=50, log_callback=log_cb, stop_event=self.stop_event)
+
+            # Save execution metrics
+            if result.stats:
+                self._save_metrics(path, {
+                    "execution": {
+                        "tasks_planned": result.stats.get("tasks_planned"),
+                        "tasks_completed": result.stats.get("tasks_completed"),
+                        "total_duration_seconds": result.stats.get("duration_seconds")
+                    },
+                    "code_quality": {
+                        "average_lines_per_task": result.stats.get("average_lines_per_task"),
+                        "total_code_lines": result.stats.get("total_code_lines"),
+                        "total_test_lines": result.stats.get("total_test_lines")
+                    }
+                })
 
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"nIA Loop Finished: {result.message}")
 
