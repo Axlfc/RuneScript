@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
+from src.utils.path_utils import clean_filename
 
 class nIAResponse:
     """Structured response from nIA iteration."""
@@ -19,17 +20,18 @@ class nIAResponse:
         pattern = r"File:\s*([^\n]+)\s*\n```[^\n]*\n(.*?)\n```"
         matches = re.finditer(pattern, text, re.DOTALL)
         for match in matches:
-            filename = match.group(1).strip().replace("`", "")
+            filename = clean_filename(match.group(1).strip())
             content = match.group(2)
             files[filename] = content
 
         # Also support just code blocks if they are named in the text
         if not files:
             # Fallback to looking for filenames before code blocks
-            pattern = r"([a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+)\n```[^\n]*\n(.*?)\n```"
+            # This regex looks for something that looks like a path/file.ext possibly wrapped in markdown
+            pattern = r"([^\n]*[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+[^\n]*)\n```[^\n]*\n(.*?)\n```"
             matches = re.finditer(pattern, text, re.DOTALL)
             for match in matches:
-                filename = match.group(1).strip().replace("`", "")
+                filename = clean_filename(match.group(1).strip())
                 content = match.group(2)
                 files[filename] = content
 

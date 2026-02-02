@@ -9,6 +9,7 @@ from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
 from .nia_claude_client import nIAClaudeClient, nIAResponse
+from src.utils.path_utils import clean_filename
 import logging
 
 logger = logging.getLogger(__name__)
@@ -172,8 +173,8 @@ class LoopOrchestrator:
         return "\n\n".join(context)
 
     def _write_file(self, rel_path: str, content: str):
-        # Strip backticks from filename if any escaped through
-        rel_path = rel_path.replace("`", "")
+        # Clean the filename of markdown formatting and invalid characters
+        rel_path = clean_filename(rel_path)
         full_path = self.project_path / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding='utf-8')

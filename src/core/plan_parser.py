@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal, List
 import re
 import logging
+from src.utils.path_utils import clean_filename, clean_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -48,21 +49,21 @@ class PlanParser:
                 if '- [ ]' in line:
                     tasks.append(Task(
                         status="pending",
-                        description=line.replace('- [ ]', '').strip().replace("`", ""),
+                        description=clean_markdown(line.replace('- [ ]', '').strip()),
                         phase=current_phase,
                         line_number=line_num
                     ))
                 elif '- [x]' in line:
                     tasks.append(Task(
                         status="completed",
-                        description=line.replace('- [x]', '').strip().replace("`", ""),
+                        description=clean_markdown(line.replace('- [x]', '').strip()),
                         phase=current_phase,
                         line_number=line_num
                     ))
                 elif '- [?]' in line:
                     tasks.append(Task(
                         status="blocked",
-                        description=line.replace('- [?]', '').strip().replace("`", ""),
+                        description=clean_markdown(line.replace('- [?]', '').strip()),
                         phase=current_phase,
                         line_number=line_num
                     ))
