@@ -90,6 +90,14 @@ IMPORTANT FOR FRONTEND PROJECTS:
 
 {test_instructions}
 
+## QUALITY STANDARDS
+1. ✅ DO: Write production-quality code, not stubs.
+2. ✅ DO: Include actual content, not placeholders like "Content here" or "...".
+3. ✅ DO: Implement all features mentioned in the task in detail.
+4. ❌ DON'T: Leave empty functions or TODO comments.
+5. ❌ DON'T: Create minimal code just to pass tests.
+   - A professional implementation of a UI component should typically be 50-100+ lines including styles and logic.
+
 === CURRENT SPEC ===
 {spec}
 
@@ -104,6 +112,7 @@ IMPORTANT FOR FRONTEND PROJECTS:
 
 Please complete this task following the RED-GREEN-REFACTOR cycle.
 Always specify the filename before each code block using 'File: path/to/file' format.
+GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 
         response = self.ai.generate(full_prompt)

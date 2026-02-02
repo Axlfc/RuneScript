@@ -78,8 +78,11 @@ class LoopOrchestrator:
             context = self._get_project_context()
 
             # 4. Ask AI for solution (with quality retry)
-            max_retries = 1
+            max_retries = 2
             ai_feedback = ""
+            active_test_file = None
+            active_test_name = None
+
             for attempt in range(max_retries + 1):
                 try:
                     if attempt > 0:
@@ -98,60 +101,80 @@ class LoopOrchestrator:
 
                     if not response.files:
                         self._log("❌ AI provided no code changes.", log_callback)
-                        self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes.")
-                        return LoopResult("BLOCKED", iteration, "AI provided no code changes.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                        if attempt == max_retries:
+                            self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes after retries.")
+                            return LoopResult("BLOCKED", iteration, "AI provided no code changes.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                        ai_feedback = "You provided no code changes. Please provide the necessary implementation files."
+                        continue
 
-                    # 5. TDD Cycle: RED Phase
-                    if response.test_file:
+                    # 5. TDD Cycle: RED Phase (ONLY on attempt 0)
+                    if attempt == 0 and response.test_file:
+                        active_test_file = response.test_file
+                        active_test_name = response.test_name
+
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._log_project_structure(log_callback)
 
-                        self._log(f"Checking RED phase for {response.test_file}...", log_callback)
+                        self._log(f"Checking RED phase for {active_test_file}...", log_callback)
                         # Write ONLY the test file
-                        test_content = response.files[response.test_file]
-                        self._write_file(response.test_file, test_content)
-                        self._log_file_content(response.test_file, log_callback)
+                        test_content = response.files[active_test_file]
+                        self._write_file(active_test_file, test_content)
+                        self._log_file_content(active_test_file, log_callback)
 
                         # DEBUG LOGS
-                        test_file_path = self.project_path / response.test_file
+                        test_file_path = self.project_path / active_test_file
                         self._log(f"DEBUG: About to execute test at: {test_file_path}", log_callback)
-                        self._log(f"DEBUG: Test file exists: {test_file_path.exists()}", log_callback)
-                        if test_file_path.exists():
-                            self._log(f"DEBUG: Test file size: {test_file_path.stat().st_size} bytes", log_callback)
 
                         val_red = self.validator.validate_red(
                             self.project_path,
                             str(test_file_path),
-                            response.test_name,
+                            active_test_name,
                             self.venv_python
                         )
                         self._log_validation_result(val_red, "RED", log_callback)
 
                         if not val_red.success:
                             self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
+                            # We proceed anyway to try GREEN, or we could retry RED?
+                            # Usually if RED fails (test passes), it means implementation is already there or test is bad.
 
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
                     # 6. TDD Cycle: GREEN Phase
                     self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
+
+                    # Pre-application validation for placeholders
+                    placeholders = ["TODO", "...", "Add more here", "Content here", "placeholder"]
+                    found_placeholder = False
                     for filename, content in response.files.items():
+                        if any(ph in content for ph in placeholders):
+                            self._log(f"⚠️ Warning: Placeholder found in {filename}.", log_callback)
+                            found_placeholder = True
+                            break
+
+                    if found_placeholder and attempt < max_retries:
+                        ai_feedback = "Your implementation contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic."
+                        continue
+
+                    for filename, content in response.files.items():
+                        # Don't overwrite the test file if we are in a quality retry,
+                        # UNLESS the AI explicitly wants to update the test.
+                        # But user says "Mantener el test original".
+                        if attempt > 0 and filename == active_test_file:
+                             continue
                         self._write_file(filename, content)
 
                     self._log_project_structure(log_callback)
 
-                    if response.test_file:
+                    if active_test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
-
-                        # DEBUG LOGS
-                        test_file_path = self.project_path / response.test_file
-                        self._log(f"DEBUG: About to execute test at: {test_file_path}", log_callback)
-                        self._log(f"DEBUG: Test file exists: {test_file_path.exists()}", log_callback)
+                        test_file_path = self.project_path / active_test_file
 
                         val_green = self.validator.validate_green(
                             self.project_path,
                             str(test_file_path),
-                            response.test_name,
+                            active_test_name,
                             self.venv_python
                         )
                         self._log_validation_result(val_green, "GREEN", log_callback)
@@ -168,12 +191,19 @@ class LoopOrchestrator:
 
                     # QUALITY VALIDATION
                     total_lines = self._count_project_code_lines()
-                    if total_lines < 50 and attempt < max_retries:
-                        ai_feedback = f"Previous implementation was too minimal ({total_lines} lines). Please provide a complete, production-quality implementation with actual functionality and complete styling."
-                        self._log(f"⚠️ Warning: Only {total_lines} lines generated. Retrying for better quality...", log_callback)
+                    quality_threshold = 100
+                    if total_lines < quality_threshold and attempt < max_retries:
+                        ai_feedback = (f"CRITICAL: Previous implementation was too minimal ({total_lines} lines). "
+                                      f"Minimum {quality_threshold} lines of production-quality code required. "
+                                      "Provide a complete implementation with actual content, detailed CSS, and functional JS. "
+                                      "DO NOT use stubs or placeholder comments.\n\n"
+                                      "Example of ACCEPTABLE output (detailed structure):\n"
+                                      "<body>\n  <header><nav>...</nav></header>\n  <main>\n    <section id='hero'>...</section>\n"
+                                      "    <section id='works'>...</section>\n  </main>\n</body>")
+                        self._log(f"⚠️ Warning: Only {total_lines} lines generated. Retrying for better quality (Target: {quality_threshold})...", log_callback)
                         continue
 
-                    if total_lines < 50:
+                    if total_lines < quality_threshold:
                         self._log(f"⚠️ Warning: Only {total_lines} lines generated. Proceeding as max retries reached.", log_callback)
 
                     # Success, break retry loop
