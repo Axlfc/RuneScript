@@ -19,17 +19,19 @@ You are nIA, executing an autonomous TDD cycle.
 ### 3. CYCLE RED (Test Must Fail)
 - Write simplest test expressing the task
 - Place in appropriate test file
-- Run: `pytest path/to/test::test_name -v`
+- RUNNING TESTS:
+  - If project is Python-only: Use `pytest path/to/test::test_name -v`
+  - If project is Frontend (HTML/CSS/JS): Use a standalone Python script (e.g. `tests/test_structure.py`) with `BeautifulSoup` if needed. DO NOT use `import pytest` unless explicitly required. The script MUST be executable with `python path/to/test.py` and include `if __name__ == "__main__":`.
 - Verify FAILS for CORRECT reason
 
 ### 4. CYCLE GREEN (Minimal Code)
 - Write SIMPLEST code to pass test
-- Run: `pytest path/to/test::test_name -v`
+- Run the test again (using the same method as in RED phase)
 - Verify PASSES
 
 ### 5. CYCLE REFACTOR (Optional)
 - ONLY if obvious duplication or confusion
-- Run ALL tests: `pytest`
+- Run ALL tests to verify no regressions.
 - Verify ALL pass
 
 ### 6. UPDATE

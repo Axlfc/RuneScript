@@ -69,8 +69,23 @@ class nIAClaudeClient:
         """
         Execute one nIA iteration.
         """
+        is_frontend = "HTML/CSS" in spec or "BeautifulSoup" in spec or "Frontend" in spec
+
+        test_instructions = ""
+        if is_frontend:
+            test_instructions = """
+IMPORTANT FOR FRONTEND PROJECTS:
+- Generate standalone Python scripts for testing (e.g., in 'tests/' directory).
+- DO NOT use 'import pytest'.
+- Use 'assert' for validations and 'print("✅ ...")' for success messages.
+- Include 'if __name__ == "__main__":' to execute all test functions.
+- You can use 'from bs4 import BeautifulSoup' for HTML parsing.
+"""
+
         full_prompt = f"""
 {prompt}
+
+{test_instructions}
 
 === CURRENT SPEC ===
 {spec}

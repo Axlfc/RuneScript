@@ -1,5 +1,6 @@
 from pathlib import Path
 from enum import Enum
+import sys
 import subprocess
 import logging
 
@@ -93,24 +94,38 @@ class TDDValidator:
                     with open(test_file, 'r', encoding='utf-8') as f:
                         content = f.read()
 
-                    if "pytest" in content or "def test_" in content:
+                    # If it uses pytest explicitly (import pytest)
+                    if "import pytest" in content:
+                        # Asegurarse de que pytest esté instalado
+                        try:
+                            subprocess.run([venv_python, "-m", "pytest", "--version"], capture_output=True, check=True)
+                        except (subprocess.CalledProcessError, FileNotFoundError):
+                            logging.info(f"Installing pytest in venv: {venv_python}")
+                            subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True)
+
                         cmd = [venv_python, "-m", "pytest", test_file]
                         if test_name:
-                            cmd[3] = f"{test_file}::{test_name}"
-                        cmd.append("-v")
+                            # Ajustar comando para pytest con nombre de test específico
+                            cmd = [venv_python, "-m", "pytest", f"{test_file}::{test_name}", "-v"]
+                        else:
+                            cmd.append("-v")
                     else:
+                        # Ejecutar como script independiente
                         cmd = [venv_python, test_file]
-                except Exception:
+                except Exception as e:
+                    logging.warning(f"Error deciding test runner for {test_file}: {e}")
                     cmd = [venv_python, test_file]
             else:
-                cmd = ["python", test_file]
+                cmd = [sys.executable, test_file]
         elif test_file.endswith(('.js', '.ts')):
             cmd = ["npm", "test", "--", test_file]
         else:
-            cmd = ["pytest", test_file] # Default fallback
+            # Default fallback using system python -m pytest to avoid [WinError 2]
+            cmd = [sys.executable, "-m", "pytest", test_file]
             if test_name:
-                cmd[1] = f"{test_file}::{test_name}"
-            cmd.append("-v")
+                cmd = [sys.executable, "-m", "pytest", f"{test_file}::{test_name}", "-v"]
+            else:
+                cmd.append("-v")
 
         return subprocess.run(
             cmd,
@@ -130,10 +145,46 @@ class TDDValidator:
             )
 
         # Python/Pytest
-        if venv_python:
-            cmd = [venv_python, "-m", "pytest", "."]
+        # Buscar si algún archivo de test usa pytest
+        uses_pytest = False
+        test_dir = project_path / "tests"
+        if not test_dir.exists():
+            test_dir = project_path
+
+        for py_file in test_dir.glob("**/test*.py"):
+            try:
+                if "import pytest" in py_file.read_text(encoding='utf-8'):
+                    uses_pytest = True
+                    break
+            except Exception:
+                pass
+
+        if uses_pytest:
+            if venv_python:
+                # Ensure pytest is installed
+                subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True)
+                cmd = [venv_python, "-m", "pytest", "."]
+            else:
+                cmd = [sys.executable, "-m", "pytest", "."]
         else:
-            cmd = ["pytest", "."]
+            # Run all test files as individual scripts
+            # For simplicity, return result of the first failing test or the last success
+            last_result = None
+            for py_file in test_dir.glob("**/test*.py"):
+                if venv_python:
+                    cmd = [venv_python, str(py_file)]
+                else:
+                    cmd = [sys.executable, str(py_file)]
+
+                last_result = subprocess.run(cmd, capture_output=True, text=True)
+                if last_result.returncode != 0:
+                    return last_result
+
+            if last_result:
+                return last_result
+
+            # Si no hay archivos de test
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout="No tests found", stderr="")
 
         return subprocess.run(
             cmd,
