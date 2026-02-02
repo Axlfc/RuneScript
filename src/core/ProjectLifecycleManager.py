@@ -323,7 +323,7 @@ class ProjectLifecycleManager:
 
         try:
             # 1. Initialize Git
-            subprocess.run(["git", "init"], cwd=project_path, capture_output=True)
+            subprocess.run(["git", "init"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
 
             # Check for stop before starting phases
             if self.stop_event.is_set():
@@ -360,8 +360,8 @@ class ProjectLifecycleManager:
                 (path / "NIA_PROMPT.md").write_text(prompt_template.read_text(encoding='utf-8'), encoding='utf-8')
 
             # Initial Commit
-            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True)
-            subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True)
+            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
+            subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
 
             # 5. Launch nIA Loop
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Launching nIA Autonomous Loop...")

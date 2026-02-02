@@ -16,7 +16,7 @@ def get_python_executable() -> str:
 def check_node() -> bool:
     """Check if Node.js is available."""
     try:
-        subprocess.run(["node", "--version"], capture_output=True, check=True)
+        subprocess.run(["node", "--version"], capture_output=True, check=True, encoding='utf-8', errors='replace')
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -24,7 +24,7 @@ def check_node() -> bool:
 def check_npm() -> bool:
     """Check if npm is available."""
     try:
-        subprocess.run(["npm", "--version"], capture_output=True, check=True)
+        subprocess.run(["npm", "--version"], capture_output=True, check=True, encoding='utf-8', errors='replace')
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False

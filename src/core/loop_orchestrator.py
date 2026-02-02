@@ -196,7 +196,7 @@ class LoopOrchestrator:
                     deps.extend(["beautifulsoup4", "lxml"])
 
                 cmd = [sys.executable, str(setup_script), str(self.project_path)] + deps
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace')
 
                 # Extract VENV_PYTHON from output
                 for line in result.stdout.splitlines():
@@ -217,15 +217,15 @@ class LoopOrchestrator:
         """Safe git commit."""
         try:
             # Check if git is installed
-            subprocess.run(["git", "--version"], capture_output=True, check=True)
+            subprocess.run(["git", "--version"], capture_output=True, check=True, encoding='utf-8', errors='replace')
 
             # Check if git repo
             if not (self.project_path / ".git").exists():
                 logger.info("Initializing new git repository")
-                subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, check=True)
+                subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, check=True, encoding='utf-8', errors='replace')
 
-            subprocess.run(["git", "add", "."], cwd=self.project_path, capture_output=True, check=True)
-            subprocess.run(["git", "commit", "-m", message], cwd=self.project_path, capture_output=True, check=True)
+            subprocess.run(["git", "add", "."], cwd=self.project_path, capture_output=True, check=True, encoding='utf-8', errors='replace')
+            subprocess.run(["git", "commit", "-m", message], cwd=self.project_path, capture_output=True, check=True, encoding='utf-8', errors='replace')
             logger.info(f"Git commit successful: {message}")
         except FileNotFoundError:
             logger.warning("Git binary not found. Skipping commit.")

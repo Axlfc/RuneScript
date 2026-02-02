@@ -96,12 +96,12 @@ class TDDValidator:
 
                     # If it uses pytest explicitly (import pytest)
                     if "import pytest" in content:
-                        # Asegurarse de que pytest esté instalado
+                        # Ensure pytest is installed
                         try:
-                            subprocess.run([venv_python, "-m", "pytest", "--version"], capture_output=True, check=True)
+                            subprocess.run([venv_python, "-m", "pytest", "--version"], capture_output=True, check=True, encoding='utf-8', errors='replace')
                         except (subprocess.CalledProcessError, FileNotFoundError):
                             logging.info(f"Installing pytest in venv: {venv_python}")
-                            subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True)
+                            subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True, encoding='utf-8', errors='replace')
 
                         cmd = [venv_python, "-m", "pytest", test_file]
                         if test_name:
@@ -130,7 +130,8 @@ class TDDValidator:
         return subprocess.run(
             cmd,
             capture_output=True,
-            text=True
+            encoding='utf-8',
+            errors='replace'
         )
 
     def _run_all_tests(self, project_path: Path, venv_python: str = None):
@@ -141,7 +142,8 @@ class TDDValidator:
                 ["npm", "test"],
                 cwd=str(project_path),
                 capture_output=True,
-                text=True
+                encoding='utf-8',
+                errors='replace'
             )
 
         # Python/Pytest
@@ -162,7 +164,7 @@ class TDDValidator:
         if uses_pytest:
             if venv_python:
                 # Ensure pytest is installed
-                subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True)
+                subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True, encoding='utf-8', errors='replace')
                 cmd = [venv_python, "-m", "pytest", "."]
             else:
                 cmd = [sys.executable, "-m", "pytest", "."]
@@ -176,7 +178,7 @@ class TDDValidator:
                 else:
                     cmd = [sys.executable, str(py_file)]
 
-                last_result = subprocess.run(cmd, capture_output=True, text=True)
+                last_result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace')
                 if last_result.returncode != 0:
                     return last_result
 
@@ -190,5 +192,6 @@ class TDDValidator:
             cmd,
             cwd=str(project_path),
             capture_output=True,
-            text=True
+            encoding='utf-8',
+            errors='replace'
         )
