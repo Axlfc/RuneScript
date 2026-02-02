@@ -19,7 +19,7 @@ class nIAResponse:
         pattern = r"File:\s*([^\n]+)\s*\n```[^\n]*\n(.*?)\n```"
         matches = re.finditer(pattern, text, re.DOTALL)
         for match in matches:
-            filename = match.group(1).strip()
+            filename = match.group(1).strip().replace("`", "")
             content = match.group(2)
             files[filename] = content
 
@@ -29,7 +29,7 @@ class nIAResponse:
             pattern = r"([a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+)\n```[^\n]*\n(.*?)\n```"
             matches = re.finditer(pattern, text, re.DOTALL)
             for match in matches:
-                filename = match.group(1).strip()
+                filename = match.group(1).strip().replace("`", "")
                 content = match.group(2)
                 files[filename] = content
 
