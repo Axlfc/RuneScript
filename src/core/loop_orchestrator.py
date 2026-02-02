@@ -15,10 +15,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class LoopResult:
-    def __init__(self, status: str, iterations: int, message: str):
+    def __init__(self, status: str, iterations: int, message: str, stats: dict = None):
         self.status = status
         self.iterations = iterations
         self.message = message
+        self.stats = stats or {}
 
 class LoopOrchestrator:
     def __init__(self, project_path: Path):
@@ -40,11 +41,15 @@ class LoopOrchestrator:
         if not self.spec_path.exists() or not self.plan_path.exists() or not self.prompt_path.exists():
             return LoopResult("ERROR", 0, "Missing required nIA files (SPEC.md, IMPLEMENTATION_PLAN.md, or NIA_PROMPT.md)")
 
+        start_time = time.time()
+        tasks_planned = 0
+        tasks_completed = 0
+
         for iteration in range(max_iterations):
             # CHECK STOP EVENT
             if stop_event.is_set():
                 self._log(f"Loop stopped by user at iteration {iteration}", log_callback)
-                return LoopResult("STOPPED", iteration, "Loop stopped by user")
+                return LoopResult("STOPPED", iteration, "Loop stopped by user", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
             self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
 
@@ -56,91 +61,123 @@ class LoopOrchestrator:
             try:
                 spec = self.spec_path.read_text(encoding='utf-8')
                 tasks = self.parser.parse(self.plan_path)
+                tasks_planned = len(tasks)
                 prompt = self.prompt_path.read_text(encoding='utf-8')
             except Exception as e:
                 self._log(f"❌ Error loading files: {str(e)}", log_callback)
-                return LoopResult("ERROR", iteration, f"File loading error: {e}")
+                return LoopResult("ERROR", iteration, f"File loading error: {e}", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
             # 2. Find next task
             next_task = self.parser.find_next_pending(tasks)
             if not next_task:
-                return LoopResult("ALL_COMPLETE", iteration, "✅ All tasks completed!")
+                return LoopResult("ALL_COMPLETE", iteration, "✅ All tasks completed!", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
             self._log(f"Target Task: {next_task.description}", log_callback)
 
             # 3. Get context (all project files)
             context = self._get_project_context()
 
-            # 4. Ask AI for solution
-            try:
-                response = self.ai_client.execute_nia_iteration(
-                    spec=spec,
-                    plan=self.plan_path.read_text(encoding='utf-8'),
-                    prompt=prompt,
-                    task=next_task,
-                    context=context
-                )
+            # 4. Ask AI for solution (with quality retry)
+            max_retries = 1
+            ai_feedback = ""
+            for attempt in range(max_retries + 1):
+                try:
+                    if attempt > 0:
+                        self._log(f"Attempt {attempt+1}: Retrying with quality feedback...", log_callback)
 
-                if stop_event.is_set():
-                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
+                    response = self.ai_client.execute_nia_iteration(
+                        spec=spec,
+                        plan=self.plan_path.read_text(encoding='utf-8'),
+                        prompt=prompt,
+                        task=next_task,
+                        context=context + (f"\n\nFEEDBACK: {ai_feedback}" if attempt > 0 else "")
+                    )
 
-                if not response.files:
-                    self._log("❌ AI provided no code changes.", log_callback)
-                    self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes.")
-                    return LoopResult("BLOCKED", iteration, "AI provided no code changes.")
+                    if stop_event.is_set():
+                        return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-                # 5. TDD Cycle: RED Phase
-                if response.test_file:
-                    self._log(f"=== STARTING RED PHASE ===", log_callback)
+                    if not response.files:
+                        self._log("❌ AI provided no code changes.", log_callback)
+                        self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes.")
+                        return LoopResult("BLOCKED", iteration, "AI provided no code changes.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+
+                    # 5. TDD Cycle: RED Phase
+                    if response.test_file:
+                        self._log(f"=== STARTING RED PHASE ===", log_callback)
+                        self._log_project_structure(log_callback)
+
+                        self._log(f"Checking RED phase for {response.test_file}...", log_callback)
+                        # Write ONLY the test file
+                        test_content = response.files[response.test_file]
+                        self._write_file(response.test_file, test_content)
+                        # self._log_file_content(response.test_file, log_callback)
+
+                        val_red = self.validator.validate_red(
+                            self.project_path,
+                            str(self.project_path / response.test_file),
+                            response.test_name,
+                            self.venv_python
+                        )
+                        # self._log_validation_result(val_red, "RED", log_callback)
+
+                        if not val_red.success:
+                            self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
+
+                    if stop_event.is_set():
+                        return LoopResult("STOPPED", iteration, "Loop stopped by user")
+
+                    # 6. TDD Cycle: GREEN Phase
+                    self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
+                    for filename, content in response.files.items():
+                        self._write_file(filename, content)
+
                     self._log_project_structure(log_callback)
 
-                    self._log(f"Checking RED phase for {response.test_file}...", log_callback)
-                    # Write ONLY the test file
-                    test_content = response.files[response.test_file]
-                    self._write_file(response.test_file, test_content)
-                    self._log_file_content(response.test_file, log_callback)
+                    if response.test_file:
+                        self._log(f"=== STARTING GREEN PHASE ===", log_callback)
+                        val_green = self.validator.validate_green(
+                            self.project_path,
+                            str(self.project_path / response.test_file),
+                            response.test_name,
+                            self.venv_python
+                        )
+                        # self._log_validation_result(val_green, "GREEN", log_callback)
 
-                    val_red = self.validator.validate_red(
-                        self.project_path,
-                        str(self.project_path / response.test_file),
-                        response.test_name,
-                        self.venv_python
-                    )
-                    self._log_validation_result(val_red, "RED", log_callback)
+                        if not val_green.success:
+                            self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
+                            if attempt == max_retries:
+                                self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
+                                return LoopResult("BLOCKED", iteration, "GREEN phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                            ai_feedback = f"GREEN phase failed: {val_green.stderr}. Please fix the implementation."
+                            continue
 
-                    if not val_red.success:
-                        self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
+                        self._log("✅ GREEN phase passed.", log_callback)
 
-                if stop_event.is_set():
-                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
+                    # QUALITY VALIDATION
+                    total_lines = self._count_project_code_lines()
+                    if total_lines < 50 and attempt < max_retries:
+                        ai_feedback = f"Previous implementation was too minimal ({total_lines} lines). Please provide a complete, production-quality implementation with actual functionality and complete styling."
+                        self._log(f"⚠️ Warning: Only {total_lines} lines generated. Retrying for better quality...", log_callback)
+                        continue
 
-                # 6. TDD Cycle: GREEN Phase
-                self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
-                for filename, content in response.files.items():
-                    self._write_file(filename, content)
+                    if total_lines < 50:
+                        self._log(f"⚠️ Warning: Only {total_lines} lines generated. Proceeding as max retries reached.", log_callback)
 
-                self._log_project_structure(log_callback)
+                    # Success, break retry loop
+                    break
 
-                if response.test_file:
-                    self._log(f"=== STARTING GREEN PHASE ===", log_callback)
-                    val_green = self.validator.validate_green(
-                        self.project_path,
-                        str(self.project_path / response.test_file),
-                        response.test_name,
-                        self.venv_python
-                    )
-                    self._log_validation_result(val_green, "GREEN", log_callback)
+                except Exception as e:
+                    self._log(f"❌ Error during iteration attempt: {str(e)}", log_callback)
+                    if attempt == max_retries:
+                        self.tracker.mark_blocked(self.plan_path, next_task, str(e))
+                        return LoopResult("ERROR", iteration, str(e))
+                    ai_feedback = f"Error during implementation: {str(e)}"
 
-                    if not val_green.success:
-                        self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
-                        self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
-                        return LoopResult("BLOCKED", iteration, "GREEN phase failed.")
-                    self._log("✅ GREEN phase passed.", log_callback)
+            if stop_event.is_set():
+                return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-                if stop_event.is_set():
-                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
-
-                # 7. TDD Cycle: REFACTOR Phase
+            # 7. TDD Cycle: REFACTOR Phase
+            try:
                 self._log("=== STARTING REFACTOR PHASE ===", log_callback)
                 self._log("Verifying all tests...", log_callback)
                 val_refactor = self.validator.validate_refactor(self.project_path, self.venv_python)
@@ -149,11 +186,12 @@ class LoopOrchestrator:
                 if not val_refactor.success:
                     self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
                     self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")
-                    return LoopResult("BLOCKED", iteration, "Refactor phase failed.")
+                    return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
                 self._log("✅ All tests passed.", log_callback)
 
                 # 8. Update Plan
                 self.tracker.mark_completed(self.plan_path, next_task)
+                tasks_completed += 1
 
                 # 9. Git Commit
                 self._git_commit(f"✅ {next_task.description}")
@@ -162,11 +200,11 @@ class LoopOrchestrator:
             except Exception as e:
                 self._log(f"❌ Error during iteration: {str(e)}", log_callback)
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
-                return LoopResult("ERROR", iteration, str(e))
+                return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
             time.sleep(1)
 
-        return LoopResult("MAX_ITERATIONS", max_iterations, f"Reached max iterations ({max_iterations})")
+        return LoopResult("MAX_ITERATIONS", max_iterations, f"Reached max iterations ({max_iterations})", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
     def _get_project_context(self) -> str:
         """Collect all relevant source files for context."""
@@ -293,6 +331,55 @@ class LoopOrchestrator:
         except Exception as e:
             self._log(f"Error reading file {rel_path}: {e}", log_callback)
         self._log("=== End of file content ===\n", log_callback)
+
+    def _get_final_stats(self, start_time, tasks_planned, tasks_completed) -> dict:
+        """Calculate final execution statistics."""
+        total_code_lines = self._count_project_code_lines()
+        total_test_lines = self._count_test_lines()
+        duration = time.time() - start_time
+
+        return {
+            "tasks_planned": tasks_planned,
+            "tasks_completed": tasks_completed,
+            "duration_seconds": duration,
+            "total_code_lines": total_code_lines,
+            "total_test_lines": total_test_lines,
+            "average_lines_per_task": total_code_lines / tasks_completed if tasks_completed > 0 else 0
+        }
+
+    def _count_test_lines(self) -> int:
+        """Count total lines of code in the tests directory."""
+        total_lines = 0
+        test_dir = self.project_path / "tests"
+        if not test_dir.exists():
+            return 0
+
+        for root, dirs, files in os.walk(test_dir):
+            for file in files:
+                if file.endswith('.py'):
+                    try:
+                        path = Path(root) / file
+                        content = path.read_text(encoding='utf-8')
+                        total_lines += len([line for line in content.splitlines() if line.strip()])
+                    except:
+                        pass
+        return total_lines
+
+    def _count_project_code_lines(self) -> int:
+        """Count total lines of code in the project, excluding tests and common dirs."""
+        total_lines = 0
+        exclude_dirs = {'.git', '__pycache__', 'node_modules', '.venv', 'venv', 'tests'}
+        for root, dirs, files in os.walk(self.project_path):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for file in files:
+                if file.endswith(('.py', '.js', '.ts', '.html', '.css')):
+                    try:
+                        path = Path(root) / file
+                        content = path.read_text(encoding='utf-8')
+                        total_lines += len([line for line in content.splitlines() if line.strip()])
+                    except:
+                        pass
+        return total_lines
 
     def _log_validation_result(self, result, phase_name: str, log_callback):
         """Log detailed validation result."""
