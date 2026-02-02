@@ -24,7 +24,7 @@
     "api_key": "ollama"
   },
     "gemini": {
-    "server_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+    "server_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
     "api_key": "GEMINI_API_KEY"
   },
     "euriai": {

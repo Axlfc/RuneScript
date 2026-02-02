@@ -12,8 +12,8 @@ import json
 import io
 import contextlib
 from datetime import datetime
-# from google import genai
-# from google.genai.types import GenerateContentConfig, Part, SafetySetting
+from google import genai
+from google.genai.types import GenerateContentConfig, Part, SafetySetting
 
 from dotenv import load_dotenv
 import anthropic
@@ -132,6 +132,59 @@ def load_agent_from_json(agent_name):
         if agent["name"].lower() == agent_name.lower():
             return agent
     raise ValueError(f"No agent found with the name: {agent_name}")
+
+
+def initialize_gemini30_client():
+    """Initializes the Gemini 3.0 client using the API key from environment variables."""
+    load_dotenv()
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY environment variable not set")
+    return genai.Client(api_key=api_key)
+
+
+def process_gemini30_chat(messages: list):
+    """Processes a chat request for Gemini 3.0 with a list of messages."""
+    try:
+        client = initialize_gemini30_client()
+
+        # Map standard message format to Gemini SDK format
+        gemini_messages = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            # Gemini roles are 'user' and 'model'
+            if role == "assistant":
+                role = "model"
+            elif role == "system":
+                # System messages are often handled separately in Gemini
+                role = "user"
+
+            content = msg.get("content", "")
+            gemini_messages.append({
+                "role": role,
+                "parts": [{"text": content}]
+            })
+
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=gemini_messages
+        )
+        return response.text
+    except Exception as e:
+        return f"Error while communicating with Gemini 3.0: {str(e)}"
+
+
+def chat_loop_gemini30(prompt, client, system_prompt, session_id):
+    """Interactive chat loop for Gemini 3.0."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+    response = process_gemini30_chat(messages)
+    if response.startswith("Error:"):
+        print(f"An error occurred: {response}")
+    else:
+        print(response)
 
 
 def initialize_gemini15_client():
@@ -459,8 +512,8 @@ class AIAssistant:
                 model_path = find_gguf_file()
                 chat_loop(prompt, client, model_path, current_system, session_id)
             elif self.provider == "gemini":
-                client = initialize_gemini20_client()
-                chat_loop_gemini20(prompt, client, current_system, session_id)
+                client = initialize_gemini30_client()
+                chat_loop_gemini30(prompt, client, current_system, session_id)
             elif self.provider == "claude":
                 client = initialize_claude_client()
                 chat_loop_claude(prompt, client, current_system, session_id)
@@ -531,8 +584,8 @@ def main():
         model_path = find_gguf_file()
         chat_loop(user_input, client, model_path, system_prompt, session_id)
     elif selected_llm_server_provider == "gemini":
-        client = initialize_gemini20_client()
-        chat_loop_gemini20(user_input, client, system_prompt, session_id)
+        client = initialize_gemini30_client()
+        chat_loop_gemini30(user_input, client, system_prompt, session_id)
     elif selected_llm_server_provider == "claude":
         client = initialize_claude_client()
         chat_loop_claude(user_input, client, system_prompt, session_id)
