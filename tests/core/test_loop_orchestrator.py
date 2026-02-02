@@ -20,6 +20,8 @@ def mock_project(tmp_path):
 def test_loop_can_be_stopped(mock_project):
     """Loop stops when cancellation token is set."""
     orchestrator = LoopOrchestrator(mock_project)
+    # Mock setup to avoid slow venv creation
+    orchestrator._setup_environment = Mock()
 
     stop_event = threading.Event()
 
@@ -50,6 +52,8 @@ def test_loop_can_be_stopped(mock_project):
 def test_loop_stops_between_iterations(mock_project):
     """Loop stops between iterations if stop_event is set."""
     orchestrator = LoopOrchestrator(mock_project)
+    # Mock setup to avoid slow venv creation
+    orchestrator._setup_environment = Mock()
     stop_event = threading.Event()
 
     # Mock AI client to return quickly

@@ -129,7 +129,7 @@ class SystemInfoWindow(ThemedWindow):
         try:
             if platform.system() != "Windows":
                 # Fallback for non-windows systems if they open this window
-                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                result = subprocess.run(command, shell=True, capture_output=True, encoding='utf-8', errors='replace')
                 output = result.stdout.strip() or result.stderr.strip()
             else:
                 powershell_path = "powershell.exe"
@@ -138,7 +138,6 @@ class SystemInfoWindow(ThemedWindow):
                     args,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                     encoding="utf-8",
                     errors="replace",
                     shell=False

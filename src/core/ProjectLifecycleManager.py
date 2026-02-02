@@ -323,7 +323,7 @@ class ProjectLifecycleManager:
 
         try:
             # 1. Initialize Git
-            subprocess.run(["git", "init"], cwd=project_path, capture_output=True)
+            subprocess.run(["git", "init"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
 
             # Check for stop before starting phases
             if self.stop_event.is_set():
@@ -334,7 +334,7 @@ class ProjectLifecycleManager:
             spec_gen = SpecGenerator()
             spec_content = spec_gen.generate(prompt)
             if self.stop_event.is_set(): return
-            (path / "SPEC.md").write_text(spec_content)
+            (path / "SPEC.md").write_text(spec_content, encoding='utf-8')
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
             # 3. Generate IMPLEMENTATION_PLAN.md
@@ -342,7 +342,7 @@ class ProjectLifecycleManager:
             plan_gen = PlanGenerator()
             plan_content = plan_gen.generate(spec_content)
             if self.stop_event.is_set(): return
-            (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content)
+            (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
             # Initial plan list update
@@ -357,11 +357,11 @@ class ProjectLifecycleManager:
             template_dir = Path("src/templates")
             prompt_template = template_dir / "NIA_PROMPT.md.jinja2"
             if prompt_template.exists():
-                (path / "NIA_PROMPT.md").write_text(prompt_template.read_text())
+                (path / "NIA_PROMPT.md").write_text(prompt_template.read_text(encoding='utf-8'), encoding='utf-8')
 
             # Initial Commit
-            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True)
-            subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True)
+            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
+            subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
 
             # 5. Launch nIA Loop
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Launching nIA Autonomous Loop...")

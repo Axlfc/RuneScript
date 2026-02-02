@@ -20,7 +20,8 @@ def run_pytest(project_path: str) -> TestResult:
         result = subprocess.run(
             ['pytest'],
             capture_output=True,
-            text=True,
+            encoding='utf-8',
+            errors='replace',
             cwd=project_path
         )
 

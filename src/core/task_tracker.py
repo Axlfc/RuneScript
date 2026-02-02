@@ -10,7 +10,7 @@ class TaskTracker:
     def mark_completed(self, plan_path: Path, task: Task):
         """Mark task as [x] completed."""
         try:
-            content = plan_path.read_text()
+            content = plan_path.read_text(encoding='utf-8')
             lines = content.split('\n')
 
             # Find and update the line
@@ -30,7 +30,7 @@ class TaskTracker:
             new_content = '\n'.join(lines)
             updated_content = self._update_counters(new_content)
 
-            plan_path.write_text(updated_content)
+            plan_path.write_text(updated_content, encoding='utf-8')
             logger.info(f"Marked task as completed: {task.description}")
         except Exception as e:
             logger.error(f"Error marking task complete: {e}")
@@ -39,7 +39,7 @@ class TaskTracker:
     def mark_blocked(self, plan_path: Path, task: Task, reason: str):
         """Mark task as [?] blocked with reason."""
         try:
-            content = plan_path.read_text()
+            content = plan_path.read_text(encoding='utf-8')
             lines = content.split('\n')
 
             updated = False
@@ -61,7 +61,7 @@ class TaskTracker:
             new_content = '\n'.join(lines)
             updated_content = self._update_counters(new_content)
 
-            plan_path.write_text(updated_content)
+            plan_path.write_text(updated_content, encoding='utf-8')
             logger.info(f"Marked task as blocked: {task.description} - {reason}")
         except Exception as e:
             logger.error(f"Error marking task blocked: {e}")
@@ -79,7 +79,7 @@ class TaskTracker:
 
             fd, temp_path_str = tempfile.mkstemp()
             try:
-                with os.fdopen(fd, 'w') as tmp:
+                with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
                     tmp.write(content)
 
                 parser = PlanParser()
