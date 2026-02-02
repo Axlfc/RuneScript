@@ -41,8 +41,8 @@ Use the buttons to perform WinGet operations."""
                     full_command,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                     encoding="utf-8",
+                    errors="replace",
                     shell=True)
                 output = result.stdout
                 spinner_chars = {"\\", "-", "|", "/", "█", "▒"}
@@ -180,7 +180,7 @@ Use the buttons to perform WinGet operations."""
                 # We use blocking run here because it's already in a worker thread
                 try:
                     res = subprocess.run(f'winget upgrade --include-unknown --id "{program_id}" --disable-interactivity',
-                                       stdout=subprocess.PIPE, text=True, shell=True)
+                                       stdout=subprocess.PIPE, encoding="utf-8", errors="replace", shell=True)
                     self.winget_window.after(0, lambda o=res.stdout: self.update_output(o))
                     successfully_upgraded.append(program_id)
                 except Exception as e:
