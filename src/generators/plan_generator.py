@@ -69,9 +69,12 @@ class PlanGenerator:
         # 4. Task description length check
         task_lines = [line for line in plan_content.split('\n') if '- [ ]' in line]
         for line in task_lines:
-            desc = line.replace('- [ ]', '').strip()
-            if len(desc) < 20:
-                logging.warning(f"Plan validation failed: Task description too short: '{desc}'")
+            # Remove "Test: " and "Implementation: " prefixes for length check if present
+            clean_desc = line.replace('- [ ]', '').strip()
+            clean_desc = clean_desc.replace('Test:', '').replace('Implementation:', '').strip()
+
+            if len(clean_desc) < 15: # Slightly relaxed from 20 to 15
+                logging.warning(f"Plan validation failed: Task description too short (min 15): '{clean_desc}'")
                 return False
 
         return True

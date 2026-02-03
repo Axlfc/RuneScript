@@ -466,14 +466,23 @@ class ProjectLifecycleManager:
         for task in tasks:
             if task.status == 'pending':
                 desc = task.description.lower()
-                if any(kw in desc for kw in ["create", "initialize", "setup", "generar"]):
-                    common_files = [".gitignore", "readme.md", "requirements.txt"]
+                # Use more specific keywords and word boundaries
+                keywords = ["create", "initialize", "setup", "generar", "inicializar", "configurar"]
+                if any(kw in desc for kw in keywords):
+                    common_files = [".gitignore", "readme.md", "requirements.txt", "nia_prompt.md", "spec.md"]
                     files_to_check = [f for f in common_files if f in desc]
 
                     if files_to_check:
+                        # Safety check: don't skip if it also mentions critical implementation files
+                        implementation_keywords = [".html", ".css", ".js", ".py", "assets/", "src/"]
+                        mentions_implementation = any(ik in desc for ik in implementation_keywords)
+
+                        if mentions_implementation:
+                            continue
+
                         all_exist = all((Path(project_path) / f).exists() for f in files_to_check)
                         if all_exist:
-                            self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"⏭️ Skipping redundant task: {task.description}")
+                            self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"⏭️ Skipping redundant setup task: {task.description}")
                             tracker.mark_completed(plan_path, task)
                             modified = True
         return modified

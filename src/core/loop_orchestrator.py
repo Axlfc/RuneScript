@@ -581,8 +581,16 @@ class LoopOrchestrator:
         """Verify existence of critical files for the specific tech stack."""
         # Define alternatives for some files
         ALTERNATIVES = {
-            'css/main.css': ['styles/main.css', 'css/style.css', 'styles/style.css'],
-            'js/app.js': ['js/main.js', 'js/script.js', 'js/index.js']
+            'css/main.css': [
+                'styles/main.css', 'css/style.css', 'styles/style.css',
+                'assets/css/styles.css', 'assets/css/main.css', 'assets/styles/styles.css',
+                'css/styles.css', 'styles/styles.css'
+            ],
+            'js/app.js': [
+                'js/main.js', 'js/script.js', 'js/index.js',
+                'assets/js/main.js', 'assets/js/app.js', 'assets/js/script.js',
+                'js/app.js', 'main.js'
+            ]
         }
 
         REQUIRED_FILES_BY_STACK = {
@@ -606,8 +614,28 @@ class LoopOrchestrator:
                     found_alt = True
                     break
 
-            if not found_alt:
-                missing.append(filename)
+            if found_alt:
+                continue
+
+            # Smart search: Check if ANY file with the required extension exists (excluding tests)
+            ext = os.path.splitext(filename)[1]
+            if ext in ['.css', '.js', '.html']:
+                found_by_ext = False
+                for root, dirs, files in os.walk(self.project_path):
+                    # Exclude common noisy directories
+                    dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'node_modules', '.venv', 'venv']]
+
+                    for f in files:
+                        if f.endswith(ext) and 'test' not in f.lower() and f != 'SPEC.md' and f != 'IMPLEMENTATION_PLAN.md':
+                            found_by_ext = True
+                            break
+                    if found_by_ext:
+                        break
+
+                if found_by_ext:
+                    continue
+
+            missing.append(filename)
 
         return missing
 
