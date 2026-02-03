@@ -517,13 +517,32 @@ class ProjectLifecycleManager:
             # 4. Generate IMPLEMENTATION_PLAN.md
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 3: Generating Implementation Plan...")
             plan_gen = PlanGenerator()
+            complexity = plan_gen.detect_complexity(spec_content)
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Project complexity detected: {complexity}")
 
             plan_content = ""
-            for attempt in range(3):
-                plan_content = plan_gen.generate(spec_content, tech_config=tech_config)
-                if plan_gen.validate_plan(plan_content):
+            best_plan = ""
+            max_tasks = 0
+
+            for attempt in range(1, 4):
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Generating implementation plan (attempt {attempt}/3)...")
+                current_plan = plan_gen.generate(spec_content, tech_config=tech_config, complexity=complexity)
+                task_count = current_plan.count('[ ]')
+
+                if task_count > max_tasks:
+                    max_tasks = task_count
+                    best_plan = current_plan
+
+                if plan_gen.validate_plan(current_plan, complexity):
+                    plan_content = current_plan
+                    self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"✅ Valid plan generated on attempt {attempt} ({task_count} tasks).")
                     break
-                self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"⚠️ Plan attempt {attempt + 1} invalid or too short. Retrying...")
+
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"⚠️ Plan attempt {attempt} invalid (tasks: {task_count}). Retrying...")
+
+            if not plan_content:
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, "⚠️ Could not generate a fully valid plan after 3 attempts. Proceeding with best version.")
+                plan_content = best_plan
 
             if self.stop_event.is_set(): return
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')

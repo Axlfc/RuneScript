@@ -1,5 +1,7 @@
 import re
 import json
+import logging
+import os
 from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
@@ -18,19 +20,28 @@ class nIAResponse:
         """Extract files from markdown code blocks with filenames."""
         files = {}
 
+        logging.info("--- Starting File Parsing ---")
+
         # 1. Primary pattern: File: path/to/file\n```language\ncontent\n```
-        pattern = r"File:\s*([^\n]+)\s*\n```[^\n]*\n(.*?)\n```"
-        matches = re.finditer(pattern, text, re.DOTALL)
+        # Handles bolding (**File:**), headers (### File:), etc.
+        pattern = r"(?:File|Archivo):\s*([^\n]+)\s*\n```[^\n]*\n(.*?)\n```"
+        matches = list(re.finditer(pattern, text, re.DOTALL | re.IGNORECASE))
+        logging.info(f"Primary pattern matches: {len(matches)}")
+
         for match in matches:
-            filename = clean_filename(match.group(1).strip())
+            raw_path = match.group(1).strip()
+            filename = clean_filename(raw_path)
             if filename:
                 content = match.group(2)
                 files[filename] = content
+                logging.info(f"  Detected (Primary): {filename} ({len(content)} chars)")
 
         # 2. Fallback pattern: [Any text with filename].ext\n```language\ncontent\n```
-        # We always run this to catch files that might not have the "File:" prefix
+        # Catches filenames without the "File:" prefix
         fallback_pattern = r"([^\n]*[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+[^\n]*)\n```[^\n]*\n(.*?)\n```"
-        matches = re.finditer(fallback_pattern, text, re.DOTALL)
+        matches = list(re.finditer(fallback_pattern, text, re.DOTALL | re.IGNORECASE))
+        logging.info(f"Fallback pattern matches: {len(matches)}")
+
         for match in matches:
             raw_filename_line = match.group(1).strip()
             # Try to extract a clean path from this line
@@ -38,10 +49,16 @@ class nIAResponse:
 
             if filename and filename not in files:
                 # Basic validation: must have an extension and not be too long
-                if '.' in filename and len(filename) < 255:
+                # Extensions we care about: py, html, css, js, json, md, txt
+                allowed_exts = {'.py', '.html', '.css', '.js', '.json', '.md', '.txt', '.sh', '.sql'}
+                ext = os.path.splitext(filename)[1].lower()
+
+                if ext in allowed_exts and len(filename) < 255:
                     content = match.group(2)
                     files[filename] = content
+                    logging.info(f"  Detected (Fallback): {filename} ({len(content)} chars)")
 
+        logging.info(f"Total unique files extracted: {len(files)}")
         return files
 
     def _identify_test_file(self) -> Optional[str]:
@@ -95,4 +112,12 @@ IMPORTANT FOR FRONTEND PROJECTS:
         full_prompt = get_nia_iteration_prompt(prompt, test_instructions, spec, plan, context, task.description)
 
         response = self.ai.generate(full_prompt)
+
+        # LOG RAW RESPONSE
+        logging.info("=" * 80)
+        logging.info("RAW LLM RESPONSE:")
+        logging.info("=" * 80)
+        logging.info(response)
+        logging.info("=" * 80)
+
         return nIAResponse(response)

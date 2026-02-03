@@ -102,6 +102,28 @@ class LoopOrchestrator:
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
+                    # LOG PARSED FILES DIAGNOSTICS
+                    self._log(f"Files detected by parser: {len(response.files)}", log_callback)
+                    for filename in response.files:
+                        self._log(f"  - {filename} ({len(response.files[filename])} chars)", log_callback)
+
+                    # Specific warning if critical files are missing for frontend_web
+                    nia_config = self._get_nia_config()
+                    tech_key = nia_config.get("tech_stack", "")
+                    if tech_key == 'frontend_web':
+                        critical_files = ['index.html', 'css/main.css', 'styles/main.css', 'js/app.js', 'js/main.js']
+                        detected_paths = set(response.files.keys())
+                        if 'index.html' not in detected_paths:
+                            self._log("⚠️ CRITICAL: index.html not detected in AI response!", log_callback)
+
+                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css'])
+                        if not has_css:
+                             self._log("⚠️ CRITICAL: No CSS file detected in AI response!", log_callback)
+
+                        has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js'])
+                        if not has_js:
+                             self._log("⚠️ CRITICAL: No JS file detected in AI response!", log_callback)
+
                     if not response.files:
                         self._log("❌ AI provided no code changes.", log_callback)
                         if attempt == max_retries:
@@ -228,11 +250,17 @@ class LoopOrchestrator:
                                 if current_lines < min_lines:
                                     quality_issues.append(f"{filename}: {current_lines} lines (min: {min_lines})")
 
+                    # MANDATORY FILES VALIDATION
+                    missing_critical = self._validate_critical_files(tech_key)
+                    if missing_critical:
+                        quality_issues.append(f"MISSING CRITICAL FILES: {', '.join(missing_critical)}")
+
                     if quality_issues and attempt < max_retries:
                         self._log(f"⚠️ Warning: Quality standards not met: {', '.join(quality_issues)}", log_callback)
-                        ai_feedback = (f"CRITICAL: Previous implementation did not meet quality standards:\n" +
+                        ai_feedback = (f"CRITICAL: Previous implementation did not meet quality standards or is missing files:\n" +
                                       "\n".join(quality_issues) +
                                       "\nPlease provide a more complete and detailed implementation with actual content. "
+                                      "Ensure ALL critical files are generated with sufficient detail. "
                                       "DO NOT use stubs or placeholder comments.")
                         continue
 
@@ -548,6 +576,40 @@ class LoopOrchestrator:
                     except:
                         pass
         return total_lines
+
+    def _validate_critical_files(self, tech_key: str) -> List[str]:
+        """Verify existence of critical files for the specific tech stack."""
+        # Define alternatives for some files
+        ALTERNATIVES = {
+            'css/main.css': ['styles/main.css', 'css/style.css', 'styles/style.css'],
+            'js/app.js': ['js/main.js', 'js/script.js', 'js/index.js']
+        }
+
+        REQUIRED_FILES_BY_STACK = {
+            'frontend_web': ['index.html', 'css/main.css', 'js/app.js'],
+            'python_backend': ['app.py', 'requirements.txt'],
+            'node_js': ['index.js', 'package.json']
+        }
+
+        required = REQUIRED_FILES_BY_STACK.get(tech_key, [])
+        missing = []
+
+        for filename in required:
+            # Check the primary filename
+            if (self.project_path / filename).exists():
+                continue
+
+            # Check alternatives
+            found_alt = False
+            for alt in ALTERNATIVES.get(filename, []):
+                if (self.project_path / alt).exists():
+                    found_alt = True
+                    break
+
+            if not found_alt:
+                missing.append(filename)
+
+        return missing
 
     def _log_validation_result(self, result, phase_name: str, log_callback):
         """Log detailed validation result."""
