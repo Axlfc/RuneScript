@@ -1,6 +1,8 @@
 from pathlib import Path
 import time
 import os
+import re
+import json
 import sys
 import subprocess
 import threading
@@ -145,16 +147,10 @@ class LoopOrchestrator:
                     self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
 
                     # Pre-application validation for placeholders
-                    placeholders = ["TODO", "...", "Add more here", "Content here", "placeholder"]
-                    found_placeholder = False
-                    for filename, content in response.files.items():
-                        if any(ph in content for ph in placeholders):
-                            self._log(f"⚠️ Warning: Placeholder found in {filename}.", log_callback)
-                            found_placeholder = True
-                            break
-
-                    if found_placeholder and attempt < max_retries:
-                        ai_feedback = "Your implementation contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic."
+                    placeholder_file = self._check_for_placeholders(response.files)
+                    if placeholder_file and attempt < max_retries:
+                        self._log(f"⚠️ Warning: Placeholder found in {placeholder_file}. Retrying for better quality...", log_callback)
+                        ai_feedback = f"Your implementation of {placeholder_file} contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic. DO NOT use '...' or 'TODO' as a substitute for real code."
                         continue
 
                     for filename, content in response.files.items():
@@ -189,22 +185,36 @@ class LoopOrchestrator:
 
                         self._log("✅ GREEN phase passed.", log_callback)
 
-                    # QUALITY VALIDATION
-                    total_lines = self._count_project_code_lines()
-                    quality_threshold = 100
-                    if total_lines < quality_threshold and attempt < max_retries:
-                        ai_feedback = (f"CRITICAL: Previous implementation was too minimal ({total_lines} lines). "
-                                      f"Minimum {quality_threshold} lines of production-quality code required. "
-                                      "Provide a complete implementation with actual content, detailed CSS, and functional JS. "
-                                      "DO NOT use stubs or placeholder comments.\n\n"
-                                      "Example of ACCEPTABLE output (detailed structure):\n"
-                                      "<body>\n  <header><nav>...</nav></header>\n  <main>\n    <section id='hero'>...</section>\n"
-                                      "    <section id='works'>...</section>\n  </main>\n</body>")
-                        self._log(f"⚠️ Warning: Only {total_lines} lines generated. Retrying for better quality (Target: {quality_threshold})...", log_callback)
+                    # QUALITY VALIDATION (Line Counts)
+                    nia_config = self._get_nia_config()
+                    tech_config = nia_config.get("tech_config", {})
+                    quality_standards = tech_config.get("quality_standards", {})
+
+                    quality_issues = []
+                    for filename in response.files:
+                        if 'test' in filename.lower() or '/tests/' in filename:
+                            continue
+
+                        ext = Path(filename).suffix.lstrip('.')
+                        if ext in quality_standards:
+                            min_lines = quality_standards[ext].get('min_lines', 0)
+                            # Read current file content from disk (already written)
+                            file_path = self.project_path / filename
+                            if file_path.exists():
+                                current_lines = len([l for l in file_path.read_text(encoding='utf-8').splitlines() if l.strip()])
+                                if current_lines < min_lines:
+                                    quality_issues.append(f"{filename}: {current_lines} lines (min: {min_lines})")
+
+                    if quality_issues and attempt < max_retries:
+                        self._log(f"⚠️ Warning: Quality standards not met: {', '.join(quality_issues)}", log_callback)
+                        ai_feedback = (f"CRITICAL: Previous implementation did not meet quality standards:\n" +
+                                      "\n".join(quality_issues) +
+                                      "\nPlease provide a more complete and detailed implementation with actual content. "
+                                      "DO NOT use stubs or placeholder comments.")
                         continue
 
-                    if total_lines < quality_threshold:
-                        self._log(f"⚠️ Warning: Only {total_lines} lines generated. Proceeding as max retries reached.", log_callback)
+                    if quality_issues:
+                        self._log(f"⚠️ Warning: Quality standards not met after retries. Proceeding anyway.", log_callback)
 
                     # Success, break retry loop
                     break
@@ -225,6 +235,16 @@ class LoopOrchestrator:
                 self._log("Verifying all tests...", log_callback)
                 val_refactor = self.validator.validate_refactor(self.project_path, self.venv_python)
                 self._log_validation_result(val_refactor, "REFACTOR", log_callback)
+
+                if val_refactor.success:
+                    # 7.1. Code Quality Metrics (Informational)
+                    try:
+                        metrics = self._analyze_code_quality()
+                        self._log("📊 Code Quality Metrics (Informational):", log_callback)
+                        for key, value in metrics.items():
+                            self._log(f"  - {key}: {value}", log_callback)
+                    except Exception as me:
+                        logger.warning(f"Error during quality analysis: {me}")
 
                 if not val_refactor.success:
                     self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
@@ -367,7 +387,7 @@ class LoopOrchestrator:
         try:
             full_path = self.project_path / rel_path
             if full_path.exists():
-                content = full_path.read_text(encoding='utf-8')
+                content = full_path.read_text(encoding='utf-8', errors='replace')
                 self._log(content, log_callback)
             else:
                 self._log(f"File {rel_path} does not exist.", log_callback)
@@ -407,6 +427,84 @@ class LoopOrchestrator:
                     except:
                         pass
         return total_lines
+
+    def _check_for_placeholders(self, files: dict) -> Optional[str]:
+        """Check for placeholders in implementation files, ignoring tests."""
+        placeholder_patterns = [
+            r'TODO:',
+            r'FIXME:',
+            r'PLACEHOLDER',
+            r'\/\/\s*Add\s+.+\s+here',
+            r'#\s*Add\s+.+\s+here',
+            r'Content here'
+        ]
+
+        for filename, content in files.items():
+            # SKIP test files
+            if 'test' in filename.lower() or '/tests/' in filename:
+                continue
+
+            # Check basic patterns
+            for pattern in placeholder_patterns:
+                if re.search(pattern, content, re.IGNORECASE):
+                    return filename
+
+            # Smart check for "..." standalone on a line
+            for line in content.splitlines():
+                stripped = line.strip()
+                if stripped == "..." or stripped == "# ..." or stripped == "// ...":
+                    # Allow "..." in tests if it was a test file, but we already skipped tests.
+                    return filename
+
+        return None
+
+    def _get_nia_config(self) -> dict:
+        """Load project nIA configuration."""
+        config_path = self.project_path / ".nia_config.json"
+        if config_path.exists():
+            try:
+                return json.loads(config_path.read_text(encoding='utf-8'))
+            except:
+                pass
+        return {}
+
+    def _analyze_code_quality(self) -> dict:
+        """Basic code quality analysis for the project."""
+        metrics = {
+            "total_files": 0,
+            "total_lines": 0,
+            "comment_lines": 0,
+            "todo_count": 0,
+            "approx_complexity": 0 # Number of control flow keywords
+        }
+
+        exclude_dirs = {'.git', '__pycache__', 'node_modules', '.venv', 'venv', 'tests'}
+        complexity_keywords = ['if ', 'else', 'elif', 'for ', 'while ', 'case ', 'match ', '&&', '||', ' and ', ' or ']
+
+        for root, dirs, files in os.walk(self.project_path):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for file in files:
+                if file.endswith(('.py', '.js', '.ts', '.html', '.css')):
+                    metrics["total_files"] += 1
+                    try:
+                        path = Path(root) / file
+                        content = path.read_text(encoding='utf-8', errors='replace')
+                        lines = content.splitlines()
+                        metrics["total_lines"] += len(lines)
+
+                        for line in lines:
+                            sline = line.strip()
+                            if sline.startswith(('#', '//', '/*', '*')):
+                                metrics["comment_lines"] += 1
+                            if 'TODO' in sline or 'FIXME' in sline:
+                                metrics["todo_count"] += 1
+
+                            for kw in complexity_keywords:
+                                if kw in sline:
+                                    metrics["approx_complexity"] += 1
+                    except:
+                        pass
+        return metrics
 
     def _count_project_code_lines(self) -> int:
         """Count total lines of code in the project, excluding tests and common dirs."""

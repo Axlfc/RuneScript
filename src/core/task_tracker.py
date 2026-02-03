@@ -7,6 +7,26 @@ logger = logging.getLogger(__name__)
 class TaskTracker:
     """Update IMPLEMENTATION_PLAN.md with task progress."""
 
+    def validate_integrity(self, content: str) -> bool:
+        """Verify the plan is not truncated and has basic markers."""
+        if not content or len(content) < 50:
+            return False
+
+        # Check for truncation markers if any (e.g. from AI)
+        if "... (rest" in content or "(rest of the plan remains the same)" in content:
+            return False
+
+        # Must have phases
+        if "## PHASE" not in content.upper():
+            return False
+
+        # Must have some task markers
+        task_markers = ['[ ]', '[x]', '[/]', '[?]']
+        if not any(marker in content for marker in task_markers):
+            return False
+
+        return True
+
     def mark_completed(self, plan_path: Path, task: Task):
         """Mark task as [x] completed."""
         try:
@@ -30,8 +50,12 @@ class TaskTracker:
             new_content = '\n'.join(lines)
             updated_content = self._update_counters(new_content)
 
-            plan_path.write_text(updated_content, encoding='utf-8')
-            logger.info(f"Marked task as completed: {task.description}")
+            if self.validate_integrity(updated_content):
+                plan_path.write_text(updated_content, encoding='utf-8')
+                logger.info(f"Marked task as completed: {task.description}")
+            else:
+                logger.error("Integrity check failed before writing IMPLEMENTATION_PLAN.md. Aborting write.")
+                raise ValueError("Plan integrity check failed")
         except Exception as e:
             logger.error(f"Error marking task complete: {e}")
             raise
@@ -61,8 +85,12 @@ class TaskTracker:
             new_content = '\n'.join(lines)
             updated_content = self._update_counters(new_content)
 
-            plan_path.write_text(updated_content, encoding='utf-8')
-            logger.info(f"Marked task as blocked: {task.description} - {reason}")
+            if self.validate_integrity(updated_content):
+                plan_path.write_text(updated_content, encoding='utf-8')
+                logger.info(f"Marked task as blocked: {task.description} - {reason}")
+            else:
+                logger.error("Integrity check failed before writing IMPLEMENTATION_PLAN.md. Aborting write.")
+                raise ValueError("Plan integrity check failed")
         except Exception as e:
             logger.error(f"Error marking task blocked: {e}")
             raise
