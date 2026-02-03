@@ -35,6 +35,11 @@ class nIAResponse:
             raw_path = lines[0].strip()
             filename = clean_filename(raw_path)
 
+            # Normalize path to prevent duplicates like ./file.js and file.js
+            filename = os.path.normpath(filename).replace('\\', '/')
+            if filename.startswith('./'):
+                filename = filename[2:]
+
             # Find the FIRST code block in this section
             block_match = re.search(r'```[^\n]*\n(.*?)\n```', section, re.DOTALL)
             if filename and block_match:
@@ -49,9 +54,23 @@ class nIAResponse:
         fallback_pattern = r"([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+)[^\n]*\n(?:.*?\n)*?```[^\n]*\n(.*?)\n```"
         matches = list(re.finditer(fallback_pattern, text, re.DOTALL | re.IGNORECASE))
 
+        # Track basenames already handled with a path
+        paths_by_basename = {os.path.basename(p): p for p in files.keys()}
+
         for match in matches:
             filename = clean_filename(match.group(1).strip())
+            filename = os.path.normpath(filename).replace('\\', '/')
+            if filename.startswith('./'):
+                filename = filename[2:]
+
+            basename = os.path.basename(filename)
+
             if filename and filename not in files:
+                # SKIP if we already have this basename in a more specific path detected via Split
+                if basename in paths_by_basename and paths_by_basename[basename] != filename:
+                    logging.warning(f"  Skipping fallback duplicate basename: {filename} (already have {paths_by_basename[basename]})")
+                    continue
+
                 # Basic validation: must have an extension and not be too long
                 allowed_exts = {'.py', '.html', '.css', '.js', '.json', '.md', '.txt', '.sh', '.sql'}
                 ext = os.path.splitext(filename)[1].lower()
@@ -60,6 +79,7 @@ class nIAResponse:
                     content = match.group(2)
                     files[filename] = content
                     logging.info(f"  Detected (Fallback): {filename} ({len(content)} chars)")
+                    paths_by_basename[basename] = filename
 
         logging.info(f"Total unique files extracted: {len(files)}")
         return files

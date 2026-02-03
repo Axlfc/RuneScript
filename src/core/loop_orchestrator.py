@@ -342,9 +342,69 @@ class LoopOrchestrator:
                         pass
         return "\n\n".join(context)
 
+    def _validate_file_path(self, filepath: str, tech_stack: str) -> bool:
+        """
+        Validates that files are created in their correct directories based on tech stack.
+        Returns True if valid, False otherwise.
+        """
+        filename = os.path.basename(filepath)
+        ext = os.path.splitext(filename)[1].lower()
+        parent_dir = os.path.dirname(filepath).replace('\\', '/')
+
+        # Standardize empty parent dir to empty string
+        if parent_dir == '.':
+            parent_dir = ''
+
+        # Rules for Frontend Web
+        if tech_stack == 'frontend_web':
+            # Allow common setup files at root
+            if filename.lower() in ['.gitignore', 'readme.md', 'package.json', 'nia_prompt.md', 'spec.md', 'implementation_plan.md']:
+                return True
+
+            # HTML files should be at root or in assets/
+            if ext == '.html':
+                if parent_dir not in ['', 'assets']:
+                    return False
+
+            # CSS files MUST be in a css or styles directory
+            elif ext == '.css':
+                allowed = ['css', 'assets/css', 'styles', 'assets/styles']
+                if parent_dir not in allowed:
+                    return False
+
+            # JS files MUST be in a js or scripts directory
+            elif ext == '.js':
+                allowed = ['js', 'assets/js', 'scripts', 'assets/scripts']
+                if parent_dir not in allowed:
+                    return False
+
+            # Images MUST be in an img or images directory
+            elif ext in ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif']:
+                allowed = ['img', 'assets/img', 'images', 'assets/images', 'assets/icons', 'icons']
+                if parent_dir not in allowed:
+                    return False
+
+        return True
+
     def _write_file(self, rel_path: str, content: str, log_callback=None):
         # Clean the filename of markdown formatting and invalid characters
         rel_path = clean_filename(rel_path)
+
+        # Normalize path
+        rel_path = os.path.normpath(rel_path).replace('\\', '/')
+        if rel_path.startswith('./'):
+            rel_path = rel_path[2:]
+
+        # Validate path based on tech stack
+        nia_config = self._get_nia_config()
+        tech_stack = nia_config.get("tech_stack", "")
+
+        if not self._validate_file_path(rel_path, tech_stack):
+            msg = f"Skipping file {rel_path}: violates project structure for {tech_stack}"
+            self._log(f"⚠️ {msg}", log_callback)
+            logging.warning(msg)
+            return
+
         full_path = self.project_path / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding='utf-8')
