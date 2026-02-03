@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from src.models.ai_assistant import AIAssistant
 from jinja2 import Environment, FileSystemLoader
@@ -36,8 +37,6 @@ class PlanGenerator:
         """
         Validate that the plan has a minimum number of tasks based on complexity.
         """
-        import logging
-
         min_tasks_map = {
             'simple': 5,
             'medium': 10,

@@ -107,11 +107,22 @@ class LoopOrchestrator:
                     for filename in response.files:
                         self._log(f"  - {filename} ({len(response.files[filename])} chars)", log_callback)
 
-                    # Specific warning if index.html is missing for frontend_web
+                    # Specific warning if critical files are missing for frontend_web
                     nia_config = self._get_nia_config()
                     tech_key = nia_config.get("tech_stack", "")
-                    if tech_key == 'frontend_web' and 'index.html' not in response.files:
-                        self._log("⚠️ CRITICAL: index.html not detected in AI response!", log_callback)
+                    if tech_key == 'frontend_web':
+                        critical_files = ['index.html', 'css/main.css', 'styles/main.css', 'js/app.js', 'js/main.js']
+                        detected_paths = set(response.files.keys())
+                        if 'index.html' not in detected_paths:
+                            self._log("⚠️ CRITICAL: index.html not detected in AI response!", log_callback)
+
+                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css'])
+                        if not has_css:
+                             self._log("⚠️ CRITICAL: No CSS file detected in AI response!", log_callback)
+
+                        has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js'])
+                        if not has_js:
+                             self._log("⚠️ CRITICAL: No JS file detected in AI response!", log_callback)
 
                     if not response.files:
                         self._log("❌ AI provided no code changes.", log_callback)
@@ -568,6 +579,12 @@ class LoopOrchestrator:
 
     def _validate_critical_files(self, tech_key: str) -> List[str]:
         """Verify existence of critical files for the specific tech stack."""
+        # Define alternatives for some files
+        ALTERNATIVES = {
+            'css/main.css': ['styles/main.css', 'css/style.css', 'styles/style.css'],
+            'js/app.js': ['js/main.js', 'js/script.js', 'js/index.js']
+        }
+
         REQUIRED_FILES_BY_STACK = {
             'frontend_web': ['index.html', 'css/main.css', 'js/app.js'],
             'python_backend': ['app.py', 'requirements.txt'],
@@ -578,8 +595,18 @@ class LoopOrchestrator:
         missing = []
 
         for filename in required:
-            filepath = self.project_path / filename
-            if not filepath.exists():
+            # Check the primary filename
+            if (self.project_path / filename).exists():
+                continue
+
+            # Check alternatives
+            found_alt = False
+            for alt in ALTERNATIVES.get(filename, []):
+                if (self.project_path / alt).exists():
+                    found_alt = True
+                    break
+
+            if not found_alt:
                 missing.append(filename)
 
         return missing
