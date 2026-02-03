@@ -609,7 +609,7 @@ class ProjectLifecycleManager:
                 "tech_stack_name": tech_config.get("display_name", tech_key.replace("_", " ").title()),
                 "quality_standards": tech_config.get("quality_standards", {}),
                 "test_pattern": tech_config.get("test_pattern", "tests/"),
-                "test_command": tech_config.get("test_command", "python -m pytest").format(python="python", test_file="{test_file}")
+                "test_command": tech_config.get("test_command", "python -m pytest").replace("{python}", "python").replace("{test_file}", "[test_file]")
             }
 
             rendered_prompt = template.render(**prompt_data)

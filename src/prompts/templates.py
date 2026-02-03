@@ -27,8 +27,10 @@ CRITICAL REQUIREMENTS:
 1. NO PLACEHOLDERS: Do NOT use "..." or "(rest of plan)" or "(remaining tasks)". Generate ALL tasks explicitly.
 2. COMPLETENESS: Aim for a detailed breakdown. For a medium project, generate at least 10-15 tasks across 3-4 phases.
 3. TDD PRINCIPLES: Each task MUST follow the format: "Test: <description>. Implementation: <what to do>".
-4. TEST COVERAGE: Every critical file (e.g., index.html, main.css, app.py) MUST have a dedicated task that includes a specific test verification using appropriate tools (BeautifulSoup, pytest, etc.).
-5. FORMAT: Each task description should be descriptive (at least 20-30 characters).
+4. TEST COVERAGE: Every critical file (e.g., index.html, main.css, app.js) MUST have a dedicated task that includes a specific test verification using appropriate tools (BeautifulSoup, pytest, etc.).
+5. NO BLOAT/WRONG TECH: If the project is vanilla HTML/CSS/JS, DO NOT include tasks for Vite, Node.js, npm, or any build tools. Build the features directly.
+6. QUALITY TASKS: Each task should represent a meaningful feature or component (e.g., "Implement Hero Section with reveal-on-scroll animation" instead of just "Create HTML").
+7. FORMAT: Each task description should be descriptive (at least 30-50 characters).
 
 {tech_info}
 
@@ -76,8 +78,9 @@ PLAN DE IMPLEMENTACIÓN PROPUESTO:
 
 TAREA: Realiza una revisión crítica respondiendo:
 
-1. CONSISTENCIA TECNOLÓGICA: ¿El plan utiliza las herramientas del TECH STACK DETECTADO? RECHAZA el plan si intenta usar Node.js/Vite en un proyecto de Frontend Web (HTML/CSS/JS) sin Node.js.
-2. COMPLETITUD: ¿El plan cumple TODOS los requisitos de la SOLICITUD ORIGINAL? Lista lo que falta.
+1. CONSISTENCIA TECNOLÓGICA: ¿El plan utiliza las herramientas del TECH STACK DETECTADO? RECHAZA el plan si intenta usar Node.js, Vite, npm, o cualquier build tool en un proyecto de Frontend Web (HTML/CSS/JS) vanilla.
+2. EVITAR STUBS: ¿El plan tiene tareas que solo "crean carpetas" o "ficheros básicos"? EXIGE que las tareas combinen estructura con contenido real y funcional.
+3. COMPLETITUD: ¿El plan cumple TODOS los requisitos de la SOLICITUD ORIGINAL? Lista lo que falta.
 3. CALIDAD: ¿Las tareas generarán código profesional o solo stubs básicos?
 4. GRANULARIDAD: ¿Las tareas son demasiado grandes o pequeñas?
 5. ARCHIVOS: ¿Faltan requirements.txt, .gitignore u otros archivos esenciales?

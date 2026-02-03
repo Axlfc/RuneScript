@@ -107,6 +107,11 @@ class LoopOrchestrator:
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
+                    # DETECT INCORRECT EXECUTION SIGNALS (mkdir, cd, etc.)
+                    raw_lower = response.raw_response.lower()
+                    if "mkdir" in raw_lower or "cd " in raw_lower or "npm " in raw_lower:
+                        self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
+
                     # LOG PARSED FILES DIAGNOSTICS
                     self._log(f"Files detected by parser: {len(response.files)}", log_callback)
                     for filename in response.files:
