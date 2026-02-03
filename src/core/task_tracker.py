@@ -57,7 +57,7 @@ class TaskTracker:
                 logger.error("Integrity check failed before writing IMPLEMENTATION_PLAN.md. Aborting write.")
                 raise ValueError("Plan integrity check failed")
         except Exception as e:
-            logger.error(f"Error marking task complete: {e}")
+            logger.error(f"Error marking task complete: {e}", exc_info=True)
             raise
 
     def mark_blocked(self, plan_path: Path, task: Task, reason: str):
@@ -92,7 +92,7 @@ class TaskTracker:
                 logger.error("Integrity check failed before writing IMPLEMENTATION_PLAN.md. Aborting write.")
                 raise ValueError("Plan integrity check failed")
         except Exception as e:
-            logger.error(f"Error marking task blocked: {e}")
+            logger.error(f"Error marking task blocked: {e}", exc_info=True)
             raise
 
     def _update_counters(self, content: str) -> str:
@@ -129,5 +129,5 @@ class TaskTracker:
 
             return '\n'.join(lines)
         except Exception as e:
-            logger.error(f"Error updating counters: {e}")
+            logger.error(f"Error updating counters: {e}", exc_info=True)
             return content

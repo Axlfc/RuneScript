@@ -66,6 +66,7 @@ class LoopOrchestrator:
                 tasks_planned = len(tasks)
                 prompt = self.prompt_path.read_text(encoding='utf-8')
             except Exception as e:
+                logger.error(f"Error loading files: {e}", exc_info=True)
                 self._log(f"❌ Error loading files: {str(e)}", log_callback)
                 return LoopResult("ERROR", iteration, f"File loading error: {e}", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
@@ -220,6 +221,7 @@ class LoopOrchestrator:
                     break
 
                 except Exception as e:
+                    logger.error(f"Error during iteration attempt: {e}", exc_info=True)
                     self._log(f"❌ Error during iteration attempt: {str(e)}", log_callback)
                     if attempt == max_retries:
                         self.tracker.mark_blocked(self.plan_path, next_task, str(e))
@@ -261,6 +263,7 @@ class LoopOrchestrator:
                 self._log(f"Task completed and committed.", log_callback)
 
             except Exception as e:
+                logger.error(f"Error during iteration: {e}", exc_info=True)
                 self._log(f"❌ Error during iteration: {str(e)}", log_callback)
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                 return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))

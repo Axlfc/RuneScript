@@ -76,7 +76,7 @@ class ProjectLifecycleManager:
             thread.start()
 
         except Exception as e:
-            logging.error(f"Project generation failed: {e}")
+            logging.error(f"Project generation failed: {e}", exc_info=True)
             self.controller.safe_ui_call(self.handle_generation_failure, f"Project generation failed: {e}")
             self.controller.ui_manager.toggle_generation_ui(True)
             self.generation_in_progress = False
@@ -632,7 +632,7 @@ class ProjectLifecycleManager:
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"nIA Loop Finished: {result.message}")
 
         except Exception as e:
-            logging.error(f"nIA Loop Error: {e}")
+            logging.error(f"nIA Loop Error: {e}", exc_info=True)
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"❌ nIA Loop Error: {e}")
         finally:
             self.generation_in_progress = False
