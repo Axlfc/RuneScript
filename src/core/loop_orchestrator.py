@@ -25,7 +25,7 @@ class LoopResult:
 
 class LoopOrchestrator:
     def __init__(self, project_path: Path):
-        self.project_path = project_path
+        self.project_path = Path(os.path.abspath(project_path))
         self.parser = PlanParser()
         self.tracker = TaskTracker()
         self.validator = TDDValidator()
@@ -126,12 +126,17 @@ class LoopOrchestrator:
                         self._log(f"Checking RED phase for {active_test_file}...", log_callback)
                         # Write ONLY the test file
                         test_content = response.files[active_test_file]
-                        self._write_file(active_test_file, test_content)
+                        self._write_file(active_test_file, test_content, log_callback)
                         self._log_file_content(active_test_file, log_callback)
 
                         # DEBUG LOGS
                         test_file_path = self.project_path / active_test_file
-                        self._log(f"DEBUG: About to execute test at: {test_file_path}", log_callback)
+                        self._log(f"=" * 60, log_callback)
+                        self._log(f"DEBUG COMMAND CONSTRUCTION (RED):", log_callback)
+                        self._log(f"venv_python: {self.venv_python}", log_callback)
+                        self._log(f"test_file: {active_test_file}", log_callback)
+                        self._log(f"project_path: {self.project_path}", log_callback)
+                        self._log(f"=" * 60, log_callback)
 
                         val_red = self.validator.validate_red(
                             self.project_path,
@@ -165,7 +170,7 @@ class LoopOrchestrator:
                         # But user says "Mantener el test original".
                         if attempt > 0 and filename == active_test_file:
                              continue
-                        self._write_file(filename, content)
+                        self._write_file(filename, content, log_callback)
 
                     self._log_project_structure(log_callback)
 
@@ -178,6 +183,12 @@ class LoopOrchestrator:
                         self._log(f"DEBUG ENV: Project Path: {self.project_path}", log_callback)
 
                         test_file_path = self.project_path / active_test_file
+                        self._log(f"=" * 60, log_callback)
+                        self._log(f"DEBUG COMMAND CONSTRUCTION (GREEN):", log_callback)
+                        self._log(f"venv_python: {self.venv_python}", log_callback)
+                        self._log(f"test_file: {active_test_file}", log_callback)
+                        self._log(f"project_path: {self.project_path}", log_callback)
+                        self._log(f"=" * 60, log_callback)
 
                         val_green = self.validator.validate_green(
                             self.project_path,
@@ -303,12 +314,13 @@ class LoopOrchestrator:
                         pass
         return "\n\n".join(context)
 
-    def _write_file(self, rel_path: str, content: str):
+    def _write_file(self, rel_path: str, content: str, log_callback=None):
         # Clean the filename of markdown formatting and invalid characters
         rel_path = clean_filename(rel_path)
         full_path = self.project_path / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding='utf-8')
+        self._log(f"Generated file: {rel_path}", log_callback)
 
     def _setup_environment(self, log_callback):
         """Initialize project virtual environment and dependencies."""
@@ -333,7 +345,8 @@ class LoopOrchestrator:
                 # Extract VENV_PYTHON from output
                 for line in result.stdout.splitlines():
                     if line.startswith("VENV_PYTHON:"):
-                        self.venv_python = line.replace("VENV_PYTHON:", "").strip()
+                        rel_venv_python = line.replace("VENV_PYTHON:", "").strip()
+                        self.venv_python = os.path.abspath(rel_venv_python)
                         self._log(f"Project venv ready: {self.venv_python}", log_callback)
                         break
 

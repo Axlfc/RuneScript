@@ -600,7 +600,7 @@ class ProjectLifecycleManager:
             def log_cb(msg: str):
                 self.controller.safe_ui_call(self.controller.ui_manager.log_output, msg)
                 # If message indicates progress or failure, refresh UI components
-                should_refresh = any(indicator in msg for indicator in ["✅", "❌", "Task completed", "Phase", "Target Task"])
+                should_refresh = any(indicator in msg for indicator in ["✅", "❌", "Task completed", "Phase", "Target Task", "Generated file"])
 
                 if should_refresh:
                     self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)

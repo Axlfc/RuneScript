@@ -152,7 +152,8 @@ class TDDValidator:
                 pass
 
         # 2. Determine command
-        python_exe = venv_python or sys.executable
+        # Ensure python_exe is absolute to avoid issues when changing CWD
+        python_exe = os.path.abspath(venv_python) if venv_python else sys.executable
 
         # Make test_file relative to project_path if it's absolute
         try:
@@ -161,35 +162,37 @@ class TDDValidator:
             rel_test_file = Path(test_file)
 
         # VERIFY TEST FILE EXISTS
-        full_test_path = project_path / rel_test_file
+        full_test_path = (project_path / rel_test_file).absolute()
         if not full_test_path.exists():
             msg = f"Test file not found: {full_test_path}"
             logging.error(msg)
             return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
 
         # PROPERLY QUOTE PATHS (Especially for Windows)
+        # Use absolute paths in the command string to be 100% sure
         q_python = f'"{python_exe}"'
-        q_test_file = f'"{rel_test_file}"'
+        q_test_file = f'"{full_test_path}"'
 
         test_command_template = tech_config.get("test_command")
 
         if test_command_template:
             # Use template from config
+            # We use full_test_path instead of rel_test_file for better reliability
             cmd_str = test_command_template.format(
                 python=q_python,
-                test_file=str(rel_test_file), # Template might already have quotes or handle it
+                test_file=str(full_test_path), # Template might already have quotes or handle it
                 test_name=test_name or ""
             )
 
-            # Ensure rel_test_file is quoted in cmd_str if it's not already
-            if str(rel_test_file) in cmd_str and f'"{rel_test_file}"' not in cmd_str:
-                cmd_str = cmd_str.replace(str(rel_test_file), q_test_file)
+            # Ensure test_file is quoted in cmd_str if it's not already
+            if str(full_test_path) in cmd_str and f'"{full_test_path}"' not in cmd_str:
+                cmd_str = cmd_str.replace(str(full_test_path), q_test_file)
 
             # For pytest with test_name, we might need a better template approach,
             # but for now let's handle it manually if test_name exists and using pytest
             if "pytest" in cmd_str and test_name and "::" not in cmd_str:
                 # Replace quoted test file with quoted test file + ::test_name
-                cmd_str = cmd_str.replace(q_test_file, f'"{rel_test_file}::{test_name}"')
+                cmd_str = cmd_str.replace(q_test_file, f'"{full_test_path}::{test_name}"')
 
             logging.info(f"Executing test command: {cmd_str} (CWD: {project_path})")
             return subprocess.run(

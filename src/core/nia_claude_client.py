@@ -3,7 +3,7 @@ import json
 from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
-from src.utils.path_utils import clean_filename
+from src.utils.path_utils import clean_filename, extract_filepath_from_text
 from src.prompts.templates import get_nia_iteration_prompt
 
 class nIAResponse:
@@ -17,24 +17,30 @@ class nIAResponse:
     def _parse_files(self, text: str) -> Dict[str, str]:
         """Extract files from markdown code blocks with filenames."""
         files = {}
-        # Pattern to match: File: path/to/file\n```language\ncontent\n```
+
+        # 1. Primary pattern: File: path/to/file\n```language\ncontent\n```
         pattern = r"File:\s*([^\n]+)\s*\n```[^\n]*\n(.*?)\n```"
         matches = re.finditer(pattern, text, re.DOTALL)
         for match in matches:
             filename = clean_filename(match.group(1).strip())
-            content = match.group(2)
-            files[filename] = content
-
-        # Also support just code blocks if they are named in the text
-        if not files:
-            # Fallback to looking for filenames before code blocks
-            # This regex looks for something that looks like a path/file.ext possibly wrapped in markdown
-            pattern = r"([^\n]*[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+[^\n]*)\n```[^\n]*\n(.*?)\n```"
-            matches = re.finditer(pattern, text, re.DOTALL)
-            for match in matches:
-                filename = clean_filename(match.group(1).strip())
+            if filename:
                 content = match.group(2)
                 files[filename] = content
+
+        # 2. Fallback pattern: [Any text with filename].ext\n```language\ncontent\n```
+        # We always run this to catch files that might not have the "File:" prefix
+        fallback_pattern = r"([^\n]*[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+[^\n]*)\n```[^\n]*\n(.*?)\n```"
+        matches = re.finditer(fallback_pattern, text, re.DOTALL)
+        for match in matches:
+            raw_filename_line = match.group(1).strip()
+            # Try to extract a clean path from this line
+            filename = extract_filepath_from_text(raw_filename_line)
+
+            if filename and filename not in files:
+                # Basic validation: must have an extension and not be too long
+                if '.' in filename and len(filename) < 255:
+                    content = match.group(2)
+                    files[filename] = content
 
         return files
 
