@@ -118,6 +118,11 @@ class LoopOrchestrator:
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._log_project_structure(log_callback)
 
+                        # DEBUG ENVIRONMENT
+                        self._log(f"DEBUG ENV: Python: {sys.executable}", log_callback)
+                        self._log(f"DEBUG ENV: Venv Python: {self.venv_python}", log_callback)
+                        self._log(f"DEBUG ENV: Project Path: {self.project_path}", log_callback)
+
                         self._log(f"Checking RED phase for {active_test_file}...", log_callback)
                         # Write ONLY the test file
                         test_content = response.files[active_test_file]
@@ -166,6 +171,12 @@ class LoopOrchestrator:
 
                     if active_test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
+
+                        # DEBUG ENVIRONMENT
+                        self._log(f"DEBUG ENV: Python: {sys.executable}", log_callback)
+                        self._log(f"DEBUG ENV: Venv Python: {self.venv_python}", log_callback)
+                        self._log(f"DEBUG ENV: Project Path: {self.project_path}", log_callback)
+
                         test_file_path = self.project_path / active_test_file
 
                         val_green = self.validator.validate_green(
@@ -540,5 +551,6 @@ class LoopOrchestrator:
                 self._log(f"STDERR: {line}", log_callback)
 
         self._log(f"{'='*60}", log_callback)
+        self._log(f"Message: {result.message}", log_callback)
         self._log(f"Status: {'✅ PASSED' if result.success else '❌ FAILED'}", log_callback)
         self._log(f"{'='*60}\n", log_callback)

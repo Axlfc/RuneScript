@@ -27,6 +27,24 @@ class TDDValidator:
         """
         result = self._run_test(project_path, test_file, test_name, venv_python)
 
+        # CRITICAL: Check for execution errors (file not found, etc.)
+        execution_errors = [
+            "no puede encontrar la ruta",
+            "no such file or directory",
+            "command not found",
+            "is not recognized as an internal or external command"
+        ]
+
+        has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
+
+        if has_execution_error:
+            return ValidationResult(
+                success=False,
+                message=f"RED phase failed: Execution error detected (not a test failure). Check paths and environment.",
+                stdout=result.stdout,
+                stderr=result.stderr
+            )
+
         # In RED phase, returncode != 0 is GOOD (test failed)
         if result.returncode == 0:
             return ValidationResult(
@@ -49,6 +67,23 @@ class TDDValidator:
         """
         result = self._run_test(project_path, test_file, test_name, venv_python)
 
+        # Check for execution errors
+        execution_errors = [
+            "no puede encontrar la ruta",
+            "no such file or directory",
+            "command not found",
+            "is not recognized as an internal or external command"
+        ]
+        has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
+
+        if has_execution_error:
+            return ValidationResult(
+                success=False,
+                message=f"GREEN phase failed: Execution error detected. Check paths and environment.",
+                stdout=result.stdout,
+                stderr=result.stderr
+            )
+
         if result.returncode != 0:
             return ValidationResult(
                 success=False,
@@ -69,6 +104,23 @@ class TDDValidator:
         Validate REFACTOR phase: ALL tests must still pass.
         """
         result = self._run_all_tests(project_path, venv_python)
+
+        # Check for execution errors
+        execution_errors = [
+            "no puede encontrar la ruta",
+            "no such file or directory",
+            "command not found",
+            "is not recognized as an internal or external command"
+        ]
+        has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
+
+        if has_execution_error:
+            return ValidationResult(
+                success=False,
+                message=f"REFACTOR failed: Execution error detected. Check paths and environment.",
+                stdout=result.stdout,
+                stderr=result.stderr
+            )
 
         if result.returncode != 0:
             return ValidationResult(
@@ -108,20 +160,38 @@ class TDDValidator:
         except ValueError:
             rel_test_file = Path(test_file)
 
+        # VERIFY TEST FILE EXISTS
+        full_test_path = project_path / rel_test_file
+        if not full_test_path.exists():
+            msg = f"Test file not found: {full_test_path}"
+            logging.error(msg)
+            return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
+
+        # PROPERLY QUOTE PATHS (Especially for Windows)
+        q_python = f'"{python_exe}"'
+        q_test_file = f'"{rel_test_file}"'
+
         test_command_template = tech_config.get("test_command")
 
         if test_command_template:
             # Use template from config
             cmd_str = test_command_template.format(
-                python=python_exe,
-                test_file=str(rel_test_file),
+                python=q_python,
+                test_file=str(rel_test_file), # Template might already have quotes or handle it
                 test_name=test_name or ""
             )
+
+            # Ensure rel_test_file is quoted in cmd_str if it's not already
+            if str(rel_test_file) in cmd_str and f'"{rel_test_file}"' not in cmd_str:
+                cmd_str = cmd_str.replace(str(rel_test_file), q_test_file)
+
             # For pytest with test_name, we might need a better template approach,
             # but for now let's handle it manually if test_name exists and using pytest
             if "pytest" in cmd_str and test_name and "::" not in cmd_str:
-                cmd_str = cmd_str.replace(str(rel_test_file), f"{rel_test_file}::{test_name}")
+                # Replace quoted test file with quoted test file + ::test_name
+                cmd_str = cmd_str.replace(q_test_file, f'"{rel_test_file}::{test_name}"')
 
+            logging.info(f"Executing test command: {cmd_str} (CWD: {project_path})")
             return subprocess.run(
                 cmd_str,
                 shell=True,
@@ -132,10 +202,11 @@ class TDDValidator:
             )
 
         # Fallback to old logic if no tech_config
-        if test_file.endswith('.py'):
+        logging.info(f"Running test fallback for: {rel_test_file} (CWD: {project_path})")
+        if str(rel_test_file).endswith('.py'):
             # Check if it's a pytest file or a simple script
             try:
-                with open(test_file, 'r', encoding='utf-8') as f:
+                with open(full_test_path, 'r', encoding='utf-8') as f:
                     content = f.read()
 
                 # If it uses pytest explicitly (import pytest)
@@ -151,7 +222,7 @@ class TDDValidator:
             except Exception as e:
                 logging.warning(f"Error deciding test runner for {test_file}: {e}")
                 cmd = [python_exe, str(rel_test_file)]
-        elif test_file.endswith(('.js', '.ts')):
+        elif str(rel_test_file).endswith(('.js', '.ts')):
             cmd = ["npm", "test", "--", str(rel_test_file)]
         else:
             # Default fallback
@@ -161,6 +232,7 @@ class TDDValidator:
             else:
                 cmd.append("-v")
 
+        logging.info(f"Executing: {' '.join(cmd)}")
         return subprocess.run(
             cmd,
             cwd=str(project_path),

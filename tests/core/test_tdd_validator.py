@@ -9,7 +9,7 @@ def test_validate_red_passes_when_test_fails():
     """RED validation passes when test fails as expected."""
     validator = TDDValidator()
 
-    with patch("subprocess.run") as mock_run:
+    with patch("subprocess.run") as mock_run, patch("pathlib.Path.exists", return_value=True):
         # Simulate test failure (returncode != 0)
         mock_run.return_value = Mock(returncode=1, stderr="AssertionError", stdout="")
 
@@ -22,7 +22,7 @@ def test_validate_red_fails_when_test_passes():
     """RED validation fails when test passes unexpectedly."""
     validator = TDDValidator()
 
-    with patch("subprocess.run") as mock_run:
+    with patch("subprocess.run") as mock_run, patch("pathlib.Path.exists", return_value=True):
         # Simulate test passing (returncode == 0)
         mock_run.return_value = Mock(returncode=0, stderr="", stdout="")
 
@@ -35,7 +35,7 @@ def test_validate_green_passes_when_test_passes():
     """GREEN validation passes when test passes."""
     validator = TDDValidator()
 
-    with patch("subprocess.run") as mock_run:
+    with patch("subprocess.run") as mock_run, patch("pathlib.Path.exists", return_value=True):
         mock_run.return_value = Mock(returncode=0, stderr="", stdout="")
 
         result = validator.validate_green("test_file.py", "test_name")
@@ -47,7 +47,7 @@ def test_validate_green_fails_when_test_fails():
     """GREEN validation fails when test still failing."""
     validator = TDDValidator()
 
-    with patch("subprocess.run") as mock_run:
+    with patch("subprocess.run") as mock_run, patch("pathlib.Path.exists", return_value=True):
         mock_run.return_value = Mock(returncode=1, stderr="Still failing", stdout="")
 
         result = validator.validate_green("test_file.py", "test_name")
