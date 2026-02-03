@@ -1,6 +1,8 @@
 from pathlib import Path
 from enum import Enum
 import sys
+import os
+import shlex
 import json
 import subprocess
 import logging
@@ -155,6 +157,12 @@ class TDDValidator:
         # Ensure python_exe is absolute to avoid issues when changing CWD
         python_exe = os.path.abspath(venv_python) if venv_python else sys.executable
 
+        # CRITICAL: Verify Python exists
+        if not os.path.exists(python_exe):
+            msg = f"Python executable not found: {python_exe}"
+            logging.error(f"❌ {msg}")
+            return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
+
         # Make test_file relative to project_path if it's absolute
         try:
             rel_test_file = Path(test_file).relative_to(project_path)
@@ -165,39 +173,35 @@ class TDDValidator:
         full_test_path = (project_path / rel_test_file).absolute()
         if not full_test_path.exists():
             msg = f"Test file not found: {full_test_path}"
-            logging.error(msg)
+            logging.error(f"❌ {msg}")
             return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
-
-        # PROPERLY QUOTE PATHS (Especially for Windows)
-        # Use absolute paths in the command string to be 100% sure
-        q_python = f'"{python_exe}"'
-        q_test_file = f'"{full_test_path}"'
 
         test_command_template = tech_config.get("test_command")
 
         if test_command_template:
             # Use template from config
             # We use full_test_path instead of rel_test_file for better reliability
+            # NOTE: We DO NOT quote here, subprocess handles it with shell=False when passed as a list
+
+            # If the template has hardcoded quotes, we try to honor them but shlex.split should handle it
             cmd_str = test_command_template.format(
-                python=q_python,
-                test_file=str(full_test_path), # Template might already have quotes or handle it
+                python=python_exe,
+                test_file=str(full_test_path),
                 test_name=test_name or ""
             )
 
-            # Ensure test_file is quoted in cmd_str if it's not already
-            if str(full_test_path) in cmd_str and f'"{full_test_path}"' not in cmd_str:
-                cmd_str = cmd_str.replace(str(full_test_path), q_test_file)
-
-            # For pytest with test_name, we might need a better template approach,
-            # but for now let's handle it manually if test_name exists and using pytest
             if "pytest" in cmd_str and test_name and "::" not in cmd_str:
-                # Replace quoted test file with quoted test file + ::test_name
-                cmd_str = cmd_str.replace(q_test_file, f'"{full_test_path}::{test_name}"')
+                 # Logic to append test name if using pytest
+                 cmd_str = cmd_str.replace(str(full_test_path), f"{full_test_path}::{test_name}")
 
-            logging.info(f"Executing test command: {cmd_str} (CWD: {project_path})")
+            # shlex.split handles spaces and quotes correctly to produce a list
+            # We use posix=False on Windows if needed, but usually posix=True is fine for basic commands
+            cmd = shlex.split(cmd_str, posix=(os.name != 'nt'))
+
+            logging.info(f"Executing test command (list): {cmd} (CWD: {project_path})")
             return subprocess.run(
-                cmd_str,
-                shell=True,
+                cmd,
+                shell=False,
                 cwd=str(project_path),
                 capture_output=True,
                 encoding='utf-8',
@@ -214,30 +218,30 @@ class TDDValidator:
 
                 # If it uses pytest explicitly (import pytest)
                 if "import pytest" in content:
-                    cmd = [python_exe, "-m", "pytest", str(rel_test_file)]
+                    cmd = [python_exe, "-m", "pytest", str(full_test_path), "-v"]
                     if test_name:
-                        cmd = [python_exe, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
-                    else:
-                        cmd.append("-v")
+                         cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v"]
                 else:
                     # Execute as standalone script
-                    cmd = [python_exe, str(rel_test_file)]
+                    cmd = [python_exe, str(full_test_path)]
             except Exception as e:
                 logging.warning(f"Error deciding test runner for {test_file}: {e}")
-                cmd = [python_exe, str(rel_test_file)]
+                cmd = [python_exe, str(full_test_path)]
         elif str(rel_test_file).endswith(('.js', '.ts')):
-            cmd = ["npm", "test", "--", str(rel_test_file)]
+            # For npm, we might still need shell=True on Windows because npm is a .cmd/.bat
+            # but let's try with shell=False and full path to npm if possible,
+            # or just use the suggested robust way for npm.
+            cmd = ["npm.cmd" if os.name == 'nt' else "npm", "test", "--", str(full_test_path)]
         else:
             # Default fallback
-            cmd = [python_exe, "-m", "pytest", str(rel_test_file)]
+            cmd = [python_exe, "-m", "pytest", str(full_test_path), "-v"]
             if test_name:
-                cmd = [python_exe, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
-            else:
-                cmd.append("-v")
+                cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v"]
 
-        logging.info(f"Executing: {' '.join(cmd)}")
+        logging.info(f"Executing (list): {cmd}")
         return subprocess.run(
             cmd,
+            shell=False,
             cwd=str(project_path),
             capture_output=True,
             encoding='utf-8',
@@ -262,8 +266,10 @@ class TDDValidator:
 
         # Check for package.json (Node.js)
         if (project_path / "package.json").exists():
+            npm_cmd = "npm.cmd" if os.name == 'nt' else "npm"
             return subprocess.run(
-                ["npm", "test"],
+                [npm_cmd, "test"],
+                shell=False,
                 cwd=str(project_path),
                 capture_output=True,
                 encoding='utf-8',
@@ -292,19 +298,11 @@ class TDDValidator:
             # For simplicity, return result of the first failing test or the last success
             last_result = None
             for py_file in test_dir.glob("**/test*.py"):
-                # Use relative path for command if possible to avoid issues
-                try:
-                    rel_py_file = py_file.relative_to(project_path)
-                except ValueError:
-                    rel_py_file = py_file
-
-                if venv_python:
-                    cmd = [venv_python, str(rel_py_file)]
-                else:
-                    cmd = [sys.executable, str(rel_py_file)]
+                cmd = [python_exe, str(py_file.absolute())]
 
                 last_result = subprocess.run(
                     cmd,
+                    shell=False,
                     cwd=str(project_path),
                     capture_output=True,
                     encoding='utf-8',
@@ -321,6 +319,7 @@ class TDDValidator:
 
         return subprocess.run(
             cmd,
+            shell=False,
             cwd=str(project_path),
             capture_output=True,
             encoding='utf-8',

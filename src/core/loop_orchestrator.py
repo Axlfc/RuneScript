@@ -102,6 +102,28 @@ class LoopOrchestrator:
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
+                    # LOG PARSED FILES DIAGNOSTICS
+                    self._log(f"Files detected by parser: {len(response.files)}", log_callback)
+                    for filename in response.files:
+                        self._log(f"  - {filename} ({len(response.files[filename])} chars)", log_callback)
+
+                    # Specific warning if critical files are missing for frontend_web
+                    nia_config = self._get_nia_config()
+                    tech_key = nia_config.get("tech_stack", "")
+                    if tech_key == 'frontend_web':
+                        critical_files = ['index.html', 'css/main.css', 'styles/main.css', 'js/app.js', 'js/main.js']
+                        detected_paths = set(response.files.keys())
+                        if 'index.html' not in detected_paths:
+                            self._log("⚠️ CRITICAL: index.html not detected in AI response!", log_callback)
+
+                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css'])
+                        if not has_css:
+                             self._log("⚠️ CRITICAL: No CSS file detected in AI response!", log_callback)
+
+                        has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js'])
+                        if not has_js:
+                             self._log("⚠️ CRITICAL: No JS file detected in AI response!", log_callback)
+
                     if not response.files:
                         self._log("❌ AI provided no code changes.", log_callback)
                         if attempt == max_retries:
@@ -228,11 +250,17 @@ class LoopOrchestrator:
                                 if current_lines < min_lines:
                                     quality_issues.append(f"{filename}: {current_lines} lines (min: {min_lines})")
 
+                    # MANDATORY FILES VALIDATION
+                    missing_critical = self._validate_critical_files(tech_key)
+                    if missing_critical:
+                        quality_issues.append(f"MISSING CRITICAL FILES: {', '.join(missing_critical)}")
+
                     if quality_issues and attempt < max_retries:
                         self._log(f"⚠️ Warning: Quality standards not met: {', '.join(quality_issues)}", log_callback)
-                        ai_feedback = (f"CRITICAL: Previous implementation did not meet quality standards:\n" +
+                        ai_feedback = (f"CRITICAL: Previous implementation did not meet quality standards or is missing files:\n" +
                                       "\n".join(quality_issues) +
                                       "\nPlease provide a more complete and detailed implementation with actual content. "
+                                      "Ensure ALL critical files are generated with sufficient detail. "
                                       "DO NOT use stubs or placeholder comments.")
                         continue
 
@@ -314,9 +342,69 @@ class LoopOrchestrator:
                         pass
         return "\n\n".join(context)
 
+    def _validate_file_path(self, filepath: str, tech_stack: str) -> bool:
+        """
+        Validates that files are created in their correct directories based on tech stack.
+        Returns True if valid, False otherwise.
+        """
+        filename = os.path.basename(filepath)
+        ext = os.path.splitext(filename)[1].lower()
+        parent_dir = os.path.dirname(filepath).replace('\\', '/')
+
+        # Standardize empty parent dir to empty string
+        if parent_dir == '.':
+            parent_dir = ''
+
+        # Rules for Frontend Web
+        if tech_stack == 'frontend_web':
+            # Allow common setup files at root
+            if filename.lower() in ['.gitignore', 'readme.md', 'package.json', 'nia_prompt.md', 'spec.md', 'implementation_plan.md']:
+                return True
+
+            # HTML files should be at root or in assets/
+            if ext == '.html':
+                if parent_dir not in ['', 'assets']:
+                    return False
+
+            # CSS files MUST be in a css or styles directory
+            elif ext == '.css':
+                allowed = ['css', 'assets/css', 'styles', 'assets/styles']
+                if parent_dir not in allowed:
+                    return False
+
+            # JS files MUST be in a js or scripts directory
+            elif ext == '.js':
+                allowed = ['js', 'assets/js', 'scripts', 'assets/scripts']
+                if parent_dir not in allowed:
+                    return False
+
+            # Images MUST be in an img or images directory
+            elif ext in ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif']:
+                allowed = ['img', 'assets/img', 'images', 'assets/images', 'assets/icons', 'icons']
+                if parent_dir not in allowed:
+                    return False
+
+        return True
+
     def _write_file(self, rel_path: str, content: str, log_callback=None):
         # Clean the filename of markdown formatting and invalid characters
         rel_path = clean_filename(rel_path)
+
+        # Normalize path
+        rel_path = os.path.normpath(rel_path).replace('\\', '/')
+        if rel_path.startswith('./'):
+            rel_path = rel_path[2:]
+
+        # Validate path based on tech stack
+        nia_config = self._get_nia_config()
+        tech_stack = nia_config.get("tech_stack", "")
+
+        if not self._validate_file_path(rel_path, tech_stack):
+            msg = f"Skipping file {rel_path}: violates project structure for {tech_stack}"
+            self._log(f"⚠️ {msg}", log_callback)
+            logging.warning(msg)
+            return
+
         full_path = self.project_path / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding='utf-8')
@@ -548,6 +636,68 @@ class LoopOrchestrator:
                     except:
                         pass
         return total_lines
+
+    def _validate_critical_files(self, tech_key: str) -> List[str]:
+        """Verify existence of critical files for the specific tech stack."""
+        # Define alternatives for some files
+        ALTERNATIVES = {
+            'css/main.css': [
+                'styles/main.css', 'css/style.css', 'styles/style.css',
+                'assets/css/styles.css', 'assets/css/main.css', 'assets/styles/styles.css',
+                'css/styles.css', 'styles/styles.css'
+            ],
+            'js/app.js': [
+                'js/main.js', 'js/script.js', 'js/index.js',
+                'assets/js/main.js', 'assets/js/app.js', 'assets/js/script.js',
+                'js/app.js', 'main.js'
+            ]
+        }
+
+        REQUIRED_FILES_BY_STACK = {
+            'frontend_web': ['index.html', 'css/main.css', 'js/app.js'],
+            'python_backend': ['app.py', 'requirements.txt'],
+            'node_js': ['index.js', 'package.json']
+        }
+
+        required = REQUIRED_FILES_BY_STACK.get(tech_key, [])
+        missing = []
+
+        for filename in required:
+            # Check the primary filename
+            if (self.project_path / filename).exists():
+                continue
+
+            # Check alternatives
+            found_alt = False
+            for alt in ALTERNATIVES.get(filename, []):
+                if (self.project_path / alt).exists():
+                    found_alt = True
+                    break
+
+            if found_alt:
+                continue
+
+            # Smart search: Check if ANY file with the required extension exists (excluding tests)
+            ext = os.path.splitext(filename)[1]
+            if ext in ['.css', '.js', '.html']:
+                found_by_ext = False
+                for root, dirs, files in os.walk(self.project_path):
+                    # Exclude common noisy directories
+                    dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'node_modules', '.venv', 'venv']]
+
+                    for f in files:
+                        if f.endswith(ext) and 'test' not in f.lower() and f != 'SPEC.md' and f != 'IMPLEMENTATION_PLAN.md':
+                            found_by_ext = True
+                            break
+                    if found_by_ext:
+                        break
+
+                if found_by_ext:
+                    continue
+
+            missing.append(filename)
+
+        return missing
 
     def _log_validation_result(self, result, phase_name: str, log_callback):
         """Log detailed validation result."""

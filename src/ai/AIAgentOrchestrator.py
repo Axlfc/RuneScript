@@ -120,7 +120,7 @@ class AIAgentOrchestrator:
     def handle_state_event(self, event_type, data):
         """Handle state events from the autonomous agent"""
         if not self.controller.current_project:
-            logging.info("No project loaded.")
+            logging.debug("No project loaded.")
             return
 
         if event_type == "file_created":

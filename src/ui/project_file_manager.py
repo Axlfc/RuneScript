@@ -18,7 +18,7 @@ class ProjectFileManager:
 
     def populate_tree_view(self):
         if not self.current_project:
-            self.log_fn("No project loaded.")
+            # Removed redundant UI log spam
             return
 
         try:
