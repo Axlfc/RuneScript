@@ -2,36 +2,35 @@ import json
 from pathlib import Path
 from src.models.ai_assistant import AIAssistant
 from jinja2 import Environment, FileSystemLoader
+from src.prompts.templates import get_plan_system_prompt
 
 class PlanGenerator:
     def __init__(self, templates_dir: Path = Path("src/templates")):
         self.ai = AIAssistant()
         self.env = Environment(loader=FileSystemLoader(str(templates_dir)))
 
-    def generate(self, spec_content: str) -> str:
+    @staticmethod
+    def validate_plan(plan_content: str) -> bool:
+        """
+        Validate that the plan has a minimum number of tasks.
+        """
+        # Count tasks matching the pattern [ ]
+        task_count = plan_content.count('[ ]')
+        if task_count < 5:
+            return False
+
+        # Basic integrity checks
+        if "## PHASE" not in plan_content.upper():
+            return False
+
+        return True
+
+    def generate(self, spec_content: str, tech_config: dict = None) -> str:
         """
         Generate a detailed IMPLEMENTATION_PLAN.md content from SPEC.md.
         """
-        system_prompt = """
-        You are an elite developer.
-        Given a project specification, generate a detailed implementation plan in JSON format.
-        Break it down into PHASES. Each phase should have a list of tasks.
-        Each task should be specific and follow TDD principles (Test: description).
-        Ensure the tasks align with the chosen 'Testing' framework in the specification.
-        JSON format:
-        {
-            "phases": [
-                {
-                    "name": "Phase Name",
-                    "tasks": [{"description": "Task description"}]
-                }
-            ],
-            "total_tasks": 0,
-            "completed_tasks": 0,
-            "remaining_tasks": 0,
-            "blocked_tasks": []
-        }
-        """
+        tech_info_str = json.dumps(tech_config, indent=2) if tech_config else ""
+        system_prompt = get_plan_system_prompt(tech_info_str)
 
         response = self.ai.generate(f"{system_prompt}\n\nSPECIFICATION:\n{spec_content}")
 

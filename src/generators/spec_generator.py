@@ -3,6 +3,7 @@ from pathlib import Path
 from src.models.ai_assistant import AIAssistant
 from jinja2 import Environment, FileSystemLoader
 from src.utils.tool_detector import detect_available_tools
+from src.prompts.templates import get_spec_system_prompt
 
 class SpecGenerator:
     def __init__(self, templates_dir: Path = Path("src/templates")):
@@ -14,23 +15,7 @@ class SpecGenerator:
         Generate a detailed SPEC.md content from a single sentence prompt.
         """
         tools = detect_available_tools()
-
-        system_prompt = f"""
-        You are an expert system architect.
-        Given a project idea, generate a structured project specification in JSON format.
-        Include: project_name, objective, features (list), language, framework, database, testing_framework, success_criteria (list), out_of_scope (list).
-
-        System Context:
-        - Python is available: {tools['python']} (at {tools['python_path']})
-        - Node.js is available: {tools['node']}
-        - npm is available: {tools['npm']}
-
-        Guidelines for Tech Stack Selection:
-        1. If it is a frontend project (HTML/CSS/JS) and Node.js is NOT available, use 'Python scripts (BeautifulSoup, lxml)' for testing_framework and 'HTML/CSS/JavaScript' for language.
-        2. If it is a Python project, use 'pytest' for testing_framework.
-        3. If it is a Node.js project and npm is available, use 'jest' or 'mocha'.
-        4. Always prefer tools that are marked as available in the System Context.
-        """
+        system_prompt = get_spec_system_prompt(tools)
 
         user_input = f"Project Idea: {prompt}"
 

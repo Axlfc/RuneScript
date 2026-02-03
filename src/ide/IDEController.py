@@ -143,9 +143,9 @@ class IDEController(ThemedWindow):
 
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(levelname)s: %(message)s',
+            format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',
             handlers=[
-                logging.FileHandler('project.log', encoding='utf-8'),
+                logging.FileHandler('nia_debug.log', encoding='utf-8'),
                 logging.StreamHandler(sys.stdout)
             ]
         )

@@ -142,10 +142,11 @@ class AutonomousProjectAgent:
 
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s [AutonomousProjectAgent] %(levelname)s: %(message)s',
+            format='%(asctime)s - %(name)s - %(levelname)s: %(message)s',
             handlers=[
                 logging.FileHandler(log_file, encoding='utf-8'),
-                logging.StreamHandler(sys.stdout)
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('nia_debug.log', encoding='utf-8')
             ]
         )
 

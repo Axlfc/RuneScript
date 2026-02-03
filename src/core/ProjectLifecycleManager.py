@@ -7,6 +7,7 @@ import time
 import json
 import re
 import glob
+from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 from tkinter import messagebox
 from typing import Dict, Any
@@ -20,6 +21,7 @@ from src.generators.plan_generator import PlanGenerator
 from src.generators.plan_reviewer import PlanReviewer
 from src.core.loop_orchestrator import LoopOrchestrator
 from src.core.plan_parser import PlanParser
+from src.core.tech_detector import TechStackDetector
 
 class ProjectLifecycleManager:
     """
@@ -74,7 +76,7 @@ class ProjectLifecycleManager:
             thread.start()
 
         except Exception as e:
-            logging.error(f"Project generation failed: {e}")
+            logging.error(f"Project generation failed: {e}", exc_info=True)
             self.controller.safe_ui_call(self.handle_generation_failure, f"Project generation failed: {e}")
             self.controller.ui_manager.toggle_generation_ui(True)
             self.generation_in_progress = False
@@ -488,23 +490,46 @@ class ProjectLifecycleManager:
             if self.stop_event.is_set():
                 return
 
-            # 2. Generate SPEC.md
-            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 1: Generating Specification...")
+            # 2. Detect Tech Stack
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 1: Detecting Tech Stack...")
+            detector = TechStackDetector()
+            tech_key = detector.detect_from_prompt(prompt)
+            tech_config = detector.get_config(tech_key)
+
+            # Save tech config to .nia_config.json
+            nia_config = {
+                "tech_stack": tech_key,
+                "tech_config": tech_config,
+                "project_prompt": prompt,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            }
+            (path / ".nia_config.json").write_text(json.dumps(nia_config, indent=2), encoding='utf-8')
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Tech stack detected: {tech_key}")
+
+            # 3. Generate SPEC.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2: Generating Specification...")
             spec_gen = SpecGenerator()
             spec_content = spec_gen.generate(prompt)
             if self.stop_event.is_set(): return
             (path / "SPEC.md").write_text(spec_content, encoding='utf-8')
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
-            # 3. Generate IMPLEMENTATION_PLAN.md
-            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2: Generating Implementation Plan...")
+            # 4. Generate IMPLEMENTATION_PLAN.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 3: Generating Implementation Plan...")
             plan_gen = PlanGenerator()
-            plan_content = plan_gen.generate(spec_content)
+
+            plan_content = ""
+            for attempt in range(3):
+                plan_content = plan_gen.generate(spec_content, tech_config=tech_config)
+                if plan_gen.validate_plan(plan_content):
+                    break
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"⚠️ Plan attempt {attempt + 1} invalid or too short. Retrying...")
+
             if self.stop_event.is_set(): return
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
-            # Phase 2.5: Plan Review & Critique
+            # Phase 3.5: Plan Review & Critique
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2.5: Reviewing & Critiquing Plan...")
             start_time = time.time()
             reviewer = PlanReviewer()
@@ -512,9 +537,13 @@ class ProjectLifecycleManager:
             duration = time.time() - start_time
 
             if improved_data:
-                plan_content = plan_gen.env.get_template("IMPLEMENTATION_PLAN.md.jinja2").render(**improved_data)
-                (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
-                self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Plan improved after {iterations} iterations.")
+                temp_plan_content = plan_gen.env.get_template("IMPLEMENTATION_PLAN.md.jinja2").render(**improved_data)
+                if plan_gen.validate_plan(temp_plan_content):
+                    plan_content = temp_plan_content
+                    (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
+                    self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Plan improved after {iterations} iterations.")
+                else:
+                    self.controller.safe_ui_call(self.controller.ui_manager.log_output, "⚠️ Improved plan failed validation. Keeping original plan.")
 
             if not approved:
                 self.controller.safe_ui_call(self.controller.ui_manager.log_output, "⚠️ Plan review reached max iterations without full approval. Proceeding with last version.")
@@ -537,19 +566,28 @@ class ProjectLifecycleManager:
             plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
             self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
 
-            # 4. Create NIA_PROMPT.md
-            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 3: Setting up nIA Prompt...")
+            # 5. Create NIA_PROMPT.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Setting up nIA Prompt...")
             template_dir = Path("src/templates")
-            prompt_template = template_dir / "NIA_PROMPT.md.jinja2"
-            if prompt_template.exists():
-                (path / "NIA_PROMPT.md").write_text(prompt_template.read_text(encoding='utf-8'), encoding='utf-8')
+            env = Environment(loader=FileSystemLoader(str(template_dir)))
+            template = env.get_template("NIA_PROMPT.md.jinja2")
+
+            prompt_data = {
+                "tech_stack_name": tech_config.get("display_name", tech_key.replace("_", " ").title()),
+                "quality_standards": tech_config.get("quality_standards", {}),
+                "test_pattern": tech_config.get("test_pattern", "tests/"),
+                "test_command": tech_config.get("test_command", "python -m pytest").format(python="python", test_file="{test_file}")
+            }
+
+            rendered_prompt = template.render(**prompt_data)
+            (path / "NIA_PROMPT.md").write_text(rendered_prompt, encoding='utf-8')
 
             # Initial Commit
             subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
             subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
 
-            # 5. Launch nIA Loop
-            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Launching nIA Autonomous Loop...")
+            # 6. Launch nIA Loop
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 5: Launching nIA Autonomous Loop...")
 
             # Initialize project files (requirements.txt, .gitignore, README.md)
             self._initialize_project_files(path, spec_content)
@@ -594,7 +632,7 @@ class ProjectLifecycleManager:
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"nIA Loop Finished: {result.message}")
 
         except Exception as e:
-            logging.error(f"nIA Loop Error: {e}")
+            logging.error(f"nIA Loop Error: {e}", exc_info=True)
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"❌ nIA Loop Error: {e}")
         finally:
             self.generation_in_progress = False
