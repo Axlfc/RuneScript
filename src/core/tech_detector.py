@@ -12,6 +12,7 @@ class TechStackDetector:
     # Core signatures in code for fast detection
     SIGNATURES = {
         'frontend_web': {
+            'display_name': 'Frontend Web (HTML/CSS/JS)',
             'keywords': ['html', 'css', 'javascript', 'web', 'portfolio', 'landing', 'website', 'frontend', 'ui', 'ux'],
             'files': ['index.html', 'styles.css', 'main.js'],
             'test_framework': 'python_beautifulsoup',
@@ -25,6 +26,7 @@ class TechStackDetector:
             }
         },
         'python_backend': {
+            'display_name': 'Python Backend',
             'keywords': ['python', 'api', 'flask', 'django', 'fastapi', 'backend', 'server', 'logic', 'script'],
             'files': ['requirements.txt', 'setup.py', 'pyproject.toml', 'main.py', 'app.py'],
             'test_framework': 'pytest',
@@ -36,6 +38,7 @@ class TechStackDetector:
             }
         },
         'node_js': {
+            'display_name': 'Node.js Backend',
             'keywords': ['node', 'npm', 'express', 'javascript backend', 'typescript'],
             'files': ['package.json', 'package-lock.json'],
             'test_framework': 'jest',

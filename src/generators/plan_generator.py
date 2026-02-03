@@ -88,6 +88,9 @@ class PlanGenerator:
 
         response = self.ai.generate(f"{system_prompt}\n\nSPECIFICATION:\n{spec_content}")
 
+        # Get tech name for display
+        tech_name = tech_config.get("display_name", "Auto-detected") if tech_config else "Auto-detected"
+
         try:
             start = response.find('{')
             end = response.rfind('}') + 1
@@ -108,5 +111,6 @@ class PlanGenerator:
                 "blocked_tasks": []
             }
 
+        data["tech_stack"] = tech_name
         template = self.env.get_template("IMPLEMENTATION_PLAN.md.jinja2")
         return template.render(**data)

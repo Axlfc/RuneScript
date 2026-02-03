@@ -22,6 +22,7 @@ from src.generators.plan_reviewer import PlanReviewer
 from src.core.loop_orchestrator import LoopOrchestrator
 from src.core.plan_parser import PlanParser
 from src.core.tech_detector import TechStackDetector
+from lib.nia_git_manager import GitBasedFileManager
 
 class ProjectLifecycleManager:
     """
@@ -385,10 +386,10 @@ class ProjectLifecycleManager:
 
         # Initial Git Commit for these files
         try:
-            subprocess.run(["git", "add", "requirements.txt", ".gitignore", "README.md"], cwd=str(project_path), capture_output=True)
-            subprocess.run(["git", "commit", "-m", "chore: Initialize project files (requirements, gitignore, README)"], cwd=str(project_path), capture_output=True)
-        except:
-            pass
+            git_manager = GitBasedFileManager(str(project_path))
+            git_manager.create_checkpoint("chore: Initialize project files (requirements, gitignore, README)")
+        except Exception as e:
+            logging.warning(f"Failed to commit initial project files: {e}")
 
     def _detect_project_type(self, spec_content):
         types = []
@@ -439,11 +440,12 @@ class ProjectLifecycleManager:
         templates = {
             'python': ['__pycache__/', '*.py[cod]', '*$py.class', '.venv/', 'venv/', 'env/', '.pytest_cache/', '*.egg-info/', '.env'],
             'node': ['node_modules/', 'npm-debug.log*', 'yarn-debug.log*', 'yarn-error.log*', 'dist/', '.env'],
-            'web': ['.DS_Store', 'Thumbs.db', '.env']
+            'web': ['.DS_Store', 'Thumbs.db', '.env'],
+            'nia': ['.nia/logs/', '.nia/diffs/', '.nia/history_report.html']
         }
 
         lines = set()
-        for pt in project_types:
+        for pt in project_types + ['nia']:
             if pt in templates:
                 lines.update(templates[pt])
 
@@ -493,7 +495,7 @@ class ProjectLifecycleManager:
 
         try:
             # 1. Initialize Git
-            subprocess.run(["git", "init"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
+            git_manager = GitBasedFileManager(project_path)
 
             # Check for stop before starting phases
             if self.stop_event.is_set():
@@ -521,6 +523,7 @@ class ProjectLifecycleManager:
             spec_content = spec_gen.generate(prompt)
             if self.stop_event.is_set(): return
             (path / "SPEC.md").write_text(spec_content, encoding='utf-8')
+            git_manager.create_checkpoint("feat: Generate project specification (SPEC.md)")
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
             # 4. Generate IMPLEMENTATION_PLAN.md
@@ -555,13 +558,14 @@ class ProjectLifecycleManager:
 
             if self.stop_event.is_set(): return
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
+            git_manager.create_checkpoint("feat: Generate initial implementation plan")
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
             # Phase 3.5: Plan Review & Critique
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2.5: Reviewing & Critiquing Plan...")
             start_time = time.time()
             reviewer = PlanReviewer()
-            approved, critique, improved_data, iterations = reviewer.review_and_improve(spec_content, plan_content, prompt)
+            approved, critique, improved_data, iterations = reviewer.review_and_improve(spec_content, plan_content, prompt, tech_stack=tech_key)
             duration = time.time() - start_time
 
             if improved_data:
@@ -569,6 +573,7 @@ class ProjectLifecycleManager:
                 if plan_gen.validate_plan(temp_plan_content):
                     plan_content = temp_plan_content
                     (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
+                    git_manager.create_checkpoint(f"chore: Improve plan after {iterations} review iterations")
                     self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Plan improved after {iterations} iterations.")
                 else:
                     self.controller.safe_ui_call(self.controller.ui_manager.log_output, "⚠️ Improved plan failed validation. Keeping original plan.")
@@ -611,11 +616,15 @@ class ProjectLifecycleManager:
             (path / "NIA_PROMPT.md").write_text(rendered_prompt, encoding='utf-8')
 
             # Initial Commit
-            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
-            subprocess.run(["git", "commit", "-m", "Initial nIA project setup"], cwd=project_path, capture_output=True, encoding='utf-8', errors='replace')
+            git_manager.create_checkpoint("Initial nIA project setup")
 
             # 6. Launch nIA Loop
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 5: Launching nIA Autonomous Loop...")
+
+            # Ensure .nia directory structure is prepared
+            nia_dir = path / ".nia"
+            for sub in ["patches", "logs", "diffs"]:
+                (nia_dir / sub).mkdir(parents=True, exist_ok=True)
 
             # Initialize project files (requirements.txt, .gitignore, README.md)
             self._initialize_project_files(path, spec_content)

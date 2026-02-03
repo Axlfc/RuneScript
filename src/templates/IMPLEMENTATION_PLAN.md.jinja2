@@ -1,5 +1,8 @@
 # Implementation Plan
 
+## Project Info
+- Tech Stack: {{ tech_stack | default('Auto-detected') }}
+
 ## Progress
 - Total Tasks: {{ total_tasks }}
 - Completed: {{ completed_tasks }}
@@ -11,7 +14,7 @@
 {% for phase in phases %}
 ## PHASE {{ loop.index }}: {{ phase.name }}
 {% for task in phase.tasks %}
-- [ ] Test: {{ task.description }}
+- [ ] {{ task.description }}
 {% endfor %}
 
 {% endfor %}
