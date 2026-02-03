@@ -10,7 +10,7 @@ class PlanReviewer:
         self.ai = ai_client or AIAssistant()
         self.max_iterations = max_iterations
 
-    def review_and_improve(self, spec_content, plan_content, user_request):
+    def review_and_improve(self, spec_content, plan_content, user_request, tech_stack="unknown"):
         """
         Reviews the implementation plan and suggests improvements if needed.
         Returns: (approved, critique, improved_plan_data, iteration_count)
@@ -25,7 +25,7 @@ class PlanReviewer:
             iteration += 1
             logger.info(f"Plan Review Iteration {iteration}/{self.max_iterations}")
 
-            prompt = get_reviewer_prompt(user_request, spec_content, current_plan_to_review)
+            prompt = get_reviewer_prompt(user_request, spec_content, current_plan_to_review, tech_stack=tech_stack)
             response = self.ai.generate(prompt)
 
             try:

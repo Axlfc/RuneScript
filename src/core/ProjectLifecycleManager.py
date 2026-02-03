@@ -523,6 +523,7 @@ class ProjectLifecycleManager:
             spec_content = spec_gen.generate(prompt)
             if self.stop_event.is_set(): return
             (path / "SPEC.md").write_text(spec_content, encoding='utf-8')
+            git_manager.create_checkpoint("feat: Generate project specification (SPEC.md)")
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
             # 4. Generate IMPLEMENTATION_PLAN.md
@@ -557,13 +558,14 @@ class ProjectLifecycleManager:
 
             if self.stop_event.is_set(): return
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
+            git_manager.create_checkpoint("feat: Generate initial implementation plan")
             self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
 
             # Phase 3.5: Plan Review & Critique
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2.5: Reviewing & Critiquing Plan...")
             start_time = time.time()
             reviewer = PlanReviewer()
-            approved, critique, improved_data, iterations = reviewer.review_and_improve(spec_content, plan_content, prompt)
+            approved, critique, improved_data, iterations = reviewer.review_and_improve(spec_content, plan_content, prompt, tech_stack=tech_key)
             duration = time.time() - start_time
 
             if improved_data:
@@ -571,6 +573,7 @@ class ProjectLifecycleManager:
                 if plan_gen.validate_plan(temp_plan_content):
                     plan_content = temp_plan_content
                     (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
+                    git_manager.create_checkpoint(f"chore: Improve plan after {iterations} review iterations")
                     self.controller.safe_ui_call(self.controller.ui_manager.log_output, f"Plan improved after {iterations} iterations.")
                 else:
                     self.controller.safe_ui_call(self.controller.ui_manager.log_output, "⚠️ Improved plan failed validation. Keeping original plan.")
