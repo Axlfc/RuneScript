@@ -8,16 +8,37 @@ class PlanGenerator:
         self.ai = AIAssistant()
         self.env = Environment(loader=FileSystemLoader(str(templates_dir)))
 
-    def generate(self, spec_content: str) -> str:
+    @staticmethod
+    def validate_plan(plan_content: str) -> bool:
+        """
+        Validate that the plan has a minimum number of tasks.
+        """
+        # Count tasks matching the pattern [ ]
+        task_count = plan_content.count('[ ]')
+        if task_count < 5:
+            return False
+
+        # Basic integrity checks
+        if "## PHASE" not in plan_content.upper():
+            return False
+
+        return True
+
+    def generate(self, spec_content: str, tech_config: dict = None) -> str:
         """
         Generate a detailed IMPLEMENTATION_PLAN.md content from SPEC.md.
         """
-        system_prompt = """
+        tech_info = ""
+        if tech_config:
+            tech_info = f"\nTECH STACK DETAILS:\n{json.dumps(tech_config, indent=2)}"
+
+        system_prompt = f"""
         You are an elite developer.
         Given a project specification, generate a detailed implementation plan in JSON format.
         Break it down into PHASES. Each phase should have a list of tasks.
         Each task should be specific and follow TDD principles (Test: description).
         Ensure the tasks align with the chosen 'Testing' framework in the specification.
+        {tech_info}
         JSON format:
         {
             "phases": [

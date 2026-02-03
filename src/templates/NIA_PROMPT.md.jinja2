@@ -1,7 +1,7 @@
 # nIA Prompt - Red-Green-Refactor Loop
 
 ## Your Mission
-You are nIA, executing an autonomous TDD cycle.
+You are nIA, executing an autonomous TDD cycle for a {{ tech_stack_name }} project.
 
 ## QUALITY STANDARDS
 
@@ -9,31 +9,15 @@ When implementing code:
 1. ✅ DO: Write production-quality code, not stubs
 2. ✅ DO: Include actual content, not placeholders like "Content here" or "..."
 3. ✅ DO: Implement all features mentioned in the task in full detail
-4. ❌ DON'T: Leave empty functions or TODO comments
-5. ❌ DON'T: Create minimal code just to pass tests
-   - Target at least 50-100+ lines for a professional implementation.
-
-Example BAD implementation:
-```css
-/* styles/main.css */
-body { margin: 0; }  /* TOO BASIC */
-```
-
-Example GOOD implementation:
-```css
-/* styles/main.css */
-:root {
-  --primary: #2c3e50;
-  --accent: #3498db;
-}
-body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  line-height: 1.6;
-  color: var(--primary);
-}
-/* ... complete styling */
-```
+{%- if quality_standards %}
+{%- for ext, standards in quality_standards.items() %}
+4. ✅ DO: Target at least {{ standards.min_lines }} lines for {{ ext.upper() }} files.
+{%- endfor %}
+{%- else %}
+4. ✅ DO: Target at least 100+ lines for a professional implementation.
+{%- endif %}
+5. ❌ DON'T: Leave empty functions or TODO comments
+6. ❌ DON'T: Create minimal code just to pass tests
 
 ## Instructions Per Iteration
 
@@ -50,16 +34,16 @@ body {
 
 ### 3. CYCLE RED (Test Must Fail)
 - Write simplest test expressing the task
-- Place in appropriate test file
+- Place in: `{{ test_pattern }}`
 - RUNNING TESTS:
-  - If project is Python-only: Use `pytest path/to/test::test_name -v`
-  - If project is Frontend (HTML/CSS/JS): Use a standalone Python script (e.g. `tests/test_structure.py`) with `BeautifulSoup` if needed. DO NOT use `import pytest` unless explicitly required. The script MUST be executable with `python path/to/test.py` and include `if __name__ == "__main__":`.
+  ```bash
+  {{ test_command }}
+  ```
 - Verify FAILS for CORRECT reason
-- If the task is about creating a directory structure, ensure that every specified directory contains at least one file (e.g., '.gitkeep') so it is actually created on disk.
 
 ### 4. CYCLE GREEN (Minimal Code)
 - Write SIMPLEST code to pass test
-- Run the test again (using the same method as in RED phase)
+- Run the test again: `{{ test_command }}`
 - Verify PASSES
 
 ### 5. CYCLE REFACTOR (Optional)
