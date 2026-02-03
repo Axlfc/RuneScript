@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
 from src.utils.path_utils import clean_filename
+from src.prompts.templates import get_nia_iteration_prompt
 
 class nIAResponse:
     """Structured response from nIA iteration."""
@@ -85,35 +86,7 @@ IMPORTANT FOR FRONTEND PROJECTS:
 - If the task involves creating a project structure, ensure that your implementation code includes at least one file for each directory that needs to exist (use '.gitkeep' if the directory is intended to be empty).
 """
 
-        full_prompt = f"""
-{prompt}
-
-{test_instructions}
-
-## QUALITY STANDARDS
-1. ✅ DO: Write production-quality code, not stubs.
-2. ✅ DO: Include actual content, not placeholders like "Content here" or "...".
-3. ✅ DO: Implement all features mentioned in the task in detail.
-4. ❌ DON'T: Leave empty functions or TODO comments.
-5. ❌ DON'T: Create minimal code just to pass tests.
-   - A professional implementation of a UI component should typically be 50-100+ lines including styles and logic.
-
-=== CURRENT SPEC ===
-{spec}
-
-=== CURRENT PLAN ===
-{plan}
-
-=== CURRENT CONTEXT (FILES) ===
-{context}
-
-=== NEXT TASK ===
-{task.description}
-
-Please complete this task following the RED-GREEN-REFACTOR cycle.
-Always specify the filename before each code block using 'File: path/to/file' format.
-GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
-"""
+        full_prompt = get_nia_iteration_prompt(prompt, test_instructions, spec, plan, context, task.description)
 
         response = self.ai.generate(full_prompt)
         return nIAResponse(response)

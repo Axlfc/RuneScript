@@ -1,0 +1,25 @@
+{
+  "frontend_web": {
+    "display_name": "Frontend Web (HTML/CSS/JS)",
+    "quality_standards": {
+      "html": {"min_lines": 150, "max_retries": 2},
+      "css": {"min_lines": 200, "max_retries": 2},
+      "js": {"min_lines": 100, "max_retries": 2}
+    },
+    "recommended_tools": ["BeautifulSoup", "html5lib"]
+  },
+  "python_backend": {
+    "display_name": "Python Backend",
+    "quality_standards": {
+      "py": {"min_lines": 100, "max_retries": 2}
+    },
+    "recommended_tools": ["pytest", "requests"]
+  },
+  "node_js": {
+    "display_name": "Node.js Backend",
+    "quality_standards": {
+      "js": {"min_lines": 100, "max_retries": 2}
+    },
+    "recommended_tools": ["jest", "express"]
+  }
+}

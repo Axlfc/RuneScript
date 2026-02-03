@@ -1,8 +1,10 @@
 from pathlib import Path
 from enum import Enum
 import sys
+import json
 import subprocess
 import logging
+from .tech_detector import TechStackDetector
 
 class CyclePhase(Enum):
     RED = "red"
@@ -24,6 +26,24 @@ class TDDValidator:
         Validate RED phase: test must FAIL.
         """
         result = self._run_test(project_path, test_file, test_name, venv_python)
+
+        # CRITICAL: Check for execution errors (file not found, etc.)
+        execution_errors = [
+            "no puede encontrar la ruta",
+            "no such file or directory",
+            "command not found",
+            "is not recognized as an internal or external command"
+        ]
+
+        has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
+
+        if has_execution_error:
+            return ValidationResult(
+                success=False,
+                message=f"RED phase failed: Execution error detected (not a test failure). Check paths and environment.",
+                stdout=result.stdout,
+                stderr=result.stderr
+            )
 
         # In RED phase, returncode != 0 is GOOD (test failed)
         if result.returncode == 0:
@@ -47,6 +67,23 @@ class TDDValidator:
         """
         result = self._run_test(project_path, test_file, test_name, venv_python)
 
+        # Check for execution errors
+        execution_errors = [
+            "no puede encontrar la ruta",
+            "no such file or directory",
+            "command not found",
+            "is not recognized as an internal or external command"
+        ]
+        has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
+
+        if has_execution_error:
+            return ValidationResult(
+                success=False,
+                message=f"GREEN phase failed: Execution error detected. Check paths and environment.",
+                stdout=result.stdout,
+                stderr=result.stderr
+            )
+
         if result.returncode != 0:
             return ValidationResult(
                 success=False,
@@ -68,6 +105,23 @@ class TDDValidator:
         """
         result = self._run_all_tests(project_path, venv_python)
 
+        # Check for execution errors
+        execution_errors = [
+            "no puede encontrar la ruta",
+            "no such file or directory",
+            "command not found",
+            "is not recognized as an internal or external command"
+        ]
+        has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
+
+        if has_execution_error:
+            return ValidationResult(
+                success=False,
+                message=f"REFACTOR failed: Execution error detected. Check paths and environment.",
+                stdout=result.stdout,
+                stderr=result.stderr
+            )
+
         if result.returncode != 0:
             return ValidationResult(
                 success=False,
@@ -85,6 +139,20 @@ class TDDValidator:
 
     def _run_test(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None):
         """Run single test with appropriate runner."""
+        project_path = Path(project_path)
+
+        # 1. Try to get tech config from .nia_config.json
+        config_path = project_path / ".nia_config.json"
+        tech_config = {}
+        if config_path.exists():
+            try:
+                nia_config = json.loads(config_path.read_text(encoding='utf-8'))
+                tech_config = nia_config.get("tech_config", {})
+            except:
+                pass
+
+        # 2. Determine command
+        python_exe = venv_python or sys.executable
 
         # Make test_file relative to project_path if it's absolute
         try:
@@ -92,47 +160,79 @@ class TDDValidator:
         except ValueError:
             rel_test_file = Path(test_file)
 
-        # Determine runner
-        if test_file.endswith('.py'):
-            if venv_python:
-                # Check if it's a pytest file or a simple script
-                try:
-                    with open(test_file, 'r', encoding='utf-8') as f:
-                        content = f.read()
+        # VERIFY TEST FILE EXISTS
+        full_test_path = project_path / rel_test_file
+        if not full_test_path.exists():
+            msg = f"Test file not found: {full_test_path}"
+            logging.error(msg)
+            return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
 
-                    # If it uses pytest explicitly (import pytest)
-                    if "import pytest" in content:
-                        # Ensure pytest is installed
-                        try:
-                            subprocess.run([venv_python, "-m", "pytest", "--version"], capture_output=True, check=True, encoding='utf-8', errors='replace')
-                        except (subprocess.CalledProcessError, FileNotFoundError):
-                            logging.info(f"Installing pytest in venv: {venv_python}")
-                            subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True, encoding='utf-8', errors='replace')
+        # PROPERLY QUOTE PATHS (Especially for Windows)
+        q_python = f'"{python_exe}"'
+        q_test_file = f'"{rel_test_file}"'
 
-                        cmd = [venv_python, "-m", "pytest", str(rel_test_file)]
-                        if test_name:
-                            # Adjust command for pytest with specific test name
-                            cmd = [venv_python, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
-                        else:
-                            cmd.append("-v")
+        test_command_template = tech_config.get("test_command")
+
+        if test_command_template:
+            # Use template from config
+            cmd_str = test_command_template.format(
+                python=q_python,
+                test_file=str(rel_test_file), # Template might already have quotes or handle it
+                test_name=test_name or ""
+            )
+
+            # Ensure rel_test_file is quoted in cmd_str if it's not already
+            if str(rel_test_file) in cmd_str and f'"{rel_test_file}"' not in cmd_str:
+                cmd_str = cmd_str.replace(str(rel_test_file), q_test_file)
+
+            # For pytest with test_name, we might need a better template approach,
+            # but for now let's handle it manually if test_name exists and using pytest
+            if "pytest" in cmd_str and test_name and "::" not in cmd_str:
+                # Replace quoted test file with quoted test file + ::test_name
+                cmd_str = cmd_str.replace(q_test_file, f'"{rel_test_file}::{test_name}"')
+
+            logging.info(f"Executing test command: {cmd_str} (CWD: {project_path})")
+            return subprocess.run(
+                cmd_str,
+                shell=True,
+                cwd=str(project_path),
+                capture_output=True,
+                encoding='utf-8',
+                errors='replace'
+            )
+
+        # Fallback to old logic if no tech_config
+        logging.info(f"Running test fallback for: {rel_test_file} (CWD: {project_path})")
+        if str(rel_test_file).endswith('.py'):
+            # Check if it's a pytest file or a simple script
+            try:
+                with open(full_test_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # If it uses pytest explicitly (import pytest)
+                if "import pytest" in content:
+                    cmd = [python_exe, "-m", "pytest", str(rel_test_file)]
+                    if test_name:
+                        cmd = [python_exe, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
                     else:
-                        # Execute as standalone script
-                        cmd = [venv_python, str(rel_test_file)]
-                except Exception as e:
-                    logging.warning(f"Error deciding test runner for {test_file}: {e}")
-                    cmd = [venv_python, test_file]
-            else:
-                cmd = [sys.executable, str(rel_test_file)]
-        elif test_file.endswith(('.js', '.ts')):
+                        cmd.append("-v")
+                else:
+                    # Execute as standalone script
+                    cmd = [python_exe, str(rel_test_file)]
+            except Exception as e:
+                logging.warning(f"Error deciding test runner for {test_file}: {e}")
+                cmd = [python_exe, str(rel_test_file)]
+        elif str(rel_test_file).endswith(('.js', '.ts')):
             cmd = ["npm", "test", "--", str(rel_test_file)]
         else:
-            # Default fallback using system python -m pytest to avoid [WinError 2]
-            cmd = [sys.executable, "-m", "pytest", str(rel_test_file)]
+            # Default fallback
+            cmd = [python_exe, "-m", "pytest", str(rel_test_file)]
             if test_name:
-                cmd = [sys.executable, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
+                cmd = [python_exe, "-m", "pytest", f"{rel_test_file}::{test_name}", "-v"]
             else:
                 cmd.append("-v")
 
+        logging.info(f"Executing: {' '.join(cmd)}")
         return subprocess.run(
             cmd,
             cwd=str(project_path),
@@ -143,6 +243,20 @@ class TDDValidator:
 
     def _run_all_tests(self, project_path: Path, venv_python: str = None):
         """Run all tests with appropriate runner."""
+        project_path = Path(project_path)
+
+        # Try to get tech config
+        config_path = project_path / ".nia_config.json"
+        tech_config = {}
+        if config_path.exists():
+            try:
+                nia_config = json.loads(config_path.read_text(encoding='utf-8'))
+                tech_config = nia_config.get("tech_config", {})
+            except:
+                pass
+
+        python_exe = venv_python or sys.executable
+
         # Check for package.json (Node.js)
         if (project_path / "package.json").exists():
             return subprocess.run(
@@ -169,12 +283,7 @@ class TDDValidator:
                 pass
 
         if uses_pytest:
-            if venv_python:
-                # Ensure pytest is installed
-                subprocess.run([venv_python, "-m", "pip", "install", "pytest"], capture_output=True, encoding='utf-8', errors='replace')
-                cmd = [venv_python, "-m", "pytest", "."]
-            else:
-                cmd = [sys.executable, "-m", "pytest", "."]
+            cmd = [python_exe, "-m", "pytest", "."]
         else:
             # Run all test files as individual scripts
             # For simplicity, return result of the first failing test or the last success
