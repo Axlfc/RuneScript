@@ -11,6 +11,7 @@ from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
 from .nia_claude_client import nIAClaudeClient, nIAResponse
+from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
 import logging
 
@@ -30,6 +31,7 @@ class LoopOrchestrator:
         self.tracker = TaskTracker()
         self.validator = TDDValidator()
         self.ai_client = nIAClaudeClient()
+        self.git_manager = GitBasedFileManager(str(self.project_path))
         self.venv_python: Optional[str] = None
 
         self.spec_path = project_path / "SPEC.md"
@@ -77,10 +79,13 @@ class LoopOrchestrator:
 
             self._log(f"Target Task: {next_task.description}", log_callback)
 
-            # 3. Get context (all project files)
+            # 3. Create Checkpoint
+            checkpoint = self.git_manager.create_checkpoint(f"Before: {next_task.description}")
+
+            # 4. Get context (all project files)
             context = self._get_project_context()
 
-            # 4. Ask AI for solution (with quality retry)
+            # 5. Ask AI for solution (with quality retry)
             max_retries = 2
             ai_feedback = ""
             active_test_file = None
@@ -101,6 +106,11 @@ class LoopOrchestrator:
 
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
+
+                    # DETECT INCORRECT EXECUTION SIGNALS (mkdir, cd, etc.)
+                    raw_lower = response.raw_response.lower()
+                    if "mkdir" in raw_lower or "cd " in raw_lower or "npm " in raw_lower:
+                        self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
 
                     # LOG PARSED FILES DIAGNOSTICS
                     self._log(f"Files detected by parser: {len(response.files)}", log_callback)
@@ -132,7 +142,7 @@ class LoopOrchestrator:
                         ai_feedback = "You provided no code changes. Please provide the necessary implementation files."
                         continue
 
-                    # 5. TDD Cycle: RED Phase (ONLY on attempt 0)
+                    # 6. TDD Cycle: RED Phase (ONLY on attempt 0)
                     if attempt == 0 and response.test_file:
                         active_test_file = response.test_file
                         active_test_name = response.test_name
@@ -176,7 +186,7 @@ class LoopOrchestrator:
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-                    # 6. TDD Cycle: GREEN Phase
+                    # 7. TDD Cycle: GREEN Phase
                     self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
 
                     # Pre-application validation for placeholders
@@ -262,6 +272,9 @@ class LoopOrchestrator:
                                       "\nPlease provide a more complete and detailed implementation with actual content. "
                                       "Ensure ALL critical files are generated with sufficient detail. "
                                       "DO NOT use stubs or placeholder comments.")
+                        # Rollback before retry to have a clean slate
+                        self.git_manager.rollback_to(checkpoint)
+                        self.git_manager.record_failed_iteration()
                         continue
 
                     if quality_issues:
@@ -273,6 +286,9 @@ class LoopOrchestrator:
                 except Exception as e:
                     logger.error(f"Error during iteration attempt: {e}", exc_info=True)
                     self._log(f"❌ Error during iteration attempt: {str(e)}", log_callback)
+                    # Rollback on unexpected error
+                    self.git_manager.rollback_to(checkpoint)
+                    self.git_manager.record_failed_iteration()
                     if attempt == max_retries:
                         self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                         return LoopResult("ERROR", iteration, str(e))
@@ -281,40 +297,66 @@ class LoopOrchestrator:
             if stop_event.is_set():
                 return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-            # 7. TDD Cycle: REFACTOR Phase
+            # 10. TDD Cycle: REFACTOR Phase
             try:
                 self._log("=== STARTING REFACTOR PHASE ===", log_callback)
                 self._log("Verifying all tests...", log_callback)
                 val_refactor = self.validator.validate_refactor(self.project_path, self.venv_python)
                 self._log_validation_result(val_refactor, "REFACTOR", log_callback)
 
-                if val_refactor.success:
-                    # 7.1. Code Quality Metrics (Informational)
-                    try:
-                        metrics = self._analyze_code_quality()
-                        self._log("📊 Code Quality Metrics (Informational):", log_callback)
-                        for key, value in metrics.items():
-                            self._log(f"  - {key}: {value}", log_callback)
-                    except Exception as me:
-                        logger.warning(f"Error during quality analysis: {me}")
-
                 if not val_refactor.success:
                     self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
+                    # ROLLBACK: If refactor/final validation fails, undo everything from this iteration
+                    self._log("⏪ Undoing changes due to validation failure.", log_callback)
+                    self.git_manager.rollback_to(checkpoint)
+                    self.git_manager.record_failed_iteration()
                     self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")
                     return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+
                 self._log("✅ All tests passed.", log_callback)
 
-                # 8. Update Plan
+                # 11. Code Quality Metrics (Informational)
+                try:
+                    metrics = self._analyze_code_quality()
+                    self._log("📊 Code Quality Metrics (Informational):", log_callback)
+                    for key, value in metrics.items():
+                        self._log(f"  - {key}: {value}", log_callback)
+                except Exception as me:
+                    logger.warning(f"Error during quality analysis: {me}")
+
+                # 12. FINALIZE ITERATION: Detect Changes, Commit and Patch System
+                self._log("💾 Finalizing task and generating patches...", log_callback)
+
+                # Detect changes since checkpoint
+                changes = self.git_manager.get_changes_since(checkpoint)
+
+                # Commit with task description
+                commit_msg = f"✅ {next_task.description}"
+                self.git_manager.create_checkpoint(commit_msg)
+
+                # Generate Patch System files
+                patch_path, diff_path = self.git_manager.generate_patch(checkpoint, next_task.description)
+                log_path = self.git_manager.generate_patch_log(
+                    patch_path,
+                    next_task.description,
+                    changes,
+                    val_refactor
+                )
+                self.git_manager.update_manifest(patch_path, next_task.description, changes)
+
+                self._log(f"✅ Patch saved: {os.path.basename(patch_path)}", log_callback)
+                self._log(f"📊 Diff saved: {os.path.basename(diff_path)}", log_callback)
+                self._log(f"📝 Log saved: {os.path.basename(log_path)}", log_callback)
+
+                # 13. Update Plan
                 self.tracker.mark_completed(self.plan_path, next_task)
                 tasks_completed += 1
-
-                # 9. Git Commit
-                self._git_commit(f"✅ {next_task.description}")
-                self._log(f"Task completed and committed.", log_callback)
 
             except Exception as e:
                 logger.error(f"Error during iteration: {e}", exc_info=True)
                 self._log(f"❌ Error during iteration: {str(e)}", log_callback)
+                # Ensure rollback on finalization error
+                self.git_manager.rollback_to(checkpoint)
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                 return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
@@ -447,25 +489,12 @@ class LoopOrchestrator:
             self.venv_python = sys.executable
 
     def _git_commit(self, message: str):
-        """Safe git commit."""
+        """Safe git commit (Delegated to GitBasedFileManager)."""
         try:
-            # Check if git is installed
-            subprocess.run(["git", "--version"], capture_output=True, check=True, encoding='utf-8', errors='replace')
-
-            # Check if git repo
-            if not (self.project_path / ".git").exists():
-                logger.info("Initializing new git repository")
-                subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, check=True, encoding='utf-8', errors='replace')
-
-            subprocess.run(["git", "add", "."], cwd=self.project_path, capture_output=True, check=True, encoding='utf-8', errors='replace')
-            subprocess.run(["git", "commit", "-m", message], cwd=self.project_path, capture_output=True, check=True, encoding='utf-8', errors='replace')
+            self.git_manager.create_checkpoint(message)
             logger.info(f"Git commit successful: {message}")
-        except FileNotFoundError:
-            logger.warning("Git binary not found. Skipping commit.")
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Git operation failed: {e}")
         except Exception as e:
-            logger.warning(f"Unexpected error during git commit: {e}")
+            logger.warning(f"Delegated git commit failed: {e}")
 
     def _log(self, message: str, callback):
         if callback:

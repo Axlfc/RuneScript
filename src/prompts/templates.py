@@ -27,8 +27,10 @@ CRITICAL REQUIREMENTS:
 1. NO PLACEHOLDERS: Do NOT use "..." or "(rest of plan)" or "(remaining tasks)". Generate ALL tasks explicitly.
 2. COMPLETENESS: Aim for a detailed breakdown. For a medium project, generate at least 10-15 tasks across 3-4 phases.
 3. TDD PRINCIPLES: Each task MUST follow the format: "Test: <description>. Implementation: <what to do>".
-4. TEST COVERAGE: Every critical file (e.g., index.html, main.css, app.py) MUST have a dedicated task that includes a specific test verification using appropriate tools (BeautifulSoup, pytest, etc.).
-5. FORMAT: Each task description should be descriptive (at least 20-30 characters).
+4. TEST COVERAGE: Every critical file (e.g., index.html, main.css, app.js) MUST have a dedicated task that includes a specific test verification using appropriate tools (BeautifulSoup, pytest, etc.).
+5. NO BLOAT/WRONG TECH: If the project is vanilla HTML/CSS/JS, DO NOT include tasks for Vite, Node.js, npm, or any build tools. Build the features directly.
+6. QUALITY TASKS: Each task should represent a meaningful feature or component (e.g., "Implement Hero Section with reveal-on-scroll animation" instead of just "Create HTML").
+7. FORMAT: Each task description should be descriptive (at least 30-50 characters).
 
 {tech_info}
 
@@ -65,6 +67,9 @@ Eres un arquitecto de software experto revisando un plan de implementación.
 SOLICITUD ORIGINAL:
 {user_request}
 
+TECH STACK DETECTADO:
+{tech_stack}
+
 ESPECIFICACIÓN GENERADA:
 {spec_content}
 
@@ -73,11 +78,13 @@ PLAN DE IMPLEMENTACIÓN PROPUESTO:
 
 TAREA: Realiza una revisión crítica respondiendo:
 
-1. COMPLETITUD: ¿El plan cumple TODOS los requisitos? Lista lo que falta.
-2. CALIDAD: ¿Las tareas generarán código profesional o solo stubs básicos?
-3. GRANULARIDAD: ¿Las tareas son demasiado grandes o pequeñas?
-4. ARCHIVOS: ¿Faltan requirements.txt, .gitignore u otros archivos esenciales?
-5. TESTS: ¿Los tests verifican funcionalidad real o solo existencia de archivos?
+1. CONSISTENCIA TECNOLÓGICA: ¿El plan utiliza las herramientas del TECH STACK DETECTADO? RECHAZA el plan si intenta usar Node.js, Vite, npm, o cualquier build tool en un proyecto de Frontend Web (HTML/CSS/JS) vanilla.
+2. EVITAR STUBS: ¿El plan tiene tareas que solo "crean carpetas" o "ficheros básicos"? EXIGE que las tareas combinen estructura con contenido real y funcional.
+3. COMPLETITUD: ¿El plan cumple TODOS los requisitos de la SOLICITUD ORIGINAL? Lista lo que falta.
+3. CALIDAD: ¿Las tareas generarán código profesional o solo stubs básicos?
+4. GRANULARIDAD: ¿Las tareas son demasiado grandes o pequeñas?
+5. ARCHIVOS: ¿Faltan requirements.txt, .gitignore u otros archivos esenciales?
+6. TESTS: ¿Los tests verifican funcionalidad real o solo existencia de archivos?
 
 Responde EXCLUSIVAMENTE en JSON con este formato:
 {{
@@ -97,11 +104,12 @@ Responde EXCLUSIVAMENTE en JSON con este formato:
 Si approved=false, genera un improved_plan que resuelva todos los issues. El plan debe ser detallado y seguir principios TDD.
 """
 
-def get_reviewer_prompt(user_request: str, spec_content: str, current_plan: str) -> str:
+def get_reviewer_prompt(user_request: str, spec_content: str, current_plan: str, tech_stack: str = "unknown") -> str:
     return REVIEWER_PROMPT.format(
         user_request=user_request,
         spec_content=spec_content,
-        current_plan=current_plan
+        current_plan=current_plan,
+        tech_stack=tech_stack
     )
 
 NIA_ITERATION_PROMPT = """
