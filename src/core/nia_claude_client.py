@@ -1,5 +1,7 @@
 import re
 import json
+import logging
+import os
 from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
@@ -18,30 +20,48 @@ class nIAResponse:
         """Extract files from markdown code blocks with filenames."""
         files = {}
 
-        # 1. Primary pattern: File: path/to/file\n```language\ncontent\n```
-        pattern = r"File:\s*([^\n]+)\s*\n```[^\n]*\n(.*?)\n```"
-        matches = re.finditer(pattern, text, re.DOTALL)
+        logging.info("--- Starting Robust File Parsing ---")
+
+        # 1. Split-based approach to isolate sections starting with "File:"
+        # This is more robust against descriptive text between the filename and code block
+        sections = re.split(r'(?i)(?:File|Archivo|Ruta|Path|Archivo de código):', text)
+
+        for section in sections[1:]:  # Skip text before first marker
+            lines = section.strip().split('\n')
+            if not lines:
+                continue
+
+            # Extract filename from the first line of the section (cleaning markdown)
+            raw_path = lines[0].strip()
+            filename = clean_filename(raw_path)
+
+            # Find the FIRST code block in this section
+            block_match = re.search(r'```[^\n]*\n(.*?)\n```', section, re.DOTALL)
+            if filename and block_match:
+                content = block_match.group(1)
+                if filename not in files:
+                    files[filename] = content
+                    logging.info(f"  Detected (Split): {filename} ({len(content)} chars)")
+
+        # 2. Fallback pattern: catch files that might not have the "File:" prefix
+        # but have a filename on a line before a code block
+        # Pattern: line with filename, followed by optional lines, then code block
+        fallback_pattern = r"([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+)[^\n]*\n(?:.*?\n)*?```[^\n]*\n(.*?)\n```"
+        matches = list(re.finditer(fallback_pattern, text, re.DOTALL | re.IGNORECASE))
+
         for match in matches:
             filename = clean_filename(match.group(1).strip())
-            if filename:
-                content = match.group(2)
-                files[filename] = content
-
-        # 2. Fallback pattern: [Any text with filename].ext\n```language\ncontent\n```
-        # We always run this to catch files that might not have the "File:" prefix
-        fallback_pattern = r"([^\n]*[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+[^\n]*)\n```[^\n]*\n(.*?)\n```"
-        matches = re.finditer(fallback_pattern, text, re.DOTALL)
-        for match in matches:
-            raw_filename_line = match.group(1).strip()
-            # Try to extract a clean path from this line
-            filename = extract_filepath_from_text(raw_filename_line)
-
             if filename and filename not in files:
                 # Basic validation: must have an extension and not be too long
-                if '.' in filename and len(filename) < 255:
+                allowed_exts = {'.py', '.html', '.css', '.js', '.json', '.md', '.txt', '.sh', '.sql'}
+                ext = os.path.splitext(filename)[1].lower()
+
+                if ext in allowed_exts and len(filename) < 255:
                     content = match.group(2)
                     files[filename] = content
+                    logging.info(f"  Detected (Fallback): {filename} ({len(content)} chars)")
 
+        logging.info(f"Total unique files extracted: {len(files)}")
         return files
 
     def _identify_test_file(self) -> Optional[str]:
@@ -95,4 +115,12 @@ IMPORTANT FOR FRONTEND PROJECTS:
         full_prompt = get_nia_iteration_prompt(prompt, test_instructions, spec, plan, context, task.description)
 
         response = self.ai.generate(full_prompt)
+
+        # LOG RAW RESPONSE
+        logging.info("=" * 80)
+        logging.info("RAW LLM RESPONSE:")
+        logging.info("=" * 80)
+        logging.info(response)
+        logging.info("=" * 80)
+
         return nIAResponse(response)

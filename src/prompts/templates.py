@@ -20,11 +20,15 @@ Guidelines for Tech Stack Selection:
 """
 
 PLAN_SYSTEM_PROMPT = """
-You are an elite developer.
-Given a project specification, generate a detailed implementation plan in JSON format.
-Break it down into PHASES. Each phase should have a list of tasks.
-Each task should be specific and follow TDD principles (Test: description).
-Ensure the tasks align with the chosen 'Testing' framework in the specification.
+You are an elite software architect.
+Given a project specification, generate a COMPREHENSIVE and DETAILED implementation plan in JSON format.
+
+CRITICAL REQUIREMENTS:
+1. NO PLACEHOLDERS: Do NOT use "..." or "(rest of plan)" or "(remaining tasks)". Generate ALL tasks explicitly.
+2. COMPLETENESS: Aim for a detailed breakdown. For a medium project, generate at least 10-15 tasks across 3-4 phases.
+3. TDD PRINCIPLES: Each task MUST follow the format: "Test: <description>. Implementation: <what to do>".
+4. TEST COVERAGE: Every critical file (e.g., index.html, main.css, app.py) MUST have a dedicated task that includes a specific test verification using appropriate tools (BeautifulSoup, pytest, etc.).
+5. FORMAT: Each task description should be descriptive (at least 20-30 characters).
 
 {tech_info}
 
@@ -33,7 +37,7 @@ JSON format:
     "phases": [
         {{
             "name": "Phase Name",
-            "tasks": [{{ "description": "Task description" }}]
+            "tasks": [{{ "description": "Test: [test description]. Implementation: [impl description]" }}]
         }}
     ],
     "total_tasks": 0,
@@ -51,8 +55,8 @@ def get_spec_system_prompt(tools: dict) -> str:
         npm_avail=tools.get('npm', False)
     )
 
-def get_plan_system_prompt(tech_info: str = "") -> str:
-    info_str = f"TECH STACK DETAILS:\n{tech_info}" if tech_info else ""
+def get_plan_system_prompt(tech_info: str = "", complexity: str = "medium") -> str:
+    info_str = f"TECH STACK DETAILS:\n{tech_info}\nPROJECT COMPLEXITY: {complexity.upper()}" if tech_info else f"PROJECT COMPLEXITY: {complexity.upper()}"
     return PLAN_SYSTEM_PROMPT.format(tech_info=info_str)
 
 REVIEWER_PROMPT = """
@@ -112,6 +116,7 @@ NIA_ITERATION_PROMPT = """
 4. ❌ DON'T: Leave empty functions or TODO comments.
 5. ❌ DON'T: Create minimal code just to pass tests.
    - A professional implementation of a UI component should typically be 50-100+ lines including styles and logic.
+6. ❌ DON'T: Use placeholders like "..." even in large files. Generate the COMPLETE file content.
 
 === CURRENT SPEC ===
 {spec}
