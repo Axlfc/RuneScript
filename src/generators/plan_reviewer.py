@@ -1,6 +1,7 @@
 import json
 import logging
 from src.models.ai_assistant import AIAssistant
+from src.prompts.templates import get_reviewer_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -24,43 +25,7 @@ class PlanReviewer:
             iteration += 1
             logger.info(f"Plan Review Iteration {iteration}/{self.max_iterations}")
 
-            prompt = f"""
-Eres un arquitecto de software experto revisando un plan de implementación.
-
-SOLICITUD ORIGINAL:
-{user_request}
-
-ESPECIFICACIÓN GENERADA:
-{spec_content}
-
-PLAN DE IMPLEMENTACIÓN PROPUESTO:
-{current_plan_to_review}
-
-TAREA: Realiza una revisión crítica respondiendo:
-
-1. COMPLETITUD: ¿El plan cumple TODOS los requisitos? Lista lo que falta.
-2. CALIDAD: ¿Las tareas generarán código profesional o solo stubs básicos?
-3. GRANULARIDAD: ¿Las tareas son demasiado grandes o pequeñas?
-4. ARCHIVOS: ¿Faltan requirements.txt, .gitignore u otros archivos esenciales?
-5. TESTS: ¿Los tests verifican funcionalidad real o solo existencia de archivos?
-
-Responde EXCLUSIVAMENTE en JSON con este formato:
-{{
-  "approved": true/false,
-  "issues_found": ["issue1", "issue2"],
-  "missing_requirements": ["req1", "req2"],
-  "improved_plan": {{
-      "phases": [
-          {{
-              "name": "Phase Name",
-              "tasks": [{{ "description": "Task description" }}]
-          }}
-      ]
-  }}
-}}
-
-Si approved=false, genera un improved_plan que resuelva todos los issues. El plan debe ser detallado y seguir principios TDD.
-"""
+            prompt = get_reviewer_prompt(user_request, spec_content, current_plan_to_review)
             response = self.ai.generate(prompt)
 
             try:
