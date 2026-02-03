@@ -1,5 +1,6 @@
 import re
 import json
+import logging
 from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
@@ -95,4 +96,12 @@ IMPORTANT FOR FRONTEND PROJECTS:
         full_prompt = get_nia_iteration_prompt(prompt, test_instructions, spec, plan, context, task.description)
 
         response = self.ai.generate(full_prompt)
+
+        # LOG RAW RESPONSE
+        logging.info("=" * 80)
+        logging.info("RAW LLM RESPONSE:")
+        logging.info("=" * 80)
+        logging.info(response)
+        logging.info("=" * 80)
+
         return nIAResponse(response)
