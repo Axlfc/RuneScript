@@ -114,7 +114,7 @@ class GitBasedFileManager:
 
         return changes
 
-    def generate_patch(self, from_commit: str, task_description: str) -> Tuple[str, str]:
+    def generate_patch(self, from_commit: str, task_description: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Generates a .patch and a .diff file for the changes since from_commit.
         """
@@ -125,17 +125,32 @@ class GitBasedFileManager:
         patch_path = os.path.join(self.patches_dir, f"{base_name}.patch")
         diff_path = os.path.join(self.diffs_dir, f"{base_name}.diff")
 
-        # Generate format-patch (contains commit metadata)
-        patch_content = self.repo.git.format_patch(from_commit, '--stdout', '-1')
-        with open(patch_path, 'w', encoding='utf-8') as f:
-            f.write(patch_content)
+        try:
+            # Check if there are changes
+            if from_commit == self.repo.head.commit.hexsha:
+                logger.info("No changes since checkpoint - skipping patch generation")
+                return None, None
 
-        # Generate readable diff with stats
-        diff_content = self.repo.git.diff(from_commit, 'HEAD', '--stat', '--patch')
-        with open(diff_path, 'w', encoding='utf-8') as f:
-            f.write(diff_content)
+            # Generate format-patch (contains commit metadata)
+            # Use range from_commit..HEAD to capture all commits in between
+            patch_content = self.repo.git.format_patch(f"{from_commit}..HEAD", '--stdout')
 
-        return patch_path, diff_path
+            if not patch_content:
+                logger.info("No patch content generated.")
+                return None, None
+
+            with open(patch_path, 'w', encoding='utf-8') as f:
+                f.write(patch_content)
+
+            # Generate readable diff with stats
+            diff_content = self.repo.git.diff(from_commit, 'HEAD', '--stat', '--patch')
+            with open(diff_path, 'w', encoding='utf-8') as f:
+                f.write(diff_content)
+
+            return patch_path, diff_path
+        except Exception as e:
+            logger.error(f"Error generating patch: {e}")
+            return None, None
 
     def _get_icon(self, key: str, default: str = "") -> str:
         return git_icons.get(key, default)
@@ -167,27 +182,40 @@ class GitBasedFileManager:
         }
 
         with open(log_path, 'w', encoding='utf-8') as f:
-            json.dump(log_data, f, indent=2)
+            json.dump(log_data, f, indent=2, ensure_ascii=False)
 
         return log_path
 
-    def update_manifest(self, patch_path: str, task_description: str, changes: Dict[str, Any]):
+    def generate_error_log(self, task_description: str, phase: str, error_message: str, test_output: str, files_generated: List[str], attempt: int) -> str:
+        """
+        Generates a detailed error log in .nia/logs/
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        task_slug = "".join(c if c.isalnum() else "-" for c in task_description.lower())[:50]
+
+        log_filename = f"{timestamp}_FAILED_{task_slug}.json"
+        log_path = os.path.join(self.logs_dir, log_filename)
+
+        log_data = {
+            'timestamp': datetime.now().isoformat(),
+            'task': task_description,
+            'status': 'FAILED',
+            'phase': phase,
+            'error': error_message,
+            'test_output': test_output,
+            'files_generated': files_generated,
+            'attempt': attempt,
+            'commit_hash': self.repo.head.commit.hexsha if hasattr(self.repo.head, 'commit') else None
+        }
+
+        with open(log_path, 'w', encoding='utf-8') as f:
+            json.dump(log_data, f, indent=2, ensure_ascii=False)
+
+        return log_path
+
+    def update_manifest(self, patch_info: Dict[str, Any]):
         """Updates the master manifest with the new patch info."""
         manifest = self._load_manifest()
-
-        patch_filename = os.path.basename(patch_path)
-        lines_changed = self._count_lines_changed(changes)
-
-        patch_info = {
-            "sequence": len(manifest['patches']) + 1,
-            "timestamp": datetime.now().isoformat(),
-            "patch_file": patch_filename,
-            "task": task_description,
-            "commit": self.repo.head.commit.hexsha,
-            "files_changed": len(changes['added']) + len(changes['modified']) + len(changes['deleted']),
-            "lines_changed": lines_changed,
-            "status": "success"
-        }
 
         manifest['patches'].append(patch_info)
         manifest['total_patches'] = len(manifest['patches'])
@@ -196,7 +224,9 @@ class GitBasedFileManager:
         # Update stats
         manifest['project_stats']['successful_iterations'] += 1
         manifest['project_stats']['total_files'] = self._count_total_files()
-        manifest['project_stats']['total_lines'] += lines_changed # This is an approximation of activity
+
+        lines_changed = patch_info.get('lines_changed', 0)
+        manifest['project_stats']['total_lines'] += lines_changed
 
         self._save_manifest(manifest)
 

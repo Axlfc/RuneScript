@@ -12,6 +12,7 @@ from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
 from .nia_claude_client import nIAClaudeClient, nIAResponse
 from .quality import QualityChecker
+from .test_parser import TestParser
 from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
 import logging
@@ -90,6 +91,7 @@ class LoopOrchestrator:
             # 5. Ask AI for solution (with quality retry)
             max_retries = 2
             ai_feedback = ""
+            requirements_feedback = ""
             active_test_file = None
             active_test_name = None
 
@@ -98,12 +100,18 @@ class LoopOrchestrator:
                     if attempt > 0:
                         self._log(f"Attempt {attempt+1}: Retrying with quality feedback...", log_callback)
 
+                    combined_context = context
+                    if ai_feedback:
+                        combined_context += f"\n\nFEEDBACK: {ai_feedback}"
+                    if requirements_feedback:
+                        combined_context += f"\n\n{requirements_feedback}"
+
                     response = self.ai_client.execute_nia_iteration(
                         spec=spec,
                         plan=self.plan_path.read_text(encoding='utf-8'),
                         prompt=prompt,
                         task=next_task,
-                        context=context + (f"\n\nFEEDBACK: {ai_feedback}" if attempt > 0 else "")
+                        context=combined_context
                     )
 
                     if stop_event.is_set():
@@ -115,9 +123,19 @@ class LoopOrchestrator:
                         self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
 
                     # LOG PARSED FILES DIAGNOSTICS
+                    self._log(f"\n=== FILE PROCESSING DEBUG ===", log_callback)
                     self._log(f"Files detected by parser: {len(response.files)}", log_callback)
                     for filename in response.files:
-                        self._log(f"  - {filename} ({len(response.files[filename])} chars)", log_callback)
+                        content = response.files[filename]
+                        self._log(f"  - {filename} ({len(content)} chars)", log_callback)
+
+                        if filename.endswith('.gitkeep'):
+                            self._log(f"    ⚠️ .gitkeep file (empty content expected)", log_callback)
+
+                        if '/' in filename or '\\' in filename:
+                            parts = filename.replace('\\', '/').split('/')
+                            if len(parts) > 1:
+                                self._log(f"    📁 Nested path detected: {'/'.join(parts[:-1])}", log_callback)
 
                     # Specific warning if critical files are missing for frontend_web
                     nia_config = self._get_nia_config()
@@ -179,6 +197,36 @@ class LoopOrchestrator:
                             self.venv_python
                         )
                         self._log_validation_result(val_red, "RED", log_callback)
+
+                        # Extract requirements from test for implementation phase
+                        try:
+                            reqs = TestParser.extract_requirements(test_content)
+                            if any(reqs.values()):
+                                self._log(f"📋 Test requirements extracted: IDs: {reqs['required_ids']}, Tags: {reqs['required_tags']}", log_callback)
+                                requirements_feedback = f"""
+╔══════════════════════════════════════════════════════════╗
+║ 🔴 CRITICAL REQUIREMENTS FROM TEST (DO NOT IGNORE)      ║
+╚══════════════════════════════════════════════════════════╝
+
+Your implementation MUST include these EXACT values to pass the tests:
+
+✓ Required HTML element IDs:
+  {', '.join(reqs['required_ids']) if reqs['required_ids'] else 'None'}
+
+✓ Required HTML tags:
+  {', '.join(reqs['required_tags']) if reqs['required_tags'] else 'None'}
+
+✓ Required CSS classes:
+  {', '.join(reqs['required_classes']) if reqs['required_classes'] else 'None'}
+
+✓ Required text content:
+  {', '.join(reqs['required_text']) if reqs['required_text'] else 'None'}
+
+⚠️ IMPORTANT: Use the EXACT IDs and tags listed above.
+For example, if the test expects id="work", DO NOT use id="projects".
+"""
+                        except Exception as e:
+                            logger.error(f"Error extracting requirements: {e}")
 
                         if not val_red.success:
                             self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
@@ -284,6 +332,20 @@ class LoopOrchestrator:
 
                         if not val_green.success:
                             self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
+
+                            # Log failed attempt
+                            try:
+                                self.git_manager.generate_error_log(
+                                    task_description=next_task.description,
+                                    phase="GREEN",
+                                    error_message=val_green.message,
+                                    test_output=val_green.stdout + "\n" + val_green.stderr,
+                                    files_generated=list(response.files.keys()),
+                                    attempt=attempt + 1
+                                )
+                            except Exception as e:
+                                logger.error(f"Error generating error log: {e}")
+
                             if attempt == max_retries:
                                 self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
                                 return LoopResult("BLOCKED", iteration, "GREEN phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
@@ -350,26 +412,42 @@ class LoopOrchestrator:
                 # 12. FINALIZE ITERATION: Detect Changes, Commit and Patch System
                 self._log("💾 Finalizing task and generating patches...", log_callback)
 
-                # Detect changes since checkpoint
-                changes = self.git_manager.get_changes_since(checkpoint)
-
-                # Commit with task description
+                # Commit changes (if any)
                 commit_msg = f"✅ {next_task.description}"
-                self.git_manager.create_checkpoint(commit_msg)
+                current_sha = self.git_manager.create_checkpoint(commit_msg)
+
+                # Detect exactly what changed since the start of this iteration
+                changes = self.git_manager.get_changes_since(checkpoint)
 
                 # Generate Patch System files
                 patch_path, diff_path = self.git_manager.generate_patch(checkpoint, next_task.description)
-                log_path = self.git_manager.generate_patch_log(
-                    patch_path,
-                    next_task.description,
-                    changes,
-                    val_refactor
-                )
-                self.git_manager.update_manifest(patch_path, next_task.description, changes)
 
-                self._log(f"✅ Patch saved: {os.path.basename(patch_path)}", log_callback)
-                self._log(f"📊 Diff saved: {os.path.basename(diff_path)}", log_callback)
-                self._log(f"📝 Log saved: {os.path.basename(log_path)}", log_callback)
+                if patch_path:
+                    log_path = self.git_manager.generate_patch_log(
+                        patch_path,
+                        next_task.description,
+                        changes,
+                        val_refactor
+                    )
+
+                    # Update manifest with detailed patch info
+                    patch_info = {
+                        "sequence": len(self.git_manager._load_manifest()['patches']) + 1,
+                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "patch_file": os.path.basename(patch_path),
+                        "task": next_task.description,
+                        "commit": current_sha,
+                        "files_changed": len(changes['added']) + len(changes['modified']) + len(changes['deleted']),
+                        "lines_changed": self.git_manager._count_lines_changed(changes),
+                        "status": "success"
+                    }
+                    self.git_manager.update_manifest(patch_info)
+
+                    self._log(f"✅ Patch saved: {os.path.basename(patch_path)}", log_callback)
+                    self._log(f"📊 Diff saved: {os.path.basename(diff_path)}", log_callback)
+                    self._log(f"📝 Log saved: {os.path.basename(log_path)}", log_callback)
+                else:
+                    self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
 
                 # 13. Update Plan
                 self.tracker.mark_completed(self.plan_path, next_task)
