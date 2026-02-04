@@ -90,7 +90,7 @@ class TestQualityChecker:
         ]
 
         feedback = checker.generate_feedback(issues)
-        assert "QUALITY CHECK FAILED" in feedback
+        assert "QUALITY STANDARDS NOT MET" in feedback
         assert "index.html" in feedback
         assert "styles.css" in feedback
-        assert "production-ready" in feedback
+        assert "PRODUCTION-READY" in feedback

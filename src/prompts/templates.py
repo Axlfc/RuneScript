@@ -168,7 +168,36 @@ File: js/app.js
 // ...
 ```
 
-Please complete this task now. Specify filenames as 'File: path/to/file'.
+Please complete this task now.
+Specify filenames as 'File: path/to/file' OR use a JSON response with a "files" array:
+{{
+  "files": [
+    {{"path": "path/to/file", "content": "..."}}
+  ]
+}}
+
+### 🧪 TEST WRITING GUIDELINES
+When generating tests (especially for frontend):
+- **ROBUST PATHS**: Use `.endswith()` or normalized paths when checking `href` or `src`.
+  - BAD: `assert link['href'] == 'css/style.css'`
+  - GOOD: `assert 'css/style.css' in link['href']` or `assert link['href'].endswith('css/style.css')`
+- **DESCRIPTIVE ERRORS**: Always include helpful messages in assertions.
+  - GOOD: `assert soup.find(id="main"), "CRITICAL: Element with id='main' is missing from index.html"`
+
+### 💎 PRODUCTION CODE STANDARDS
+- **NO STUBS**: Every file must be fully functional. No "TODO" comments in place of logic.
+- **MANDATORY LENGTH**:
+  - HTML: 150+ lines of content-rich structure (navigation, hero, features, footer, etc.).
+  - CSS: 200+ lines of detailed, modern styling (variables, flexbox/grid, animations, responsive design).
+  - JS: 100+ lines of interactive logic (event listeners, state management, UI updates).
+- **COMPLETE SETS**: If the task involves a UI component, you MUST provide the HTML, the CSS, and the JS in the SAME response.
+
+CRITICAL: If using JSON, escape all special characters properly:
+- Use \\n for newlines
+- Use \\t for tabs
+- Use \\" for quotes inside strings
+- Use \\\\ for backslashes
+
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 

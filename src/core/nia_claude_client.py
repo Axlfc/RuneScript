@@ -5,6 +5,7 @@ import os
 from typing import List, Dict, Optional
 from src.models.ai_assistant import AIAssistant
 from .plan_parser import Task
+from .robust_parser import RobustJSONParser
 from src.utils.path_utils import clean_filename, extract_filepath_from_text
 from src.prompts.templates import get_nia_iteration_prompt
 
@@ -16,11 +17,159 @@ class nIAResponse:
         self.test_file: Optional[str] = self._identify_test_file()
         self.test_name: Optional[str] = self._identify_test_name()
 
-    def _parse_files(self, text: str) -> Dict[str, str]:
-        """Extract files from markdown code blocks with filenames."""
+    def _detect_response_format(self, text: str) -> str:
+        """Detect if response is Gemini markdown or Ollama JSON."""
+        # Try to extract JSON first
+        data = RobustJSONParser.extract_json(text)
+        if data:
+            if 'files' in data and isinstance(data['files'], list):
+                return 'ollama_json'
+            if 'tasks' in data and isinstance(data['tasks'], list):
+                return 'ollama_json_tasks'
+            # If it's some other JSON but we don't recognize the structure,
+            # we might still want to try parsing it if it has files
+            if any(k in data for k in ['files', 'tasks']):
+                return 'ollama_json'
+
+        # If no clear JSON structure, assume markdown
+        if 'File:' in text or '```' in text or '<file' in text:
+            return 'gemini_markdown'
+
+        return 'unknown'
+
+    def _parse_ollama_json(self, text: str) -> Dict[str, str]:
+        """Parse Ollama JSON format: {"files": [{"path": "...", "content": "..."}]}"""
+        files = {}
+        data = RobustJSONParser.extract_json(text)
+
+        if not data:
+            return files
+
+        if 'files' in data:
+            for file_obj in data['files']:
+                if isinstance(file_obj, dict):
+                    path = file_obj.get('path', '').strip() or file_obj.get('File', '').strip()
+                    content = file_obj.get('content', '')
+
+                    if path:
+                        path = os.path.normpath(path).replace('\\', '/')
+                        if path.startswith('./'): path = path[2:]
+                        files[path] = content
+                        logging.info(f"  ✅ Parsed (JSON): {path} ({len(content)} chars)")
+
+        return files
+
+    def _parse_ollama_json_tasks(self, text: str) -> Dict[str, str]:
+        """Parse Ollama format: {"tasks": [{"implementation": {"code_blocks": [...]}}]}"""
+        files = {}
+        data = RobustJSONParser.extract_json(text)
+
+        if not data:
+            return files
+
+        if 'tasks' in data:
+            for task in data['tasks']:
+                if not isinstance(task, dict): continue
+                impl = task.get('implementation', {})
+                if not isinstance(impl, dict): continue
+                code_blocks = impl.get('code_blocks', [])
+
+                if isinstance(code_blocks, list):
+                    for block in code_blocks:
+                        if not isinstance(block, dict): continue
+                        # Support both "File" and "path" keys
+                        file_path = block.get('File', '').strip() or block.get('path', '').strip()
+                        content = block.get('content', '')
+
+                        if file_path:
+                            file_path = os.path.normpath(file_path).replace('\\', '/')
+                            if file_path.startswith('./'): file_path = file_path[2:]
+                            files[file_path] = content
+                            logging.info(f"  ✅ Parsed (JSON Tasks): {file_path} ({len(content)} chars)")
+
+        return files
+
+    def _parse_ollama_json_manual(self, text: str) -> Dict[str, str]:
+        """Manually extract files using regex when JSON parsing fails (e.g. invalid escapes or literal newlines)."""
         files = {}
 
-        logging.info("--- Starting Robust File Parsing ---")
+        # Patterns for path and content
+        path_pattern = r'"(?:path|File)"\s*:\s*"([^"]+)"'
+        content_start_pattern = r'"content"\s*:\s*"'
+
+        last_pos = 0
+        while True:
+            # Search from last position
+            path_match = re.search(path_pattern, text[last_pos:])
+            if not path_match:
+                break
+
+            path = path_match.group(1)
+            path_end = last_pos + path_match.end()
+
+            # Look for content following the path
+            content_match = re.search(content_start_pattern, text[path_end:])
+            if not content_match:
+                last_pos = path_end
+                continue
+
+            content_start = path_end + content_match.end()
+
+            # Find the end of content: " followed by optional whitespace and then , or } or ] or end of string
+            # We use DOTALL because content might have literal newlines
+            content_end_match = re.search(r'"\s*(?:,|\}|\]|$)', text[content_start:], re.DOTALL)
+
+            if content_end_match:
+                content_end = content_start + content_end_match.start()
+                content = text[content_start:content_end]
+
+                # Basic unescaping for manual parsing
+                content = content.replace('\\n', '\n').replace('\\t', '\t').replace('\\"', '"').replace('\\\\', '\\')
+
+                path = os.path.normpath(path).replace('\\', '/')
+                if path.startswith('./'): path = path[2:]
+
+                if path and content:
+                    files[path] = content
+                    logging.info(f"  ✅ Parsed (Manual Regex): {path} ({len(content)} chars)")
+
+                last_pos = content_start + content_end_match.end()
+            else:
+                last_pos = path_end
+
+        return files
+
+    def _parse_files(self, text: str) -> Dict[str, str]:
+        """Extract files from LLM response (Gemini OR Ollama format)."""
+        files = {}
+
+        logging.info("--- Starting Universal File Parsing ---")
+
+        # Detect format
+        format_type = self._detect_response_format(text)
+        logging.info(f"📋 Detected format: {format_type}")
+
+        if format_type == 'ollama_json':
+            files = self._parse_ollama_json(text)
+        elif format_type == 'ollama_json_tasks':
+            files = self._parse_ollama_json_tasks(text)
+        else:
+            # Try both JSON parsers just in case detection failed but it is JSON
+            files = self._parse_ollama_json(text)
+            if not files:
+                files = self._parse_ollama_json_tasks(text)
+
+            # Last resort for JSON-like content: manual regex extraction
+            if not files:
+                files = self._parse_ollama_json_manual(text)
+
+        # If we got files from JSON, we're done.
+        if files:
+            logging.info(f"📦 Total files extracted (JSON): {len(files)}")
+            return files
+
+        # Fallback to existing markdown parsing logic
+        logging.info("Falling back to Markdown parsing logic...")
 
         # 1. XML-style tags: <file path="path/to/file">content</file>
         xml_pattern = r'<file\s+path=["\']([^"\']+)["\']\s*>(.*?)</file>'
@@ -153,11 +302,14 @@ class nIAClaudeClient:
         if is_frontend:
             test_instructions = """
 IMPORTANT FOR FRONTEND PROJECTS:
-- Generate standalone Python scripts for testing (e.g., in 'tests/' directory).
+- Generate standalone Python scripts for testing (e.g., in 'tests/test_structure.py').
 - DO NOT use 'import pytest'.
+- Use 'from bs4 import BeautifulSoup' for HTML parsing.
 - Use 'assert' for validations and 'print("✅ ...")' for success messages.
 - Include 'if __name__ == "__main__":' to execute all test functions.
-- You can use 'from bs4 import BeautifulSoup' for HTML parsing.
+- **ROBUST VALIDATION**: Use `in` or `.endswith()` for path checks (e.g., `assert 'css/style.css' in link['href']`).
+- **DIAGNOSTICS**: If an assertion fails, print the actual value for debugging.
+  Example: `if 'css/style.css' not in link['href']: print(f"DEBUG: Found href='{{link['href']}}'"); assert False`
 - If the task involves creating a project structure, ensure that your implementation code includes at least one file for each directory that needs to exist (use '.gitkeep' if the directory is intended to be empty).
 """
 

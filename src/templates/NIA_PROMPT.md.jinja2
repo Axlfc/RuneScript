@@ -54,6 +54,10 @@ Example: `File: assets/img/.gitkeep` (empty file).
 ### ❌ ERROR #4: Node.js/Build Tools References
 **NEVER** mention or create: `package.json`, `vite.config.js`, `webpack.config.js`, `npm install`, etc., UNLESS specifically required by the tech stack. If you are doing `frontend_web`, use ONLY vanilla HTML/CSS/JS.
 
+### ❌ ERROR #5: Fragile Path Matching in Tests
+**WRONG:** `assert link['href'] == 'css/style.css'` (Fails if path is `./css/style.css`).
+**CORRECT:** `assert 'css/style.css' in link['href']` or `assert link['href'].endswith('css/style.css')`. Use `BeautifulSoup` for robust HTML parsing.
+
 ---
 
 ## 📋 TDD CYCLE: RED-GREEN-REFACTOR

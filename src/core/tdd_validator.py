@@ -291,9 +291,10 @@ class TDDValidator:
 
                 # If it uses pytest explicitly (import pytest)
                 if "import pytest" in content:
-                    cmd = [python_exe, "-m", "pytest", str(full_test_path), "-v"]
+                    # Explicitly ignore common noise dirs even when running single file to be safe
+                    cmd = [python_exe, "-m", "pytest", str(full_test_path), "-v", "--ignore=.venv", "--ignore=venv"]
                     if test_name:
-                         cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v"]
+                         cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v", "--ignore=.venv", "--ignore=venv"]
                 else:
                     # Execute as standalone script
                     cmd = [python_exe, str(full_test_path)]
@@ -307,9 +308,9 @@ class TDDValidator:
             cmd = ["npm.cmd" if os.name == 'nt' else "npm", "test", "--", str(full_test_path)]
         else:
             # Default fallback
-            cmd = [python_exe, "-m", "pytest", str(full_test_path), "-v"]
+            cmd = [python_exe, "-m", "pytest", str(full_test_path), "-v", "--ignore=.venv", "--ignore=venv"]
             if test_name:
-                cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v"]
+                cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v", "--ignore=.venv", "--ignore=venv"]
 
         logging.info(f"Executing (list): {cmd}")
         return subprocess.run(
@@ -365,7 +366,8 @@ class TDDValidator:
                 pass
 
         if uses_pytest:
-            cmd = [python_exe, "-m", "pytest", "."]
+            # Use explicit ignores to prevent scanning virtual environments and triggering site-packages errors
+            cmd = [python_exe, "-m", "pytest", ".", "--ignore=.venv", "--ignore=venv", "--ignore=node_modules"]
         else:
             # Run all test files as individual scripts
             # For simplicity, return result of the first failing test or the last success
