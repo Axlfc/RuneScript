@@ -11,6 +11,7 @@ from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
 from .nia_claude_client import nIAClaudeClient, nIAResponse
+from .quality import QualityChecker
 from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
 import logging
@@ -31,6 +32,7 @@ class LoopOrchestrator:
         self.tracker = TaskTracker()
         self.validator = TDDValidator()
         self.ai_client = nIAClaudeClient()
+        self.quality_checker = QualityChecker()
         self.git_manager = GitBasedFileManager(str(self.project_path))
         self.venv_python: Optional[str] = None
 
@@ -196,6 +198,36 @@ class LoopOrchestrator:
                         ai_feedback = f"Your implementation of {placeholder_file} contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic. DO NOT use '...' or 'TODO' as a substitute for real code."
                         continue
 
+                    # NUEVO: Quality Check antes de escribir archivos
+                    nia_config = self._get_nia_config()
+                    tech_config = nia_config.get("tech_config", {})
+                    quality_issues = self.quality_checker.validate(response.files, tech_config)
+
+                    if quality_issues:
+                        self._log("❌ QUALITY CHECK FAILED:", log_callback)
+                        for issue in quality_issues:
+                            self._log(f"  - {issue}", log_callback)
+
+                        if attempt == max_retries:
+                            self.tracker.mark_blocked(
+                                self.plan_path,
+                                next_task,
+                                f"Quality standards not met after {max_retries} attempts"
+                            )
+                            return LoopResult(
+                                "BLOCKED",
+                                iteration,
+                                "Quality standards not met",
+                                self._get_final_stats(start_time, tasks_planned, tasks_completed)
+                            )
+
+                        # Generar feedback para retry
+                        quality_feedback = self.quality_checker.generate_feedback(quality_issues)
+                        ai_feedback += "\n\n" + quality_feedback
+                        continue
+
+                    self._log("✅ Quality check passed", log_callback)
+
                     for filename, content in response.files.items():
                         # Don't overwrite the test file if we are in a quality retry,
                         # UNLESS the AI explicitly wants to update the test.
@@ -240,45 +272,16 @@ class LoopOrchestrator:
 
                         self._log("✅ GREEN phase passed.", log_callback)
 
-                    # QUALITY VALIDATION (Line Counts)
-                    nia_config = self._get_nia_config()
-                    tech_config = nia_config.get("tech_config", {})
-                    quality_standards = tech_config.get("quality_standards", {})
-
-                    quality_issues = []
-                    for filename in response.files:
-                        if 'test' in filename.lower() or '/tests/' in filename:
-                            continue
-
-                        ext = Path(filename).suffix.lstrip('.')
-                        if ext in quality_standards:
-                            min_lines = quality_standards[ext].get('min_lines', 0)
-                            # Read current file content from disk (already written)
-                            file_path = self.project_path / filename
-                            if file_path.exists():
-                                current_lines = len([l for l in file_path.read_text(encoding='utf-8').splitlines() if l.strip()])
-                                if current_lines < min_lines:
-                                    quality_issues.append(f"{filename}: {current_lines} lines (min: {min_lines})")
-
                     # MANDATORY FILES VALIDATION
                     missing_critical = self._validate_critical_files(tech_key)
                     if missing_critical:
-                        quality_issues.append(f"MISSING CRITICAL FILES: {', '.join(missing_critical)}")
-
-                    if quality_issues and attempt < max_retries:
-                        self._log(f"⚠️ Warning: Quality standards not met: {', '.join(quality_issues)}", log_callback)
-                        ai_feedback = (f"CRITICAL: Previous implementation did not meet quality standards or is missing files:\n" +
-                                      "\n".join(quality_issues) +
-                                      "\nPlease provide a more complete and detailed implementation with actual content. "
-                                      "Ensure ALL critical files are generated with sufficient detail. "
-                                      "DO NOT use stubs or placeholder comments.")
-                        # Rollback before retry to have a clean slate
-                        self.git_manager.rollback_to(checkpoint)
-                        self.git_manager.record_failed_iteration()
-                        continue
-
-                    if quality_issues:
-                        self._log(f"⚠️ Warning: Quality standards not met after retries. Proceeding anyway.", log_callback)
+                        self._log(f"⚠️ Warning: Missing critical files: {', '.join(missing_critical)}", log_callback)
+                        if attempt < max_retries:
+                            ai_feedback += f"\n\nMISSING CRITICAL FILES: {', '.join(missing_critical)}\nPlease ensure all required files are generated."
+                            # Rollback before retry to have a clean slate
+                            self.git_manager.rollback_to(checkpoint)
+                            self.git_manager.record_failed_iteration()
+                            continue
 
                     # Success, break retry loop
                     break

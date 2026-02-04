@@ -2,6 +2,8 @@ import json
 import logging
 from src.models.ai_assistant import AIAssistant
 from src.prompts.templates import get_reviewer_prompt
+from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +11,9 @@ class PlanReviewer:
     def __init__(self, ai_client=None, max_iterations=2):
         self.ai = ai_client or AIAssistant()
         self.max_iterations = max_iterations
+        # Cargar entorno de templates
+        templates_dir = Path("src/templates")
+        self.env = Environment(loader=FileSystemLoader(str(templates_dir)))
 
     def review_and_improve(self, spec_content, plan_content, user_request, tech_stack="unknown"):
         """
@@ -46,9 +51,29 @@ class PlanReviewer:
                 else:
                     logger.warning(f"Plan rejected by AI reviewer. Critique: {critique}")
                     improved_plan_data = data.get("improved_plan")
-                    # For the next iteration, we critique the improved plan
-                    # We need to convert it back to some text representation for the prompt
-                    current_plan_to_review = json.dumps(improved_plan_data, indent=2)
+
+                    # FIX: Renderizar el plan mejorado de vuelta a markdown
+                    # para la siguiente iteración
+                    if improved_plan_data:
+                        template = self.env.get_template("IMPLEMENTATION_PLAN.md.jinja2")
+                        # Ensure all needed fields for template are present
+                        if "tech_stack" not in improved_plan_data:
+                            improved_plan_data["tech_stack"] = tech_stack
+                        if "total_tasks" not in improved_plan_data:
+                            total = sum(len(phase.get("tasks", [])) for phase in improved_plan_data.get("phases", []))
+                            improved_plan_data["total_tasks"] = total
+                        if "completed_tasks" not in improved_plan_data:
+                            improved_plan_data["completed_tasks"] = 0
+                        if "remaining_tasks" not in improved_plan_data:
+                            improved_plan_data["remaining_tasks"] = improved_plan_data.get("total_tasks", 0)
+                        if "blocked_tasks" not in improved_plan_data:
+                            improved_plan_data["blocked_tasks"] = []
+
+                        current_plan_to_review = template.render(**improved_plan_data)
+                        logger.debug("Improved plan rendered back to Markdown for next iteration")
+                    else:
+                        logger.warning("No improved plan returned by reviewer")
+                        break
 
             except Exception as e:
                 logger.error(f"Error parsing PlanReviewer response: {e}")
