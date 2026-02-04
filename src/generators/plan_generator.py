@@ -4,6 +4,7 @@ from pathlib import Path
 from src.models.ai_assistant import AIAssistant
 from jinja2 import Environment, FileSystemLoader
 from src.prompts.templates import get_plan_system_prompt
+from src.core.robust_parser import RobustJSONParser
 
 class PlanGenerator:
     def __init__(self, templates_dir: Path = Path("src/templates")):
@@ -91,20 +92,15 @@ class PlanGenerator:
         # Get tech name for display
         tech_name = tech_config.get("display_name", "Auto-detected") if tech_config else "Auto-detected"
 
+        # Usar parser robusto
+        parser = RobustJSONParser()
         try:
-            start = response.find('{')
-            end = response.rfind('}') + 1
-            data = json.loads(response[start:end])
-
-            # Recalculate counters
-            total = 0
-            for phase in data.get("phases", []):
-                total += len(phase.get("tasks", []))
-            data["total_tasks"] = total
-            data["remaining_tasks"] = total
-        except Exception:
+            plan_schema = parser.parse_plan(response)
+            data = plan_schema.model_dump()
+        except Exception as e:
+            logging.error(f"Plan validation failed: {e}. Using fallback.")
             data = {
-                "phases": [{"name": "Initial", "tasks": [{"description": "Setup project"}]}],
+                "phases": [{"name": "Initial Setup Phase", "tasks": [{"description": "Initialize project structure and environment"}]}],
                 "total_tasks": 1,
                 "completed_tasks": 0,
                 "remaining_tasks": 1,

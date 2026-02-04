@@ -1,9 +1,11 @@
 import json
+import logging
 from pathlib import Path
 from src.models.ai_assistant import AIAssistant
 from jinja2 import Environment, FileSystemLoader
 from src.utils.tool_detector import detect_available_tools
 from src.prompts.templates import get_spec_system_prompt
+from src.core.robust_parser import RobustJSONParser
 
 class SpecGenerator:
     def __init__(self, templates_dir: Path = Path("src/templates")):
@@ -21,25 +23,31 @@ class SpecGenerator:
 
         response = self.ai.generate(f"{system_prompt}\n\n{user_input}")
 
-        # Try to parse JSON from AI response
+        # Usar parser robusto
+        parser = RobustJSONParser()
         try:
-            # Simple extraction in case AI adds text around JSON
-            start = response.find('{')
-            end = response.rfind('}') + 1
-            data = json.loads(response[start:end])
-        except Exception:
-            # Fallback if parsing fails
-            data = {
-                "project_name": "New Project",
-                "objective": prompt,
-                "features": ["Feature 1"],
-                "language": "Python",
-                "framework": "None",
-                "database": "None",
-                "testing_framework": "pytest",
-                "success_criteria": ["Works as expected"],
-                "out_of_scope": ["Everything else"]
-            }
+            spec_schema = parser.parse_spec(response)
+            data = spec_schema.model_dump()
+        except ValueError as e:
+            logging.error(f"JSON extraction failed: {e}. Using fallback.")
+            data = self._fallback_spec_from_prompt(prompt)
+        except Exception as e:
+            logging.error(f"Spec validation failed: {e}. Using fallback.")
+            data = self._fallback_spec_from_prompt(prompt)
 
         template = self.env.get_template("SPEC.md.jinja2")
         return template.render(**data)
+
+    def _fallback_spec_from_prompt(self, prompt: str) -> dict:
+        """Genera spec básico desde prompt cuando parsing falla."""
+        return {
+            "project_name": "New Project",
+            "objective": prompt,
+            "features": ["Core functionality based on prompt"],
+            "language": "Python",
+            "framework": "None",
+            "database": "None",
+            "testing_framework": "pytest",
+            "success_criteria": ["Project meets the basic objective"],
+            "out_of_scope": ["External integrations", "Advanced UI"]
+        }
