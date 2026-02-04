@@ -168,6 +168,25 @@ class PlanReviewer:
                 logging.info("Plan renderizado a Markdown para iteración 2")
 ```
 
+#### Problema 3: Implementación de QualityChecker
+Para facilitar el testing y la modularidad, se recomienda extraer la lógica de validación a una clase dedicada.
+
+```python
+class QualityChecker:
+    def validate(self, files: Dict[str, str], tech_config: dict) -> List[str]:
+        standards = tech_config.get("quality_standards", {})
+        issues = []
+        for filename, content in files.items():
+            ext = Path(filename).suffix.lstrip('.')
+            if ext in standards:
+                min_lines = standards[ext].get('min_lines', 0)
+                # Contar solo líneas no vacías
+                actual_lines = len([l for l in content.splitlines() if l.strip()])
+                if actual_lines < min_lines:
+                    issues.append(f"{filename} tiene {actual_lines} líneas, requiere {min_lines}")
+        return issues
+```
+
 ---
 
 ## 3. SOLUCIONES A PROBLEMAS CRÍTICOS
@@ -351,6 +370,96 @@ class FeatureFlags:
 2.  **Densidad de Código**: Promedio de líneas reales (no comentarios/stubs) por archivo. Objetivo: Alineado con `min_lines`.
 3.  **Token Efficiency**: Tokens de contexto por cada línea de código generada. Objetivo: Reducción del 20% mediante truncado inteligente.
 4.  **Resilience Score**: % de proyectos recuperados exitosamente tras un fallo de red o crash. Objetivo: 100%.
+
+### 8.5 Test Suite (Pytest)
+
+Para asegurar la fiabilidad de los nuevos componentes, se propone la siguiente suite de pruebas unitarias:
+
+```python
+import pytest
+import json
+from unittest.mock import MagicMock, patch
+from pathlib import Path
+from src.core.robust_parser import RobustJSONParser, PlanSchema
+from src.core.quality import QualityChecker
+from src.core.recovery import RecoveryManager
+
+# 1. Tests para RobustJSONParser
+class TestRobustJSONParser:
+    def test_extract_from_markdown(self):
+        parser = RobustJSONParser()
+        response = "Claro, aquí tienes el plan:\n```json\n{\"total_tasks\": 5, \"phases\": []}\n```"
+        result = parser.extract_json(response)
+        assert result["total_tasks"] == 5
+
+    def test_extract_clean_json(self):
+        parser = RobustJSONParser()
+        response = "{\"total_tasks\": 10, \"phases\": []}"
+        result = parser.extract_json(response)
+        assert result["total_tasks"] == 10
+
+    def test_extract_garbage_fails(self):
+        parser = RobustJSONParser()
+        response = "Esta respuesta no contiene JSON válido, solo texto explicativo."
+        result = parser.extract_json(response)
+        assert result is None
+
+# 2. Tests para QualityChecker
+class TestQualityChecker:
+    def test_validate_passes_standard(self):
+        checker = QualityChecker()
+        files = {"index.html": "line1\nline2\nline3\nline4\nline5"}
+        tech_config = {"quality_standards": {"html": {"min_lines": 3}}}
+        issues = checker.validate(files, tech_config)
+        assert len(issues) == 0
+
+    def test_validate_fails_standard(self):
+        checker = QualityChecker()
+        files = {"styles.css": "body { color: red; }"} # 1 línea
+        tech_config = {"quality_standards": {"css": {"min_lines": 10}}}
+        issues = checker.validate(files, tech_config)
+        assert len(issues) == 1
+        assert "styles.css" in issues[0]
+
+# 3. Tests para RecoveryManager
+class TestRecoveryManager:
+    @patch("lib.nia_git_manager.GitBasedFileManager")
+    def test_load_state_success(self, mock_git_class, tmp_path):
+        # Mock de Git para devolver un hash coincidente
+        mock_git = mock_git_class.return_value
+        mock_git.get_head_hash.return_value = "abc123"
+
+        recovery_file = tmp_path / "recovery_state.json"
+        state_data = {
+            "iteration": 5,
+            "task_id": "task_5",
+            "git_head": "abc123"
+        }
+        recovery_file.write_text(json.dumps(state_data))
+
+        manager = RecoveryManager(tmp_path)
+        manager.recovery_file = recovery_file # Inyectar path de test
+
+        loaded_state = manager.load_last_state()
+        assert loaded_state["iteration"] == 5
+
+    @patch("lib.nia_git_manager.GitBasedFileManager")
+    def test_load_state_hash_mismatch(self, mock_git_class, tmp_path):
+        mock_git = mock_git_class.return_value
+        mock_git.get_head_hash.return_value = "new_hash_456"
+
+        recovery_file = tmp_path / "recovery_state.json"
+        state_data = {
+            "iteration": 5,
+            "git_head": "old_hash_123" # Mismatch!
+        }
+        recovery_file.write_text(json.dumps(state_data))
+
+        manager = RecoveryManager(tmp_path)
+        manager.recovery_file = recovery_file
+
+        assert manager.load_last_state() is None
+```
 
 ---
 
