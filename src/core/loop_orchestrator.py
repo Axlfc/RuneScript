@@ -123,9 +123,19 @@ class LoopOrchestrator:
                         self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
 
                     # LOG PARSED FILES DIAGNOSTICS
+                    self._log(f"\n=== FILE PROCESSING DEBUG ===", log_callback)
                     self._log(f"Files detected by parser: {len(response.files)}", log_callback)
                     for filename in response.files:
-                        self._log(f"  - {filename} ({len(response.files[filename])} chars)", log_callback)
+                        content = response.files[filename]
+                        self._log(f"  - {filename} ({len(content)} chars)", log_callback)
+
+                        if filename.endswith('.gitkeep'):
+                            self._log(f"    ⚠️ .gitkeep file (empty content expected)", log_callback)
+
+                        if '/' in filename or '\\' in filename:
+                            parts = filename.replace('\\', '/').split('/')
+                            if len(parts) > 1:
+                                self._log(f"    📁 Nested path detected: {'/'.join(parts[:-1])}", log_callback)
 
                     # Specific warning if critical files are missing for frontend_web
                     nia_config = self._get_nia_config()

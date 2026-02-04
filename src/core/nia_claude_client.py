@@ -41,17 +41,25 @@ class nIAResponse:
                 filename = filename[2:]
 
             # Find the FIRST code block in this section
-            block_match = re.search(r'```[^\n]*\n(.*?)\n```', section, re.DOTALL)
+            # Robust pattern to catch empty files (like .gitkeep) and files without trailing newline
+            block_match = re.search(r'```[^\n]*\n?(.*?)\n?```', section, re.DOTALL)
             if filename and block_match:
                 content = block_match.group(1)
+
+                # If it's a .gitkeep or empty file, ensure it's treated correctly
+                if not content.strip() and filename.endswith('.gitkeep'):
+                    content = ""
+
                 if filename not in files:
                     files[filename] = content
                     logging.info(f"  Detected (Split): {filename} ({len(content)} chars)")
+                    if not content and filename.endswith('.gitkeep'):
+                        logging.info(f"    ⚠️ .gitkeep file (empty content)")
 
         # 2. Fallback pattern: catch files that might not have the "File:" prefix
         # but have a filename on a line before a code block
         # Pattern: line with filename, followed by optional lines, then code block
-        fallback_pattern = r"([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+)[^\n]*\n(?:.*?\n)*?```[^\n]*\n(.*?)\n```"
+        fallback_pattern = r"([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+)[^\n]*\n(?:.*?\n)*?```[^\n]*\n?(.*?)\n?```"
         matches = list(re.finditer(fallback_pattern, text, re.DOTALL | re.IGNORECASE))
 
         # Track basenames already handled with a path
@@ -66,16 +74,24 @@ class nIAResponse:
             basename = os.path.basename(filename)
 
             if filename and filename not in files:
+                content = match.group(2)
+
+                # Allow empty content for .gitkeep
+                if not content.strip() and filename.endswith('.gitkeep'):
+                    content = ""
+                elif not content.strip():
+                    continue
+
                 # SKIP if we already have this basename in a more specific path detected via Split
                 if basename in paths_by_basename and paths_by_basename[basename] != filename:
                     logging.warning(f"  Skipping fallback duplicate basename: {filename} (already have {paths_by_basename[basename]})")
                     continue
 
                 # Basic validation: must have an extension and not be too long
-                allowed_exts = {'.py', '.html', '.css', '.js', '.json', '.md', '.txt', '.sh', '.sql'}
+                allowed_exts = {'.py', '.html', '.css', '.js', '.json', '.md', '.txt', '.sh', '.sql', '.gitkeep'}
                 ext = os.path.splitext(filename)[1].lower()
 
-                if ext in allowed_exts and len(filename) < 255:
+                if (ext in allowed_exts or filename.endswith('.gitkeep')) and len(filename) < 255:
                     content = match.group(2)
                     files[filename] = content
                     logging.info(f"  Detected (Fallback): {filename} ({len(content)} chars)")
