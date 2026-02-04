@@ -15,6 +15,9 @@ from .quality import QualityChecker
 from .test_parser import TestParser
 from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
+from src.security.path_validator import ParanoidPathValidator
+from src.security.audit import SecurityAuditor
+from src.security.exceptions import SecurityException
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,6 +39,11 @@ class LoopOrchestrator:
         self.quality_checker = QualityChecker()
         self.git_manager = GitBasedFileManager(str(self.project_path))
         self.venv_python: Optional[str] = None
+
+        # Security Components
+        self.security_auditor = SecurityAuditor(log_dir=os.path.join(self.project_path, ".nia", "security"))
+        self.path_validator = ParanoidPathValidator(base_dir=self.project_path)
+        self.validator.security_auditor = self.security_auditor
 
         self.spec_path = project_path / "SPEC.md"
         self.plan_path = project_path / "IMPLEMENTATION_PLAN.md"
@@ -546,19 +554,33 @@ For example, if the test expects id="work", DO NOT use id="projects".
             nia_config = self._get_nia_config()
             tech_stack = nia_config.get("tech_stack", "")
 
+            # DEFCON 1 Path Validation
+            try:
+                safe_path = self.path_validator.validate(rel_path)
+                full_path = Path(safe_path)
+            except SecurityException as se:
+                self.security_auditor.log_security_violation(
+                    severity='HIGH',
+                    category='PATH_TRAVERSAL_ATTEMPT',
+                    description=f"Blocked attempt to write to forbidden path: {rel_path}",
+                    error=str(se)
+                )
+                self._log(f"❌ SECURITY ALERT: Blocked attempt to write to forbidden path: {rel_path}", log_callback)
+                return False
+
             if not self._validate_file_path(rel_path, tech_stack):
                 msg = f"Skipping file {rel_path}: violates project structure for {tech_stack}"
                 self._log(f"⚠️ {msg}", log_callback)
                 logging.warning(msg)
                 return False
 
-            full_path = self.project_path / rel_path
-
             # Ensure parent directory exists
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Write content
             full_path.write_text(content, encoding='utf-8')
+
+            self.security_auditor.log_file_access('write', rel_path, approved=True)
 
             # Immediate verification
             if full_path.exists():
