@@ -65,6 +65,23 @@ def test_nested_paths():
     assert 'deep/nested/path/to/file.txt' in response.files
     assert response.files['deep/nested/path/to/file.txt'] == 'content'
 
+def test_parse_xml_tags():
+    """Verifica la detección de archivos mediante etiquetas XML."""
+    llm_response = """
+    Aquí tienes el código:
+    <file path="src/main.py">
+    print("hello xml")
+    </file>
+    <file path='css/style.css'>
+    body { color: blue; }
+    </file>
+    """
+    response = nIAResponse(llm_response)
+    assert 'src/main.py' in response.files
+    assert 'print("hello xml")' in response.files['src/main.py'].strip()
+    assert 'css/style.css' in response.files
+    assert 'blue' in response.files['css/style.css']
+
 if __name__ == "__main__":
     # Manual run if needed
     try:
@@ -72,6 +89,7 @@ if __name__ == "__main__":
         test_parse_files_without_trailing_newline()
         test_parse_fallback_gitkeep()
         test_nested_paths()
+        test_parse_xml_tags()
         print("✅ All file parser tests PASSED!")
     except Exception as e:
         print(f"❌ Test failed: {e}")

@@ -1,0 +1,110 @@
+test_suite:
+  - name: "Frontend Portfolio"
+    prompt: "Crea un portafolio profesional minimalista en HTML, CSS y JavaScript para un diseñador, con secciones de inicio, trabajos, habilidades y contacto, totalmente responsive y con animaciones suaves."
+    expected_files:
+      - index.html
+      - css/main.css
+      - js/app.js
+      - tests/test_portfolio.py
+    expected_min_lines:
+      html: 150
+      css: 200
+      js: 100
+    expected_test_framework: python_beautifulsoup
+
+  - name: "Python Snake Game"
+    prompt: "Crea el juego Snake en Python con pygame: serpiente que crece al comer, colisiones con paredes y cola, puntuación, y velocidad incremental"
+    expected_files:
+      - main.py
+      - snake.py
+      - game_logic.py
+      - tests/test_snake.py
+    expected_min_lines: 300
+    expected_test_framework: pytest
+
+  - name: "Python CLI Password Manager"
+    prompt: "Desarrolla un gestor de contraseñas CLI en Python con cifrado AES-256, generador de contraseñas seguras, y almacenamiento en SQLite"
+    expected_files:
+      - main.py
+      - crypto_utils.py
+      - db_manager.py
+      - tests/test_manager.py
+    expected_min_lines: 300
+    expected_test_framework: pytest
+
+  - name: "Python Web Scraper"
+    prompt: "Implementa un web scraper con BeautifulSoup que extraiga noticias de HackerNews, guarde en CSV, y notifique por email las tendencias"
+    expected_files:
+      - scraper.py
+      - notifier.py
+      - tests/test_scraper.py
+    expected_test_framework: pytest
+
+  - name: "Ruby Gem IBAN Validator"
+    prompt: "Crea una gema de Ruby para validar IBANs bancarios con algoritmo de módulo 97, soporte para 50+ países, y CLI interactivo"
+    expected_files:
+      - lib/iban_validator.rb
+      - spec/iban_validator_spec.rb
+      - iban_validator.gemspec
+      - Gemfile
+    expected_test_framework: rspec
+
+  - name: "Ruby Sinatra Library API"
+    prompt: "Desarrolla un API REST en Sinatra para gestión de biblioteca: usuarios, libros, préstamos, multas, con autenticación JWT"
+    expected_files:
+      - app.rb
+      - spec/app_spec.rb
+      - Gemfile
+    expected_test_framework: rspec
+
+  - name: "Ruby Static Site Generator"
+    prompt: "Implementa un generador de sitios estáticos en Ruby que convierta Markdown a HTML con templates Liquid y sintaxis highlighting"
+    expected_files:
+      - generator.rb
+      - spec/generator_spec.rb
+    expected_test_framework: rspec
+
+  - name: "Go Concurrent Web Crawler"
+    prompt: "Crea un web crawler concurrente en Go que indexe sitios respetando robots.txt, con pool de workers y rate limiting"
+    expected_files:
+      - crawler.go
+      - worker_pool.go
+      - crawler_test.go
+      - go.mod
+    expected_test_framework: go test
+
+  - name: "Go HTTP Load Balancer"
+    prompt: "Desarrolla un balanceador de carga HTTP en Go con round-robin, health checks, y métricas Prometheus"
+    expected_files:
+      - main.go
+      - balancer.go
+      - balancer_test.go
+    expected_test_framework: go test
+
+  - name: "Rust JSON Parser"
+    prompt: "Implementa un parser de JSON desde cero en Rust sin dependencias externas, con manejo de errores detallado"
+    expected_files:
+      - src/lib.rs
+      - src/parser.rs
+      - tests/integration_test.rs
+      - Cargo.toml
+    expected_test_framework: cargo test
+
+  - name: "Rust TCP Chat Server"
+    prompt: "Crea un servidor de chat TCP multicliente en Rust usando tokio con salas, mensajes privados, y persistencia"
+    expected_files:
+      - src/main.rs
+      - src/server.rs
+      - src/client_handler.rs
+      - Cargo.toml
+    expected_test_framework: cargo test
+
+  - name: "Next.js Pastebin Clone"
+    prompt: "Desarrolla un clon de Pastebin con Next.js + PostgreSQL: sintaxis highlighting, expiración, vistas únicas, API pública"
+    expected_files:
+      - app/page.tsx
+      - app/api/paste/route.ts
+      - components/Editor.tsx
+      - package.json
+      - tsconfig.json
+    expected_test_framework: jest

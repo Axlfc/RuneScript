@@ -17,6 +17,8 @@ Guidelines for Tech Stack Selection:
 2. If it is a Python project, use 'pytest' for testing_framework.
 3. If it is a Node.js project and npm is available, use 'jest' or 'mocha'.
 4. Always prefer tools that are marked as available in the System Context.
+5. Identify external dependencies like PostgreSQL, Redis, or Docker and include them in the 'features' or 'success_criteria' if relevant to the architecture.
+6. Specify if a virtual environment (venv) or specific dependency manager (bundler, cargo, go mod) is required.
 """
 
 PLAN_SYSTEM_PROMPT = """
@@ -25,12 +27,16 @@ Given a project specification, generate a COMPREHENSIVE and DETAILED implementat
 
 CRITICAL REQUIREMENTS:
 1. NO PLACEHOLDERS: Do NOT use "..." or "(rest of plan)" or "(remaining tasks)". Generate ALL tasks explicitly.
-2. COMPLETENESS: Aim for a detailed breakdown. For a medium project, generate at least 10-15 tasks across 3-4 phases.
-3. TDD PRINCIPLES: Each task MUST follow the format: "Test: <description>. Implementation: <what to do>".
-4. TEST COVERAGE: Every critical file (e.g., index.html, main.css, app.js) MUST have a dedicated task that includes a specific test verification using appropriate tools (BeautifulSoup, pytest, etc.).
-5. NO BLOAT/WRONG TECH: If the project is vanilla HTML/CSS/JS, DO NOT include tasks for Vite, Node.js, npm, or any build tools. Build the features directly.
-6. QUALITY TASKS: Each task should represent a meaningful feature or component (e.g., "Implement Hero Section with reveal-on-scroll animation" instead of just "Create HTML").
-7. FORMAT: Each task description should be descriptive (at least 30-50 characters).
+2. COMPLETENESS: Aim for a detailed breakdown.
+   - Simple: min 5 tasks.
+   - Medium: min 10 tasks.
+   - Complex: min 15 tasks.
+   - Very Complex: min 20 tasks.
+3. TDD PRINCIPLES: Each task MUST follow the format: "Test: [test description]. Implementation: [impl description]".
+4. PRODUCTION-READY CODE: Every task must result in complete, functional code. No stubs, no "Create folder" tasks. Tasks must combine structure with content.
+5. NO BLOAT/WRONG TECH: Stick strictly to the detected tech stack. Do not use build tools (Vite, npm) if not part of the stack.
+6. QUALITY TASKS: Each task description must be at least 50 characters long and describe a meaningful feature.
+7. COMPREHENSIVE COVERAGE: Ensure all critical files (HTML, CSS, JS, backend logic, tests) are covered by dedicated tasks.
 
 {tech_info}
 
@@ -78,13 +84,12 @@ PLAN DE IMPLEMENTACIÓN PROPUESTO:
 
 TAREA: Realiza una revisión crítica respondiendo:
 
-1. CONSISTENCIA TECNOLÓGICA: ¿El plan utiliza las herramientas del TECH STACK DETECTADO? RECHAZA el plan si intenta usar Node.js, Vite, npm, o cualquier build tool en un proyecto de Frontend Web (HTML/CSS/JS) vanilla.
-2. EVITAR STUBS: ¿El plan tiene tareas que solo "crean carpetas" o "ficheros básicos"? EXIGE que las tareas combinen estructura con contenido real y funcional.
-3. COMPLETITUD: ¿El plan cumple TODOS los requisitos de la SOLICITUD ORIGINAL? Lista lo que falta.
-3. CALIDAD: ¿Las tareas generarán código profesional o solo stubs básicos?
-4. GRANULARIDAD: ¿Las tareas son demasiado grandes o pequeñas?
-5. ARCHIVOS: ¿Faltan requirements.txt, .gitignore u otros archivos esenciales?
-6. TESTS: ¿Los tests verifican funcionalidad real o solo existencia de archivos?
+1. CONSISTENCIA TECNOLÓGICA: ¿El plan utiliza las herramientas del TECH STACK DETECTADO? RECHAZA el plan si intenta usar herramientas ajenas al stack.
+2. EVITAR STUBS/PLACEHOLDERS: ¿El plan tiene tareas incompletas o usa "..."? RECHAZA si no es 100% explícito.
+3. SIN TAREAS DE SOLO ESTRUCTURA: RECHAZA si hay tareas que solo dicen "Crear carpeta x" o "Crear index.html" sin implementar lógica real.
+4. COMPLETITUD: ¿El plan cumple TODOS los requisitos de la SOLICITUD ORIGINAL?
+5. CALIDAD TDD: ¿Cada tarea tiene un test claro y una implementación funcional?
+6. ARCHIVOS ESENCIALES: ¿Se incluyen .gitignore, README, requirements.txt/Gemfile/Cargo.toml según corresponda?
 
 Responde EXCLUSIVAMENTE en JSON con este formato:
 {{
@@ -95,13 +100,13 @@ Responde EXCLUSIVAMENTE en JSON con este formato:
       "phases": [
           {{
               "name": "Phase Name",
-              "tasks": [{{ "description": "Task description" }}]
+              "tasks": [{{ "description": "Test: [test]. Implementation: [impl]" }}]
           }}
       ]
   }}
 }}
 
-Si approved=false, genera un improved_plan que resuelva todos los issues. El plan debe ser detallado y seguir principios TDD.
+Si approved=false, genera un improved_plan que sea exhaustivo, sin placeholders y 100% funcional.
 """
 
 def get_reviewer_prompt(user_request: str, spec_content: str, current_plan: str, tech_stack: str = "unknown") -> str:
@@ -117,14 +122,15 @@ NIA_ITERATION_PROMPT = """
 
 {test_instructions}
 
-## QUALITY STANDARDS
-1. ✅ DO: Write production-quality code, not stubs.
-2. ✅ DO: Include actual content, not placeholders like "Content here" or "...".
-3. ✅ DO: Implement all features mentioned in the task in detail.
-4. ❌ DON'T: Leave empty functions or TODO comments.
-5. ❌ DON'T: Create minimal code just to pass tests.
-   - A professional implementation of a UI component should typically be 50-100+ lines including styles and logic.
-6. ❌ DON'T: Use placeholders like "..." even in large files. Generate the COMPLETE file content.
+## MANDATORY QUALITY STANDARDS
+1. 💎 PRODUCTION CODE: Write full implementations. NO STUBS. NO PLACEHOLDERS.
+2. 🚫 NO TRUNCATION: Do NOT use "..." or "// rest of code". Generate the ENTIRE file every time.
+3. 🛠️ FUNCTIONAL LOGIC: Implement real business logic, not just UI skeletons.
+4. 📏 MINIMUM LENGTH:
+   - HTML files should be 150+ lines.
+   - CSS files should be 200+ lines.
+   - JS/Python/Ruby/Go/Rust files should be 100+ lines of real logic.
+5. 🧪 TDD ADHERENCE: Follow the RED-GREEN-REFACTOR cycle strictly.
 
 === CURRENT SPEC ===
 {spec}
@@ -138,8 +144,31 @@ NIA_ITERATION_PROMPT = """
 === NEXT TASK ===
 {task_description}
 
-Please complete this task following the RED-GREEN-REFACTOR cycle.
-Always specify the filename before each code block using 'File: path/to/file' format.
+Example of GOOD implementation:
+File: js/app.js
+```javascript
+// Full implementation of the feature
+function initApp() {{
+    console.log("App starting...");
+    const elements = document.querySelectorAll('.item');
+    elements.forEach(el => {{
+        el.addEventListener('click', () => {{
+            // Real logic here, at least 100 lines total
+        }});
+    }});
+}}
+initApp();
+// ... more real code ...
+```
+
+Example of BAD implementation:
+File: js/app.js
+```javascript
+// TODO: Implement this later
+// ...
+```
+
+Please complete this task now. Specify filenames as 'File: path/to/file'.
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 

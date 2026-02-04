@@ -144,34 +144,46 @@ def initialize_gemini30_client():
 
 
 def process_gemini30_chat(messages: list):
-    """Processes a chat request for Gemini 3.0 with a list of messages."""
-    try:
-        client = initialize_gemini30_client()
+    """Processes a chat request for Gemini 3.0 with a list of messages with exponential backoff retry."""
+    max_retries = 3
+    base_delay = 2
 
-        # Map standard message format to Gemini SDK format
-        gemini_messages = []
-        for msg in messages:
-            role = msg.get("role", "user")
-            # Gemini roles are 'user' and 'model'
-            if role == "assistant":
-                role = "model"
-            elif role == "system":
-                # System messages are often handled separately in Gemini
-                role = "user"
+    for attempt in range(max_retries):
+        try:
+            client = initialize_gemini30_client()
 
-            content = msg.get("content", "")
-            gemini_messages.append({
-                "role": role,
-                "parts": [{"text": content}]
-            })
+            # Map standard message format to Gemini SDK format
+            gemini_messages = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                # Gemini roles are 'user' and 'model'
+                if role == "assistant":
+                    role = "model"
+                elif role == "system":
+                    # System messages are often handled separately in Gemini
+                    role = "user"
 
-        response = client.models.generate_content(
-            model="gemini-3-flash-preview",
-            contents=gemini_messages
-        )
-        return response.text
-    except Exception as e:
-        return f"Error while communicating with Gemini 3.0: {str(e)}"
+                content = msg.get("content", "")
+                gemini_messages.append({
+                    "role": role,
+                    "parts": [{"text": content}]
+                })
+
+            response = client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=gemini_messages
+            )
+            return response.text
+        except Exception as e:
+            err_msg = str(e)
+            # Transient errors: 503, 429 (Rate Limit), etc.
+            if "503" in err_msg or "429" in err_msg or "Service Unavailable" in err_msg:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    logging.warning(f"Gemini API transient error ({err_msg}). Retrying in {delay}s... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(delay)
+                    continue
+            return f"Error while communicating with Gemini 3.0: {err_msg}"
 
 
 def chat_loop_gemini30(prompt, client, system_prompt, session_id):
@@ -232,25 +244,35 @@ def process_gemini_chat(client, prompt):
 
 
 def process_gemini20_chat(client, prompt, system_prompt=None, temperature=0.7, max_tokens=300):
-    try:
-        # Configure the system instructions
-        config = GenerateContentConfig(
-            system_instruction=system_prompt or "You are a helpful assistant.",
-            temperature=temperature,
-            max_output_tokens=max_tokens
-        )
+    max_retries = 3
+    base_delay = 2
+    for attempt in range(max_retries):
+        try:
+            # Configure the system instructions
+            config = GenerateContentConfig(
+                system_instruction=system_prompt or "You are a helpful assistant.",
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
 
-        # Send the request to Gemini 2.0
-        response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
-            contents=Part.from_text(prompt),
-            config=config
-        )
+            # Send the request to Gemini 2.0
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-exp',
+                contents=Part.from_text(prompt),
+                config=config
+            )
 
-        # Return the text response
-        return response.text
-    except Exception as e:
-        return f"Error while communicating with Gemini 2.0: {str(e)}"
+            # Return the text response
+            return response.text
+        except Exception as e:
+            err_msg = str(e)
+            if "503" in err_msg or "429" in err_msg or "Service Unavailable" in err_msg:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    logging.warning(f"Gemini 2.0 API transient error ({err_msg}). Retrying in {delay}s... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(delay)
+                    continue
+            return f"Error while communicating with Gemini 2.0: {err_msg}"
 
 
 def chat_loop_gemini20(prompt, client, system_prompt, session_id):

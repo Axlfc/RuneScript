@@ -6,8 +6,17 @@ class TestQualityChecker:
     def test_validate_passes_standard(self):
         """Test cuando archivos cumplen el estándar."""
         checker = QualityChecker()
+        valid_html = """
+        <!DOCTYPE html>
+        <html>
+        <head><title>Test</title></head>
+        <body>
+        """ + "\n".join([f"<div>Line {i}</div>" for i in range(20)]) + """
+        </body>
+        </html>
+        """
         files = {
-            "index.html": "\n".join([f"<div>Line {i}</div>" for i in range(20)])
+            "index.html": valid_html
         }
         tech_config = {
             "quality_standards": {
@@ -22,7 +31,7 @@ class TestQualityChecker:
         """Test cuando archivo no cumple mínimo."""
         checker = QualityChecker()
         files = {
-            "styles.css": "body { color: red; }\n/* only 2 lines */"
+            "styles.css": "body { color: red; }\n.header { height: 10px; }\n.footer { width: 100%; }"
         }
         tech_config = {
             "quality_standards": {
@@ -31,9 +40,9 @@ class TestQualityChecker:
         }
 
         issues = checker.validate(files, tech_config)
+        # Should have standard line count issue, but NOT complexity issue since it has 3 rules
         assert len(issues) == 1
-        assert "styles.css" in issues[0]
-        assert "50" in issues[0]
+        assert "styles.css tiene 3 líneas de código" in issues[0]
 
     def test_ignores_files_without_standards(self):
         """Test que ignora archivos sin standards definidos."""

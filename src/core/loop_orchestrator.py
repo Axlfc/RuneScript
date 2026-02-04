@@ -275,16 +275,6 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log(f"✅ Successfully written: {len(written_files)} files", log_callback)
                     self._log_project_structure(log_callback)
 
-                    # Pre-application validation for placeholders
-                    placeholder_file = self._check_for_placeholders(response.files)
-                    if placeholder_file:
-                        if attempt < max_retries:
-                            self._log(f"⚠️ Warning: Placeholder found in {placeholder_file}. Retrying for better quality...", log_callback)
-                            ai_feedback = f"Your implementation of {placeholder_file} contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic. DO NOT use '...' or 'TODO' as a substitute for real code."
-                            continue
-                        else:
-                            self._log(f"⚠️ Quality warning: Placeholder found in {placeholder_file}, but proceeding anyway (last attempt).", log_callback)
-
                     # Quality Check AFTER writing files
                     nia_config = self._get_nia_config()
                     tech_config = nia_config.get("tech_config", {})
@@ -692,61 +682,6 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     except:
                         pass
         return total_lines
-
-    def _check_for_placeholders(self, files: dict) -> Optional[str]:
-        """Check for real placeholders in implementation files, ignoring false positives."""
-
-        # Patterns que NO son placeholders (False Positives)
-        false_positives = [
-            r'<!--\s*.+\s+placeholder.+\s*-->',  # Legit HTML descriptive comment
-            r'placeholder\s*=',                  # HTML attribute
-            r'\.placeholder',                    # CSS class
-            r'["\']placeholder["\']',            # String "placeholder"
-        ]
-
-        # Patterns de placeholders REALES
-        real_placeholders = [
-            r'TODO:',
-            r'FIXME:',
-            r'PLACEHOLDER',
-            r'\/\/\s*Add\s+.+\s+here',
-            r'#\s*Add\s+.+\s+here',
-            r'Content here',
-            r'#\s*Your code here',
-            r'<!--\s*TODO'
-        ]
-
-        for filename, content in files.items():
-            # SKIP test files
-            if 'test' in filename.lower() or '/tests/' in filename:
-                continue
-
-            # Smart check for "..." standalone on a line (CRITICAL PLACEHOLDER)
-            for line in content.splitlines():
-                stripped = line.strip()
-                # Use regex to ensure it's not part of a larger word
-                if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.)$', stripped):
-                    return filename
-
-            # Check for real placeholders, but ignore if content also matches a false positive pattern
-            for pattern in real_placeholders:
-                if re.search(pattern, content, re.IGNORECASE):
-                    # Potential hit, verify it's not a false positive
-                    is_false_positive = False
-                    for fp_pattern in false_positives:
-                        # This logic is a bit simplistic; ideally we'd check if the pattern
-                        # is exactly the same match, but for now we skip the file if it
-                        # contains any false positive pattern that might be confusing the check.
-                        # Actually, better: if the SPECIFIC match is a false positive.
-                        # But let's stick to the user's suggestion of refining patterns.
-                        pass
-
-                    # For now, let's just use more specific real placeholder patterns
-                    # and rely on the fact that 'placeholder=' doesn't match 'PLACEHOLDER'
-                    # if we are careful.
-                    return filename
-
-        return None
 
     def _get_nia_config(self) -> dict:
         """Load project nIA configuration."""

@@ -22,7 +22,20 @@ class nIAResponse:
 
         logging.info("--- Starting Robust File Parsing ---")
 
-        # 1. Split-based approach to isolate sections starting with "File:"
+        # 1. XML-style tags: <file path="path/to/file">content</file>
+        xml_pattern = r'<file\s+path=["\']([^"\']+)["\']\s*>(.*?)</file>'
+        xml_matches = re.finditer(xml_pattern, text, re.DOTALL | re.IGNORECASE)
+        for match in xml_matches:
+            filename = clean_filename(match.group(1).strip())
+            filename = os.path.normpath(filename).replace('\\', '/')
+            if filename.startswith('./'): filename = filename[2:]
+
+            content = match.group(2)
+            if filename not in files:
+                files[filename] = content
+                logging.info(f"  Detected (XML Tag): {filename} ({len(content)} chars)")
+
+        # 2. Split-based approach to isolate sections starting with "File:"
         # This is more robust against descriptive text between the filename and code block
         sections = re.split(r'(?i)(?:File|Archivo|Ruta|Path|Archivo de código):', text)
 
@@ -56,7 +69,7 @@ class nIAResponse:
                     if not content and filename.endswith('.gitkeep'):
                         logging.info(f"    ⚠️ .gitkeep file (empty content)")
 
-        # 2. Fallback pattern: catch files that might not have the "File:" prefix
+        # 3. Fallback pattern: catch files that might not have the "File:" prefix
         # but have a filename on a line before a code block
         # Pattern: line with filename, followed by optional lines, then code block
         fallback_pattern = r"([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+)[^\n]*\n(?:.*?\n)*?```[^\n]*\n?(.*?)\n?```"
