@@ -89,6 +89,56 @@ class nIAResponse:
 
         return files
 
+    def _parse_ollama_json_manual(self, text: str) -> Dict[str, str]:
+        """Manually extract files using regex when JSON parsing fails (e.g. invalid escapes or literal newlines)."""
+        files = {}
+
+        # Patterns for path and content
+        path_pattern = r'"(?:path|File)"\s*:\s*"([^"]+)"'
+        content_start_pattern = r'"content"\s*:\s*"'
+
+        last_pos = 0
+        while True:
+            # Search from last position
+            path_match = re.search(path_pattern, text[last_pos:])
+            if not path_match:
+                break
+
+            path = path_match.group(1)
+            path_end = last_pos + path_match.end()
+
+            # Look for content following the path
+            content_match = re.search(content_start_pattern, text[path_end:])
+            if not content_match:
+                last_pos = path_end
+                continue
+
+            content_start = path_end + content_match.end()
+
+            # Find the end of content: " followed by optional whitespace and then , or } or ] or end of string
+            # We use DOTALL because content might have literal newlines
+            content_end_match = re.search(r'"\s*(?:,|\}|\]|$)', text[content_start:], re.DOTALL)
+
+            if content_end_match:
+                content_end = content_start + content_end_match.start()
+                content = text[content_start:content_end]
+
+                # Basic unescaping for manual parsing
+                content = content.replace('\\n', '\n').replace('\\t', '\t').replace('\\"', '"').replace('\\\\', '\\')
+
+                path = os.path.normpath(path).replace('\\', '/')
+                if path.startswith('./'): path = path[2:]
+
+                if path and content:
+                    files[path] = content
+                    logging.info(f"  ✅ Parsed (Manual Regex): {path} ({len(content)} chars)")
+
+                last_pos = content_start + content_end_match.end()
+            else:
+                last_pos = path_end
+
+        return files
+
     def _parse_files(self, text: str) -> Dict[str, str]:
         """Extract files from LLM response (Gemini OR Ollama format)."""
         files = {}
@@ -108,6 +158,10 @@ class nIAResponse:
             files = self._parse_ollama_json(text)
             if not files:
                 files = self._parse_ollama_json_tasks(text)
+
+            # Last resort for JSON-like content: manual regex extraction
+            if not files:
+                files = self._parse_ollama_json_manual(text)
 
         # If we got files from JSON, we're done.
         if files:

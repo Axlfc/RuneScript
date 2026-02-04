@@ -176,6 +176,12 @@ Specify filenames as 'File: path/to/file' OR use a JSON response with a "files" 
   ]
 }}
 
+CRITICAL: If using JSON, escape all special characters properly:
+- Use \\n for newlines
+- Use \\t for tabs
+- Use \\" for quotes inside strings
+- Use \\\\ for backslashes
+
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 
