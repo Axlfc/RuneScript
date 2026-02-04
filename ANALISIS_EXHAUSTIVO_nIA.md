@@ -135,6 +135,39 @@ class ContextManager:
     return context_str
 ```
 
+### 2.4 PlanReviewer (Degeneración en Iteración 2)
+
+#### Evaluación Actual
+En la iteración 2 del proceso de revisión, el sistema envía el `improved_plan` en formato JSON crudo (`json.dumps`). Esto rompe la consistencia del contexto del LLM, que espera un documento Markdown estructurado (el contrato de `IMPLEMENTATION_PLAN.md`), provocando críticas imprecisas o planes mal formados.
+
+#### Solución Propuesta: Renderizado Recursivo
+Convertir el JSON de vuelta a Markdown usando el mismo template de Jinja2 utilizado en la generación inicial.
+
+**Implementación del Fix en `src/generators/plan_reviewer.py`**:
+```python
+from jinja2 import Environment, FileSystemLoader
+
+class PlanReviewer:
+    def __init__(self, ai_client=None, max_iterations=2):
+        self.ai = ai_client or AIAssistant()
+        self.max_iterations = max_iterations
+        # Cargar entorno de templates
+        self.env = Environment(loader=FileSystemLoader("src/templates"))
+
+    def review_and_improve(self, spec_content, plan_content, user_request, tech_stack="unknown"):
+        # ... (lógica inicial)
+        while iteration < self.max_iterations:
+            # ... (generación de respuesta)
+            if not approved:
+                improved_plan_data = data.get("improved_plan")
+
+                # FIX: Renderizar JSON a Markdown antes de la siguiente iteración
+                template = self.env.get_template("IMPLEMENTATION_PLAN.md.jinja2")
+                current_plan_to_review = template.render(**improved_plan_data)
+
+                logging.info("Plan renderizado a Markdown para iteración 2")
+```
+
 ---
 
 ## 3. SOLUCIONES A PROBLEMAS CRÍTICOS
