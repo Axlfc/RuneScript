@@ -19,9 +19,19 @@ class PlanGenerator:
         feature_count = spec_lower.count('\n- ')
 
         complexity_keywords = {
-            'very_complex': ['microservices', 'real-time', 'admin panel', 'multi-tenant', 'enterprise'],
-            'complex': ['dashboard', 'auth', 'api', 'database', 'crud', 'backend'],
-            'medium': ['portfolio', 'blog', 'gallery', 'form', 'interactive']
+            'very_complex': [
+                'microservices', 'real-time', 'admin panel', 'multi-tenant', 'enterprise',
+                'rbac', 'scaling', 'distributed', 'blockchain', 'machine learning', 'ai integration'
+            ],
+            'complex': [
+                'dashboard', 'auth', 'api', 'database', 'crud', 'backend',
+                'payment', 'stripe', 'websocket', 'integration', 'email', 'notifications',
+                'concurrency', 'multiclient', 'encryption', 'aes-256'
+            ],
+            'medium': [
+                'portfolio', 'blog', 'gallery', 'form', 'interactive',
+                'search', 'filter', 'pagination', 'sorting', 'animations', 'responsive'
+            ]
         }
 
         for level, keywords in complexity_keywords.items():

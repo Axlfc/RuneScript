@@ -48,6 +48,59 @@ class TechStackDetector:
             'quality_standards': {
                 'js': {'min_lines': 100}
             }
+        },
+        'ruby_gem': {
+            'display_name': 'Ruby Gem',
+            'keywords': ['ruby', 'gem', 'gemspec', 'bundler', 'rake'],
+            'files': ['*.gemspec', 'Gemfile', 'lib/', 'spec/'],
+            'test_framework': 'rspec',
+            'test_command': 'bundle exec rspec {test_file}',
+            'test_pattern': '*_spec.rb',
+            'default_structure': ['lib/', 'spec/', 'Gemfile'],
+            'quality_standards': {'rb': {'min_lines': 100}}
+        },
+        'ruby_sinatra': {
+            'display_name': 'Ruby Sinatra',
+            'keywords': ['sinatra', 'ruby web', 'rack'],
+            'files': ['app.rb', 'config.ru', 'Gemfile'],
+            'test_framework': 'rspec',
+            'test_command': 'bundle exec rspec {test_file}',
+            'test_pattern': '*_spec.rb',
+            'default_structure': ['app.rb', 'spec/', 'Gemfile'],
+            'quality_standards': {'rb': {'min_lines': 150}}
+        },
+        'go_cli': {
+            'display_name': 'Go CLI/System',
+            'keywords': ['go', 'golang', 'cli go', 'concurrency go', 'goroutines', 'channel'],
+            'files': ['go.mod', 'go.sum', 'main.go'],
+            'test_framework': 'go test',
+            'test_command': 'go test -v {test_file}',
+            'test_pattern': '*_test.go',
+            'default_structure': ['cmd/', 'internal/', 'pkg/', 'go.mod'],
+            'quality_standards': {'go': {'min_lines': 150}}
+        },
+        'rust_project': {
+            'display_name': 'Rust Project',
+            'keywords': ['rust', 'cargo', 'tokio', 'performance rust', 'safe memory'],
+            'files': ['Cargo.toml', 'Cargo.lock', 'src/main.rs', 'src/lib.rs'],
+            'test_framework': 'cargo test',
+            'test_command': 'cargo test',
+            'test_pattern': '*',
+            'default_structure': ['src/', 'tests/', 'Cargo.toml'],
+            'quality_standards': {'rs': {'min_lines': 200}}
+        },
+        'nextjs_fullstack': {
+            'display_name': 'Next.js Fullstack',
+            'keywords': ['next.js', 'nextjs', 'react', 'tailwind', 'prisma', 'typescript', 'fullstack'],
+            'files': ['next.config.js', 'tsconfig.json', 'app/', 'pages/'],
+            'test_framework': 'jest',
+            'test_command': 'npm test',
+            'test_pattern': '*.test.tsx',
+            'default_structure': ['app/', 'components/', 'public/', 'package.json'],
+            'quality_standards': {
+                'tsx': {'min_lines': 150},
+                'ts': {'min_lines': 100}
+            }
         }
     }
 
