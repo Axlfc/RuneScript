@@ -357,13 +357,16 @@ class ProjectLifecycleManager:
         # 2. Extract dependencies
         dependencies = self._detect_dependencies(project_path, spec_content)
 
+        # Base dependencies always needed for testing and structure verification
+        base_deps = ["beautifulsoup4", "lxml", "pytest"]
+        for dep in base_deps:
+            if dep not in dependencies:
+                dependencies.append(dep)
+
         # 3. Create requirements.txt (Python)
         requirements_path = Path(project_path) / "requirements.txt"
-        if 'python' in project_types or dependencies:
-            if not dependencies:
-                dependencies = ["pytest"]
-            requirements_path.write_text("\n".join(sorted(dependencies)) + "\n", encoding='utf-8')
-            self._save_metrics(project_path, {"dependencies": {"requirements_generated": True, "auto_detected": dependencies}})
+        requirements_path.write_text("\n".join(sorted(dependencies)) + "\n", encoding='utf-8')
+        self._save_metrics(project_path, {"dependencies": {"requirements_generated": True, "auto_detected": dependencies}})
 
         # 4. Create .gitignore
         self._create_gitignore(project_path, project_types)
@@ -495,7 +498,21 @@ class ProjectLifecycleManager:
 
         try:
             # 1. Initialize Git
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 0: Initializing Git Repository...")
             git_manager = GitBasedFileManager(project_path)
+
+            # Ensure an initial commit exists if the repo is brand new
+            try:
+                _ = git_manager.repo.head.commit
+            except (git.BadName, ValueError):
+                # Create a minimal .gitignore if it doesn't exist to have something to commit
+                gitignore_path = path / ".gitignore"
+                if not gitignore_path.exists():
+                    gitignore_path.write_text("__pycache__/\n.venv/\n.nia/logs/\n.nia/diffs/\n", encoding='utf-8')
+
+                git_manager.repo.git.add(A=True)
+                git_manager.repo.index.commit("Initial commit: Repository structure initialized")
+                self.controller.safe_ui_call(self.controller.ui_manager.log_output, "✅ Git repository initialized with initial commit.")
 
             # Check for stop before starting phases
             if self.stop_event.is_set():
