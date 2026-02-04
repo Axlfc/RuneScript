@@ -7,6 +7,7 @@ import time
 import json
 import re
 import glob
+import git
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 from tkinter import messagebox
