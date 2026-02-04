@@ -191,48 +191,12 @@ class LoopOrchestrator:
                     # 7. TDD Cycle: GREEN Phase
                     self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
 
-                    # Pre-application validation for placeholders
-                    placeholder_file = self._check_for_placeholders(response.files)
-                    if placeholder_file and attempt < max_retries:
-                        self._log(f"⚠️ Warning: Placeholder found in {placeholder_file}. Retrying for better quality...", log_callback)
-                        ai_feedback = f"Your implementation of {placeholder_file} contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic. DO NOT use '...' or 'TODO' as a substitute for real code."
-                        continue
-
-                    # NUEVO: Quality Check antes de escribir archivos
-                    nia_config = self._get_nia_config()
-                    tech_config = nia_config.get("tech_config", {})
-                    quality_issues = self.quality_checker.validate(response.files, tech_config)
-
-                    if quality_issues:
-                        self._log("❌ QUALITY CHECK FAILED:", log_callback)
-                        for issue in quality_issues:
-                            self._log(f"  - {issue}", log_callback)
-
-                        if attempt == max_retries:
-                            self.tracker.mark_blocked(
-                                self.plan_path,
-                                next_task,
-                                f"Quality standards not met after {max_retries} attempts"
-                            )
-                            return LoopResult(
-                                "BLOCKED",
-                                iteration,
-                                "Quality standards not met",
-                                self._get_final_stats(start_time, tasks_planned, tasks_completed)
-                            )
-
-                        # Generar feedback para retry
-                        quality_feedback = self.quality_checker.generate_feedback(quality_issues)
-                        ai_feedback += "\n\n" + quality_feedback
-                        continue
-
-                    self._log("✅ Quality check passed", log_callback)
-
+                    # WRITE FILES FIRST ✅ (as requested by user)
                     written_files = []
+                    self._log(f"📝 Writing {len(response.files)} files to disk...", log_callback)
                     for filename, content in response.files.items():
                         # Don't overwrite the test file if we are in a quality retry,
                         # UNLESS the AI explicitly wants to update the test.
-                        # But user says "Mantener el test original".
                         if attempt > 0 and filename == active_test_file:
                              continue
                         if self._write_file(filename, content, log_callback):
@@ -245,7 +209,10 @@ class LoopOrchestrator:
                         if attempt > 0 and f == active_test_file:
                             continue
                         full_p = self.project_path / f
-                        if not full_p.exists():
+                        exists = full_p.exists()
+                        status = "✅" if exists else "❌"
+                        self._log(f"{status} {f}: {exists}", log_callback)
+                        if not exists:
                             missing_physical.append(f)
 
                     if missing_physical:
@@ -257,8 +224,39 @@ class LoopOrchestrator:
                             self.tracker.mark_blocked(self.plan_path, next_task, f"File system write failure: {', '.join(missing_physical)}")
                             return LoopResult("ERROR", iteration, "Physical file verification failed")
 
-                    self._log("✅ All files verified on disk.", log_callback)
+                    self._log(f"✅ Successfully written: {len(written_files)} files", log_callback)
                     self._log_project_structure(log_callback)
+
+                    # Pre-application validation for placeholders
+                    placeholder_file = self._check_for_placeholders(response.files)
+                    if placeholder_file:
+                        if attempt < max_retries:
+                            self._log(f"⚠️ Warning: Placeholder found in {placeholder_file}. Retrying for better quality...", log_callback)
+                            ai_feedback = f"Your implementation of {placeholder_file} contains placeholder comments (TODO, ..., etc.). Please provide a COMPLETE implementation with actual content and logic. DO NOT use '...' or 'TODO' as a substitute for real code."
+                            continue
+                        else:
+                            self._log(f"⚠️ Quality warning: Placeholder found in {placeholder_file}, but proceeding anyway (last attempt).", log_callback)
+
+                    # Quality Check AFTER writing files
+                    nia_config = self._get_nia_config()
+                    tech_config = nia_config.get("tech_config", {})
+                    quality_issues = self.quality_checker.validate(response.files, tech_config)
+
+                    if quality_issues:
+                        self._log("⚠️ QUALITY ISSUES DETECTED:", log_callback)
+                        for issue in quality_issues:
+                            self._log(f"  - {issue}", log_callback)
+
+                        if attempt < max_retries:
+                            # Generar feedback para retry
+                            quality_feedback = self.quality_checker.generate_feedback(quality_issues)
+                            ai_feedback += "\n\n" + quality_feedback
+                            self._log("🔄 Retrying to improve quality...", log_callback)
+                            continue
+                        else:
+                             self._log("⚠️ Quality below standards, but files created (last attempt).", log_callback)
+                    else:
+                        self._log("✅ Quality check passed", log_callback)
 
                     if active_test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
