@@ -80,7 +80,11 @@ class QualityChecker:
             r'#\s*Your code here',
             r'<!--\s*TODO',
             r'\(\.\.\.\)',
-            r'\[\.\.\.\]'
+            r'\[\.\.\.\]',
+            r'\/\/\s*rest\s+of\s+code',
+            r'#\s*rest\s+of\s+code',
+            r'\/\/\s*etc\.',
+            r'#\s*etc\.'
         ]
 
         for filename, content in files.items():
@@ -88,10 +92,11 @@ class QualityChecker:
             if 'test' in filename.lower() or '/tests/' in filename:
                 continue
 
-            # Smart check for "..." standalone on a line (CRITICAL PLACEHOLDER)
+            # Check for "..." or similar on its own line
             for line in content.splitlines():
                 stripped = line.strip()
-                if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.)$', stripped):
+                # Matches "...", "// ...", "# ...", "/* ... */", "<!-- ... -->"
+                if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.|\/\* \.\.\. \*\/|<!-- \.\.\. -->)$', stripped):
                     return filename
 
             # Check for real placeholders
@@ -135,12 +140,18 @@ class QualityChecker:
         if not issues:
             return ""
 
-        feedback = "QUALITY CHECK FAILED:\n"
-        feedback += "\n".join(f"- {issue}" for issue in issues)
-        feedback += "\n\nPor favor, genera implementaciones más completas y detalladas."
-        feedback += "\n- NO uses placeholders como '...' o 'TODO'."
-        feedback += "\n- Asegúrate de que los archivos HTML tengan estructura completa (DOCTYPE, html, head, body)."
-        feedback += "\n- Implementa lógica real y estilos detallados, no solo esqueletos."
-        feedback += "\n- El código debe ser 'production-ready'."
+        feedback = "╔══════════════════════════════════════════════════════════╗\n"
+        feedback += "║ ⚠️ QUALITY STANDARDS NOT MET (IMPLEMENTATION REJECTED)  ║\n"
+        feedback += "╚══════════════════════════════════════════════════════════╝\n\n"
+        feedback += "The following issues were found in your implementation:\n"
+        feedback += "\n".join(f"❌ {issue}" for issue in issues)
+        feedback += "\n\nREQUIRED ACTION:\n"
+        feedback += "1. RE-GENERATE the files with COMPLETE implementations. DO NOT TRUNCATE.\n"
+        feedback += "2. REMOVE all placeholders like '...', '// rest of code', or 'TODO'.\n"
+        feedback += "3. INCREASE CONTENT VOLUME significantly:\n"
+        feedback += "   - HTML: Expand all sections (Navigation, Hero, Features, About, Portfolio, Contact, Footer).\n"
+        feedback += "   - CSS: Add variables, layout rules, typography, responsive queries, and hover effects (min 200 lines).\n"
+        feedback += "   - JS: Implement full interactivity, event listeners, and DOM manipulation (min 100 lines).\n"
+        feedback += "\nYOUR RESPONSE MUST BE PRODUCTION-READY."
 
         return feedback

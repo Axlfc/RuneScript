@@ -290,9 +290,14 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             quality_feedback = self.quality_checker.generate_feedback(quality_issues)
                             ai_feedback += "\n\n" + quality_feedback
                             self._log("🔄 Retrying to improve quality...", log_callback)
+
+                            # Rollback before retry for quality
+                            self.git_manager.rollback_to(checkpoint)
                             continue
                         else:
-                             self._log("⚠️ Quality below standards, but files created (last attempt).", log_callback)
+                             self._log("❌ Quality below standards after all retries.", log_callback)
+                             self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(quality_issues)}")
+                             return LoopResult("BLOCKED", iteration, "Quality standards not met")
                     else:
                         self._log("✅ Quality check passed", log_callback)
 
@@ -349,11 +354,15 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     if missing_critical:
                         self._log(f"⚠️ Warning: Missing critical files: {', '.join(missing_critical)}", log_callback)
                         if attempt < max_retries:
-                            ai_feedback += f"\n\nMISSING CRITICAL FILES: {', '.join(missing_critical)}\nPlease ensure all required files are generated."
+                            ai_feedback += f"\n\nMISSING CRITICAL FILES: {', '.join(missing_critical)}\nEnsure you generate EVERY required file in a single response. Do not skip files."
                             # Rollback before retry to have a clean slate
                             self.git_manager.rollback_to(checkpoint)
                             self.git_manager.record_failed_iteration()
                             continue
+                        else:
+                            self._log(f"❌ CRITICAL ERROR: Mandatory files missing after all retries: {', '.join(missing_critical)}", log_callback)
+                            self.tracker.mark_blocked(self.plan_path, next_task, f"Missing critical files: {', '.join(missing_critical)}")
+                            return LoopResult("BLOCKED", iteration, "Missing critical files")
 
                     # Success, break retry loop
                     break

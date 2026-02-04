@@ -302,11 +302,14 @@ class nIAClaudeClient:
         if is_frontend:
             test_instructions = """
 IMPORTANT FOR FRONTEND PROJECTS:
-- Generate standalone Python scripts for testing (e.g., in 'tests/' directory).
+- Generate standalone Python scripts for testing (e.g., in 'tests/test_structure.py').
 - DO NOT use 'import pytest'.
+- Use 'from bs4 import BeautifulSoup' for HTML parsing.
 - Use 'assert' for validations and 'print("✅ ...")' for success messages.
 - Include 'if __name__ == "__main__":' to execute all test functions.
-- You can use 'from bs4 import BeautifulSoup' for HTML parsing.
+- **ROBUST VALIDATION**: Use `in` or `.endswith()` for path checks (e.g., `assert 'css/style.css' in link['href']`).
+- **DIAGNOSTICS**: If an assertion fails, print the actual value for debugging.
+  Example: `if 'css/style.css' not in link['href']: print(f"DEBUG: Found href='{{link['href']}}'"); assert False`
 - If the task involves creating a project structure, ensure that your implementation code includes at least one file for each directory that needs to exist (use '.gitkeep' if the directory is intended to be empty).
 """
 
