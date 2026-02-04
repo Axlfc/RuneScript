@@ -168,7 +168,20 @@ File: js/app.js
 // ...
 ```
 
-Please complete this task now. Specify filenames as 'File: path/to/file'.
+Please complete this task now.
+Specify filenames as 'File: path/to/file' OR use a JSON response with a "files" array:
+{{
+  "files": [
+    {{"path": "path/to/file", "content": "..."}}
+  ]
+}}
+
+CRITICAL: If using JSON, escape all special characters properly:
+- Use \\n for newlines
+- Use \\t for tabs
+- Use \\" for quotes inside strings
+- Use \\\\ for backslashes
+
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 
