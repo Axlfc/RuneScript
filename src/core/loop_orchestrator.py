@@ -110,7 +110,7 @@ class LoopOrchestrator:
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
                     # DETECT INCORRECT EXECUTION SIGNALS (mkdir, cd, etc.)
-                    raw_lower = response.raw_response.lower()
+                    raw_lower = response.raw.lower()
                     if "mkdir" in raw_lower or "cd " in raw_lower or "npm " in raw_lower:
                         self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
 
@@ -228,14 +228,36 @@ class LoopOrchestrator:
 
                     self._log("✅ Quality check passed", log_callback)
 
+                    written_files = []
                     for filename, content in response.files.items():
                         # Don't overwrite the test file if we are in a quality retry,
                         # UNLESS the AI explicitly wants to update the test.
                         # But user says "Mantener el test original".
                         if attempt > 0 and filename == active_test_file:
                              continue
-                        self._write_file(filename, content, log_callback)
+                        if self._write_file(filename, content, log_callback):
+                            written_files.append(filename)
 
+                    # PHYSICAL VERIFICATION
+                    self._log("🔍 Verifying physical file existence...", log_callback)
+                    missing_physical = []
+                    for f in response.files:
+                        if attempt > 0 and f == active_test_file:
+                            continue
+                        full_p = self.project_path / f
+                        if not full_p.exists():
+                            missing_physical.append(f)
+
+                    if missing_physical:
+                        self._log(f"❌ CRITICAL ERROR: Files not found on disk after write: {', '.join(missing_physical)}", log_callback)
+                        if attempt < max_retries:
+                            ai_feedback = f"System failed to write files to disk: {', '.join(missing_physical)}. Please ensure paths are correct and provide full content."
+                            continue
+                        else:
+                            self.tracker.mark_blocked(self.plan_path, next_task, f"File system write failure: {', '.join(missing_physical)}")
+                            return LoopResult("ERROR", iteration, "Physical file verification failed")
+
+                    self._log("✅ All files verified on disk.", log_callback)
                     self._log_project_structure(log_callback)
 
                     if active_test_file:
@@ -431,29 +453,49 @@ class LoopOrchestrator:
 
         return True
 
-    def _write_file(self, rel_path: str, content: str, log_callback=None):
-        # Clean the filename of markdown formatting and invalid characters
-        rel_path = clean_filename(rel_path)
+    def _write_file(self, rel_path: str, content: str, log_callback=None) -> bool:
+        """
+        Writes a file to the project directory and verifies its existence.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            # Clean the filename of markdown formatting and invalid characters
+            rel_path = clean_filename(rel_path)
 
-        # Normalize path
-        rel_path = os.path.normpath(rel_path).replace('\\', '/')
-        if rel_path.startswith('./'):
-            rel_path = rel_path[2:]
+            # Normalize path
+            rel_path = os.path.normpath(rel_path).replace('\\', '/')
+            if rel_path.startswith('./'):
+                rel_path = rel_path[2:]
 
-        # Validate path based on tech stack
-        nia_config = self._get_nia_config()
-        tech_stack = nia_config.get("tech_stack", "")
+            # Validate path based on tech stack
+            nia_config = self._get_nia_config()
+            tech_stack = nia_config.get("tech_stack", "")
 
-        if not self._validate_file_path(rel_path, tech_stack):
-            msg = f"Skipping file {rel_path}: violates project structure for {tech_stack}"
-            self._log(f"⚠️ {msg}", log_callback)
-            logging.warning(msg)
-            return
+            if not self._validate_file_path(rel_path, tech_stack):
+                msg = f"Skipping file {rel_path}: violates project structure for {tech_stack}"
+                self._log(f"⚠️ {msg}", log_callback)
+                logging.warning(msg)
+                return False
 
-        full_path = self.project_path / rel_path
-        full_path.parent.mkdir(parents=True, exist_ok=True)
-        full_path.write_text(content, encoding='utf-8')
-        self._log(f"Generated file: {rel_path}", log_callback)
+            full_path = self.project_path / rel_path
+
+            # Ensure parent directory exists
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write content
+            full_path.write_text(content, encoding='utf-8')
+
+            # Immediate verification
+            if full_path.exists():
+                self._log(f"Generated file: {rel_path}", log_callback)
+                return True
+            else:
+                self._log(f"❌ Failed to generate file: {rel_path}", log_callback)
+                return False
+
+        except Exception as e:
+            self._log(f"❌ Exception writing file {rel_path}: {str(e)}", log_callback)
+            return False
 
     def _setup_environment(self, log_callback):
         """Initialize project virtual environment and dependencies."""

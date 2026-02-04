@@ -34,7 +34,9 @@ class TDDValidator:
             "no puede encontrar la ruta",
             "no such file or directory",
             "command not found",
-            "is not recognized as an internal or external command"
+            "is not recognized as an internal or external command",
+            "test file not found",
+            "python executable not found"
         ]
 
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
@@ -74,7 +76,9 @@ class TDDValidator:
             "no puede encontrar la ruta",
             "no such file or directory",
             "command not found",
-            "is not recognized as an internal or external command"
+            "is not recognized as an internal or external command",
+            "test file not found",
+            "python executable not found"
         ]
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
@@ -112,7 +116,9 @@ class TDDValidator:
             "no puede encontrar la ruta",
             "no such file or directory",
             "command not found",
-            "is not recognized as an internal or external command"
+            "is not recognized as an internal or external command",
+            "test file not found",
+            "python executable not found"
         ]
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
