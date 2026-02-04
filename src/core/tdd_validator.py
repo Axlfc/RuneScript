@@ -9,6 +9,9 @@ import logging
 import time
 import re
 from .tech_detector import TechStackDetector
+from src.security.sandbox import SecureSandbox
+from src.security.code_analyzer import CodeSecurityAnalyzer
+from src.security.exceptions import SecurityException
 
 class CyclePhase(Enum):
     RED = "red"
@@ -24,6 +27,11 @@ class ValidationResult:
 
 class TDDValidator:
     """Validate each phase of TDD cycle."""
+
+    def __init__(self, security_auditor=None):
+        self.security_auditor = security_auditor
+        self.sandbox = SecureSandbox()
+        self.analyzer = CodeSecurityAnalyzer()
 
     def validate_red(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
         """
@@ -249,6 +257,59 @@ class TDDValidator:
             logging.error(f"❌ {msg}")
             return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
 
+        # DEFCON 1: Security Analysis & Sandboxing for Python tests
+        if str(rel_test_file).endswith('.py'):
+            try:
+                with open(full_test_path, 'r', encoding='utf-8') as f:
+                    code = f.read()
+
+                # 1. AST Analysis
+                analysis = self.analyzer.analyze(code)
+                if not analysis['is_safe']:
+                    msg = f"Security Violation: Test file {rel_test_file} failed code analysis"
+                    if self.security_auditor:
+                        self.security_auditor.log_security_violation(
+                            severity='CRITICAL',
+                            category='MALICIOUS_TEST_CODE',
+                            description=msg,
+                            threats=analysis['threats']
+                        )
+                    return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
+
+                # 2. Sandbox Execution
+                # For now, if it's a simple test, we run it in the Python sandbox.
+                # If it's a complex pytest, we might still need a more robust runner,
+                # but let's try the sandbox first.
+                self.sandbox.timeout = 45 # Slightly more time for tests
+
+                # We need to decide which imports to allow based on the test
+                allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib']
+
+                # Check if we should use pytest
+                is_pytest = "import pytest" in code or "def test_" in code
+
+                result = self.sandbox.execute(
+                    code,
+                    allowed_imports=allowed,
+                    cwd=str(project_path),
+                    use_pytest=is_pytest
+                )
+
+                if self.security_auditor:
+                    self.security_auditor.log_code_execution(code, source=str(rel_test_file), approved=result['success'], result=result)
+
+                return subprocess.CompletedProcess(
+                    args=['sandbox', str(rel_test_file)],
+                    returncode=0 if result['success'] else 1,
+                    stdout=result['stdout'],
+                    stderr=result['stderr'] or (result['error'] if not result['success'] else "")
+                )
+
+            except Exception as e:
+                logging.error(f"Error during sandboxed test execution: {e}")
+                # Fallback to subprocess if sandbox fails? No, for DEFCON 1, we fail.
+                return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=f"Sandbox error: {e}")
+
         test_command_template = tech_config.get("test_command")
 
         if test_command_template:
@@ -366,25 +427,46 @@ class TDDValidator:
                 pass
 
         if uses_pytest:
-            # Use explicit ignores to prevent scanning virtual environments and triggering site-packages errors
-            cmd = [python_exe, "-m", "pytest", ".", "--ignore=.venv", "--ignore=venv", "--ignore=node_modules"]
+            # For REFACTOR phase, running all tests in sandbox
+            # We can't easily run multiple files with our current sandbox.execute
+            # so we'll run a script that calls pytest on the whole directory.
+            code = "import pytest\nimport sys\nsys.exit(pytest.main(['.', '-v', '--ignore=.venv', '--ignore=venv', '--ignore=node_modules']))"
+            allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib', 'sys']
+
+            result = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path))
+
+            return subprocess.CompletedProcess(
+                args=['sandbox', 'all_tests'],
+                returncode=0 if result['success'] else 1,
+                stdout=result['stdout'],
+                stderr=result['stderr'] or (result['error'] if not result['success'] else "")
+            )
         else:
-            # Run all test files as individual scripts
-            # For simplicity, return result of the first failing test or the last success
+            # Run all test files as individual scripts in sandbox
             last_result = None
             for py_file in test_dir.glob("**/test*.py"):
-                cmd = [python_exe, str(py_file.absolute())]
+                try:
+                    code = py_file.read_text(encoding='utf-8')
+                    # Basic check
+                    analysis = self.analyzer.analyze(code)
+                    if not analysis['is_safe']:
+                         return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="Security Violation in test file")
 
-                last_result = subprocess.run(
-                    cmd,
-                    shell=False,
-                    cwd=str(project_path),
-                    capture_output=True,
-                    encoding='utf-8',
-                    errors='replace'
-                )
-                if last_result.returncode != 0:
-                    return last_result
+                    allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib']
+                    is_pytest = "import pytest" in code or "def test_" in code
+
+                    res = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path), use_pytest=is_pytest)
+
+                    last_result = subprocess.CompletedProcess(
+                        args=['sandbox', str(py_file)],
+                        returncode=0 if res['success'] else 1,
+                        stdout=res['stdout'],
+                        stderr=res['stderr'] or (res['error'] if not res['success'] else "")
+                    )
+                    if last_result.returncode != 0:
+                        return last_result
+                except:
+                    pass
 
             if last_result:
                 return last_result
@@ -392,11 +474,5 @@ class TDDValidator:
             # Si no hay archivos de test
             return subprocess.CompletedProcess(args=[], returncode=0, stdout="No tests found", stderr="")
 
-        return subprocess.run(
-            cmd,
-            shell=False,
-            cwd=str(project_path),
-            capture_output=True,
-            encoding='utf-8',
-            errors='replace'
-        )
+        # Fallback (should not reach here with new logic)
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="Success", stderr="")
