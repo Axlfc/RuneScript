@@ -358,13 +358,16 @@ class ProjectLifecycleManager:
         # 2. Extract dependencies
         dependencies = self._detect_dependencies(project_path, spec_content)
 
+        # Base dependencies always needed for testing and structure verification
+        base_deps = ["beautifulsoup4", "lxml", "pytest"]
+        for dep in base_deps:
+            if dep not in dependencies:
+                dependencies.append(dep)
+
         # 3. Create requirements.txt (Python)
         requirements_path = Path(project_path) / "requirements.txt"
-        if 'python' in project_types or dependencies:
-            if not dependencies:
-                dependencies = ["pytest"]
-            requirements_path.write_text("\n".join(sorted(dependencies)) + "\n", encoding='utf-8')
-            self._save_metrics(project_path, {"dependencies": {"requirements_generated": True, "auto_detected": dependencies}})
+        requirements_path.write_text("\n".join(sorted(dependencies)) + "\n", encoding='utf-8')
+        self._save_metrics(project_path, {"dependencies": {"requirements_generated": True, "auto_detected": dependencies}})
 
         # 4. Create .gitignore
         self._create_gitignore(project_path, project_types)

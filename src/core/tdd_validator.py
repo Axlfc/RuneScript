@@ -6,6 +6,8 @@ import shlex
 import json
 import subprocess
 import logging
+import time
+import re
 from .tech_detector import TechStackDetector
 
 class CyclePhase(Enum):
@@ -145,9 +147,74 @@ class TDDValidator:
             stderr=result.stderr
         )
 
+    def _extract_file_dependencies_from_test(self, project_path: Path, test_file: Path) -> list:
+        """Extrae archivos que el test espera que existan."""
+        try:
+            if not test_file.exists():
+                return []
+            content = test_file.read_text(encoding='utf-8', errors='replace')
+            files = []
+            # Pattern 1: os.path.join patterns
+            join_pattern = r'os\.path\.join\([^)]*["\']([^"\']+)["\']'
+            files.extend(re.findall(join_pattern, content))
+            # Pattern 2: Direct file references
+            file_pattern = r'["\']([a-zA-Z0-9_/.-]+\.(html|css|js|py))["\']'
+            files.extend([m[0] for m in re.findall(file_pattern, content)])
+            # Pattern 3: CSS/JS paths in HTML checks
+            if 'css/' in content or 'js/' in content:
+                files.extend(['index.html', 'css/style.css', 'js/app.js', 'css/main.css', 'js/main.js'])
+            # Normalize and filter
+            result = []
+            for f in set(files):
+                # Clean up dots if they are at the start of a path like ../index.html
+                clean_f = f.lstrip('./').lstrip('../')
+                if clean_f and '.' in clean_f:
+                    result.append(clean_f)
+            return list(set(result))
+        except Exception as e:
+            logging.warning(f"Error extracting dependencies from test: {e}")
+            return []
+
     def _run_test(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None):
         """Run single test with appropriate runner."""
         project_path = Path(project_path)
+
+        logging.info(f"=== PREPARING TEST EXECUTION ===")
+        logging.info(f"Test file: {test_file}")
+        logging.info(f"Working directory: {project_path}")
+
+        # 0. Sync and Verify dependencies
+        # Esperar un momento para que el filesystem sincronice
+        time.sleep(0.1)
+
+        # Verify dependencies mentioned in test
+        test_file_path = Path(test_file)
+        if not test_file_path.is_absolute():
+            test_file_path = project_path / test_file_path
+
+        deps = self._extract_file_dependencies_from_test(project_path, test_file_path)
+        if deps:
+            logging.info(f"Checking test dependencies: {deps}")
+            missing = []
+            for dep in deps:
+                # Try relative to project root first
+                dep_path = project_path / dep
+                if not dep_path.exists():
+                    # If it starts with ../ it might be looking for something outside tests but in project
+                    missing.append(dep)
+
+            if missing:
+                # We log it as a warning but continue; the test will likely fail with a better error
+                logging.warning(f"⚠️ Missing files referenced in test: {missing}")
+
+        # List files in project for diagnostics
+        logging.info("Existing project files:")
+        for root, dirs, files in os.walk(project_path):
+            dirs[:] = [d for d in dirs if d not in ['.venv', '.git', '__pycache__', 'node_modules']]
+            rel_root = os.path.relpath(root, project_path)
+            for file in sorted(files):
+                full_rel = os.path.join(rel_root, file) if rel_root != "." else file
+                logging.info(f"  - {full_rel}")
 
         # 1. Try to get tech config from .nia_config.json
         config_path = project_path / ".nia_config.json"
