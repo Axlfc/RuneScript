@@ -22,6 +22,7 @@ from src.generators.plan_generator import PlanGenerator
 from src.generators.plan_reviewer import PlanReviewer
 from src.core.loop_orchestrator import LoopOrchestrator
 from src.core.plan_parser import PlanParser
+from src.utils.event_system import EventSystem, Events
 from src.core.tech_detector import TechStackDetector
 from src.ui.rich_components import FileSystemEvent
 from lib.nia_git_manager import GitBasedFileManager
@@ -35,6 +36,7 @@ class ProjectLifecycleManager:
         self.controller = controller
         self.generation_in_progress = False
         self.stop_event = threading.Event()
+        self.event_system = EventSystem.get_instance()
 
     def generate_project_with_ai(self, nia_mode: bool = False):
         """Start autonomous project generation with AI"""
@@ -653,19 +655,32 @@ class ProjectLifecycleManager:
 
             # Prepare UI callbacks for rich experience
             ui_callbacks = {
-                'phase_change': lambda p: self.controller.safe_ui_call(self.controller.ui_manager.phase_indicator.set_phase, p),
-                'test_output': lambda d: self.controller.safe_ui_call(self.controller.ui_manager.test_results.stream_output, d['line'], d['type']),
+                'phase_change': lambda p: self.controller.safe_ui_call(
+                    self.event_system.publish, Events.PHASE_CHANGED, p
+                ),
+                'test_output': lambda d: self.controller.safe_ui_call(
+                    self.controller.ui_manager.test_results.stream_output, d['line'], d['type']
+                ),
                 'file_created': lambda d: self.controller.safe_ui_call(
                     self.controller.ui_manager.file_tree_view.on_file_change,
                     FileSystemEvent('created', d['path'])
                 ),
-                'git_commit': lambda d: self.controller.safe_ui_call(self.controller.ui_manager.diff_viewer.show_diff, d['diff'], d['message']),
+                'git_commit': lambda d: self.controller.safe_ui_call(
+                    self.controller.ui_manager.diff_viewer.show_diff, d['diff'], d['message']
+                ),
+                'telemetry_update': lambda d: self.controller.safe_ui_call(
+                    self.event_system.publish, Events.TELEMETRY_UPDATE, d
+                ),
             }
 
             orchestrator = LoopOrchestrator(path, ui_callbacks=ui_callbacks)
 
             def log_cb(msg: str):
                 self.controller.safe_ui_call(self.controller.ui_manager.log_output, msg)
+
+                # Publish log message for console tabs
+                self.event_system.publish(Events.LOG_MESSAGE, msg)
+
                 # If message indicates progress or failure, refresh UI components
                 should_refresh = any(indicator in msg for indicator in ["✅", "❌", "Task completed", "Phase", "Target Task", "Generated file"])
 
@@ -676,6 +691,23 @@ class ProjectLifecycleManager:
                     parser = PlanParser()
                     tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
                     if tasks:
+                        # Publish tasks update for Sidebar
+                        task_list = []
+                        for t in tasks:
+                            task_list.append({
+                                'description': t.description,
+                                'status': 'completed' if t.status == 'completed' else ('blocked' if t.status == 'blocked' else 'pending'),
+                                'details': getattr(t, 'details', '')
+                            })
+                        self.event_system.publish(Events.UPDATE_TASKS, task_list)
+
+                        # Telemetry Update
+                        completed = len([t for t in tasks if t.status == 'completed'])
+                        self.event_system.publish(Events.TELEMETRY_UPDATE, {
+                            'task_current': completed,
+                            'task_total': len(tasks)
+                        })
+
                         plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
                         self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text, tasks)
 

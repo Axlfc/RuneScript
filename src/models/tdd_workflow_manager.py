@@ -23,9 +23,18 @@ class TDDWorkflowManager:
         phase = UI_TO_INTERNAL_PHASE.get(phase, phase)
         if phase not in self.phases:
             raise ValueError(f"Invalid phase: {phase}")
+
+        # Check for blocking issues before transition
+        if hasattr(self.ui_manager, 'has_blocking_issues') and self.ui_manager.has_blocking_issues():
+            self.ui_manager.show_message("Action Blocked",
+                                          "You have CRITICAL issues that must be resolved before proceeding.")
+            self.ui_manager.open_issue_manager()
+            return False
+
         self.current_phase = phase
         ui_label = PHASE_UI_LABELS.get(phase, phase)
         self.ui_manager.update_phase_ui(ui_label, self.test_status)
+        return True
 
     def rerun_last_test(self):
         """Re-run the previously executed test, if available."""
