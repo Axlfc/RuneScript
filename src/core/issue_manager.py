@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from src.utils.event_system import EventSystem, Events
 
 class IssueManager:
     """
@@ -27,6 +28,7 @@ class IssueManager:
 
     def __init__(self, project_path: Path):
         self.project_path = project_path
+        self.event_system = EventSystem.get_instance()
         self.nia_dir = self.project_path / ".nia"
         self.db_path = self.nia_dir / "issues.db"
         self.wiki_dir = self.nia_dir / "wiki"
@@ -57,6 +59,7 @@ class IssueManager:
                 files_affected TEXT,
                 context TEXT,
                 auto_fixed BOOLEAN DEFAULT 0,
+                suggestions TEXT,
                 created_at DATETIME NOT NULL,
                 resolved_at DATETIME,
                 resolution TEXT,
@@ -68,7 +71,8 @@ class IssueManager:
         columns = [
             ("title", "TEXT"),
             ("context", "TEXT"),
-            ("auto_fixed", "BOOLEAN DEFAULT 0")
+            ("auto_fixed", "BOOLEAN DEFAULT 0"),
+            ("suggestions", "TEXT")
         ]
 
         for col_name, col_type in columns:
@@ -112,12 +116,14 @@ class IssueManager:
     def create_issue(self, category: str, priority: str, description: str,
                      task: str = None, stack_trace: str = None,
                      commit_sha: str = None, files_affected: List[str] = None,
-                     title: str = None, context: Dict = None, auto_fixed: bool = False) -> int:
+                     title: str = None, context: Dict = None, auto_fixed: bool = False,
+                     suggestions: List[str] = None) -> int:
         """Creates a new issue in the system."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         files_json = json.dumps(files_affected) if files_affected else "[]"
+        suggestions_json = json.dumps(suggestions) if suggestions else "[]"
 
         # Merge existing fields into context for backwards compatibility
         full_context = context.copy() if context else {}
@@ -132,15 +138,19 @@ class IssueManager:
         cursor.execute('''
             INSERT INTO issues (title, category, priority, status, description, task,
                                 stack_trace, commit_sha, files_affected, context,
-                                auto_fixed, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                auto_fixed, suggestions, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (title, category, priority, 'Open', description, task,
               stack_trace, commit_sha, files_json, context_json,
-              1 if auto_fixed else 0, now))
+              1 if auto_fixed else 0, suggestions_json, now))
 
         issue_id = cursor.lastrowid
         conn.commit()
         conn.close()
+
+        # Publish update for UI
+        self._notify_ui_update()
+
         return issue_id
 
     def get_issues(self, status: str = None) -> List[Dict[str, Any]]:
@@ -164,6 +174,9 @@ class IssueManager:
             if res.get('context'):
                 try: res['context'] = json.loads(res['context'])
                 except: res['context'] = {}
+            if res.get('suggestions'):
+                try: res['suggestions'] = json.loads(res['suggestions'])
+                except: res['suggestions'] = []
             res['auto_fixed'] = bool(res.get('auto_fixed'))
 
         conn.close()
@@ -172,6 +185,23 @@ class IssueManager:
     def resolve_issue(self, issue_id: int, resolution: str, prevention: str = None):
         """Resolves a specific issue by ID."""
         self.update_issue(issue_id, 'Resolved', resolution, prevention)
+
+    def add_suggestions(self, issue_id: int, suggestions: List[str]):
+        """Adds or updates suggestions for an existing issue."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        suggestions_json = json.dumps(suggestions)
+
+        cursor.execute('''
+            UPDATE issues
+            SET suggestions = ?
+            WHERE id = ?
+        ''', (suggestions_json, issue_id))
+
+        conn.commit()
+        conn.close()
+        self._notify_ui_update()
 
     def get_suggestions(self, title: str) -> List[str]:
         """Returns resolution suggestions based on similar resolved issues."""
@@ -193,6 +223,23 @@ class IssueManager:
 
         conn.commit()
         conn.close()
+
+        # Publish update for UI
+        self._notify_ui_update()
+
+    def _notify_ui_update(self):
+        """Fetch current issues and notify UI."""
+        all_issues = self.get_issues()
+        open_issues = [i for i in all_issues if i['status'] == 'Open']
+
+        stats = {
+            'critical': len([i for i in open_issues if i['priority'] == 'Critical']),
+            'warning': len([i for i in open_issues if i['priority'] == 'High' or i['priority'] == 'Medium']),
+            'resolved': len([i for i in all_issues if i['status'] == 'Resolved'])
+        }
+
+        self.event_system.publish("update_issue_counts", stats)
+        self.event_system.publish("update_active_issues", open_issues)
 
     def add_attempt(self, issue_id: int, solution: str, success: bool):
         """Adds a resolution attempt to an issue."""

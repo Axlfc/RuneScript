@@ -84,7 +84,22 @@ class LoopOrchestrator:
                 self._log(f"Loop stopped by user at iteration {iteration}", log_callback)
                 return LoopResult("STOPPED", iteration, "Loop stopped by user", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
+            # CHECK FOR BLOCKING ISSUES
+            open_issues = self.issue_manager.get_issues(status='Open')
+            critical_issues = [i for i in open_issues if i['priority'] == 'Critical']
+            if critical_issues:
+                self._log(f"🛑 BLOCKING: Found {len(critical_issues)} CRITICAL issues. Autonomous loop paused.", log_callback)
+                self._notify_ui('phase_change', 'IDLE')
+                # Wait or abort? Let's abort this run so user can fix and resume.
+                return LoopResult("BLOCKED", iteration, f"Blocked by {len(critical_issues)} critical issues.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+
             self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
+
+            # Publish telemetry update
+            self._notify_ui('telemetry_update', {
+                'loop_current': iteration + 1,
+                'loop_total': max_iterations
+            })
 
             # 0. Ensure environment is ready
             if iteration == 0:
