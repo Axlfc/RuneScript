@@ -64,7 +64,7 @@ class IDEController(ThemedWindow):
 
         # Sync with file manager
         if hasattr(self.ui_manager, "file_manager") and self.ui_manager.file_manager:
-            self.ui_manager.file_manager.project_path = value
+            self.ui_manager.file_manager.set_project_path(value)
 
         # Sync with rich file tree
         if hasattr(self.ui_manager, "file_tree_view") and self.ui_manager.file_tree_view:
