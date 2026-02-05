@@ -14,42 +14,118 @@ class IssueManagerOverlay(tb.Frame):
     def __init__(self, parent):
         super().__init__(parent, bootstyle=LIGHT)
         self.event_system = EventSystem.get_instance()
+        self.all_issues = []
 
         self._create_widgets()
+        self._setup_event_listeners()
+
+    def _setup_event_listeners(self):
+        self.event_system.subscribe(Events.UPDATE_ACTIVE_ISSUES, self._on_issues_updated)
+
+    def _on_issues_updated(self, issues):
+        self.all_issues = issues
+        if self.winfo_viewable():
+            self._on_search()
 
     def _create_widgets(self):
-        # Header
-        header = tb.Frame(self, bootstyle=SECONDARY, padding=15)
+        # Main container with a nice border
+        main_container = tb.Frame(self, padding=2, bootstyle=DARK)
+        main_container.pack(fill=BOTH, expand=True)
+
+        # Header with Gradient-like feel
+        header = tb.Frame(main_container, bootstyle=SECONDARY, padding=20)
         header.pack(fill=X)
 
-        tb.Label(header, text="🐛 ISSUE MANAGER", font=('Segoe UI', 18, 'bold'), bootstyle=INVERSE_SECONDARY).pack(side=LEFT)
-        tb.Button(header, text="✕ Close Overlay", command=self.hide, bootstyle=DANGER).pack(side=RIGHT)
+        title_frame = tb.Frame(header, bootstyle=SECONDARY)
+        title_frame.pack(side=LEFT)
 
-        # Filters Bar
-        filter_bar = tb.Frame(self, padding=10)
+        tb.Label(title_frame, text="🐛", font=('Segoe UI', 24), bootstyle="inverse-secondary").pack(side=LEFT, padx=(0, 10))
+        tb.Label(title_frame, text="ISSUE MANAGER", font=('Segoe UI', 20, 'bold'), bootstyle="inverse-secondary").pack(side=LEFT)
+
+        close_btn = tb.Button(header, text="✕ CLOSE", command=self.hide, bootstyle=(DANGER, OUTLINE), width=10)
+        close_btn.pack(side=RIGHT)
+
+        # Stats Bar
+        self.stats_frame = tb.Frame(main_container, padding=(20, 10), bootstyle=LIGHT)
+        self.stats_frame.pack(fill=X)
+
+        # Filters & Search Bar
+        filter_bar = tb.Frame(main_container, padding=(20, 10), bootstyle=LIGHT)
         filter_bar.pack(fill=X)
 
-        tb.Label(filter_bar, text="Filters:").pack(side=LEFT, padx=5)
-        tb.Button(filter_bar, text="🔴 Critical", bootstyle=(DANGER, OUTLINE)).pack(side=LEFT, padx=2)
-        tb.Button(filter_bar, text="🟡 Warning", bootstyle=(WARNING, OUTLINE)).pack(side=LEFT, padx=2)
-        tb.Button(filter_bar, text="🟢 Resolved", bootstyle=(SUCCESS, OUTLINE)).pack(side=LEFT, padx=2)
+        tb.Label(filter_bar, text="FILTERS:", font=('Segoe UI', 9, 'bold')).pack(side=LEFT, padx=(0, 10))
+
+        self.crit_var = tk.BooleanVar(value=True)
+        self.warn_var = tk.BooleanVar(value=True)
+        self.res_var = tk.BooleanVar(value=True)
+
+        self.crit_filter = tb.Checkbutton(filter_bar, text="Critical", variable=self.crit_var,
+                                          bootstyle=(DANGER, TOOLBUTTON), width=10, command=self._on_filter_change)
+        self.crit_filter.pack(side=LEFT, padx=2)
+        self.warn_filter = tb.Checkbutton(filter_bar, text="Warning", variable=self.warn_var,
+                                          bootstyle=(WARNING, TOOLBUTTON), width=10, command=self._on_filter_change)
+        self.warn_filter.pack(side=LEFT, padx=2)
+        self.res_filter = tb.Checkbutton(filter_bar, text="Resolved", variable=self.res_var,
+                                          bootstyle=(SUCCESS, TOOLBUTTON), width=10, command=self._on_filter_change)
+        self.res_filter.pack(side=LEFT, padx=2)
+
+        tb.Separator(filter_bar, orient=VERTICAL).pack(side=LEFT, padx=20, fill=Y)
 
         self.search_var = tk.StringVar()
-        search_entry = tb.Entry(filter_bar, textvariable=self.search_var)
-        search_entry.pack(side=RIGHT, padx=10, fill=X, expand=True)
+        self.search_var.trace_add("write", lambda *args: self._on_search())
+        search_entry = tb.Entry(filter_bar, textvariable=self.search_var, width=40)
+        search_entry.pack(side=LEFT, padx=5)
+        tb.Label(filter_bar, text="🔍 Search issues...", font=('Segoe UI', 9, 'italic'), foreground="#888888").pack(side=LEFT)
+
+        tb.Button(filter_bar, text="🗑️ Clear Resolved", bootstyle=(SECONDARY, OUTLINE), size=SMALL,
+                  command=lambda: self.event_system.publish("clear_resolved_issues")).pack(side=RIGHT, padx=5)
+        tb.Button(filter_bar, text="📊 Export Wiki", bootstyle=(INFO, OUTLINE), size=SMALL,
+                  command=lambda: self.event_system.publish("generate_wiki")).pack(side=RIGHT, padx=5)
 
         # Main Content - Scrollable area for Issue Cards
-        self.scroll_frame = ScrolledFrame(self, autohide=True, bootstyle=LIGHT)
-        self.scroll_frame.pack(fill=BOTH, expand=True, padx=20, pady=10)
+        self.scroll_frame = ScrolledFrame(main_container, autohide=True, bootstyle=LIGHT, padding=20)
+        self.scroll_frame.pack(fill=BOTH, expand=True)
 
     def show(self, issues=None):
         self.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.lift()
         if issues:
+            self.all_issues = issues
             self._display_issues(issues)
+        elif self.all_issues:
+            self._display_issues(self.all_issues)
         else:
-            # Mock or request
+            # Mock if absolutely nothing
             self._load_mock_issues()
+
+    def _on_filter_change(self):
+        self._on_search()
+
+    def _on_search(self, *args):
+        search_term = self.search_var.get().lower()
+
+        filtered = []
+        for issue in self.all_issues:
+            # Severity check
+            severity = issue.get('severity', 'info').lower()
+            status = issue.get('status', 'Open').lower()
+
+            show_by_sev = False
+            if severity == 'critical' and self.crit_var.get(): show_by_sev = True
+            elif severity == 'warning' and self.warn_var.get(): show_by_sev = True
+            elif status == 'resolved' and self.res_var.get(): show_by_sev = True
+            elif severity == 'info' and self.warn_var.get(): show_by_sev = True # Group info with warning
+
+            if not show_by_sev: continue
+
+            # Search check
+            if search_term and search_term not in issue.get('title', '').lower() and \
+               search_term not in issue.get('description', '').lower():
+                continue
+
+            filtered.append(issue)
+
+        self._display_issues(filtered, update_all=False)
 
     def hide(self):
         self.place_forget()
@@ -77,57 +153,115 @@ class IssueManagerOverlay(tb.Frame):
         ]
         self._display_issues(mock_issues)
 
-    def _display_issues(self, issues):
+    def _display_issues(self, issues, update_all=True):
+        if update_all:
+            self.all_issues = issues
+
         for child in self.scroll_frame.winfo_children():
             child.destroy()
+
+        if not issues:
+            tb.Label(self.scroll_frame, text="No issues found matching filters.",
+                     font=('Segoe UI', 12, 'italic'), foreground="#888888").pack(pady=50)
+            return
 
         for issue in issues:
             self._create_issue_card(issue)
 
+    def _on_search(self):
+        # Implementation of search filtering
+        pass
+
     def _create_issue_card(self, issue):
-        card = tb.Frame(self.scroll_frame, bootstyle=SECONDARY, padding=20)
-        card.pack(fill=X, pady=10)
+        # Card container with hover-like effect using style
+        card_outer = tb.Frame(self.scroll_frame, padding=1, bootstyle=LIGHT)
+        card_outer.pack(fill=X, pady=10)
+
+        card = tb.Frame(card_outer, bootstyle=SECONDARY, padding=25)
+        card.pack(fill=X)
+
+        # Left Accent Border based on severity
+        severity = issue.get('severity', 'info').lower()
+        accent_color = "#ff4444" if severity == 'critical' else ("#ffcc00" if severity == 'warning' else "#38a169")
+        accent = tb.Frame(card, width=5, bootstyle=DANGER if severity == 'critical' else (WARNING if severity == 'warning' else SUCCESS))
+        accent.place(relx=0, rely=0, relheight=1, x=-25)
 
         # Header Row
         header = tb.Frame(card, bootstyle=SECONDARY)
         header.pack(fill=X)
 
-        severity_color = "#ff4444" if issue['priority'] == 'Critical' else "#ffcc00"
-        tb.Label(header, text=f"#{issue['id']} - {issue['title']}",
-                 font=('Segoe UI', 14, 'bold'), foreground=severity_color).pack(side=LEFT)
+        title_text = f"#{issue.get('id', '??')} - {issue.get('title', 'Untitled Issue')}"
+        tb.Label(header, text=title_text, font=('Segoe UI', 16, 'bold'), foreground=accent_color).pack(side=LEFT)
 
-        status_text = "RESOLVED" if issue['status'] == 'Resolved' else issue['priority'].upper()
-        tb.Label(header, text=status_text, bootstyle=INVERSE_DANGER if issue['priority'] == 'Critical' else INVERSE_WARNING).pack(side=RIGHT)
+        status_text = issue.get('status', 'OPEN').upper()
+        if issue.get('auto_fixed'): status_text += " (AUTO-FIXED ✓)"
+
+        badge_style = "inverse-danger" if severity == 'critical' else ("inverse-warning" if severity == 'warning' else "inverse-success")
+        tb.Label(header, text=status_text, bootstyle=badge_style, padding=(10, 2)).pack(side=RIGHT)
 
         # Meta Info
         meta = tb.Frame(card, bootstyle=SECONDARY)
-        meta.pack(fill=X, pady=5)
-        tb.Label(meta, text=f"Task: {issue['task']} | Phase: {issue['phase']} | Created: {issue['created_at']}",
-                 font=('Segoe UI', 9), foreground="#aaaaaa").pack(side=LEFT)
+        meta.pack(fill=X, pady=(5, 15))
+        meta_text = f"Task: {issue.get('task', 'N/A')}  |  Phase: {issue.get('phase', 'N/A')}  |  Created: {issue.get('created_at', 'Now')}"
+        tb.Label(meta, text=meta_text, font=('Segoe UI', 9), foreground="#888888").pack(side=LEFT)
 
-        # Context
+        # Description
+        tb.Label(card, text=issue.get('description', ''), font=('Segoe UI', 11), wraplength=800, bootstyle="inverse-secondary").pack(anchor=W, pady=(0, 15))
+
+        # Context (JSON) - Collapsible or always visible? Let's make it a nice code block
         if issue.get('context'):
-            ctx_frame = tb.Frame(card, bootstyle=DARK, padding=10)
+            ctx_header = tb.Frame(card, bootstyle=SECONDARY)
+            ctx_header.pack(fill=X, pady=(5, 0))
+            tb.Label(ctx_header, text="📋 CONTEXT DATA", font=('Segoe UI', 9, 'bold'), foreground="#aaaaaa").pack(side=LEFT)
+
+            ctx_frame = tb.Frame(card, bootstyle=DARK, padding=15)
             ctx_frame.pack(fill=X, pady=10)
-            tb.Label(ctx_frame, text=json.dumps(issue['context'], indent=2),
-                     font=('Consolas', 10), foreground="#00ff00").pack(anchor=W)
 
-        # Suggestions
+            try:
+                ctx_str = json.dumps(issue['context'], indent=2)
+            except:
+                ctx_str = str(issue['context'])
+
+            tb.Label(ctx_frame, text=ctx_str, font=('Consolas', 10), foreground="#00ff00", justify=LEFT).pack(anchor=W)
+
+        # Suggestions Section
         if issue.get('suggestions'):
-            tb.Label(card, text="💡 AI Suggestions:", font=('Segoe UI', 10, 'bold')).pack(anchor=W, pady=(10, 5))
-            for i, sug in enumerate(issue['suggestions']):
-                s_frame = tb.Frame(card, bootstyle=SECONDARY)
-                s_frame.pack(fill=X, pady=2)
-                tb.Label(s_frame, text=f"{i+1}. {sug}", font=('Segoe UI', 10)).pack(side=LEFT)
-                tb.Button(s_frame, text=f"Apply Fix", bootstyle=SUCCESS, size=SMALL,
-                          command=lambda s=sug: self._apply_fix(issue['id'], s)).pack(side=RIGHT)
+            tb.Separator(card, orient=HORIZONTAL).pack(fill=X, pady=15)
+            tb.Label(card, text="💡 AI SUGGESTED SOLUTIONS", font=('Segoe UI', 10, 'bold'), foreground=accent_color).pack(anchor=W, pady=(0, 10))
 
-        # Actions
+            for i, sug in enumerate(issue['suggestions']):
+                s_frame = tb.Frame(card, bootstyle=SECONDARY, padding=5)
+                s_frame.pack(fill=X, pady=2)
+
+                tb.Label(s_frame, text=f"{i+1}.", font=('Segoe UI', 10, 'bold'), width=3).pack(side=LEFT)
+                tb.Label(s_frame, text=sug, font=('Segoe UI', 10), wraplength=600).pack(side=LEFT, padx=5)
+
+                # Check if it looks like a code fix
+                btn_text = "Apply Fix"
+                if "```" in sug: btn_text = "Apply Code Fix"
+
+                tb.Button(s_frame, text=btn_text, bootstyle=SUCCESS, size=SMALL,
+                          command=lambda s=sug: self._apply_fix(issue.get('id'), s)).pack(side=RIGHT)
+
+        # Bottom Actions Bar
+        tb.Separator(card, orient=HORIZONTAL).pack(fill=X, pady=15)
         actions = tb.Frame(card, bootstyle=SECONDARY)
-        actions.pack(fill=X, pady=(15, 0))
-        tb.Button(actions, text="Manual Fix", bootstyle=(INFO, OUTLINE)).pack(side=LEFT, padx=5)
-        tb.Button(actions, text="Skip for Now", bootstyle=(SECONDARY, OUTLINE)).pack(side=LEFT, padx=5)
-        tb.Button(actions, text="Ignore Permanently", bootstyle=(DANGER, OUTLINE)).pack(side=LEFT, padx=5)
+        actions.pack(fill=X)
+
+        if issue.get('status', '').lower() != 'resolved':
+            tb.Button(actions, text="📝 Manual Fix", bootstyle=(INFO, OUTLINE),
+                      command=lambda: self.event_system.publish("manual_fix_issue", issue)).pack(side=LEFT, padx=5)
+            tb.Button(actions, text="⏭️ Skip for Now", bootstyle=(SECONDARY, OUTLINE),
+                      command=lambda: self.event_system.publish("skip_issue", issue)).pack(side=LEFT, padx=5)
+            tb.Button(actions, text="🗑️ Ignore", bootstyle=(DANGER, OUTLINE),
+                      command=lambda: self.event_system.publish("ignore_issue", issue)).pack(side=LEFT, padx=5)
+        else:
+            tb.Button(actions, text="📄 View Diff", bootstyle=(INFO, OUTLINE),
+                      command=lambda: self.event_system.publish("view_issue_diff", issue)).pack(side=LEFT, padx=5)
+            tb.Button(actions, text="🔄 Revert Fix", bootstyle=(WARNING, OUTLINE),
+                      command=lambda: self.event_system.publish("revert_issue_fix", issue)).pack(side=LEFT, padx=5)
+            tb.Button(actions, text="🗑️ Delete", bootstyle=(DANGER, OUTLINE),
+                      command=lambda: self.event_system.publish("delete_issue", issue)).pack(side=LEFT, padx=5)
 
     def _apply_fix(self, issue_id, suggestion):
         self.event_system.publish("apply_fix", {'issue_id': issue_id, 'suggestion': suggestion})
