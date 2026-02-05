@@ -90,15 +90,19 @@ class UIManager:
             self.phase_indicator = TDDPhaseIndicator(right_panel)
             right_panel.add(self.phase_indicator, weight=0)
 
-            # 2. AI Plan
-            plan_frame = ttk.LabelFrame(right_panel, text="AI Project Plan")
+            # 2. AI Plan (Visualizer + Listbox for backup/details)
+            self.ai_plan_listbox, plan_frame = create_ai_plan(right_panel)
+            # Adjust listbox to not expand too much
+            self.ai_plan_listbox.pack_configure(expand=False, fill=tk.X)
+
             self.ai_plan_visualizer = AIPlanVisualizer(plan_frame)
-            self.ai_plan_visualizer.pack(fill=tk.BOTH, expand=True)
-            right_panel.add(plan_frame, weight=1, minsize=150)
+            # Put visualizer at the top of the plan_frame and make it expand
+            self.ai_plan_visualizer.pack(fill=tk.BOTH, expand=True, before=self.ai_plan_listbox)
+            right_panel.add(plan_frame, weight=1)
 
             # 3. File Editor
             self.file_editor, file_editor_frame = create_file_editor(right_panel, self.on_file_modified)
-            right_panel.add(file_editor_frame, weight=2, minsize=200)
+            right_panel.add(file_editor_frame, weight=3)
 
             # 4. Test Results Panel
             self.test_results = TestResultsPanel(right_panel)
