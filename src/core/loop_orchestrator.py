@@ -30,8 +30,9 @@ class LoopResult:
         self.stats = stats or {}
 
 class LoopOrchestrator:
-    def __init__(self, project_path: Path):
+    def __init__(self, project_path: Path, ui_callbacks=None):
         self.project_path = Path(os.path.abspath(project_path))
+        self.ui_callbacks = ui_callbacks or {}
         self.parser = PlanParser()
         self.tracker = TaskTracker()
         self.validator = TDDValidator()
@@ -48,6 +49,17 @@ class LoopOrchestrator:
         self.spec_path = project_path / "SPEC.md"
         self.plan_path = project_path / "IMPLEMENTATION_PLAN.md"
         self.prompt_path = project_path / "NIA_PROMPT.md"
+
+    def _notify_ui(self, event_type, data):
+        """Notify UI of state changes."""
+        if event_type in self.ui_callbacks:
+            try:
+                # Many UI frameworks require calls from the main thread
+                # but we leave that responsibility to the callback itself
+                # or use a safe wrapper if needed.
+                self.ui_callbacks[event_type](data)
+            except Exception as e:
+                logger.error(f"Error in UI callback {event_type}: {e}")
 
     def run(self, max_iterations: int = 20, log_callback=None, stop_event: threading.Event = None) -> LoopResult:
         if stop_event is None:
@@ -176,6 +188,7 @@ class LoopOrchestrator:
                         active_test_name = response.test_name
 
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
+                        self._notify_ui('phase_change', 'RED')
                         self._log_project_structure(log_callback)
 
                         # DEBUG ENVIRONMENT
@@ -198,11 +211,16 @@ class LoopOrchestrator:
                         self._log(f"project_path: {self.project_path}", log_callback)
                         self._log(f"=" * 60, log_callback)
 
+                        # Capture test output for UI streaming
+                        def red_test_cb(line, out_type='stdout'):
+                            self._notify_ui('test_output', {'line': line, 'type': out_type})
+
                         val_red = self.validator.validate_red(
                             self.project_path,
                             str(test_file_path),
                             active_test_name,
-                            self.venv_python
+                            self.venv_python,
+                            output_callback=red_test_cb
                         )
                         self._log_validation_result(val_red, "RED", log_callback)
 
@@ -311,6 +329,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                     if active_test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
+                        self._notify_ui('phase_change', 'GREEN')
 
                         # DEBUG ENVIRONMENT
                         self._log(f"DEBUG ENV: Python: {sys.executable}", log_callback)
@@ -325,11 +344,16 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         self._log(f"project_path: {self.project_path}", log_callback)
                         self._log(f"=" * 60, log_callback)
 
+                        # Capture test output for UI streaming
+                        def green_test_cb(line, out_type='stdout'):
+                            self._notify_ui('test_output', {'line': line, 'type': out_type})
+
                         val_green = self.validator.validate_green(
                             self.project_path,
                             str(test_file_path),
                             active_test_name,
-                            self.venv_python
+                            self.venv_python,
+                            output_callback=green_test_cb
                         )
                         self._log_validation_result(val_green, "GREEN", log_callback)
 
@@ -392,8 +416,17 @@ For example, if the test expects id="work", DO NOT use id="projects".
             # 10. TDD Cycle: REFACTOR Phase
             try:
                 self._log("=== STARTING REFACTOR PHASE ===", log_callback)
+                self._notify_ui('phase_change', 'REFACTOR')
                 self._log("Verifying all tests...", log_callback)
-                val_refactor = self.validator.validate_refactor(self.project_path, self.venv_python)
+                # Capture test output for UI streaming
+                def refactor_test_cb(line, out_type='stdout'):
+                    self._notify_ui('test_output', {'line': line, 'type': out_type})
+
+                val_refactor = self.validator.validate_refactor(
+                    self.project_path,
+                    self.venv_python,
+                    output_callback=refactor_test_cb
+                )
                 self._log_validation_result(val_refactor, "REFACTOR", log_callback)
 
                 if not val_refactor.success:
@@ -453,6 +486,13 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log(f"✅ Patch saved: {os.path.basename(patch_path)}", log_callback)
                     self._log(f"📊 Diff saved: {os.path.basename(diff_path)}", log_callback)
                     self._log(f"📝 Log saved: {os.path.basename(log_path)}", log_callback)
+
+                    # Notify UI of commit and diff
+                    try:
+                        diff_content = Path(diff_path).read_text(encoding='utf-8')
+                        self._notify_ui('git_commit', {'message': commit_msg, 'diff': diff_content})
+                    except:
+                        pass
                 else:
                     self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
 
@@ -460,7 +500,11 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 self.tracker.mark_completed(self.plan_path, next_task)
                 tasks_completed += 1
 
+                # Back to IDLE
+                self._notify_ui('phase_change', 'IDLE')
+
             except Exception as e:
+                self._notify_ui('phase_change', 'IDLE')
                 logger.error(f"Error during iteration: {e}", exc_info=True)
                 self._log(f"❌ Error during iteration: {str(e)}", log_callback)
                 # Ensure rollback on finalization error
@@ -585,6 +629,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
             # Immediate verification
             if full_path.exists():
                 self._log(f"Generated file: {rel_path}", log_callback)
+                self._notify_ui('file_created', {'path': str(full_path), 'size': len(content)})
                 return True
             else:
                 self._log(f"❌ Failed to generate file: {rel_path}", log_callback)
