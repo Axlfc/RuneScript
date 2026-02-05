@@ -126,6 +126,15 @@ class FileTreeView(ttk.Frame):
         }
 
         self.node_map = {}
+        self.file_watcher = None
+        self.set_project_path(project_path)
+
+    def set_project_path(self, new_path):
+        """Update the project path and restart watcher."""
+        if not new_path: return
+        self.project_path = os.path.abspath(new_path)
+        if self.file_watcher:
+            self.file_watcher.stop()
         self.file_watcher = FileSystemWatcher(self.project_path, self.on_file_change)
         self.file_watcher.start()
         self.refresh_tree()

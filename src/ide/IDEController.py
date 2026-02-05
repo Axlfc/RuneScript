@@ -66,6 +66,10 @@ class IDEController(ThemedWindow):
         if hasattr(self.ui_manager, "file_manager") and self.ui_manager.file_manager:
             self.ui_manager.file_manager.project_path = value
 
+        # Sync with rich file tree
+        if hasattr(self.ui_manager, "file_tree_view") and self.ui_manager.file_tree_view:
+            self.ui_manager.file_tree_view.set_project_path(value)
+
         # Log assignment
         if value:
             logging.info(f"Current project set to: {value}")

@@ -51,6 +51,14 @@ class UIManager:
     def create_main_layout(self):
         """Create the main application layout"""
         try:
+            # Create command bar FIRST at the top
+            self.prompt_entry, self.generate_btn, self.nia_btn, self.pause_btn, self.stop_btn = create_command_bar(
+                self.controller.root,
+                on_generate=self.controller.project_manager.generate_project_with_ai,
+                on_pause=self.controller.project_manager.pause_project,
+                on_stop=self.on_stop_button_click
+            )
+
             main_container = ttk.PanedWindow(self.controller.root, orient=tk.HORIZONTAL)
             main_container.pack(fill=tk.BOTH, expand=True)
 
@@ -102,13 +110,6 @@ class UIManager:
             # Initialize Accessibility Manager
             self.accessibility = AccessibilityManager(self.controller.root, self)
 
-            # Create command bar
-            self.prompt_entry, self.generate_btn, self.nia_btn, self.pause_btn, self.stop_btn = create_command_bar(
-                self.controller.root,
-                on_generate=self.controller.project_manager.generate_project_with_ai,
-                on_pause=self.controller.project_manager.pause_project,
-                on_stop=self.on_stop_button_click
-            )
 
             # ✅ Add TDD Test Result Panel (Legacy, kept for compatibility if needed, but we have rich results now)
             # self.test_result_panel = TestResultPanel(right_panel)
