@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from ttkbootstrap.scrolled import ScrolledFrame
 from src.ui.rich_components import FileTreeView
 from src.utils.event_system import EventSystem, Events
 
@@ -37,7 +38,7 @@ class Sidebar(tb.Frame):
         header.pack(fill=X, padx=5, pady=5)
         tb.Label(header, text="📋 TASKS", font=('Segoe UI', 10, 'bold')).pack(side=LEFT)
 
-        self.task_container = tb.ScrolledFrame(self.task_frame, autohide=True)
+        self.task_container = ScrolledFrame(self.task_frame, autohide=True)
         self.task_container.pack(fill=BOTH, expand=True)
 
         self._setup_event_listeners()

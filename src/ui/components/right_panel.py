@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from ttkbootstrap.scrolled import ScrolledFrame
 from src.utils.event_system import EventSystem, Events
 
 class RightPanel(tb.Frame):
@@ -12,7 +13,7 @@ class RightPanel(tb.Frame):
         super().__init__(parent)
         self.event_system = EventSystem.get_instance()
 
-        self.container = tb.ScrolledFrame(self, autohide=True)
+        self.container = ScrolledFrame(self, autohide=True)
         self.container.pack(fill=BOTH, expand=True)
 
         self._create_metrics_section()
@@ -22,7 +23,7 @@ class RightPanel(tb.Frame):
         self._setup_event_listeners()
 
     def _create_metrics_section(self):
-        frame = tb.LabelFrame(self.container, text="📊 METRICS", padding=10)
+        frame = tb.Labelframe(self.container, text="📊 METRICS", padding=10)
         frame.pack(fill=X, padx=5, pady=5)
 
         self.tests_var = tk.StringVar(value="✅ Tests: 0/0")
@@ -37,7 +38,7 @@ class RightPanel(tb.Frame):
         self.coverage_progress.pack(fill=X, pady=5)
 
     def _create_issues_section(self):
-        self.issues_frame = tb.LabelFrame(self.container, text="🚨 ACTIVE ISSUES", padding=10)
+        self.issues_frame = tb.Labelframe(self.container, text="🚨 ACTIVE ISSUES", padding=10)
         self.issues_frame.pack(fill=X, padx=5, pady=5)
 
         header = tb.Frame(self.issues_frame)
@@ -51,7 +52,7 @@ class RightPanel(tb.Frame):
         tb.Label(self.issues_list, text="No active issues", foreground="#888888").pack()
 
     def _create_ai_output_section(self):
-        frame = tb.LabelFrame(self.container, text="💬 AI OUTPUT", padding=10)
+        frame = tb.Labelframe(self.container, text="💬 AI OUTPUT", padding=10)
         frame.pack(fill=BOTH, expand=True, padx=5, pady=5)
 
         self.ai_text = tk.Text(frame, height=10, wrap=WORD, background="#2b2b2b",

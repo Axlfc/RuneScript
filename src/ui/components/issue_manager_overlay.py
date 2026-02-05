@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from ttkbootstrap.scrolled import ScrolledFrame
 from src.utils.event_system import EventSystem, Events
 import json
 
@@ -38,7 +39,7 @@ class IssueManagerOverlay(tb.Frame):
         search_entry.pack(side=RIGHT, padx=10, fill=X, expand=True)
 
         # Main Content - Scrollable area for Issue Cards
-        self.scroll_frame = tb.ScrolledFrame(self, autohide=True, bootstyle=LIGHT)
+        self.scroll_frame = ScrolledFrame(self, autohide=True, bootstyle=LIGHT)
         self.scroll_frame.pack(fill=BOTH, expand=True, padx=20, pady=10)
 
     def show(self, issues=None):
