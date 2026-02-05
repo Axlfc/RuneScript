@@ -1,5 +1,8 @@
 import multiprocessing
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None
 import os
 import sys
 import signal
@@ -52,6 +55,21 @@ class SecureSandbox:
         self.timeout = timeout
         self.memory_limit = memory_limit_mb * 1024 * 1024
 
+    def _apply_resource_limits(self):
+        """Apply resource limits if the platform supports it."""
+        if resource is None:
+            return
+
+        try:
+            resource.setrlimit(resource.RLIMIT_CPU, (self.timeout, self.timeout + 5))
+            resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
+            resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+            resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+        except Exception:
+            # Fallback for platforms where some limits might fail
+            pass
+
     def execute(self, code, allowed_imports=None, cwd=None, use_pytest=False):
         """
         Execute code in a separate process with resource limits.
@@ -101,14 +119,7 @@ class SecureSandbox:
         current_cwd = os.getcwd()
 
         # 2. Set Resource Limits
-        try:
-            resource.setrlimit(resource.RLIMIT_CPU, (self.timeout, self.timeout + 5))
-            resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
-            resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
-            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-            resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
-        except:
-            pass
+        self._apply_resource_limits()
 
         # 3. Capture Output
         stdout_capture = io.StringIO()
