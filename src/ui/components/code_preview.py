@@ -110,3 +110,18 @@ class CodePreview(tb.Frame):
             if str(editor['frame']) == selected:
                 return editor['text'].get("1.0", tk.END)
         return ""
+
+    def apply_fix_to_current(self, new_code):
+        """Replaces the entire content of the current editor with new code."""
+        selected = self.tabs.select()
+        if not selected: return
+
+        for fp, editor in self.editors.items():
+            if str(editor['frame']) == selected:
+                text_widget = editor['text']
+                text_widget.delete("1.0", tk.END)
+                text_widget.insert("1.0", new_code)
+                self._apply_highlighting(text_widget)
+                self.event_system.publish(Events.LOG_MESSAGE, f"Applied fix to {fp}")
+                return True
+        return False

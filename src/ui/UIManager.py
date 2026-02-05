@@ -93,7 +93,7 @@ class UIManager:
             self.workspace_paned = ttk.PanedWindow(self.outer_paned, orient=tk.HORIZONTAL)
             self.outer_paned.add(self.workspace_paned, weight=5)
 
-            # --- LEFT PANEL (20%) ---
+            # --- LEFT PANEL (approx 19.1% - Golden Ratio derived) ---
             project_path = self.controller.current_project or os.getcwd()
             self.sidebar = Sidebar(
                 self.workspace_paned,
@@ -101,7 +101,7 @@ class UIManager:
                 on_file_open=self._handle_file_open,
                 on_file_modified=self._handle_file_modified
             )
-            self.workspace_paned.add(self.sidebar, weight=1)
+            self.workspace_paned.add(self.sidebar, weight=191)
 
             # Legacy pointers
             self.left_panel = self.sidebar
@@ -109,37 +109,36 @@ class UIManager:
             self.project_tree = self.sidebar.file_tree.tree
             self.project_tree.bind('<<TreeviewSelect>>', self.on_file_select)
 
-            # --- CENTER PANEL (60%) ---
+            # --- CENTER PANEL (approx 61.8% - Golden Ratio derived) ---
             self.center_container = ttk.Frame(self.workspace_paned)
-            self.workspace_paned.add(self.center_container, weight=3)
+            self.workspace_paned.add(self.center_container, weight=618)
 
             self.center_panel = ttk.PanedWindow(self.center_container, orient=tk.VERTICAL)
             self.center_panel.pack(fill=tk.BOTH, expand=True)
 
-            # Phase Indicator
+            # Phase Indicator (Visualizer)
             self.phase_indicator = TDDVisualizer(self.center_panel)
-            self.center_panel.add(self.phase_indicator, weight=0)
+            self.center_panel.add(self.phase_indicator, weight=0) # Fixed height for visualizer
 
-            # File Editor (Code Preview)
+            # File Editor (Code Preview) - Main Workspace part (Phi weight)
             self.code_preview = CodePreview(self.center_panel)
-            self.center_panel.add(self.code_preview, weight=3)
+            self.center_panel.add(self.code_preview, weight=1618)
 
             # Legacy pointers for compatibility
-            # We take the first text widget for now or implement a proxy
             self.file_editor = None # Will be set on file open
 
-            # Test Results Panel
+            # Test Results Panel - Secondary Workspace part (1 weight)
             self.test_results = TestResultsPanel(self.center_panel)
-            self.center_panel.add(self.test_results, weight=1)
+            self.center_panel.add(self.test_results, weight=1000)
             # Legacy pointer
             self.test_result_panel = self.test_results
 
             # Issue Manager Overlay (hidden by default)
             self.issue_overlay = IssueManagerOverlay(self.center_container)
 
-            # --- RIGHT PANEL (20%) ---
+            # --- RIGHT PANEL (approx 19.1% - Golden Ratio derived) ---
             self.right_panel = RightPanel(self.workspace_paned)
-            self.workspace_paned.add(self.right_panel, weight=1)
+            self.workspace_paned.add(self.right_panel, weight=191)
 
             # AI Plan (Visualizer + Listbox) in Right Panel
             self.ai_plan_listbox, plan_frame = create_ai_plan(self.right_panel.container)
@@ -204,8 +203,13 @@ class UIManager:
     def _setup_toggles(self):
         """Sets up the event listeners for toggling panels."""
         self.event_system.subscribe(Events.TOGGLE_CONSOLE, self.toggle_console)
+        self.event_system.subscribe("toggle_console_expand", self.toggle_console_expand)
+        self.event_system.subscribe("toggle_left_panel", self.toggle_left_panel)
         self.event_system.subscribe(Events.OPEN_ISSUE_MANAGER, self.open_issue_manager)
         self.event_system.subscribe(Events.APPLY_FIX, self.apply_issue_fix)
+        self.event_system.subscribe("manual_fix_issue", lambda data: self.log_output(f"Manual fix requested for Issue #{data['id']}"))
+        self.event_system.subscribe("skip_issue", self._skip_issue)
+        self.event_system.subscribe("ignore_issue", self._ignore_issue)
         self.event_system.subscribe(Events.TOGGLE_RIGHT_PANEL, self.toggle_right_panel)
         self.event_system.subscribe(Events.TOGGLE_LEFT_PANEL, self.toggle_left_panel)
 
@@ -236,6 +240,17 @@ class UIManager:
         else:
             self.outer_paned.add(self.console_frame, weight=1)
 
+    def toggle_console_expand(self):
+        """Maximizes/Minimizes the console area."""
+        if self.outer_paned.sashpos(0) > 100:
+            # Currently has space for workspace, so minimize workspace
+            self.outer_paned.sashpos(0, 50)
+            self.tabbed_console.expand_btn.configure(text="▼ Collapse Logs")
+        else:
+            # Restore to default
+            self.outer_paned.sashpos(0, self.controller.root.winfo_height() // 2)
+            self.tabbed_console.expand_btn.configure(text="▲ Expand Logs")
+
     def open_issue_manager(self, data=None):
         """Opens the full-screen Issue Manager overlay."""
         if hasattr(self, 'issue_overlay'):
@@ -250,16 +265,19 @@ class UIManager:
 
         # Realistic fix application:
         # If suggestion contains code, try to apply it to current editor
+        applied_programmatically = False
         if "```" in suggestion:
             import re
             code_blocks = re.findall(r'```(?:\w+)?\n(.*?)\n```', suggestion, re.DOTALL)
             if code_blocks:
                 new_code = code_blocks[0]
-                self.log_output(f"Extracted code block for fix.")
-                # We could apply it to the active editor
-                # self.code_preview.apply_fix_to_current(new_code)
+                self.log_output(f"Extracted code block for fix. Applying to editor...")
+                if self.code_preview.apply_fix_to_current(new_code):
+                    applied_programmatically = True
+                    self.log_output("Code fix applied successfully.")
 
-        messagebox.showinfo("Auto-Fix", f"Applying suggested fix for Issue #{issue_id}:\n\n{suggestion}")
+        if not applied_programmatically:
+            messagebox.showinfo("Auto-Fix", f"Applying suggested fix for Issue #{issue_id}:\n\n{suggestion}")
 
         # Bridge to IssueManager to resolve it
         try:
@@ -275,11 +293,43 @@ class UIManager:
         except Exception as e:
             logging.error(f"Error resolving issue: {e}")
 
+    def _skip_issue(self, data):
+        issue_id = data.get('id')
+        self.log_output(f"Skipping Issue #{issue_id} for now.")
+        # Logic to update issue status to 'Skipped' if desired
+
+    def _ignore_issue(self, data):
+        issue_id = data.get('id')
+        self.log_output(f"Ignoring Issue #{issue_id} permanently.")
+        try:
+            mgr = None
+            if hasattr(self.controller.project_manager, 'orchestrator'):
+                mgr = self.controller.project_manager.orchestrator.issue_manager
+            if mgr:
+                mgr.update_issue(issue_id, status='Ignored')
+        except Exception as e:
+            logging.error(f"Error ignoring issue: {e}")
+
     def on_stop_button_click(self):
         """Handle stop button click."""
         self.log_output("Stop button clicked...")
         if self.controller.project_manager:
             self.controller.project_manager.stop_project()
+
+    def has_blocking_issues(self) -> bool:
+        """Checks if there are any open critical issues blocking progress."""
+        try:
+            mgr = None
+            if hasattr(self.controller.project_manager, 'orchestrator'):
+                mgr = self.controller.project_manager.orchestrator.issue_manager
+
+            if mgr:
+                open_issues = mgr.get_issues(status='Open')
+                blocking = [i for i in open_issues if i['priority'] == 'Critical']
+                return len(blocking) > 0
+        except Exception as e:
+            logging.error(f"Error checking blocking issues: {e}")
+        return False
 
     def update_phase_ui(self, phase_name: str, test_status: Optional[str] = None) -> None:
         """
