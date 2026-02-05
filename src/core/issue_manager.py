@@ -116,12 +116,14 @@ class IssueManager:
     def create_issue(self, category: str, priority: str, description: str,
                      task: str = None, stack_trace: str = None,
                      commit_sha: str = None, files_affected: List[str] = None,
-                     title: str = None, context: Dict = None, auto_fixed: bool = False) -> int:
+                     title: str = None, context: Dict = None, auto_fixed: bool = False,
+                     suggestions: List[str] = None) -> int:
         """Creates a new issue in the system."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         files_json = json.dumps(files_affected) if files_affected else "[]"
+        suggestions_json = json.dumps(suggestions) if suggestions else "[]"
 
         # Merge existing fields into context for backwards compatibility
         full_context = context.copy() if context else {}
@@ -136,11 +138,11 @@ class IssueManager:
         cursor.execute('''
             INSERT INTO issues (title, category, priority, status, description, task,
                                 stack_trace, commit_sha, files_affected, context,
-                                auto_fixed, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                auto_fixed, suggestions, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (title, category, priority, 'Open', description, task,
               stack_trace, commit_sha, files_json, context_json,
-              1 if auto_fixed else 0, now))
+              1 if auto_fixed else 0, suggestions_json, now))
 
         issue_id = cursor.lastrowid
         conn.commit()
@@ -172,6 +174,9 @@ class IssueManager:
             if res.get('context'):
                 try: res['context'] = json.loads(res['context'])
                 except: res['context'] = {}
+            if res.get('suggestions'):
+                try: res['suggestions'] = json.loads(res['suggestions'])
+                except: res['suggestions'] = []
             res['auto_fixed'] = bool(res.get('auto_fixed'))
 
         conn.close()
@@ -180,6 +185,23 @@ class IssueManager:
     def resolve_issue(self, issue_id: int, resolution: str, prevention: str = None):
         """Resolves a specific issue by ID."""
         self.update_issue(issue_id, 'Resolved', resolution, prevention)
+
+    def add_suggestions(self, issue_id: int, suggestions: List[str]):
+        """Adds or updates suggestions for an existing issue."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        suggestions_json = json.dumps(suggestions)
+
+        cursor.execute('''
+            UPDATE issues
+            SET suggestions = ?
+            WHERE id = ?
+        ''', (suggestions_json, issue_id))
+
+        conn.commit()
+        conn.close()
+        self._notify_ui_update()
 
     def get_suggestions(self, title: str) -> List[str]:
         """Returns resolution suggestions based on similar resolved issues."""

@@ -77,9 +77,9 @@ class IssueManagerOverlay(tb.Frame):
         search_entry.pack(side=LEFT, padx=5)
         tb.Label(filter_bar, text="🔍 Search issues...", font=('Segoe UI', 9, 'italic'), foreground="#888888").pack(side=LEFT)
 
-        tb.Button(filter_bar, text="🗑️ Clear Resolved", bootstyle=(SECONDARY, OUTLINE), size=SMALL,
+        tb.Button(filter_bar, text="🗑️ Clear Resolved", bootstyle=(SECONDARY, OUTLINE), size="small",
                   command=lambda: self.event_system.publish("clear_resolved_issues")).pack(side=RIGHT, padx=5)
-        tb.Button(filter_bar, text="📊 Export Wiki", bootstyle=(INFO, OUTLINE), size=SMALL,
+        tb.Button(filter_bar, text="📊 Export Wiki", bootstyle=(INFO, OUTLINE), size="small",
                   command=lambda: self.event_system.publish("generate_wiki")).pack(side=RIGHT, padx=5)
 
         # Main Content - Scrollable area for Issue Cards
@@ -240,7 +240,7 @@ class IssueManagerOverlay(tb.Frame):
                 btn_text = "Apply Fix"
                 if "```" in sug: btn_text = "Apply Code Fix"
 
-                tb.Button(s_frame, text=btn_text, bootstyle=SUCCESS, size=SMALL,
+                tb.Button(s_frame, text=btn_text, bootstyle=SUCCESS, size="small",
                           command=lambda s=sug: self._apply_fix(issue.get('id'), s)).pack(side=RIGHT)
 
         # Bottom Actions Bar
@@ -250,11 +250,11 @@ class IssueManagerOverlay(tb.Frame):
 
         if issue.get('status', '').lower() != 'resolved':
             tb.Button(actions, text="📝 Manual Fix", bootstyle=(INFO, OUTLINE),
-                      command=lambda: self.event_system.publish("manual_fix_issue", issue)).pack(side=LEFT, padx=5)
+                      command=lambda: self.event_system.publish(Events.MANUAL_FIX_ISSUE, issue)).pack(side=LEFT, padx=5)
             tb.Button(actions, text="⏭️ Skip for Now", bootstyle=(SECONDARY, OUTLINE),
-                      command=lambda: self.event_system.publish("skip_issue", issue)).pack(side=LEFT, padx=5)
+                      command=lambda: self.event_system.publish(Events.SKIP_ISSUE, issue)).pack(side=LEFT, padx=5)
             tb.Button(actions, text="🗑️ Ignore", bootstyle=(DANGER, OUTLINE),
-                      command=lambda: self.event_system.publish("ignore_issue", issue)).pack(side=LEFT, padx=5)
+                      command=lambda: self.event_system.publish(Events.IGNORE_ISSUE, issue)).pack(side=LEFT, padx=5)
         else:
             tb.Button(actions, text="📄 View Diff", bootstyle=(INFO, OUTLINE),
                       command=lambda: self.event_system.publish("view_issue_diff", issue)).pack(side=LEFT, padx=5)
@@ -264,5 +264,5 @@ class IssueManagerOverlay(tb.Frame):
                       command=lambda: self.event_system.publish("delete_issue", issue)).pack(side=LEFT, padx=5)
 
     def _apply_fix(self, issue_id, suggestion):
-        self.event_system.publish("apply_fix", {'issue_id': issue_id, 'suggestion': suggestion})
+        self.event_system.publish(Events.APPLY_FIX, {'issue_id': issue_id, 'suggestion': suggestion})
         self.hide()

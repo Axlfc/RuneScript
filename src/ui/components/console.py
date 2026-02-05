@@ -17,11 +17,11 @@ class TabbedConsole(tb.Frame):
         header = tb.Frame(self)
         header.pack(fill=X)
 
-        self.expand_btn = tb.Button(header, text="▲ Expand Logs", bootstyle="link", size=SMALL,
-                                     command=lambda: self.event_system.publish("toggle_console_expand"))
+        self.expand_btn = tb.Button(header, text="▲ Expand Logs", bootstyle="link", size="small",
+                                     command=lambda: self.event_system.publish(Events.TOGGLE_CONSOLE_EXPAND))
         self.expand_btn.pack(side=RIGHT, padx=10)
 
-        self.tabs = ttk.Notebook(self, bootstyle=INFO)
+        self.tabs = tb.Notebook(self, bootstyle=INFO)
         self.tabs.pack(fill=BOTH, expand=True)
 
         self.log_widgets = {} # {category: text_widget}

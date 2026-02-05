@@ -203,15 +203,14 @@ class UIManager:
     def _setup_toggles(self):
         """Sets up the event listeners for toggling panels."""
         self.event_system.subscribe(Events.TOGGLE_CONSOLE, self.toggle_console)
-        self.event_system.subscribe("toggle_console_expand", self.toggle_console_expand)
-        self.event_system.subscribe("toggle_left_panel", self.toggle_left_panel)
+        self.event_system.subscribe(Events.TOGGLE_CONSOLE_EXPAND, self.toggle_console_expand)
+        self.event_system.subscribe(Events.TOGGLE_LEFT_PANEL, self.toggle_left_panel)
         self.event_system.subscribe(Events.OPEN_ISSUE_MANAGER, self.open_issue_manager)
         self.event_system.subscribe(Events.APPLY_FIX, self.apply_issue_fix)
-        self.event_system.subscribe("manual_fix_issue", lambda data: self.log_output(f"Manual fix requested for Issue #{data['id']}"))
-        self.event_system.subscribe("skip_issue", self._skip_issue)
-        self.event_system.subscribe("ignore_issue", self._ignore_issue)
+        self.event_system.subscribe(Events.MANUAL_FIX_ISSUE, lambda data: self.log_output(f"Manual fix requested for Issue #{data['id']}"))
+        self.event_system.subscribe(Events.SKIP_ISSUE, self._skip_issue)
+        self.event_system.subscribe(Events.IGNORE_ISSUE, self._ignore_issue)
         self.event_system.subscribe(Events.TOGGLE_RIGHT_PANEL, self.toggle_right_panel)
-        self.event_system.subscribe(Events.TOGGLE_LEFT_PANEL, self.toggle_left_panel)
 
         # Add collapse/expand buttons to Top Bar if we want,
         # but for now let's just use shortcuts or internal logic
@@ -415,7 +414,7 @@ class UIManager:
                     'status': 'completed' if t.status == 'completed' else ('blocked' if t.status == 'blocked' else 'pending'),
                     'details': getattr(t, 'details', '')
                 })
-            self.event_system.publish("update_tasks", task_list)
+            self.event_system.publish(Events.UPDATE_TASKS, task_list)
             return
 
         # Fallback: Parse from text or file

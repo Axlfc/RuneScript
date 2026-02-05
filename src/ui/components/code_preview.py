@@ -13,7 +13,7 @@ class CodePreview(tb.Frame):
         super().__init__(parent)
         self.event_system = EventSystem.get_instance()
 
-        self.tabs = ttk.Notebook(self, bootstyle=SECONDARY)
+        self.tabs = tb.Notebook(self, bootstyle=SECONDARY)
         self.tabs.pack(fill=BOTH, expand=True)
 
         self.editors = {} # {filepath: text_widget}

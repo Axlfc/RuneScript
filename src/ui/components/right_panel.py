@@ -60,9 +60,9 @@ class RightPanel(tb.Frame):
         self.ai_text.pack(fill=BOTH, expand=True)
 
     def _setup_event_listeners(self):
-        self.event_system.subscribe("update_metrics", self.update_metrics)
+        self.event_system.subscribe(Events.UPDATE_METRICS, self.update_metrics)
         self.event_system.subscribe(Events.UPDATE_ACTIVE_ISSUES, self.update_issues)
-        self.event_system.subscribe("ai_message", self.append_ai_message)
+        self.event_system.subscribe(Events.AI_MESSAGE, self.append_ai_message)
 
     def update_metrics(self, data):
         if 'tests' in data: self.tests_var.set(f"✅ Tests: {data['tests']}")
@@ -89,10 +89,10 @@ class RightPanel(tb.Frame):
 
             btn_frame = tb.Frame(card)
             btn_frame.pack(fill=X)
-            tb.Button(btn_frame, text="View", bootstyle=(INFO, OUTLINE), size=SMALL,
-                      command=lambda i=issue: self.event_system.publish("view_issue", i)).pack(side=LEFT, padx=2)
+            tb.Button(btn_frame, text="View", bootstyle=(INFO, OUTLINE), size="small",
+                      command=lambda i=issue: self.event_system.publish(Events.OPEN_ISSUE_MANAGER, i)).pack(side=LEFT, padx=2)
             if issue.get('auto_fixable'):
-                tb.Button(btn_frame, text="Fix", bootstyle=(SUCCESS, OUTLINE), size=SMALL,
+                tb.Button(btn_frame, text="Fix", bootstyle=(SUCCESS, OUTLINE), size="small",
                           command=lambda i=issue: self.event_system.publish(Events.APPLY_FIX, i)).pack(side=LEFT, padx=2)
 
     def append_ai_message(self, message):

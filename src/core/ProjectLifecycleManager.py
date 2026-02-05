@@ -668,6 +668,9 @@ class ProjectLifecycleManager:
                 'git_commit': lambda d: self.controller.safe_ui_call(
                     self.controller.ui_manager.diff_viewer.show_diff, d['diff'], d['message']
                 ),
+                'telemetry_update': lambda d: self.controller.safe_ui_call(
+                    self.event_system.publish, Events.TELEMETRY_UPDATE, d
+                ),
             }
 
             orchestrator = LoopOrchestrator(path, ui_callbacks=ui_callbacks)
@@ -696,7 +699,7 @@ class ProjectLifecycleManager:
                                 'status': 'completed' if t.status == 'completed' else ('blocked' if t.status == 'blocked' else 'pending'),
                                 'details': getattr(t, 'details', '')
                             })
-                        self.event_system.publish("update_tasks", task_list)
+                        self.event_system.publish(Events.UPDATE_TASKS, task_list)
 
                         # Telemetry Update
                         completed = len([t for t in tasks if t.status == 'completed'])
