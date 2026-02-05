@@ -113,9 +113,9 @@ class ProjectLifecycleManager:
             # Set the current project and refresh the UI
             self.controller.current_project = project_path
             try:
-                self.controller.ui_manager.file_manager.populate_tree_view()
+                self.controller.ui_manager.file_tree_view.refresh_tree()
             except Exception as e:
-                logging.warning(f"Failed to populate project tree: {e}")
+                logging.warning(f"Failed to refresh project tree: {e}")
 
             # Format project structure and tasks for AI Plan
             project_tasks = parsed_metadata.get('project_tasks', [])
@@ -543,7 +543,7 @@ class ProjectLifecycleManager:
             if self.stop_event.is_set(): return
             (path / "SPEC.md").write_text(spec_content, encoding='utf-8')
             git_manager.create_checkpoint("feat: Generate project specification (SPEC.md)")
-            self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+            self.controller.safe_ui_call(self.controller.ui_manager.file_tree_view.refresh_tree)
 
             # 4. Generate IMPLEMENTATION_PLAN.md
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 3: Generating Implementation Plan...")
@@ -578,7 +578,7 @@ class ProjectLifecycleManager:
             if self.stop_event.is_set(): return
             (path / "IMPLEMENTATION_PLAN.md").write_text(plan_content, encoding='utf-8')
             git_manager.create_checkpoint("feat: Generate initial implementation plan")
-            self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+            self.controller.safe_ui_call(self.controller.ui_manager.file_tree_view.refresh_tree)
 
             # Phase 3.5: Plan Review & Critique
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 2.5: Reviewing & Critiquing Plan...")
@@ -670,7 +670,7 @@ class ProjectLifecycleManager:
                 should_refresh = any(indicator in msg for indicator in ["✅", "❌", "Task completed", "Phase", "Target Task", "Generated file"])
 
                 if should_refresh:
-                    self.controller.safe_ui_call(self.controller.ui_manager.file_manager.populate_tree_view)
+                    self.controller.safe_ui_call(self.controller.ui_manager.file_tree_view.refresh_tree)
 
                     # Update AI Plan listbox with current status
                     parser = PlanParser()

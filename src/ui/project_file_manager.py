@@ -17,41 +17,49 @@ class ProjectFileManager:
         self.current_project = path
 
     def populate_tree_view(self):
+        """
+        No longer manages the tree widget directly as FileTreeView handles it.
+        We just keep the current_project_files map in sync by walking the filesystem.
+        """
         if not self.current_project:
-            # Removed redundant UI log spam
             return
 
         try:
-            self.tree.delete(*self.tree.get_children())
             self.current_project_files.clear()
-
             for root, dirs, files in os.walk(self.current_project):
-                parent = self.tree.insert('', 'end', text=os.path.basename(root), values=(root))
+                if any(x in root for x in ['.git', '.nia', '.venv', '__pycache__']): continue
                 for file in files:
                     file_path = os.path.join(root, file)
-                    file_id = self.tree.insert(parent, 'end', text=file, values=(file_path))
-                    self.current_project_files[file_id] = file_path
+                    # Use the path as ID for the map since we don't have the node IDs here
+                    self.current_project_files[file_path] = file_path
         except Exception as e:
-            logging.error(f"Error populating tree view: {e}")
-            self.log_fn(f"Error loading project tree: {e}")
+            logging.error(f"Error syncing project files map: {e}")
 
     def on_file_select(self, event):
-        selected_item = self.tree.selection()
-        if not selected_item:
-            return
+        try:
+            if not self.tree.winfo_exists(): return
+            selected_item = self.tree.selection()
+            if not selected_item:
+                return
 
-        file_path = self.tree.item(selected_item[0])['values'][0]
-        if os.path.isfile(file_path):
-            self.current_file_path = file_path
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    self.editor.delete('1.0', END)
-                    self.editor.insert('1.0', content)
-                    self.editor.edit_modified(False)
-            except Exception as e:
-                self.log_fn(f"Error reading file: {e}")
-                logging.error(f"Error reading file: {e}")
+            item_data = self.tree.item(selected_item[0])
+            if not item_data or 'values' not in item_data or not item_data['values']:
+                return
+
+            file_path = item_data['values'][0]
+            if os.path.isfile(file_path):
+                self.current_file_path = file_path
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        self.editor.delete('1.0', END)
+                        self.editor.insert('1.0', content)
+                        self.editor.edit_modified(False)
+                except Exception as e:
+                    self.log_fn(f"Error reading file: {e}")
+                    logging.error(f"Error reading file: {e}")
+        except Exception as e:
+            logging.error(f"Error in on_file_select: {e}")
 
     def on_file_modified(self, event=None):
         # We'll wire this later with save logic if needed

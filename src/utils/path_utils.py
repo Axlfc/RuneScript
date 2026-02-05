@@ -21,12 +21,18 @@ def clean_markdown(text: str) -> str:
 
 def clean_filename(raw_filename: str) -> str:
     """
-    Remove markdown formatting and invalid characters from filenames.
+    Remove markdown formatting, trailing descriptors, and invalid characters from filenames.
+    Example: "index.html --" -> "index.html"
+    Example: "assets/img/.gitkeep (empty)" -> "assets/img/.gitkeep"
     """
     if not raw_filename:
         return ""
 
     filename = clean_markdown(raw_filename)
+
+    # Remove trailing descriptors like " --", " (empty)", " (new)", " [modified]"
+    # We look for a space followed by something that doesn't look like part of a path
+    filename = re.split(r'\s+(--|\(|\d+|\[|empty|new|modified)', filename)[0].strip()
 
     # Common invalid characters in filenames (Windows/Linux)
     # We keep / and \ for relative paths. We remove : as it is a drive separator on Windows

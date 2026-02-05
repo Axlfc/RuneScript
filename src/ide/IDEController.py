@@ -68,6 +68,7 @@ class IDEController(ThemedWindow):
         # Sync with file manager
         if hasattr(self.ui_manager, "file_manager") and self.ui_manager.file_manager:
             self.ui_manager.file_manager.set_project_path(value)
+            self.ui_manager.file_manager.populate_tree_view()
 
         # Sync with rich file tree
         if hasattr(self.ui_manager, "file_tree_view") and self.ui_manager.file_tree_view:
@@ -118,7 +119,6 @@ class IDEController(ThemedWindow):
         if project_path:
             self.current_project = project_path
             self.ui_manager.log_output(f"Opened project: {project_path}")
-            self.ui_manager.file_manager.populate_tree_view()
 
     def safe_new_project(self):
         """Safely create a new project with error handling"""

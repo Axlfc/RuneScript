@@ -76,6 +76,10 @@ class UIManager:
                 on_file_modified_callback=self._handle_file_modified
             )
             self.project_tree = self.file_tree_view.tree # For backward compatibility
+
+            # Bind selection event to populate File Contents panel
+            self.project_tree.bind('<<TreeviewSelect>>', self.on_file_select)
+
             left_panel.add(self.file_tree_view, weight=3)
 
             self.output_console = create_output_console(left_panel)
@@ -268,6 +272,21 @@ class UIManager:
         pause_stop_state = tk.NORMAL if not enabled else tk.DISABLED
         self.pause_btn.configure(state=pause_stop_state)
         self.stop_btn.configure(state=pause_stop_state)
+
+        # Stop animations when UI is re-enabled (generation finished)
+        if enabled:
+            self.stop_all_animations()
+        else:
+            # Re-enable animations if starting new generation
+            if hasattr(self, 'ai_plan_visualizer'):
+                self.ai_plan_visualizer.start_animations()
+
+    def stop_all_animations(self):
+        """Stop animations in all supporting components."""
+        if hasattr(self, 'file_tree_view'):
+            self.file_tree_view.stop_animations()
+        if hasattr(self, 'ai_plan_visualizer'):
+            self.ai_plan_visualizer.stop_animations()
 
 # To avoid NameError in update_phase_ui
 UI_TO_INTERNAL_PHASE = {
