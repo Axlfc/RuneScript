@@ -34,7 +34,7 @@ class IssueManagerOverlay(tb.Frame):
         tb.Button(filter_bar, text="🟢 Resolved", bootstyle=(SUCCESS, OUTLINE)).pack(side=LEFT, padx=2)
 
         self.search_var = tk.StringVar()
-        search_entry = tb.Entry(filter_bar, textvariable=self.search_var, placeholder="Search issues...")
+        search_entry = tb.Entry(filter_bar, textvariable=self.search_var)
         search_entry.pack(side=RIGHT, padx=10, fill=X, expand=True)
 
         # Main Content - Scrollable area for Issue Cards

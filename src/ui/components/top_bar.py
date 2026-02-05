@@ -28,7 +28,7 @@ class TopBar(tb.Frame):
         control_frame = tb.Frame(self, style='TopBar.TFrame')
         control_frame.pack(fill=X, side=TOP, padx=10, pady=5)
 
-        self.prompt_entry = tb.Entry(control_frame, placeholder="Crea un portafolio...", width=50)
+        self.prompt_entry = tb.Entry(control_frame, width=50)
         self.prompt_entry.pack(side=LEFT, padx=5, fill=X, expand=True)
 
         self.gen_btn = tb.Button(control_frame, text="Generate Project", command=self.on_generate, bootstyle=SUCCESS)
