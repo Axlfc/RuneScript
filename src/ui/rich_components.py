@@ -108,13 +108,16 @@ class FileTreeView(ttk.Frame):
         self.tree.pack(fill='both', expand=True)
 
         # Configure columns
-        self.tree['columns'] = ('type', 'size', 'modified')
+        # path is hidden but used for backward compatibility with ProjectFileManager
+        self.tree['columns'] = ('path', 'type', 'size', 'modified')
         self.tree.column('#0', width=250)  # File name
+        self.tree.column('path', width=0, stretch=tk.NO) # Hidden
         self.tree.column('type', width=80)
         self.tree.column('size', width=80)
         self.tree.column('modified', width=150)
 
         self.tree.heading('#0', text='Name')
+        self.tree.heading('path', text='Path')
         self.tree.heading('type', text='Type')
         self.tree.heading('size', text='Size')
         self.tree.heading('modified', text='Modified')
@@ -166,9 +169,10 @@ class FileTreeView(ttk.Frame):
                 if item in ['.git', '.nia', '.venv', '__pycache__']: continue
                 item_path = os.path.join(path, item)
                 is_dir = os.path.isdir(item_path)
+                abs_path = os.path.abspath(item_path)
                 node = self.tree.insert(parent, 'end', text=f"{self._get_icon(item, is_dir)} {item}",
-                    values=('DIR' if is_dir else self._get_file_type(item), self._format_size(item_path), self._format_time(item_path)))
-                self.node_map[os.path.abspath(item_path)] = node
+                    values=(abs_path, 'DIR' if is_dir else self._get_file_type(item), self._format_size(item_path), self._format_time(item_path)))
+                self.node_map[abs_path] = node
                 if is_dir: self._populate_tree(node, item_path)
         except Exception: pass
 
@@ -300,7 +304,7 @@ class FileTreeView(ttk.Frame):
         filename = os.path.basename(filepath)
         is_dir = os.path.isdir(filepath)
         node = self.tree.insert(parent_node, 'end', text=f"{self._get_icon(filename, is_dir)} {filename}",
-            values=('DIR' if is_dir else self._get_file_type(filename), self._format_size(filepath), self._format_time(filepath)))
+            values=(filepath, 'DIR' if is_dir else self._get_file_type(filename), self._format_size(filepath), self._format_time(filepath)))
         self.node_map[filepath] = node
         if parent_node: self.tree.item(parent_node, open=True)
         self.tree.tag_configure('new_file', background='#00ff00', foreground='#000000')
@@ -311,7 +315,7 @@ class FileTreeView(ttk.Frame):
         filepath = os.path.abspath(filepath)
         node = self.node_map.get(filepath)
         if node:
-            self.tree.item(node, values=('DIR' if os.path.isdir(filepath) else self._get_file_type(filepath), self._format_size(filepath), self._format_time(filepath)))
+            self.tree.item(node, values=(filepath, 'DIR' if os.path.isdir(filepath) else self._get_file_type(filepath), self._format_size(filepath), self._format_time(filepath)))
             self.tree.tag_configure('modified', background='#ffff00', foreground='#000000')
             self.tree.item(node, tags=('modified',))
             self.after(1500, lambda: self.tree.item(node, tags=()))
@@ -615,14 +619,15 @@ class AIPlanVisualizer(ttk.Frame):
             self.canvas.create_text(self.canvas.winfo_width()/2, 100, text="No plan loaded", fill='#888888', font=('Arial', 12))
             return
 
-        width = self.canvas.winfo_width()
-        height = self.canvas.winfo_height()
+        width = max(self.canvas.winfo_width(), 400)
+        height = max(self.canvas.winfo_height(), 200)
 
         # Calculate positions
-        padding = 50
-        spacing = (width - 2 * padding) / (len(self.phases) - 1) if len(self.phases) > 1 else 0
-        x = padding if len(self.phases) > 1 else width / 2
-        y = height / 2
+        padding = 60
+        num_phases = len(self.phases)
+        spacing = (width - 2 * padding) / (num_phases - 1) if num_phases > 1 else 0
+        x = padding if num_phases > 1 else width / 2
+        y = height / 2 - 20
         radius = 30
 
         for i, phase in enumerate(self.phases):
