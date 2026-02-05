@@ -616,7 +616,7 @@ class ProjectLifecycleManager:
             parser = PlanParser()
             tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
             plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
-            self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
+            self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text, tasks)
 
             # 5. Create NIA_PROMPT.md
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4: Setting up nIA Prompt...")
@@ -677,7 +677,7 @@ class ProjectLifecycleManager:
                     tasks = parser.parse(path / "IMPLEMENTATION_PLAN.md")
                     if tasks:
                         plan_text = "\n".join([f"[{'x' if t.status == 'completed' else ('?' if t.status == 'blocked' else ' ')}] {t.description}" for t in tasks])
-                        self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text)
+                        self.controller.safe_ui_call(self.controller.ui_manager.update_ai_plan, plan_text, tasks)
 
             result = orchestrator.run(max_iterations=50, log_callback=log_cb, stop_event=self.stop_event)
 
