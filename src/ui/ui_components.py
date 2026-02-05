@@ -19,10 +19,9 @@ def create_output_console(parent):
 
 def create_ai_plan(parent):
     plan_frame = ttk.LabelFrame(parent, text="AI Project Plan")
-    listbox = tk.Listbox(plan_frame, height=10)
+    listbox = tk.Listbox(plan_frame, height=5)
     listbox.pack(fill=tk.BOTH, expand=True)
-    parent.add(plan_frame)
-    return listbox
+    return listbox, plan_frame
 
 
 def create_file_editor(parent, on_modified):
@@ -30,8 +29,7 @@ def create_file_editor(parent, on_modified):
     editor = scrolledtext.ScrolledText(editor_frame, wrap=tk.WORD, undo=True)
     editor.pack(fill=tk.BOTH, expand=True)
     editor.bind('<<Modified>>', on_modified)
-    parent.add(editor_frame)
-    return editor
+    return editor, editor_frame
 
 
 def create_command_bar(parent, on_generate, on_pause, on_stop):

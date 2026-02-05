@@ -2,7 +2,8 @@ import os
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Optional
+from typing import Optional, List
+from pathlib import Path
 
 from src.ui.project_file_manager import ProjectFileManager
 from src.ui.ui_components import (
@@ -17,13 +18,15 @@ from src.ui.rich_components import (
     TDDPhaseIndicator,
     TestResultsPanel,
     InlineDiffViewer,
-    AccessibilityManager
+    AccessibilityManager,
+    AIPlanVisualizer
 )
 
 from src.models.tdd_workflow_panel import TDDWorkflowPanel
 from src.models.test_result_panel import TestResultPanel
 from src.models.tdd_workflow_manager import TDDWorkflowManager
 from src.utils.ProjectIO import ProjectIO
+from src.core.plan_parser import PlanParser, Task
 
 
 class UIManager:
@@ -66,7 +69,12 @@ class UIManager:
             left_panel = ttk.PanedWindow(main_container, orient=tk.VERTICAL)
 
             project_path = self.controller.current_project or os.getcwd()
-            self.file_tree_view = FileTreeView(left_panel, project_path)
+            self.file_tree_view = FileTreeView(
+                left_panel,
+                project_path,
+                on_file_open_callback=self._handle_file_open,
+                on_file_modified_callback=self._handle_file_modified
+            )
             self.project_tree = self.file_tree_view.tree # For backward compatibility
             left_panel.add(self.file_tree_view, weight=3)
 
@@ -82,13 +90,19 @@ class UIManager:
             self.phase_indicator = TDDPhaseIndicator(right_panel)
             right_panel.add(self.phase_indicator, weight=0)
 
-            # 2. AI Plan
-            self.ai_plan_listbox = create_ai_plan(right_panel)
-            # create_ai_plan already adds its frame to right_panel
+            # 2. AI Plan (Visualizer + Listbox for backup/details)
+            self.ai_plan_listbox, plan_frame = create_ai_plan(right_panel)
+            # Adjust listbox to not expand too much
+            self.ai_plan_listbox.pack_configure(expand=False, fill=tk.X)
+
+            self.ai_plan_visualizer = AIPlanVisualizer(plan_frame)
+            # Put visualizer at the top of the plan_frame and make it expand
+            self.ai_plan_visualizer.pack(fill=tk.BOTH, expand=True, before=self.ai_plan_listbox)
+            right_panel.add(plan_frame, weight=1)
 
             # 3. File Editor
-            self.file_editor = create_file_editor(right_panel, self.on_file_modified)
-            # create_file_editor already adds its frame to right_panel
+            self.file_editor, file_editor_frame = create_file_editor(right_panel, self.on_file_modified)
+            right_panel.add(file_editor_frame, weight=3)
 
             # 4. Test Results Panel
             self.test_results = TestResultsPanel(right_panel)
@@ -193,12 +207,33 @@ class UIManager:
     def on_file_modified(self, event=None):
         self.file_manager.on_file_modified(event)
 
-    def update_ai_plan(self, plan_text: str):
-        self.ai_plan_listbox.delete(0, tk.END)
-        steps = plan_text.split('\n')
-        for step in steps:
-            if step.strip():
-                self.ai_plan_listbox.insert(tk.END, step)
+    def _handle_file_open(self, filepath):
+        if self.controller.current_project:
+            try:
+                rel_path = os.path.relpath(filepath, self.controller.current_project)
+                self.file_manager.open_file(rel_path)
+            except ValueError:
+                # File might be outside project (e.g. during rename/move)
+                pass
+
+    def _handle_file_modified(self, filepath):
+        # Reload if it's the current file
+        if self.file_manager.current_file_path and os.path.abspath(filepath) == os.path.abspath(self.file_manager.current_file_path):
+            self.log_output(f"File modified on disk, reloading: {os.path.basename(filepath)}")
+            self._handle_file_open(filepath)
+
+    def update_ai_plan(self, plan_text: str, tasks: Optional[List[Task]] = None):
+        if tasks:
+            self.ai_plan_visualizer.update_plan(tasks)
+            return
+
+        # Fallback: Parse from text or file
+        if self.controller.current_project:
+            plan_path = Path(self.controller.current_project) / 'IMPLEMENTATION_PLAN.md'
+            if plan_path.exists():
+                parser = PlanParser()
+                tasks = parser.parse(plan_path)
+                self.ai_plan_visualizer.update_plan(tasks)
 
     def log_output(self, message: str):
         self.output_console.configure(state='normal')

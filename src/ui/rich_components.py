@@ -2,10 +2,15 @@ import os
 import time
 import threading
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox, simpledialog
 from datetime import datetime
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Optional
 import sys
+try:
+    import pyperclip
+    HAS_PYPERCLIP = True
+except ImportError:
+    HAS_PYPERCLIP = False
 
 class FileSystemEvent:
     """Represents a file system change event."""
@@ -92,25 +97,36 @@ class FileSystemWatcher:
 class FileTreeView(ttk.Frame):
     """Live file system tree with real-time updates."""
 
-    def __init__(self, parent, project_path):
+    def __init__(self, parent, project_path, on_file_open_callback=None, on_file_modified_callback=None):
         super().__init__(parent)
         self.project_path = os.path.abspath(project_path)
+        self.on_file_open_callback = on_file_open_callback
+        self.on_file_modified_callback = on_file_modified_callback
 
         # Create tree widget
         self.tree = ttk.Treeview(self, selectmode='browse')
         self.tree.pack(fill='both', expand=True)
 
         # Configure columns
-        self.tree['columns'] = ('type', 'size', 'modified')
+        # path is hidden but used for backward compatibility with ProjectFileManager
+        self.tree['columns'] = ('path', 'type', 'size', 'modified')
         self.tree.column('#0', width=250)  # File name
+        self.tree.column('path', width=0, stretch=tk.NO) # Hidden
         self.tree.column('type', width=80)
         self.tree.column('size', width=80)
         self.tree.column('modified', width=150)
 
         self.tree.heading('#0', text='Name')
+        self.tree.heading('path', text='Path')
         self.tree.heading('type', text='Type')
         self.tree.heading('size', text='Size')
         self.tree.heading('modified', text='Modified')
+
+        # Bindings
+        self.tree.bind('<Double-1>', self._on_double_click)
+        self.tree.bind('<Button-3>', self._on_right_click)
+        if sys.platform == 'darwin':
+            self.tree.bind('<Button-2>', self._on_right_click)
 
         # Style configuration
         style = ttk.Style()
@@ -153,9 +169,10 @@ class FileTreeView(ttk.Frame):
                 if item in ['.git', '.nia', '.venv', '__pycache__']: continue
                 item_path = os.path.join(path, item)
                 is_dir = os.path.isdir(item_path)
+                abs_path = os.path.abspath(item_path)
                 node = self.tree.insert(parent, 'end', text=f"{self._get_icon(item, is_dir)} {item}",
-                    values=('DIR' if is_dir else self._get_file_type(item), self._format_size(item_path), self._format_time(item_path)))
-                self.node_map[os.path.abspath(item_path)] = node
+                    values=(abs_path, 'DIR' if is_dir else self._get_file_type(item), self._format_size(item_path), self._format_time(item_path)))
+                self.node_map[abs_path] = node
                 if is_dir: self._populate_tree(node, item_path)
         except Exception: pass
 
@@ -182,6 +199,95 @@ class FileTreeView(ttk.Frame):
         try: return datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d %H:%M')
         except: return "N/A"
 
+    def _on_double_click(self, event):
+        item = self.tree.selection()
+        if not item: return
+
+        # Find path for the selected node
+        filepath = self._get_path_from_node(item[0])
+
+        if filepath and os.path.isfile(filepath):
+            if self.on_file_open_callback:
+                self.on_file_open_callback(filepath)
+
+    def _get_path_from_node(self, node_id):
+        for path, node in self.node_map.items():
+            if node == node_id:
+                return path
+        return None
+
+    def _on_right_click(self, event):
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self._show_context_menu(event)
+
+    def _show_context_menu(self, event):
+        menu = tk.Menu(self, tearoff=0)
+
+        item = self.tree.selection()
+        if not item: return
+        filepath = self._get_path_from_node(item[0])
+        if not filepath: return
+
+        menu.add_command(label="Open", command=lambda: self._on_double_click(None))
+        menu.add_command(label="Rename", command=self._rename_file)
+        menu.add_command(label="Delete", command=self._delete_file)
+        menu.add_separator()
+        menu.add_command(label="Copy Path", command=self._copy_path)
+
+        menu.post(event.x_root, event.y_root)
+
+    def _rename_file(self):
+        item = self.tree.selection()
+        if not item: return
+        old_path = self._get_path_from_node(item[0])
+        if not old_path: return
+
+        old_name = os.path.basename(old_path)
+        new_name = simpledialog.askstring("Rename", f"Enter new name for {old_name}:", initialvalue=old_name)
+
+        if new_name and new_name != old_name:
+            new_path = os.path.join(os.path.dirname(old_path), new_name)
+            try:
+                os.rename(old_path, new_path)
+                # Watcher will handle UI update via refresh or events
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not rename: {e}")
+
+    def _delete_file(self):
+        item = self.tree.selection()
+        if not item: return
+        filepath = self._get_path_from_node(item[0])
+        if not filepath: return
+
+        if messagebox.askyesno("Delete", f"Are you sure you want to delete {os.path.basename(filepath)}?"):
+            try:
+                if os.path.isdir(filepath):
+                    import shutil
+                    shutil.rmtree(filepath)
+                else:
+                    os.remove(filepath)
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not delete: {e}")
+
+    def _copy_path(self):
+        item = self.tree.selection()
+        if not item: return
+        filepath = self._get_path_from_node(item[0])
+        if not filepath: return
+
+        if HAS_PYPERCLIP:
+            try:
+                pyperclip.copy(filepath)
+                return
+            except Exception:
+                pass
+
+        # Fallback to tkinter clipboard
+        self.tree.clipboard_clear()
+        self.tree.clipboard_append(filepath)
+
     def on_file_change(self, event):
         self.after(0, lambda: self._handle_event(event))
 
@@ -198,7 +304,7 @@ class FileTreeView(ttk.Frame):
         filename = os.path.basename(filepath)
         is_dir = os.path.isdir(filepath)
         node = self.tree.insert(parent_node, 'end', text=f"{self._get_icon(filename, is_dir)} {filename}",
-            values=('DIR' if is_dir else self._get_file_type(filename), self._format_size(filepath), self._format_time(filepath)))
+            values=(filepath, 'DIR' if is_dir else self._get_file_type(filename), self._format_size(filepath), self._format_time(filepath)))
         self.node_map[filepath] = node
         if parent_node: self.tree.item(parent_node, open=True)
         self.tree.tag_configure('new_file', background='#00ff00', foreground='#000000')
@@ -209,10 +315,14 @@ class FileTreeView(ttk.Frame):
         filepath = os.path.abspath(filepath)
         node = self.node_map.get(filepath)
         if node:
-            self.tree.item(node, values=('DIR' if os.path.isdir(filepath) else self._get_file_type(filepath), self._format_size(filepath), self._format_time(filepath)))
+            self.tree.item(node, values=(filepath, 'DIR' if os.path.isdir(filepath) else self._get_file_type(filepath), self._format_size(filepath), self._format_time(filepath)))
             self.tree.tag_configure('modified', background='#ffff00', foreground='#000000')
             self.tree.item(node, tags=('modified',))
             self.after(1500, lambda: self.tree.item(node, tags=()))
+
+        # Trigger callback for real-time editor updates
+        if self.on_file_modified_callback:
+            self.on_file_modified_callback(filepath)
 
     def _fade_out_file_deletion(self, filepath):
         filepath = os.path.abspath(filepath)
@@ -443,3 +553,199 @@ class AccessibilityManager:
     def enable_high_contrast(self):
         style = ttk.Style()
         style.configure('Treeview', background='#000000', foreground='#ffffff', fieldbackground='#000000')
+
+class AIPlanVisualizer(ttk.Frame):
+    """Interactive sphere visualization of the AI Project Plan."""
+
+    COLORS = {
+        'completed': '#44ff44',
+        'in_progress': '#ffff44',
+        'pending': '#888888',
+        'blocked': '#ff4444'
+    }
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.canvas = tk.Canvas(self, bg='#1e1e1e', highlightthickness=0, height=220)
+        self.canvas.pack(fill='both', expand=True)
+
+        self.tasks = []
+        self.phases = [] # List of dicts {name, status, tasks, x, y, radius}
+        self.pulse_val = 0
+        self.pulse_dir = 1
+
+        self.canvas.bind('<Configure>', lambda e: self.draw())
+        self.canvas.bind('<Button-1>', self._on_click)
+        self.canvas.bind('<Motion>', self._on_hover)
+
+        self.tooltip = None
+        self._animate_pulse()
+
+    def update_plan(self, tasks):
+        self.tasks = tasks
+        self._group_by_phase()
+        self.draw()
+
+    def _group_by_phase(self):
+        phase_map = {}
+        for task in self.tasks:
+            # Task object from PlanParser has .phase attribute
+            phase_name = getattr(task, 'phase', 'General')
+            if phase_name not in phase_map:
+                phase_map[phase_name] = []
+            phase_map[phase_name].append(task)
+
+        self.phases = []
+        for name, tasks in phase_map.items():
+            completed = len([t for t in tasks if getattr(t, 'status', '') == 'completed'])
+            blocked = len([t for t in tasks if getattr(t, 'status', '') == 'blocked'])
+            total = len(tasks)
+
+            if completed == total: status = 'completed'
+            elif blocked > 0: status = 'blocked'
+            elif completed > 0: status = 'in_progress'
+            else: status = 'pending'
+
+            self.phases.append({
+                'name': name,
+                'status': status,
+                'tasks': tasks,
+                'progress': completed / total if total > 0 else 0
+            })
+
+    def draw(self):
+        self.canvas.delete('all')
+        if not self.phases:
+            self.canvas.create_text(self.canvas.winfo_width()/2, 100, text="No plan loaded", fill='#888888', font=('Arial', 12))
+            return
+
+        width = max(self.canvas.winfo_width(), 400)
+        height = max(self.canvas.winfo_height(), 200)
+
+        # Calculate positions
+        padding = 60
+        num_phases = len(self.phases)
+        spacing = (width - 2 * padding) / (num_phases - 1) if num_phases > 1 else 0
+        x = padding if num_phases > 1 else width / 2
+        y = height / 2 - 20
+        radius = 30
+
+        for i, phase in enumerate(self.phases):
+            phase['x'] = x
+            phase['y'] = y
+            phase['radius'] = radius
+
+            # Draw connection line to next phase
+            if i < len(self.phases) - 1:
+                next_x = x + spacing
+                self.canvas.create_line(x, y, next_x, y, fill='#444444', width=2)
+
+            x += spacing
+
+        # Draw spheres (in separate loop to be on top of lines)
+        for phase in self.phases:
+            self._draw_sphere(phase)
+
+    def _draw_sphere(self, phase):
+        x, y, r = phase['x'], phase['y'], phase['radius']
+        color = self.COLORS.get(phase['status'], self.COLORS['pending'])
+
+        # Shadow
+        self.canvas.create_oval(x-r+5, y-r+5, x+r+5, y+r+5, fill='#111111', outline='')
+
+        # Gradient effect
+        for i in range(r, 0, -4):
+            factor = i / r
+            c = self._adjust_brightness(color, 1.2 - 0.4 * factor)
+            self.canvas.create_oval(x-i, y-i, x+i, y+i, fill=c, outline='', tags=(f"phase_{self.phases.index(phase)}", "sphere"))
+
+        # Highlight
+        self.canvas.create_oval(x-r/2, y-r/2, x-r/4, y-r/4, fill='#ffffff', outline='', tags=(f"phase_{self.phases.index(phase)}", "sphere"))
+
+        # Outer ring
+        self.canvas.create_oval(x-r, y-r, x+r, y+r, outline='#ffffff', width=1, tags=(f"phase_{self.phases.index(phase)}", "sphere"))
+
+        # Progress arc
+        if 0 < phase['progress'] < 1:
+            self.canvas.create_arc(x-r-8, y-r-8, x+r+8, y+r+8, start=90, extent=-360*phase['progress'],
+                                   outline='#00ffff', style='arc', width=3)
+        elif phase['progress'] == 1:
+            self.canvas.create_oval(x-r-8, y-r-8, x+r+8, y+r+8, outline='#44ff44', width=2)
+
+        # Label
+        self.canvas.create_text(x, y+r+25, text=phase['name'], fill='#ffffff', font=('Arial', 9, 'bold'),
+                                width=120, justify='center', tags=(f"phase_{self.phases.index(phase)}", "label"))
+
+    @staticmethod
+    def _adjust_brightness(hex_color, factor):
+        r = int(hex_color[1:3], 16); g = int(hex_color[3:5], 16); b = int(hex_color[5:7], 16)
+        r = int(r * factor); g = int(g * factor); b = int(b * factor)
+        return f'#{min(255, max(0, r)):02x}{min(255, max(0, g)):02x}{min(255, max(0, b)):02x}'
+
+    def _animate_pulse(self):
+        """Animates a pulsing effect on the active phase."""
+        self.pulse_val += 0.05 * self.pulse_dir
+        if self.pulse_val >= 1.0: self.pulse_dir = -1
+        elif self.pulse_val <= 0.0: self.pulse_dir = 1
+
+        # Find active phase spheres and update their rings
+        for i, phase in enumerate(self.phases):
+            if phase.get('status') == 'in_progress':
+                tag = f"pulse_ring_{i}"
+                self.canvas.delete(tag)
+                x, y, r = phase['x'], phase['y'], phase['radius']
+                pulse_r = r + 5 + (self.pulse_val * 10)
+                # Color transition from yellow to background
+                bg_color = [30, 30, 30] # #1e1e1e
+                fg_color = [255, 255, 68] # #ffff44
+                mixed = [int(bg_color[j] + (fg_color[j] - bg_color[j]) * (1.0 - self.pulse_val)) for j in range(3)]
+                color = f'#{mixed[0]:02x}{mixed[1]:02x}{mixed[2]:02x}'
+                self.canvas.create_oval(x-pulse_r, y-pulse_r, x+pulse_r, y+pulse_r, outline=color, width=2, tags=tag)
+
+        self.after(50, self._animate_pulse)
+
+    def _animate_progress(self):
+        # Implementation for smooth transitions can go here
+        pass
+
+    def _on_click(self, event):
+        item = self.canvas.find_closest(event.x, event.y)
+        if not item: return
+
+        # Check if we clicked within the radius of a sphere
+        for i, phase in enumerate(self.phases):
+            dist = ((event.x - phase['x'])**2 + (event.y - phase['y'])**2)**0.5
+            if dist <= phase['radius'] + 10:
+                self._show_phase_details(phase)
+                return
+
+    def _show_phase_details(self, phase):
+        details = f"Phase: {phase['name']}\n"
+        details += f"Status: {phase['status'].upper()}\n"
+        details += f"Progress: {int(phase['progress']*100)}%\n"
+        details += "-" * 40 + "\n"
+        for t in phase['tasks']:
+            icon = '✅' if getattr(t, 'status', '') == 'completed' else ('❌' if getattr(t, 'status', '') == 'blocked' else '⬜')
+            desc = getattr(t, 'description', 'No description')
+            details += f"{icon} {desc}\n"
+
+        messagebox.showinfo(f"Phase Details - {phase['name']}", details)
+
+    def _on_hover(self, event):
+        # Change cursor when hovering over spheres
+        found = False
+        self.canvas.delete('hover_info')
+
+        for phase in self.phases:
+            dist = ((event.x - phase['x'])**2 + (event.y - phase['y'])**2)**0.5
+            if dist <= phase['radius'] + 10:
+                self.canvas.config(cursor='hand2')
+                # Show quick info
+                self.canvas.create_text(phase['x'], phase['y'] - phase['radius'] - 15,
+                                        text=f"{int(phase['progress']*100)}% Complete",
+                                        fill='#00ffff', font=('Arial', 8, 'bold'), tags='hover_info')
+                found = True
+                break
+
+        if not found:
+            self.canvas.config(cursor='')
