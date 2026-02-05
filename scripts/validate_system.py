@@ -13,6 +13,7 @@ from lib.nia_git_manager import GitBasedFileManager
 from src.core.quality import QualityChecker
 from src.generators.plan_generator import PlanGenerator
 from src.models.ai_assistant import ResilientLLMClient
+from src.core.issue_manager import IssueManager
 
 def validate_git_rollback():
     print("Checking Git Rollback System...")
@@ -102,6 +103,39 @@ def validate_complexity_detection():
     print("✅ Complexity detection verified")
     return True
 
+def validate_issue_manager():
+    print("Checking Issue Manager...")
+    from pathlib import Path
+    im = IssueManager(Path("."))
+
+    # Test issue creation
+    issue_id = im.create_issue(
+        category=im.CAT_TESTING,
+        priority=im.PRIO_LOW,
+        description="Validation Test Issue"
+    )
+    if not issue_id:
+        print("❌ Failed to create issue")
+        return False
+
+    # Test update
+    im.update_issue(issue_id, 'Resolved', "Validated", "None")
+
+    # Test suggestion logic
+    similar = im.get_similar_issues("Validation")
+    if not similar:
+        print("❌ Failed to find similar issues")
+        return False
+
+    # Test Wiki generation
+    im.generate_wiki()
+    if not (Path(".nia/wiki/Troubleshooting.md").exists() and Path(".nia/wiki/Changelog.md").exists()):
+        print("❌ Failed to generate Wiki files")
+        return False
+
+    print("✅ Issue Manager verified")
+    return True
+
 def validate_all():
     checks = [
         validate_git_rollback(),
@@ -109,6 +143,7 @@ def validate_all():
         validate_placeholder_detection(),
         validate_llm_resilience(),
         validate_complexity_detection(),
+        validate_issue_manager(),
     ]
 
     if all(checks):
