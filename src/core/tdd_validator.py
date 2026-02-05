@@ -8,6 +8,7 @@ import subprocess
 import logging
 import time
 import re
+import threading
 from .tech_detector import TechStackDetector
 from src.security.sandbox import SecureSandbox
 from src.security.code_analyzer import CodeSecurityAnalyzer
@@ -33,11 +34,11 @@ class TDDValidator:
         self.sandbox = SecureSandbox()
         self.analyzer = CodeSecurityAnalyzer()
 
-    def validate_red(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
+    def validate_red(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None, output_callback=None) -> ValidationResult:
         """
         Validate RED phase: test must FAIL.
         """
-        result = self._run_test(project_path, test_file, test_name, venv_python)
+        result = self._run_test(project_path, test_file, test_name, venv_python, output_callback=output_callback)
 
         # CRITICAL: Check for execution errors (file not found, etc.)
         execution_errors = [
@@ -75,11 +76,11 @@ class TDDValidator:
             stderr=result.stderr
         )
 
-    def validate_green(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None) -> ValidationResult:
+    def validate_green(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None, output_callback=None) -> ValidationResult:
         """
         Validate GREEN phase: test must PASS.
         """
-        result = self._run_test(project_path, test_file, test_name, venv_python)
+        result = self._run_test(project_path, test_file, test_name, venv_python, output_callback=output_callback)
 
         # Check for execution errors
         execution_errors = [
@@ -115,11 +116,11 @@ class TDDValidator:
             stderr=result.stderr
         )
 
-    def validate_refactor(self, project_path: Path, venv_python: str = None) -> ValidationResult:
+    def validate_refactor(self, project_path: Path, venv_python: str = None, output_callback=None) -> ValidationResult:
         """
         Validate REFACTOR phase: ALL tests must still pass.
         """
-        result = self._run_all_tests(project_path, venv_python)
+        result = self._run_all_tests(project_path, venv_python, output_callback=output_callback)
 
         # Check for execution errors
         execution_errors = [
@@ -183,7 +184,7 @@ class TDDValidator:
             logging.warning(f"Error extracting dependencies from test: {e}")
             return []
 
-    def _run_test(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None):
+    def _run_test(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None, output_callback=None):
         """Run single test with appropriate runner."""
         project_path = Path(project_path)
 
@@ -298,12 +299,22 @@ class TDDValidator:
                 if self.security_auditor:
                     self.security_auditor.log_code_execution(code, source=str(rel_test_file), approved=result['success'], result=result)
 
-                return subprocess.CompletedProcess(
+                final_res = subprocess.CompletedProcess(
                     args=['sandbox', str(rel_test_file)],
                     returncode=0 if result['success'] else 1,
                     stdout=result['stdout'],
                     stderr=result['stderr'] or (result['error'] if not result['success'] else "")
                 )
+
+                if output_callback:
+                    if final_res.stdout:
+                        for line in final_res.stdout.splitlines():
+                            output_callback(line, 'stdout')
+                    if final_res.stderr:
+                        for line in final_res.stderr.splitlines():
+                            output_callback(line, 'stderr')
+
+                return final_res
 
             except Exception as e:
                 logging.error(f"Error during sandboxed test execution: {e}")
@@ -333,6 +344,10 @@ class TDDValidator:
             cmd = shlex.split(cmd_str, posix=(os.name != 'nt'))
 
             logging.info(f"Executing test command (list): {cmd} (CWD: {project_path})")
+
+            if output_callback:
+                return self._run_with_streaming(cmd, project_path, output_callback)
+
             return subprocess.run(
                 cmd,
                 shell=False,
@@ -374,6 +389,10 @@ class TDDValidator:
                 cmd = [python_exe, "-m", "pytest", f"{full_test_path}::{test_name}", "-v", "--ignore=.venv", "--ignore=venv"]
 
         logging.info(f"Executing (list): {cmd}")
+
+        if output_callback:
+            return self._run_with_streaming(cmd, project_path, output_callback)
+
         return subprocess.run(
             cmd,
             shell=False,
@@ -383,7 +402,50 @@ class TDDValidator:
             errors='replace'
         )
 
-    def _run_all_tests(self, project_path: Path, venv_python: str = None):
+    def _run_with_streaming(self, cmd, cwd, callback):
+        """Run a command and stream its output via callback."""
+        stdout_lines = []
+        stderr_lines = []
+
+        process = subprocess.Popen(
+            cmd,
+            shell=False,
+            cwd=str(cwd),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding='utf-8',
+            errors='replace',
+            bufsize=1,
+            universal_newlines=True
+        )
+
+        def read_stream(stream, out_type):
+            for line in stream:
+                line = line.rstrip()
+                callback(line, out_type)
+                if out_type == 'stdout':
+                    stdout_lines.append(line)
+                else:
+                    stderr_lines.append(line)
+
+        t1 = threading.Thread(target=read_stream, args=(process.stdout, 'stdout'))
+        t2 = threading.Thread(target=read_stream, args=(process.stderr, 'stderr'))
+
+        t1.start()
+        t2.start()
+
+        returncode = process.wait()
+        t1.join()
+        t2.join()
+
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=returncode,
+            stdout='\n'.join(stdout_lines),
+            stderr='\n'.join(stderr_lines)
+        )
+
+    def _run_all_tests(self, project_path: Path, venv_python: str = None, output_callback=None):
         """Run all tests with appropriate runner."""
         project_path = Path(project_path)
 
@@ -435,12 +497,22 @@ class TDDValidator:
 
             result = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path))
 
-            return subprocess.CompletedProcess(
+            final_res = subprocess.CompletedProcess(
                 args=['sandbox', 'all_tests'],
                 returncode=0 if result['success'] else 1,
                 stdout=result['stdout'],
                 stderr=result['stderr'] or (result['error'] if not result['success'] else "")
             )
+
+            if output_callback:
+                if final_res.stdout:
+                    for line in final_res.stdout.splitlines():
+                        output_callback(line, 'stdout')
+                if final_res.stderr:
+                    for line in final_res.stderr.splitlines():
+                        output_callback(line, 'stderr')
+
+            return final_res
         else:
             # Run all test files as individual scripts in sandbox
             last_result = None
