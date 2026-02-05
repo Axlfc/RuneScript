@@ -14,6 +14,7 @@ from .nia_claude_client import nIAClaudeClient, nIAResponse
 from .quality import QualityChecker
 from .test_parser import TestParser
 from .issue_manager import IssueManager
+from .file_structure_validator import FileStructureValidator
 from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
 from src.security.path_validator import ParanoidPathValidator
@@ -41,6 +42,8 @@ class LoopOrchestrator:
         self.quality_checker = QualityChecker()
         self.git_manager = GitBasedFileManager(str(self.project_path))
         self.issue_manager = IssueManager(self.project_path)
+        self.structure_validator = FileStructureValidator(self.issue_manager)
+        self.tech_stack = ""
         self.venv_python: Optional[str] = None
 
         # Security Components
@@ -86,6 +89,12 @@ class LoopOrchestrator:
             # 0. Ensure environment is ready
             if iteration == 0:
                 self._setup_environment(log_callback)
+                # Initialize tech_stack
+                nia_config = self._get_nia_config()
+                self.tech_stack = nia_config.get("tech_stack", "")
+                if not self.tech_stack:
+                    self._log("⚠️ No tech_stack specified in .nia_config.json, defaulting to 'frontend_web'", log_callback)
+                    self.tech_stack = "frontend_web"
 
             # 1. Load fresh state
             try:
@@ -166,10 +175,21 @@ class LoopOrchestrator:
                             if len(parts) > 1:
                                 self._log(f"    📁 Nested path detected: {'/'.join(parts[:-1])}", log_callback)
 
+                    # VALIDATE & AUTO-FIX structure
+                    parsed_files = [{"path": p, "content": c} for p, c in response.files.items()]
+                    fixed_files, warnings = self.structure_validator.validate_and_fix(
+                        files=parsed_files,
+                        tech_stack=self.tech_stack
+                    )
+
+                    for warning in warnings:
+                        self._log(f"⚠️ {warning}", log_callback)
+
+                    # Convert back to dict format
+                    response.files = {f["path"]: f["content"] for f in fixed_files}
+
                     # Specific warning if critical files are missing for frontend_web
-                    nia_config = self._get_nia_config()
-                    tech_key = nia_config.get("tech_stack", "")
-                    if tech_key == 'frontend_web':
+                    if self.tech_stack == 'frontend_web':
                         critical_files = ['index.html', 'css/main.css', 'styles/main.css', 'js/app.js', 'js/main.js']
                         detected_paths = set(response.files.keys())
                         if 'index.html' not in detected_paths:
@@ -630,44 +650,12 @@ For example, if the test expects id="work", DO NOT use id="projects".
         Validates that files are created in their correct directories based on tech stack.
         Returns True if valid, False otherwise.
         """
-        filename = os.path.basename(filepath)
-        ext = os.path.splitext(filename)[1].lower()
-        parent_dir = os.path.dirname(filepath).replace('\\', '/')
+        # Allow common setup files at root regardless of tech stack
+        filename = os.path.basename(filepath).lower()
+        if filename in ['.gitignore', 'readme.md', 'package.json', 'nia_prompt.md', 'spec.md', 'implementation_plan.md']:
+            return True
 
-        # Standardize empty parent dir to empty string
-        if parent_dir == '.':
-            parent_dir = ''
-
-        # Rules for Frontend Web
-        if tech_stack == 'frontend_web':
-            # Allow common setup files at root
-            if filename.lower() in ['.gitignore', 'readme.md', 'package.json', 'nia_prompt.md', 'spec.md', 'implementation_plan.md']:
-                return True
-
-            # HTML files should be at root or in assets/
-            if ext == '.html':
-                if parent_dir not in ['', 'assets']:
-                    return False
-
-            # CSS files MUST be in a css or styles directory
-            elif ext == '.css':
-                allowed = ['css', 'assets/css', 'styles', 'assets/styles']
-                if parent_dir not in allowed:
-                    return False
-
-            # JS files MUST be in a js or scripts directory
-            elif ext == '.js':
-                allowed = ['js', 'assets/js', 'scripts', 'assets/scripts']
-                if parent_dir not in allowed:
-                    return False
-
-            # Images MUST be in an img or images directory
-            elif ext in ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif']:
-                allowed = ['img', 'assets/img', 'images', 'assets/images', 'assets/icons', 'icons']
-                if parent_dir not in allowed:
-                    return False
-
-        return True
+        return self.structure_validator.is_valid(filepath, tech_stack)
 
     def _write_file(self, rel_path: str, content: str, log_callback=None) -> bool:
         """
@@ -684,8 +672,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 rel_path = rel_path[2:]
 
             # Validate path based on tech stack
-            nia_config = self._get_nia_config()
-            tech_stack = nia_config.get("tech_stack", "")
+            tech_stack = self.tech_stack or self._get_nia_config().get("tech_stack", "frontend_web")
 
             # DEFCON 1 Path Validation
             try:

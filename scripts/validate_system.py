@@ -60,13 +60,13 @@ def validate_placeholder_detection():
 
     # Test false positive: HTML placeholder attribute
     html = '<input placeholder="Enter name">'
-    if checker.check_placeholders({'test.html': html}):
+    if checker.check_placeholders({'index.html': html}):
         print("❌ False positive in HTML placeholder attribute")
         return False
 
     # Test true positive: Python pass stub
     py_stub = 'def func():\n    pass'
-    if not checker.check_placeholders({'test.py': py_stub}):
+    if not checker.check_placeholders({'app.py': py_stub}):
         print("❌ Failed to detect Python stub function")
         return False
 
@@ -136,6 +136,68 @@ def validate_issue_manager():
     print("✅ Issue Manager verified")
     return True
 
+def validate_nia_complete_system():
+    """Validació end-to-end del sistema nIA complet"""
+    print("Performing Deep System Validation...")
+    checks = []
+
+    # 1. IssueManager existeix i funciona
+    try:
+        from src.core.issue_manager import IssueManager
+        mgr = IssueManager(Path("test_temp"))
+        mgr.create_issue("Test", "Test", "Low", "Test")
+        checks.append(("✅", "IssueManager functional"))
+        import shutil
+        if Path("test_temp").exists():
+            shutil.rmtree("test_temp")
+    except Exception as e:
+        checks.append(("❌", f"IssueManager failed: {e}"))
+
+    # 2. FileStructureValidator existeix
+    try:
+        from src.core.file_structure_validator import FileStructureValidator
+        validator = FileStructureValidator()
+        checks.append(("✅", "FileStructureValidator exists"))
+    except Exception as e:
+        checks.append(("❌", f"FileStructureValidator missing: {e}"))
+
+    # 3. Integration en LoopOrchestrator
+    try:
+        from src.core.loop_orchestrator import LoopOrchestrator
+        # Check if has issue_manager attribute
+        # Note: LoopOrchestrator requires project_path
+        dummy_project = Path("test_dummy_project")
+        dummy_project.mkdir(exist_ok=True)
+        # Create required files for LoopOrchestrator to not fail run() immediately
+        (dummy_project / "SPEC.md").write_text("# Test")
+        (dummy_project / "IMPLEMENTATION_PLAN.md").write_text("- [ ] Task")
+        (dummy_project / "NIA_PROMPT.md").write_text("# Prompt")
+
+        orch = LoopOrchestrator(dummy_project)
+        if hasattr(orch, 'structure_validator') and hasattr(orch, 'issue_manager'):
+            checks.append(("✅", "LoopOrchestrator integration ready"))
+        else:
+            checks.append(("❌", "LoopOrchestrator missing integration attributes"))
+
+        import shutil
+        shutil.rmtree(dummy_project)
+    except Exception as e:
+        checks.append(("❌", f"LoopOrchestrator integration failed: {e}"))
+
+    # 4. Wiki templates (checking if they are generated correctly)
+    # This is already partly covered by validate_issue_manager
+
+    # Print results
+    print("\n" + "=" * 60)
+    print("SYSTEM VALIDATION REPORT")
+    print("=" * 60)
+    for symbol, msg in checks:
+        print(f"{symbol} {msg}")
+    print("=" * 60)
+
+    # Return success
+    return all(c[0] == "✅" for c in checks)
+
 def validate_all():
     checks = [
         validate_git_rollback(),
@@ -144,6 +206,7 @@ def validate_all():
         validate_llm_resilience(),
         validate_complexity_detection(),
         validate_issue_manager(),
+        validate_nia_complete_system(),
     ]
 
     if all(checks):
