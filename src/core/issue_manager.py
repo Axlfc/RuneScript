@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from src.utils.event_system import EventSystem, Events
 
 class IssueManager:
     """
@@ -27,6 +28,7 @@ class IssueManager:
 
     def __init__(self, project_path: Path):
         self.project_path = project_path
+        self.event_system = EventSystem.get_instance()
         self.nia_dir = self.project_path / ".nia"
         self.db_path = self.nia_dir / "issues.db"
         self.wiki_dir = self.nia_dir / "wiki"
@@ -57,6 +59,7 @@ class IssueManager:
                 files_affected TEXT,
                 context TEXT,
                 auto_fixed BOOLEAN DEFAULT 0,
+                suggestions TEXT,
                 created_at DATETIME NOT NULL,
                 resolved_at DATETIME,
                 resolution TEXT,
@@ -68,7 +71,8 @@ class IssueManager:
         columns = [
             ("title", "TEXT"),
             ("context", "TEXT"),
-            ("auto_fixed", "BOOLEAN DEFAULT 0")
+            ("auto_fixed", "BOOLEAN DEFAULT 0"),
+            ("suggestions", "TEXT")
         ]
 
         for col_name, col_type in columns:
@@ -141,6 +145,10 @@ class IssueManager:
         issue_id = cursor.lastrowid
         conn.commit()
         conn.close()
+
+        # Publish update for UI
+        self._notify_ui_update()
+
         return issue_id
 
     def get_issues(self, status: str = None) -> List[Dict[str, Any]]:
@@ -193,6 +201,23 @@ class IssueManager:
 
         conn.commit()
         conn.close()
+
+        # Publish update for UI
+        self._notify_ui_update()
+
+    def _notify_ui_update(self):
+        """Fetch current issues and notify UI."""
+        all_issues = self.get_issues()
+        open_issues = [i for i in all_issues if i['status'] == 'Open']
+
+        stats = {
+            'critical': len([i for i in open_issues if i['priority'] == 'Critical']),
+            'warning': len([i for i in open_issues if i['priority'] == 'High' or i['priority'] == 'Medium']),
+            'resolved': len([i for i in all_issues if i['status'] == 'Resolved'])
+        }
+
+        self.event_system.publish("update_issue_counts", stats)
+        self.event_system.publish("update_active_issues", open_issues)
 
     def add_attempt(self, issue_id: int, solution: str, success: bool):
         """Adds a resolution attempt to an issue."""

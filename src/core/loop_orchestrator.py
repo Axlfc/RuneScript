@@ -86,6 +86,12 @@ class LoopOrchestrator:
 
             self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
 
+            # Publish telemetry update
+            self._notify_ui('telemetry_update', {
+                'loop_current': iteration + 1,
+                'loop_total': max_iterations
+            })
+
             # 0. Ensure environment is ready
             if iteration == 0:
                 self._setup_environment(log_callback)
