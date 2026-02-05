@@ -36,6 +36,7 @@ class ProjectFileManager:
             logging.error(f"Error syncing project files map: {e}")
 
     def on_file_select(self, event):
+        logging.info(f"on_file_select triggered: {event}")
         try:
             if not self.tree.winfo_exists(): return
             selected_item = self.tree.selection()

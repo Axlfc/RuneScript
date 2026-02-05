@@ -550,6 +550,10 @@ class InlineDiffViewer(ttk.Frame):
         self.diff_display.tag_config('context', foreground='#888888')
 
     def show_diff(self, diff_content: str, commit_msg: str = None):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"show_diff called. Content length: {len(diff_content) if diff_content else 0}, commit: {commit_msg}")
+
         if not diff_content:
             return
         self.diff_display.config(state='normal'); self.diff_display.delete('1.0', 'end')

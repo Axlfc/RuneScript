@@ -50,8 +50,15 @@ class CodeSecurityAnalyzer:
         ],
         'imports': [
             r'^import os$',
+            r'^import sys$',
             r'^from bs4 import BeautifulSoup$',
             r'^import pytest$',
+            r'^import unittest$',
+        ],
+        'functions': [
+            'exit',
+            'print',
+            'assert',
         ]
     }
 
@@ -78,6 +85,10 @@ class CodeSecurityAnalyzer:
                 for alias in node.names:
                     name = alias.name.split('.')[0]
                     if name in cls.FORBIDDEN_IMPORTS:
+                        # Allow certain imports in tests
+                        if is_test and name in ['os', 'sys']:
+                            continue
+
                         threats.append({
                             'severity': 'CRITICAL',
                             'category': 'FORBIDDEN_IMPORT',
@@ -90,6 +101,10 @@ class CodeSecurityAnalyzer:
                 if node.module:
                     name = node.module.split('.')[0]
                     if name in cls.FORBIDDEN_IMPORTS:
+                        # Allow certain imports in tests
+                        if is_test and name in ['os', 'sys']:
+                            continue
+
                         threats.append({
                             'severity': 'CRITICAL',
                             'category': 'FORBIDDEN_IMPORT',
@@ -102,6 +117,10 @@ class CodeSecurityAnalyzer:
             elif isinstance(node, ast.Call):
                 func_name = cls._get_function_name(node.func)
                 if func_name in cls.FORBIDDEN_FUNCTIONS:
+                    # Allow certain functions in tests
+                    if is_test and func_name in cls.ALLOWED_PATTERNS['functions']:
+                        continue
+
                     threats.append({
                         'severity': 'CRITICAL',
                         'category': 'FORBIDDEN_FUNCTION',
