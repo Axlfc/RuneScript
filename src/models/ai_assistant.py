@@ -12,6 +12,7 @@ import json
 import io
 import contextlib
 from datetime import datetime
+import random
 from google import genai
 from google.genai.types import GenerateContentConfig, Part, SafetySetting
 
@@ -316,6 +317,12 @@ def initialize_claude_client():
     return anthropic.Anthropic(base_url=base_url, api_key="ollama")
 
 
+def initialize_real_claude_client():
+    load_dotenv()
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    return anthropic.Anthropic(api_key=api_key)
+
+
 def process_claude_chat(client, prompt, system_prompt=None):
     try:
         messages = [{"role": "user", "content": prompt}]
@@ -513,6 +520,115 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
         print(json.dumps({"error": f"Unexpected error: {str(e)}"}))
 
 
+class ResilientLLMClient:
+    """
+    LLM Client with retries, backoff, and multi-model fallback.
+    """
+
+    MODELS = [
+        {'id': 'gemini', 'name': 'gemini-3-flash-preview', 'env_var': 'GEMINI_API_KEY', 'priority': 1},
+        {'id': 'claude', 'name': 'claude-3-5-sonnet-20240620', 'env_var': 'ANTHROPIC_API_KEY', 'priority': 2},
+        {'id': 'openai', 'name': 'gpt-4o', 'env_var': 'OPENAI_API_KEY', 'priority': 3},
+    ]
+
+    def __init__(self, rate_limit_rpm: int = 6):
+        self.rate_limit_rpm = rate_limit_rpm
+        self.call_history: List[float] = []
+        self.available_models = self._detect_available_models()
+
+    def _detect_available_models(self):
+        """Detect which models have API keys configured."""
+        available = []
+        for model in self.MODELS:
+            if os.getenv(model['env_var']):
+                available.append(model)
+        return sorted(available, key=lambda x: x['priority'])
+
+    def _apply_rate_limit(self):
+        """Preventive rate limiting."""
+        now = time.time()
+        # Remove calls older than 60s
+        self.call_history = [t for t in self.call_history if now - t < 60]
+
+        if len(self.call_history) >= self.rate_limit_rpm:
+            wait_time = 60 - (now - self.call_history[0])
+            if wait_time > 0:
+                logging.info(f"Rate limit reached. Waiting {wait_time:.2f}s...")
+                time.sleep(wait_time)
+
+        self.call_history.append(time.time())
+
+    def call_with_fallback(self, prompt: str, system_prompt: str, allow_degradation: bool = True) -> str:
+        """
+        Call LLM with fallback strategy.
+        """
+        if not self.available_models:
+             # Fallback to whatever is configured in AIAssistant if no API keys found in env
+             return "Error: No API keys found for resilient fallback."
+
+        models_to_try = self.available_models if allow_degradation else [self.available_models[0]]
+
+        last_error = ""
+        for model_info in models_to_try:
+            self._apply_rate_limit()
+
+            max_retries = 3
+            base_delay = 2
+
+            for attempt in range(max_retries):
+                try:
+                    logging.info(f"Calling {model_info['id']} (Attempt {attempt+1}/{max_retries})...")
+
+                    if model_info['id'] == 'gemini':
+                        response = process_gemini30_chat([
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
+                        ])
+                        if not response.startswith("Error"):
+                            return response
+                        else:
+                            raise Exception(response)
+
+                    elif model_info['id'] == 'claude':
+                        client = initialize_real_claude_client()
+                        response = process_claude_chat(client, prompt, system_prompt)
+                        if not response.startswith("Error"):
+                            return response
+                        else:
+                            raise Exception(response)
+
+                    elif model_info['id'] == 'openai':
+                        # For now using process_chat_completions logic but simplified
+                        client = initialize_client_with_parameters("https://api.openai.com/v1", os.getenv("OPENAI_API_KEY"))
+                        history = [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
+                        ]
+                        response = client.chat.completions.create(
+                            model=model_info['name'],
+                            messages=history,
+                            temperature=0.7,
+                            max_tokens=4096
+                        )
+                        return response.choices[0].message.content
+
+                except Exception as e:
+                    err_msg = str(e)
+                    last_error = err_msg
+                    if "503" in err_msg or "429" in err_msg or "Service Unavailable" in err_msg or "quota" in err_msg.lower():
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                        logging.warning(f"Transient error with {model_info['id']}: {err_msg}. Retrying in {delay:.2f}s...")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logging.error(f"Non-transient error with {model_info['id']}: {err_msg}")
+                        break # Try next model
+
+            logging.warning(f"Model {model_info['id']} failed after retries. Trying next available model...")
+
+        return f"Error: All models failed. Last error: {last_error}"
+
+
 class AIAssistant:
     """Class-based wrapper for AI assistant functionality."""
     def __init__(self):
@@ -520,13 +636,18 @@ class AIAssistant:
         self.server_url = read_config_parameter("options.network_settings.server_url")
         self.api_key = read_config_parameter("options.network_settings.api_key")
         self.system_prompt = "You are an intelligent assistant. You always flawlessly provide straight to the point well-reasoned answers that are both correct and helpful."
+        self.resilient_client = ResilientLLMClient()
 
-    def generate(self, prompt: str, system_prompt: str = None) -> str:
+    def generate(self, prompt: str, system_prompt: str = None, allow_degradation: bool = True) -> str:
         """Generate a response from the selected AI provider."""
         current_system = system_prompt or self.system_prompt
         session_id = datetime.now().strftime("%Y%m%d%H%M%S")
 
-        # Capture stdout to return it as a string
+        # If provider is gemini and we have resilience, use it
+        if self.provider == "gemini" and self.resilient_client.available_models:
+            return self.resilient_client.call_with_fallback(prompt, current_system, allow_degradation=allow_degradation)
+
+        # Capture stdout for other providers (backward compatibility)
         f = io.StringIO()
         with contextlib.redirect_stdout(f):
             if self.provider == "llama-cpp-python":
@@ -534,6 +655,7 @@ class AIAssistant:
                 model_path = find_gguf_file()
                 chat_loop(prompt, client, model_path, current_system, session_id)
             elif self.provider == "gemini":
+                # Fallback to standard gemini if resilient client failed for some reason
                 client = initialize_gemini30_client()
                 chat_loop_gemini30(prompt, client, current_system, session_id)
             elif self.provider == "claude":

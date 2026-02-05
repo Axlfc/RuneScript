@@ -41,8 +41,29 @@ class CodeSecurityAnalyzer:
         r'subprocess\.'
     ]
 
+    # Whitelist for allowed patterns (e.g. in tests)
+    ALLOWED_PATTERNS = {
+        'file_operations': [
+            r'os\.path\.exists\(',
+            r'os\.listdir\(',
+            r'open\(.+["\']r["\']',
+        ],
+        'imports': [
+            r'^import os$',
+            r'^import sys$',
+            r'^from bs4 import BeautifulSoup$',
+            r'^import pytest$',
+            r'^import unittest$',
+        ],
+        'functions': [
+            'exit',
+            'print',
+            'assert',
+        ]
+    }
+
     @classmethod
-    def analyze(cls, code: str):
+    def analyze(cls, code: str, is_test: bool = False):
         """
         Deep analysis of Python code for security threats.
         Returns a report dictionary.
@@ -64,6 +85,10 @@ class CodeSecurityAnalyzer:
                 for alias in node.names:
                     name = alias.name.split('.')[0]
                     if name in cls.FORBIDDEN_IMPORTS:
+                        # Allow certain imports in tests
+                        if is_test and name in ['os', 'sys']:
+                            continue
+
                         threats.append({
                             'severity': 'CRITICAL',
                             'category': 'FORBIDDEN_IMPORT',
@@ -76,6 +101,10 @@ class CodeSecurityAnalyzer:
                 if node.module:
                     name = node.module.split('.')[0]
                     if name in cls.FORBIDDEN_IMPORTS:
+                        # Allow certain imports in tests
+                        if is_test and name in ['os', 'sys']:
+                            continue
+
                         threats.append({
                             'severity': 'CRITICAL',
                             'category': 'FORBIDDEN_IMPORT',
@@ -88,6 +117,10 @@ class CodeSecurityAnalyzer:
             elif isinstance(node, ast.Call):
                 func_name = cls._get_function_name(node.func)
                 if func_name in cls.FORBIDDEN_FUNCTIONS:
+                    # Allow certain functions in tests
+                    if is_test and func_name in cls.ALLOWED_PATTERNS['functions']:
+                        continue
+
                     threats.append({
                         'severity': 'CRITICAL',
                         'category': 'FORBIDDEN_FUNCTION',
@@ -109,6 +142,16 @@ class CodeSecurityAnalyzer:
 
         # Step 3: Pattern matching on raw code
         for pattern in cls.SUSPICIOUS_PATTERNS:
+            # Skip if pattern is in whitelist and we are in test mode
+            if is_test:
+                is_whitelisted = False
+                for cat in cls.ALLOWED_PATTERNS.values():
+                    if pattern in cat:
+                        is_whitelisted = True
+                        break
+                if is_whitelisted:
+                    continue
+
             matches = re.finditer(pattern, code)
             for match in matches:
                 line_num = code[:match.start()].count('\n') + 1

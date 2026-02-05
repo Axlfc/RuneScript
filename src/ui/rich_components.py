@@ -102,6 +102,7 @@ class FileTreeView(ttk.Frame):
         self.project_path = os.path.abspath(project_path)
         self.on_file_open_callback = on_file_open_callback
         self.on_file_modified_callback = on_file_modified_callback
+        self._pending_callbacks = set()
 
         # Create tree widget
         self.tree = ttk.Treeview(self, selectmode='browse')
@@ -289,36 +290,61 @@ class FileTreeView(ttk.Frame):
         self.tree.clipboard_append(filepath)
 
     def on_file_change(self, event):
-        self.after(0, lambda: self._handle_event(event))
+        self._safe_after(0, lambda: self._handle_event(event))
 
     def _handle_event(self, event):
-        if event.event_type == 'created': self._animate_file_creation(event.src_path)
-        elif event.event_type == 'modified': self._highlight_file_modification(event.src_path)
-        elif event.event_type == 'deleted': self._fade_out_file_deletion(event.src_path)
+        try:
+            if event.event_type == 'created': self._animate_file_creation(event.src_path)
+            elif event.event_type == 'modified': self._highlight_file_modification(event.src_path)
+            elif event.event_type == 'deleted': self._fade_out_file_deletion(event.src_path)
+        except Exception as e:
+            print(f"Error handling file event: {e}")
 
     def _animate_file_creation(self, filepath):
         filepath = os.path.abspath(filepath)
         if filepath in self.node_map: return
         parent_dir = os.path.abspath(os.path.dirname(filepath))
         parent_node = self.node_map.get(parent_dir, '')
+
+        # Check if parent node exists in tree
+        if parent_node and not self.tree.exists(parent_node):
+             parent_node = ''
+
         filename = os.path.basename(filepath)
         is_dir = os.path.isdir(filepath)
-        node = self.tree.insert(parent_node, 'end', text=f"{self._get_icon(filename, is_dir)} {filename}",
-            values=(filepath, 'DIR' if is_dir else self._get_file_type(filename), self._format_size(filepath), self._format_time(filepath)))
-        self.node_map[filepath] = node
-        if parent_node: self.tree.item(parent_node, open=True)
-        self.tree.tag_configure('new_file', background='#00ff00', foreground='#000000')
-        self.tree.item(node, tags=('new_file',))
-        self.after(2000, lambda: self.tree.item(node, tags=()))
+
+        try:
+            node = self.tree.insert(parent_node, 'end', text=f"{self._get_icon(filename, is_dir)} {filename}",
+                values=(filepath, 'DIR' if is_dir else self._get_file_type(filename), self._format_size(filepath), self._format_time(filepath)))
+            self.node_map[filepath] = node
+            if parent_node: self.tree.item(parent_node, open=True)
+            self.tree.tag_configure('new_file', background='#00ff00', foreground='#000000')
+            self.tree.item(node, tags=('new_file',))
+
+            def clear_tag():
+                if self.tree.exists(node):
+                    self.tree.item(node, tags=())
+
+            self._safe_after(2000, clear_tag)
+        except Exception as e:
+            print(f"Error animating creation: {e}")
 
     def _highlight_file_modification(self, filepath):
         filepath = os.path.abspath(filepath)
         node = self.node_map.get(filepath)
-        if node:
-            self.tree.item(node, values=(filepath, 'DIR' if os.path.isdir(filepath) else self._get_file_type(filepath), self._format_size(filepath), self._format_time(filepath)))
-            self.tree.tag_configure('modified', background='#ffff00', foreground='#000000')
-            self.tree.item(node, tags=('modified',))
-            self.after(1500, lambda: self.tree.item(node, tags=()))
+        if node and self.tree.exists(node):
+            try:
+                self.tree.item(node, values=(filepath, 'DIR' if os.path.isdir(filepath) else self._get_file_type(filepath), self._format_size(filepath), self._format_time(filepath)))
+                self.tree.tag_configure('modified', background='#ffff00', foreground='#000000')
+                self.tree.item(node, tags=('modified',))
+
+                def clear_tag():
+                    if self.tree.exists(node):
+                        self.tree.item(node, tags=())
+
+                self._safe_after(1500, clear_tag)
+            except Exception as e:
+                print(f"Error highlighting modification: {e}")
 
         # Trigger callback for real-time editor updates
         if self.on_file_modified_callback:
@@ -327,13 +353,34 @@ class FileTreeView(ttk.Frame):
     def _fade_out_file_deletion(self, filepath):
         filepath = os.path.abspath(filepath)
         node = self.node_map.get(filepath)
-        if node:
-            self.tree.tag_configure('deleted', background='#ff4444', foreground='#ffffff')
-            self.tree.item(node, tags=('deleted',))
-            def remove():
-                if self.tree.exists(node): self.tree.delete(node)
-                if filepath in self.node_map: del self.node_map[filepath]
-            self.after(1000, remove)
+        if node and self.tree.exists(node):
+            try:
+                self.tree.tag_configure('deleted', background='#ff4444', foreground='#ffffff')
+                self.tree.item(node, tags=('deleted',))
+                def remove():
+                    if self.tree.exists(node): self.tree.delete(node)
+                    if filepath in self.node_map: del self.node_map[filepath]
+                self._safe_after(1000, remove)
+            except Exception as e:
+                print(f"Error fading out deletion: {e}")
+
+    def _safe_after(self, ms, func):
+        """A safe version of after() that tracks callbacks for cleanup."""
+        def wrapper():
+            if func not in self._pending_callbacks:
+                return
+            self._pending_callbacks.remove(func)
+            try:
+                func()
+            except Exception:
+                pass
+
+        self._pending_callbacks.add(func)
+        return self.after(ms, wrapper)
+
+    def stop_animations(self):
+        """Stop all pending animations."""
+        self._pending_callbacks.clear()
 
 class TDDPhaseIndicator(ttk.Frame):
     """Visual state machine for Red-Green-Refactor cycle."""
@@ -503,6 +550,12 @@ class InlineDiffViewer(ttk.Frame):
         self.diff_display.tag_config('context', foreground='#888888')
 
     def show_diff(self, diff_content: str, commit_msg: str = None):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"show_diff called. Content length: {len(diff_content) if diff_content else 0}, commit: {commit_msg}")
+
+        if not diff_content:
+            return
         self.diff_display.config(state='normal'); self.diff_display.delete('1.0', 'end')
         if commit_msg:
             self.diff_display.insert('end', f'Commit: {commit_msg}\n', 'file_header')
@@ -579,6 +632,7 @@ class AIPlanVisualizer(ttk.Frame):
         self.canvas.bind('<Motion>', self._on_hover)
 
         self.tooltip = None
+        self.animating = True
         self._animate_pulse()
 
     def update_plan(self, tasks):
@@ -682,8 +736,19 @@ class AIPlanVisualizer(ttk.Frame):
         r = int(r * factor); g = int(g * factor); b = int(b * factor)
         return f'#{min(255, max(0, r)):02x}{min(255, max(0, g)):02x}{min(255, max(0, b)):02x}'
 
+    def stop_animations(self):
+        """Stop all animations."""
+        self.animating = False
+
+    def start_animations(self):
+        """Start animations if not already running."""
+        if not self.animating:
+            self.animating = True
+            self._animate_pulse()
+
     def _animate_pulse(self):
         """Animates a pulsing effect on the active phase."""
+        if not self.animating: return
         self.pulse_val += 0.05 * self.pulse_dir
         if self.pulse_val >= 1.0: self.pulse_dir = -1
         elif self.pulse_val <= 0.0: self.pulse_dir = 1
