@@ -13,7 +13,7 @@ class Sidebar(tb.Frame):
         super().__init__(parent)
         self.event_system = EventSystem.get_instance()
 
-        self.paned = tb.PanedWindow(self, orient=VERTICAL)
+        self.paned = ttk.PanedWindow(self, orient=VERTICAL)
         self.paned.pack(fill=BOTH, expand=True)
 
         # 1. File Tree

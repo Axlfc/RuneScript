@@ -13,7 +13,7 @@ class TabbedConsole(tb.Frame):
         super().__init__(parent)
         self.event_system = EventSystem.get_instance()
 
-        self.tabs = tb.Notebook(self, bootstyle=INFO)
+        self.tabs = ttk.Notebook(self, bootstyle=INFO)
         self.tabs.pack(fill=BOTH, expand=True)
 
         self.log_widgets = {} # {category: text_widget}

@@ -33,7 +33,7 @@ class RightPanel(tb.Frame):
         tb.Label(frame, textvariable=self.coverage_var, font=('Segoe UI', 9)).pack(anchor=W)
         tb.Label(frame, textvariable=self.quality_var, font=('Segoe UI', 9)).pack(anchor=W)
 
-        self.coverage_progress = tb.Progressbar(frame, bootstyle=SUCCESS, value=0)
+        self.coverage_progress = ttk.Progressbar(frame, bootstyle=SUCCESS, value=0)
         self.coverage_progress.pack(fill=X, pady=5)
 
     def _create_issues_section(self):

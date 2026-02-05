@@ -44,7 +44,7 @@ class TopBar(tb.Frame):
         self.stop_btn.pack(side=LEFT, padx=2)
 
         # Toggle Buttons
-        tb.Separator(control_frame, orient=VERTICAL).pack(side=LEFT, padx=10, fill=Y)
+        ttk.Separator(control_frame, orient=VERTICAL).pack(side=LEFT, padx=10, fill=Y)
 
         self.toggle_left_btn = tb.Button(control_frame, text="📁", command=lambda: self.event_system.publish("toggle_left_panel"), bootstyle="link")
         self.toggle_left_btn.pack(side=LEFT, padx=2)
