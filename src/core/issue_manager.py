@@ -46,6 +46,7 @@ class IssueManager:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS issues (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
                 category TEXT NOT NULL,
                 priority TEXT NOT NULL,
                 status TEXT NOT NULL,
@@ -54,12 +55,28 @@ class IssueManager:
                 stack_trace TEXT,
                 commit_sha TEXT,
                 files_affected TEXT,
+                context TEXT,
+                auto_fixed BOOLEAN DEFAULT 0,
                 created_at DATETIME NOT NULL,
                 resolved_at DATETIME,
                 resolution TEXT,
                 prevention TEXT
             )
         ''')
+
+        # Migrations: Add new columns if they don't exist
+        columns = [
+            ("title", "TEXT"),
+            ("context", "TEXT"),
+            ("auto_fixed", "BOOLEAN DEFAULT 0")
+        ]
+
+        for col_name, col_type in columns:
+            try:
+                cursor.execute(f"ALTER TABLE issues ADD COLUMN {col_name} {col_type}")
+            except sqlite3.OperationalError:
+                # Column already exists
+                pass
 
         # Table for resolution attempts
         cursor.execute('''
@@ -94,25 +111,72 @@ class IssueManager:
 
     def create_issue(self, category: str, priority: str, description: str,
                      task: str = None, stack_trace: str = None,
-                     commit_sha: str = None, files_affected: List[str] = None) -> int:
+                     commit_sha: str = None, files_affected: List[str] = None,
+                     title: str = None, context: Dict = None, auto_fixed: bool = False) -> int:
         """Creates a new issue in the system."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         files_json = json.dumps(files_affected) if files_affected else "[]"
+
+        # Merge existing fields into context for backwards compatibility
+        full_context = context.copy() if context else {}
+        if task: full_context['task'] = task
+        if stack_trace: full_context['stack_trace'] = stack_trace
+        if commit_sha: full_context['commit_sha'] = commit_sha
+        if files_affected: full_context['files_affected'] = files_affected
+
+        context_json = json.dumps(full_context)
         now = datetime.now().isoformat()
 
         cursor.execute('''
-            INSERT INTO issues (category, priority, status, description, task,
-                                stack_trace, commit_sha, files_affected, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (category, priority, 'Open', description, task,
-              stack_trace, commit_sha, files_json, now))
+            INSERT INTO issues (title, category, priority, status, description, task,
+                                stack_trace, commit_sha, files_affected, context,
+                                auto_fixed, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (title, category, priority, 'Open', description, task,
+              stack_trace, commit_sha, files_json, context_json,
+              1 if auto_fixed else 0, now))
 
         issue_id = cursor.lastrowid
         conn.commit()
         conn.close()
         return issue_id
+
+    def get_issues(self, status: str = None) -> List[Dict[str, Any]]:
+        """Retrieves issues filtered by status."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        if status:
+            cursor.execute("SELECT * FROM issues WHERE status = ?", (status,))
+        else:
+            cursor.execute("SELECT * FROM issues")
+
+        results = [dict(row) for row in cursor.fetchall()]
+
+        # Parse JSON fields
+        for res in results:
+            if res.get('files_affected'):
+                try: res['files_affected'] = json.loads(res['files_affected'])
+                except: res['files_affected'] = []
+            if res.get('context'):
+                try: res['context'] = json.loads(res['context'])
+                except: res['context'] = {}
+            res['auto_fixed'] = bool(res.get('auto_fixed'))
+
+        conn.close()
+        return results
+
+    def resolve_issue(self, issue_id: int, resolution: str, prevention: str = None):
+        """Resolves a specific issue by ID."""
+        self.update_issue(issue_id, 'Resolved', resolution, prevention)
+
+    def get_suggestions(self, title: str) -> List[str]:
+        """Returns resolution suggestions based on similar resolved issues."""
+        similar = self.get_similar_issues(title)
+        return [f"{issue['description']}: {issue['resolution']}" for issue in similar]
 
     def update_issue(self, issue_id: int, status: str, resolution: str = None, prevention: str = None):
         """Updates an existing issue."""
@@ -155,9 +219,9 @@ class IssueManager:
         search_term = f"%{description[:30]}%"
         cursor.execute('''
             SELECT * FROM issues
-            WHERE status = 'Resolved' AND (description LIKE ? OR category LIKE ?)
+            WHERE status = 'Resolved' AND (description LIKE ? OR category LIKE ? OR title LIKE ?)
             ORDER BY resolved_at DESC LIMIT 5
-        ''', (search_term, search_term))
+        ''', (search_term, search_term, search_term))
 
         results = [dict(row) for row in cursor.fetchall()]
         conn.close()
