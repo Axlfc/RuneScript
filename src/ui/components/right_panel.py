@@ -34,7 +34,7 @@ class RightPanel(tb.Frame):
         tb.Label(frame, textvariable=self.coverage_var, font=('Segoe UI', 9)).pack(anchor=W)
         tb.Label(frame, textvariable=self.quality_var, font=('Segoe UI', 9)).pack(anchor=W)
 
-        self.coverage_progress = ttk.Progressbar(frame, bootstyle=SUCCESS, value=0)
+        self.coverage_progress = tb.Progressbar(frame, bootstyle=SUCCESS, value=0)
         self.coverage_progress.pack(fill=X, pady=5)
 
     def _create_issues_section(self):
@@ -89,10 +89,10 @@ class RightPanel(tb.Frame):
 
             btn_frame = tb.Frame(card)
             btn_frame.pack(fill=X)
-            tb.Button(btn_frame, text="View", bootstyle=(INFO, OUTLINE), size="small",
+            tb.Button(btn_frame, text="View", bootstyle="info-outline-sm",
                       command=lambda i=issue: self.event_system.publish(Events.OPEN_ISSUE_MANAGER, i)).pack(side=LEFT, padx=2)
             if issue.get('auto_fixable'):
-                tb.Button(btn_frame, text="Fix", bootstyle=(SUCCESS, OUTLINE), size="small",
+                tb.Button(btn_frame, text="Fix", bootstyle="success-outline-sm",
                           command=lambda i=issue: self.event_system.publish(Events.APPLY_FIX, i)).pack(side=LEFT, padx=2)
 
     def append_ai_message(self, message):

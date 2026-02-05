@@ -17,7 +17,7 @@ class TabbedConsole(tb.Frame):
         header = tb.Frame(self)
         header.pack(fill=X)
 
-        self.expand_btn = tb.Button(header, text="▲ Expand Logs", bootstyle="link", size="small",
+        self.expand_btn = tb.Button(header, text="▲ Expand Logs", bootstyle="link-sm",
                                      command=lambda: self.event_system.publish(Events.TOGGLE_CONSOLE_EXPAND))
         self.expand_btn.pack(side=RIGHT, padx=10)
 

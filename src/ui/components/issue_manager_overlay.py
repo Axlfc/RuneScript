@@ -77,9 +77,9 @@ class IssueManagerOverlay(tb.Frame):
         search_entry.pack(side=LEFT, padx=5)
         tb.Label(filter_bar, text="🔍 Search issues...", font=('Segoe UI', 9, 'italic'), foreground="#888888").pack(side=LEFT)
 
-        tb.Button(filter_bar, text="🗑️ Clear Resolved", bootstyle=(SECONDARY, OUTLINE), size="small",
+        tb.Button(filter_bar, text="🗑️ Clear Resolved", bootstyle="secondary-outline-sm",
                   command=lambda: self.event_system.publish("clear_resolved_issues")).pack(side=RIGHT, padx=5)
-        tb.Button(filter_bar, text="📊 Export Wiki", bootstyle=(INFO, OUTLINE), size="small",
+        tb.Button(filter_bar, text="📊 Export Wiki", bootstyle="info-outline-sm",
                   command=lambda: self.event_system.publish("generate_wiki")).pack(side=RIGHT, padx=5)
 
         # Main Content - Scrollable area for Issue Cards
@@ -240,7 +240,7 @@ class IssueManagerOverlay(tb.Frame):
                 btn_text = "Apply Fix"
                 if "```" in sug: btn_text = "Apply Code Fix"
 
-                tb.Button(s_frame, text=btn_text, bootstyle=SUCCESS, size="small",
+                tb.Button(s_frame, text=btn_text, bootstyle="success-sm",
                           command=lambda s=sug: self._apply_fix(issue.get('id'), s)).pack(side=RIGHT)
 
         # Bottom Actions Bar

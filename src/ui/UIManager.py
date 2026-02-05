@@ -47,6 +47,7 @@ class UIManager:
     def __init__(self, controller):
         self.controller = controller
         self.event_system = EventSystem.get_instance()
+        self.file_manager = None # Ensure it exists
 
         # Apply ttkbootstrap styles
         self.style = IDEStyle.apply_styles(self.controller.root)
@@ -163,7 +164,7 @@ class UIManager:
             # Setup collapsible toggles
             self._setup_toggles()
 
-            # Initialize file manager
+            # Initialize file manager (using sidebar tree)
             self.file_manager = ProjectFileManager(
                 tree_widget=self.project_tree,
                 file_editor=self.file_editor,
@@ -374,7 +375,8 @@ class UIManager:
             self.file_manager.open_file(relative)
 
     def on_file_select(self, event):
-        self.file_manager.on_file_select(event)
+        if self.file_manager:
+            self.file_manager.on_file_select(event)
 
     def on_file_modified(self, event=None):
         self.file_manager.on_file_modified(event)
