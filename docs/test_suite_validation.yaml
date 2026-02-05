@@ -1,0 +1,97 @@
+test_suite:
+  name: "nIA System Validation"
+  description: "Valida que nIA puede generar proyectos de cualquier tipo"
+
+  tests:
+    # FRONTEND WEB
+    - id: "FE-001"
+      name: "Minimal Portfolio"
+      prompt: "Crea un portafolio minimalista con secciones de inicio y contacto"
+      expected_complexity: "medium"
+      expected_tasks: "10-15"
+      expected_files:
+        - index.html
+        - css/style.css
+        - js/app.js
+      validation:
+        - file_exists: index.html
+        - html_valid: true
+        - css_valid: true
+        - tests_pass: true
+
+    # PYTHON BACKEND
+    - id: "PY-001"
+      name: "Snake Game"
+      prompt: "Crea el juego Snake en Python con pygame"
+      expected_complexity: "complex"
+      expected_tasks: "15-20"
+      expected_files:
+        - main.py
+        - snake.py
+        - game_logic.py
+        - requirements.txt
+        - tests/test_snake.py
+      validation:
+        - python_syntax_valid: true
+        - imports_resolve: true
+        - tests_pass: true
+
+    # RUBY GEM
+    - id: "RB-001"
+      name: "IBAN Validator Gem"
+      prompt: "Crea una gema de Ruby para validar IBANs bancarios"
+      expected_complexity: "complex"
+      expected_tasks: "12-18"
+      expected_files:
+        - lib/iban_validator.rb
+        - spec/iban_validator_spec.rb
+        - iban_validator.gemspec
+        - Gemfile
+      validation:
+        - ruby_syntax_valid: true
+        - rspec_tests_pass: true
+        - gem_buildable: true
+
+    # GO CLI
+    - id: "GO-001"
+      name: "Log Parser CLI"
+      prompt: "Desarrolla una herramienta CLI en Go para parsear logs de Apache"
+      expected_complexity: "medium"
+      expected_tasks: "8-12"
+      expected_files:
+        - main.go
+        - go.mod
+        - parser/parser.go
+        - parser/parser_test.go
+      validation:
+        - go_syntax_valid: true
+        - go_test_pass: true
+
+    # RUST PROJECT
+    - id: "RS-001"
+      name: "Fast Matrix Multiply"
+      prompt: "Implementa una librería de Rust para multiplicación de matrices optimizada"
+      expected_complexity: "complex"
+      expected_tasks: "10-15"
+      expected_files:
+        - Cargo.toml
+        - src/lib.rs
+        - tests/integration_test.rs
+      validation:
+        - rust_syntax_valid: true
+        - cargo_test_pass: true
+
+    # NEXT.JS FULLSTACK
+    - id: "NX-001"
+      name: "Task Dashboard"
+      prompt: "Crea un dashboard de tareas con Next.js, Tailwind, y autenticación ficticia"
+      expected_complexity: "complex"
+      expected_tasks: "18-25"
+      expected_files:
+        - package.json
+        - app/page.tsx
+        - components/TaskCard.tsx
+        - lib/auth.ts
+      validation:
+        - next_build_success: true
+        - jest_tests_pass: true

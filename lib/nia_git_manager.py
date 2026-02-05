@@ -37,6 +37,38 @@ class GitBasedFileManager:
         os.makedirs(self.logs_dir, exist_ok=True)
 
         self._ensure_manifest_exists()
+        self._ensure_gitignore()
+        self.security_auditor = None
+
+    def set_security_auditor(self, auditor):
+        self.security_auditor = auditor
+
+    def _ensure_gitignore(self):
+        """Add .nia/security/ to .gitignore automatically."""
+        gitignore_path = os.path.join(self.project_path, '.gitignore')
+
+        required_entries = [
+            '.nia/security/',
+            '*.jsonl',
+            '__pycache__/',
+            '.venv/',
+        ]
+
+        content = ""
+        if os.path.exists(gitignore_path):
+            with open(gitignore_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+        original_content = content
+        for entry in required_entries:
+            if entry not in content:
+                if content and not content.endswith('\n'):
+                    content += '\n'
+                content += f'{entry}\n'
+
+        if content != original_content:
+            with open(gitignore_path, 'w', encoding='utf-8') as f:
+                f.write(content)
 
     def _ensure_manifest_exists(self):
         """Initializes manifest.json if it doesn't exist."""
@@ -237,10 +269,39 @@ class GitBasedFileManager:
         manifest['last_updated'] = datetime.now().isoformat()
         self._save_manifest(manifest)
 
-    def rollback_to(self, commit_sha: str):
-        """Rolls back the repository to a specific commit."""
-        self.repo.git.reset('--hard', commit_sha)
-        self.repo.git.clean('-fd')
+    def rollback_to(self, commit_sha: str) -> bool:
+        """
+        Safe rollback that works on Windows by closing handles and using fallback strategies.
+        """
+        import gc
+        import time
+
+        # 1. Close SecurityAuditor handles if available
+        if self.security_auditor:
+            try:
+                self.security_auditor.close_handles()
+            except Exception as e:
+                logger.warning(f"Error closing security auditor handles: {e}")
+
+        # 2. Force GC and wait
+        gc.collect()
+        time.sleep(0.5)
+
+        try:
+            # 3. Attempt hard reset
+            self.repo.git.reset('--hard', commit_sha)
+            self.repo.git.clean('-fd')
+            return True
+        except Exception as e:
+            logger.warning(f"Git reset --hard failed: {e}. Attempting fallback to checkout...")
+            try:
+                # 4. Fallback to checkout --force
+                self.repo.git.checkout(commit_sha, force=True)
+                self.repo.git.clean('-fd')
+                return True
+            except Exception as e2:
+                logger.error(f"Rollback failed completely: {e2}")
+                return False
 
     def _count_lines_changed(self, changes: Dict[str, Any]) -> int:
         total = 0

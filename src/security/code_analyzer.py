@@ -41,8 +41,22 @@ class CodeSecurityAnalyzer:
         r'subprocess\.'
     ]
 
+    # Whitelist for allowed patterns (e.g. in tests)
+    ALLOWED_PATTERNS = {
+        'file_operations': [
+            r'os\.path\.exists\(',
+            r'os\.listdir\(',
+            r'open\(.+["\']r["\']',
+        ],
+        'imports': [
+            r'^import os$',
+            r'^from bs4 import BeautifulSoup$',
+            r'^import pytest$',
+        ]
+    }
+
     @classmethod
-    def analyze(cls, code: str):
+    def analyze(cls, code: str, is_test: bool = False):
         """
         Deep analysis of Python code for security threats.
         Returns a report dictionary.
@@ -109,6 +123,16 @@ class CodeSecurityAnalyzer:
 
         # Step 3: Pattern matching on raw code
         for pattern in cls.SUSPICIOUS_PATTERNS:
+            # Skip if pattern is in whitelist and we are in test mode
+            if is_test:
+                is_whitelisted = False
+                for cat in cls.ALLOWED_PATTERNS.values():
+                    if pattern in cat:
+                        is_whitelisted = True
+                        break
+                if is_whitelisted:
+                    continue
+
             matches = re.finditer(pattern, code)
             for match in matches:
                 line_num = code[:match.start()].count('\n') + 1

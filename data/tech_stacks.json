@@ -1,25 +1,119 @@
 {
-  "frontend_web": {
-    "display_name": "Frontend Web (HTML/CSS/JS)",
+  "ruby_gem": {
+    "display_name": "Ruby Gem",
+    "keywords": ["ruby", "gem", "gemspec", "bundler", "rake"],
+    "files": ["*.gemspec", "Gemfile", "Rakefile", "lib/**/*.rb"],
+    "test_framework": "rspec",
+    "test_command": "bundle exec rspec {test_file} --format documentation",
+    "test_pattern": "*_spec.rb",
+    "default_structure": [
+      "lib/",
+      "spec/",
+      "Gemfile",
+      "Rakefile",
+      "README.md",
+      "LICENSE"
+    ],
     "quality_standards": {
-      "html": {"min_lines": 150, "max_retries": 2},
-      "css": {"min_lines": 200, "max_retries": 2},
-      "js": {"min_lines": 100, "max_retries": 2}
+      "rb": {"min_lines": 80},
+      "spec.rb": {"min_lines": 50}
     },
-    "recommended_tools": ["BeautifulSoup", "html5lib"]
+    "setup_commands": [
+      "bundle install"
+    ]
   },
-  "python_backend": {
-    "display_name": "Python Backend",
+
+  "ruby_sinatra": {
+    "display_name": "Ruby Sinatra API",
+    "keywords": ["sinatra", "ruby api", "rest api ruby"],
+    "files": ["app.rb", "Gemfile", "config.ru"],
+    "test_framework": "rspec",
+    "test_command": "bundle exec rspec {test_file}",
+    "test_pattern": "*_spec.rb",
+    "default_structure": [
+      "app.rb",
+      "config.ru",
+      "Gemfile",
+      "spec/",
+      "models/",
+      "routes/"
+    ],
     "quality_standards": {
-      "py": {"min_lines": 100, "max_retries": 2}
+      "rb": {"min_lines": 100}
     },
-    "recommended_tools": ["pytest", "requests"]
+    "setup_commands": [
+      "bundle install"
+    ]
   },
-  "node_js": {
-    "display_name": "Node.js Backend",
+
+  "go_cli": {
+    "display_name": "Go CLI Application",
+    "keywords": ["go", "golang", "cli", "command line go"],
+    "files": ["go.mod", "main.go", "cmd/"],
+    "test_framework": "go_test",
+    "test_command": "go test {test_file} -v",
+    "test_pattern": "*_test.go",
+    "default_structure": [
+      "main.go",
+      "cmd/",
+      "pkg/",
+      "go.mod",
+      "README.md"
+    ],
     "quality_standards": {
-      "js": {"min_lines": 100, "max_retries": 2}
+      "go": {"min_lines": 100}
     },
-    "recommended_tools": ["jest", "express"]
+    "setup_commands": [
+      "go mod init",
+      "go mod tidy"
+    ]
+  },
+
+  "rust_project": {
+    "display_name": "Rust Project",
+    "keywords": ["rust", "cargo", "rustc"],
+    "files": ["Cargo.toml", "src/main.rs", "src/lib.rs"],
+    "test_framework": "cargo_test",
+    "test_command": "cargo test {test_name} -- --nocapture",
+    "test_pattern": "tests/*.rs",
+    "default_structure": [
+      "Cargo.toml",
+      "src/main.rs",
+      "src/lib.rs",
+      "tests/",
+      "README.md"
+    ],
+    "quality_standards": {
+      "rs": {"min_lines": 120}
+    },
+    "setup_commands": [
+      "cargo build"
+    ]
+  },
+
+  "nextjs_fullstack": {
+    "display_name": "Next.js Full Stack",
+    "keywords": ["nextjs", "next.js", "react fullstack", "next"],
+    "files": ["package.json", "next.config.js", "app/", "pages/"],
+    "test_framework": "jest",
+    "test_command": "npm test -- {test_file}",
+    "test_pattern": "*.test.js",
+    "default_structure": [
+      "package.json",
+      "next.config.js",
+      "app/",
+      "components/",
+      "lib/",
+      "public/",
+      "tests/"
+    ],
+    "quality_standards": {
+      "js": {"min_lines": 100},
+      "jsx": {"min_lines": 80},
+      "tsx": {"min_lines": 100}
+    },
+    "setup_commands": [
+      "npm install"
+    ]
   }
 }
