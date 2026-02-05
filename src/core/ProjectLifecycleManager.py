@@ -23,6 +23,7 @@ from src.generators.plan_reviewer import PlanReviewer
 from src.core.loop_orchestrator import LoopOrchestrator
 from src.core.plan_parser import PlanParser
 from src.core.tech_detector import TechStackDetector
+from src.ui.rich_components import FileSystemEvent
 from lib.nia_git_manager import GitBasedFileManager
 
 class ProjectLifecycleManager:
@@ -650,7 +651,18 @@ class ProjectLifecycleManager:
             # Filter redundant tasks (e.g. creating files that already exist)
             self._filter_redundant_tasks(path, path / "IMPLEMENTATION_PLAN.md")
 
-            orchestrator = LoopOrchestrator(path)
+            # Prepare UI callbacks for rich experience
+            ui_callbacks = {
+                'phase_change': lambda p: self.controller.safe_ui_call(self.controller.ui_manager.phase_indicator.set_phase, p),
+                'test_output': lambda d: self.controller.safe_ui_call(self.controller.ui_manager.test_results.stream_output, d['line'], d['type']),
+                'file_created': lambda d: self.controller.safe_ui_call(
+                    self.controller.ui_manager.file_tree_view.on_file_change,
+                    FileSystemEvent('created', d['path'])
+                ),
+                'git_commit': lambda d: self.controller.safe_ui_call(self.controller.ui_manager.diff_viewer.show_diff, d['diff'], d['message']),
+            }
+
+            orchestrator = LoopOrchestrator(path, ui_callbacks=ui_callbacks)
 
             def log_cb(msg: str):
                 self.controller.safe_ui_call(self.controller.ui_manager.log_output, msg)

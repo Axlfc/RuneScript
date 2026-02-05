@@ -5,9 +5,20 @@ from tkinter import ttk, messagebox
 from typing import Optional
 
 from src.ui.project_file_manager import ProjectFileManager
-from src.ui.ui_components import create_project_tree, create_output_console, create_ai_plan, create_file_editor, \
+from src.ui.ui_components import (
+    create_project_tree,
+    create_output_console,
+    create_ai_plan,
+    create_file_editor,
     create_command_bar
-
+)
+from src.ui.rich_components import (
+    FileTreeView,
+    TDDPhaseIndicator,
+    TestResultsPanel,
+    InlineDiffViewer,
+    AccessibilityManager
+)
 
 from src.models.tdd_workflow_panel import TDDWorkflowPanel
 from src.models.test_result_panel import TestResultPanel
@@ -43,15 +54,43 @@ class UIManager:
             main_container = ttk.PanedWindow(self.controller.root, orient=tk.HORIZONTAL)
             main_container.pack(fill=tk.BOTH, expand=True)
 
-            left_panel = ttk.Frame(main_container)
-            self.project_tree = create_project_tree(left_panel, self.on_file_select)
-            self.output_console = create_output_console(left_panel)
-            main_container.add(left_panel)
+            # Left Panel: File Tree and Console
+            left_panel = ttk.PanedWindow(main_container, orient=tk.VERTICAL)
 
+            project_path = self.controller.current_project or os.getcwd()
+            self.file_tree_view = FileTreeView(left_panel, project_path)
+            self.project_tree = self.file_tree_view.tree # For backward compatibility
+            left_panel.add(self.file_tree_view, weight=3)
+
+            self.output_console = create_output_console(left_panel)
+            left_panel.add(self.output_console, weight=1)
+
+            main_container.add(left_panel, weight=1)
+
+            # Right Panel: Phase Indicator, Plan, Editor, Results, Diff
             right_panel = ttk.PanedWindow(main_container, orient=tk.VERTICAL)
+
+            # 1. Phase Indicator
+            self.phase_indicator = TDDPhaseIndicator(right_panel)
+            right_panel.add(self.phase_indicator, weight=0)
+
+            # 2. AI Plan
             self.ai_plan_listbox = create_ai_plan(right_panel)
+            # create_ai_plan already adds its frame to right_panel
+
+            # 3. File Editor
             self.file_editor = create_file_editor(right_panel, self.on_file_modified)
-            main_container.add(right_panel)
+            # create_file_editor already adds its frame to right_panel
+
+            # 4. Test Results Panel
+            self.test_results = TestResultsPanel(right_panel)
+            right_panel.add(self.test_results, weight=1)
+
+            # 5. Git Diff Viewer
+            self.diff_viewer = InlineDiffViewer(right_panel)
+            right_panel.add(self.diff_viewer, weight=1)
+
+            main_container.add(right_panel, weight=2)
 
             # Initialize file manager
             self.file_manager = ProjectFileManager(
@@ -59,6 +98,9 @@ class UIManager:
                 file_editor=self.file_editor,
                 log_fn=self.log_output
             )
+
+            # Initialize Accessibility Manager
+            self.accessibility = AccessibilityManager(self.controller.root, self)
 
             # Create command bar
             self.prompt_entry, self.generate_btn, self.nia_btn, self.pause_btn, self.stop_btn = create_command_bar(
@@ -68,23 +110,23 @@ class UIManager:
                 on_stop=self.on_stop_button_click
             )
 
-            # ✅ Add TDD Test Result Panel
-            self.test_result_panel = TestResultPanel(right_panel)
-            self.test_result_panel.pack(fill=tk.BOTH, expand=False)
+            # ✅ Add TDD Test Result Panel (Legacy, kept for compatibility if needed, but we have rich results now)
+            # self.test_result_panel = TestResultPanel(right_panel)
+            # right_panel.add(self.test_result_panel, weight=1)
 
             # ✅ Add TDD Workflow Manager
             project_io = ProjectIO(log_function=self.log_output)
             self.tdd_manager = TDDWorkflowManager(project_io, self)
 
-            # ✅ Add TDD Workflow Panel
+            # ✅ Add TDD Workflow Panel (Legacy buttons, maybe we can integrate them better later)
             self.tdd_panel = TDDWorkflowPanel(
-                right_panel,
+                self.controller.root, # Put it somewhere else?
                 on_run_tests=self.tdd_manager.run_tests,
                 on_refactor=self.tdd_manager.refactor_code,
                 on_write_test=self.tdd_manager.write_test,
                 on_rerun_last=self.tdd_manager.rerun_last_test
             )
-            self.tdd_panel.pack(fill=tk.X)
+            self.tdd_panel.pack(side=tk.BOTTOM, fill=tk.X)
 
         except Exception as e:
             self.controller.safe_ui_call(
@@ -103,63 +145,54 @@ class UIManager:
     def update_phase_ui(self, phase_name: str, test_status: Optional[str] = None) -> None:
         """
         Update the visual indicator and button state for the current TDD phase.
-
-        Args:
-            phase_name (str): The current phase name (e.g., "Write Test", "Run Test").
-            test_status (Optional[str]): The result of the last test run, e.g. "passed" or "failed".
         """
         if hasattr(self, 'tdd_panel'):
             self.tdd_panel.update_phase(phase_name, test_status)
 
+        # Also update the new rich phase indicator
+        if hasattr(self, 'phase_indicator'):
+            internal_phase = UI_TO_INTERNAL_PHASE.get(phase_name, 'IDLE')
+            self.phase_indicator.set_phase(internal_phase)
+
     def update_test_results(self, passed: bool, stdout: str, stderr: str) -> None:
+        # Legacy
         if hasattr(self, 'test_result_panel'):
             self.test_result_panel.update_test_results(passed, stdout, stderr)
 
-    def show_message(self, title: str, message: str) -> None:
-        """
-        Show a popup information message box to the user.
+        # Rich
+        if hasattr(self, 'test_results'):
+            # Clear and stream everything if it's a bulk update
+            self.test_results.clear()
+            if stdout:
+                for line in stdout.splitlines():
+                    self.test_results.stream_output(line, 'stdout')
+            if stderr:
+                for line in stderr.splitlines():
+                    self.test_results.stream_output(line, 'stderr')
 
-        Args:
-            title (str): The title of the message box.
-            message (str): The message to be displayed.
-        """
+    def show_message(self, title: str, message: str) -> None:
         messagebox.showinfo(title, message)
 
     def focus_test_editor(self) -> None:
-        """
-        Bring focus to the most recent test file.
-        """
-        # In a real system, you'd pull this from state, for now, fallback to convention
         possible_test_files = [f for f in self.file_manager.current_project_files.values() if 'test' in f.lower()]
         if possible_test_files:
             relative = os.path.relpath(possible_test_files[0], self.file_manager.current_project)
             self.file_manager.open_file(relative)
-        else:
-            self.log_output("No test file found to focus on.")
 
     def focus_implementation_editor(self) -> None:
-        """
-        Bring focus to a recently edited implementation file.
-        """
-        # Naive: just find any .py file that isn't in /tests/
         impl_files = [f for f in self.file_manager.current_project_files.values()
                       if f.endswith('.py') and 'test' not in f.lower()]
         if impl_files:
             relative = os.path.relpath(impl_files[0], self.file_manager.current_project)
             self.file_manager.open_file(relative)
-        else:
-            self.log_output("No implementation file found to focus on.")
 
     def on_file_select(self, event):
-        """Handle file selection in project tree"""
         self.file_manager.on_file_select(event)
 
     def on_file_modified(self, event=None):
-        """Handle file content modifications"""
         self.file_manager.on_file_modified(event)
 
     def update_ai_plan(self, plan_text: str):
-        """Update the AI plan listbox with new content"""
         self.ai_plan_listbox.delete(0, tk.END)
         steps = plan_text.split('\n')
         for step in steps:
@@ -167,21 +200,44 @@ class UIManager:
                 self.ai_plan_listbox.insert(tk.END, step)
 
     def log_output(self, message: str):
-        """Log message to output console"""
         self.output_console.configure(state='normal')
         self.output_console.insert(tk.END, message + "\n")
         self.output_console.see(tk.END)
         self.output_console.configure(state='disabled')
         logging.info(message)
 
+    def handle_action(self, action: str):
+        """Handle actions from keyboard shortcuts."""
+        if action == 'run_red_phase':
+            self.log_output("Triggering RED phase...")
+            if hasattr(self, 'tdd_manager'): self.tdd_manager.write_test()
+        elif action == 'run_green_phase':
+            self.log_output("Triggering GREEN phase...")
+            if hasattr(self, 'tdd_manager'): self.tdd_manager.run_tests()
+        elif action == 'run_refactor_phase':
+            self.log_output("Triggering REFACTOR phase...")
+            if hasattr(self, 'tdd_manager'): self.tdd_manager.refactor_code()
+        elif action == 'focus_file_tree':
+            self.file_tree_view.tree.focus_set()
+        elif action == 'focus_test_results':
+            self.test_results.text.focus_set()
+        elif action == 'focus_console':
+            self.output_console.focus_set()
+
     def toggle_generation_ui(self, enabled: bool):
-        """Toggle UI components based on generation state"""
         state = tk.NORMAL if enabled else tk.DISABLED
         self.prompt_entry.configure(state=state)
         self.generate_btn.configure(state=state)
         self.nia_btn.configure(state=state)
-
-        # Pause and stop buttons are enabled during generation and disabled otherwise
         pause_stop_state = tk.NORMAL if not enabled else tk.DISABLED
         self.pause_btn.configure(state=pause_stop_state)
         self.stop_btn.configure(state=pause_stop_state)
+
+# To avoid NameError in update_phase_ui
+UI_TO_INTERNAL_PHASE = {
+    "Write Test": "RED",
+    "Run Test": "GREEN",
+    "Implement": "GREEN",
+    "Refactor": "REFACTOR",
+    "Idle": "IDLE"
+}

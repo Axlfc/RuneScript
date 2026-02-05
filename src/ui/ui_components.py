@@ -13,7 +13,7 @@ def create_output_console(parent):
     console = scrolledtext.ScrolledText(
         parent, height=15, wrap=tk.WORD, state='disabled'
     )
-    console.pack(fill=tk.X, side=tk.BOTTOM)
+    # console.pack(fill=tk.X, side=tk.BOTTOM) # Let parent manage geometry
     return console
 
 
