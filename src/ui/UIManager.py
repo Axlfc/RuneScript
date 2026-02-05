@@ -114,7 +114,7 @@ class UIManager:
             self.workspace_paned.add(self.center_container, weight=3)
 
             self.center_panel = ttk.PanedWindow(self.center_container, orient=tk.VERTICAL)
-            self.center_panel.pack(fill=BOTH, expand=True)
+            self.center_panel.pack(fill=tk.BOTH, expand=True)
 
             # Phase Indicator
             self.phase_indicator = TDDVisualizer(self.center_panel)
@@ -383,10 +383,10 @@ class UIManager:
             self.tabbed_console.log_all(message)
         else:
             # Fallback
-            self.output_console.configure(state='normal')
+            self.output_console.configure(state=tk.NORMAL)
             self.output_console.insert(tk.END, message + "\n")
             self.output_console.see(tk.END)
-            self.output_console.configure(state='disabled')
+            self.output_console.configure(state=tk.DISABLED)
         logging.info(message)
 
     def handle_action(self, action: str):
