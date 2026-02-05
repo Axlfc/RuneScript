@@ -51,6 +51,9 @@ class IDEController(ThemedWindow):
         self.ui_manager = UIManager(self)
         self.ai_orchestrator = AIAgentOrchestrator(self)
 
+        # Initialize default project path
+        self.current_project = os.getcwd()
+
         # Start UI polling
         self.poll_queue()
 

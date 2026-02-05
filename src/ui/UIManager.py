@@ -94,11 +94,11 @@ class UIManager:
             plan_frame = ttk.LabelFrame(right_panel, text="AI Project Plan")
             self.ai_plan_visualizer = AIPlanVisualizer(plan_frame)
             self.ai_plan_visualizer.pack(fill=tk.BOTH, expand=True)
-            right_panel.add(plan_frame, weight=1)
+            right_panel.add(plan_frame, weight=1, minsize=150)
 
             # 3. File Editor
-            self.file_editor = create_file_editor(right_panel, self.on_file_modified)
-            # create_file_editor already adds its frame to right_panel
+            self.file_editor, file_editor_frame = create_file_editor(right_panel, self.on_file_modified)
+            right_panel.add(file_editor_frame, weight=2, minsize=200)
 
             # 4. Test Results Panel
             self.test_results = TestResultsPanel(right_panel)
