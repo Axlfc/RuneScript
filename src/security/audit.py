@@ -32,6 +32,17 @@ class SecurityAuditor:
             'package_install': self._setup_logger('package_install'),
         }
 
+    def close_handles(self):
+        """Close all open log file handlers."""
+        for logger_name, logger in self.loggers.items():
+            for handler in logger.handlers[:]:
+                try:
+                    handler.close()
+                    logger.removeHandler(handler)
+                except Exception as e:
+                    import sys
+                    print(f"Error closing handler for {logger_name}: {e}", file=sys.stderr)
+
     def _setup_logger(self, name):
         logger = logging.getLogger(f'nia.security.{name}')
         logger.setLevel(logging.INFO)

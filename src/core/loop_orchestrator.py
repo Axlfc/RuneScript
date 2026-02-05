@@ -43,6 +43,7 @@ class LoopOrchestrator:
 
         # Security Components
         self.security_auditor = SecurityAuditor(log_dir=os.path.join(self.project_path, ".nia", "security"))
+        self.git_manager.set_security_auditor(self.security_auditor)
         self.path_validator = ParanoidPathValidator(base_dir=self.project_path)
         self.validator.security_auditor = self.security_auditor
 

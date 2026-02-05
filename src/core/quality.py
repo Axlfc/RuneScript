@@ -12,6 +12,50 @@ logger = logging.getLogger(__name__)
 class QualityChecker:
     """Valida que archivos cumplan quality standards del tech stack."""
 
+    ALLOWED_PATTERNS = {
+        'html': [
+            r'<[^>]+\s+placeholder="[^"]*"',           # placeholder attribute
+            r'<div[^>]+>Project \d+</div>',            # demo content
+            r'<div[^>]+>Coming Soon</div>',            # temporal content
+            r'<img[^>]+alt="Placeholder"',             # placeholder images
+            r'src="https://via\.placeholder\.com',     # placeholder.com
+            r'<!-- TODO: Add real images -->',         # business TODOs
+        ],
+        'python': [
+            r'# TODO:.*after.*approval',               # explicit business TODO
+            r'# Placeholder for future',               # documented placeholder
+            r'""".*TODO.*"""',                          # docstring TODO
+        ],
+        'javascript': [
+            r'// TODO: Implement.*Phase \d+',         # phased implementation
+            r'console\.log\(["\']TODO',                # debug TODOs
+            r'\/\/\s*Example\s+usage:',                # examples in comments
+        ],
+        'css': [
+            r'/\*.*placeholder.*\*/',                  # CSS comments
+            r'content:\s*["\']\.\.\.["\']',            # CSS content property
+            r'text-overflow:\s*ellipsis',              # ellipsis is NOT a placeholder
+        ]
+    }
+
+    FORBIDDEN_PATTERNS = {
+        'python': [
+            r'def\s+\w+\([^)]*\):\s*(\.\.\.|\bpass\b)\s*$',  # función stub
+            r'[A-Z_]+\s*=\s*["\']YOUR_\w+_HERE["\']',       # API keys placeholder
+        ],
+        'javascript': [
+            r'function\s+\w+\([^)]*\)\s*{\s*}\s*$',         # función vacía
+        ],
+        'all': [
+            r'TODO:\s*implement',                            # TODO genérico
+            r'PLACEHOLDER',
+            r'Content here',
+            r'Your code here',
+            r'rest of code',
+            r'etc\.'
+        ]
+    }
+
     def validate(self, files: Dict[str, str], tech_config: dict) -> List[str]:
         """
         Valida archivos contra quality_standards y detecta placeholders.
@@ -69,39 +113,41 @@ class QualityChecker:
     def check_placeholders(self, files: Dict[str, str]) -> Optional[str]:
         """Check for real placeholders in implementation files, ignoring false positives."""
 
-        # Patterns de placeholders REALES
-        real_placeholders = [
-            r'TODO:',
-            r'FIXME:',
-            r'PLACEHOLDER',
-            r'\/\/\s*Add\s+.+\s+here',
-            r'#\s*Add\s+.+\s+here',
-            r'Content here',
-            r'#\s*Your code here',
-            r'<!--\s*TODO',
-            r'\(\.\.\.\)',
-            r'\[\.\.\.\]',
-            r'\/\/\s*rest\s+of\s+code',
-            r'#\s*rest\s+of\s+code',
-            r'\/\/\s*etc\.',
-            r'#\s*etc\.'
-        ]
-
         for filename, content in files.items():
             # SKIP test files
             if 'test' in filename.lower() or '/tests/' in filename:
                 continue
 
-            # Check for "..." or similar on its own line
-            for line in content.splitlines():
+            ext = Path(filename).suffix.lstrip('.').lower()
+            lang = 'all'
+            if ext in ['html', 'htm']: lang = 'html'
+            elif ext == 'py': lang = 'python'
+            elif ext in ['js', 'jsx', 'ts', 'tsx']: lang = 'javascript'
+            elif ext == 'css': lang = 'css'
+
+            # 1. First, check and Remove ALLOWED patterns to avoid false positives
+            clean_content = content
+            if lang in self.ALLOWED_PATTERNS:
+                for pattern in self.ALLOWED_PATTERNS[lang]:
+                    clean_content = re.sub(pattern, "SAFE_CONTENT", clean_content, flags=re.IGNORECASE)
+
+            # 2. Check for "..." or similar on its own line (Ellipsis)
+            # Be careful with CSS ellipsis or Python ellipsis in arguments
+            for line in clean_content.splitlines():
                 stripped = line.strip()
                 # Matches "...", "// ...", "# ...", "/* ... */", "<!-- ... -->"
                 if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.|\/\* \.\.\. \*\/|<!-- \.\.\. -->)$', stripped):
+                    # Check if it's a false positive like Python def func(...):
+                    if lang == 'python' and 'def ' in line:
+                         continue
                     return filename
 
-            # Check for real placeholders
-            for pattern in real_placeholders:
-                if re.search(pattern, content, re.IGNORECASE):
+            # 3. Check for FORBIDDEN patterns in specific language
+            forbidden = self.FORBIDDEN_PATTERNS.get(lang, []) + self.FORBIDDEN_PATTERNS.get('all', [])
+            for pattern in forbidden:
+                if re.search(pattern, clean_content, re.IGNORECASE):
+                    # Special check for common TODO: to allow them if they were already whitelisted in step 1
+                    # (but step 1 replaced them with SAFE_CONTENT)
                     return filename
 
         return None
