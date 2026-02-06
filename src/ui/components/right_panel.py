@@ -72,28 +72,41 @@ class RightPanel(tb.Frame):
         if 'quality' in data: self.quality_var.set(f"⚠️ Quality Issues: {data['quality']}")
 
     def update_issues(self, issues):
-        for child in self.issues_list.winfo_children():
-            child.destroy()
+        try:
+            for child in self.issues_list.winfo_children():
+                child.destroy()
 
-        if not issues:
-            tb.Label(self.issues_list, text="No active issues", foreground="#888888").pack()
-            return
+            if not issues:
+                tb.Label(self.issues_list, text="No active issues", foreground="#888888").pack()
+                return
 
-        for issue in issues[:3]: # Show only top 3
-            card = tb.Frame(self.issues_list, bootstyle=SECONDARY, padding=5)
-            card.pack(fill=X, pady=2)
+            for issue in issues[:3]: # Show only top 3
+                # NULL-SAFE extraction with defaults
+                issue_id = issue.get('id') or 'N/A'
+                title = issue.get('title') or 'Untitled Issue'
+                priority = issue.get('priority') or 'Low'
 
-            severity_icon = "🔴" if issue.get('priority') == 'Critical' else "🟡"
-            tb.Label(card, text=f"{severity_icon} #{issue.get('id')} {issue.get('title')[:20]}...",
-                     font=('Segoe UI', 8, 'bold')).pack(anchor=W)
+                # Safe string operations
+                title_short = title[:20] + "..." if len(title) > 20 else title
 
-            btn_frame = tb.Frame(card)
-            btn_frame.pack(fill=X)
-            tb.Button(btn_frame, text="View", bootstyle="info-outline-sm",
-                      command=lambda i=issue: self.event_system.publish(Events.OPEN_ISSUE_MANAGER, i)).pack(side=LEFT, padx=2)
-            if issue.get('auto_fixable'):
-                tb.Button(btn_frame, text="Fix", bootstyle="success-outline-sm",
-                          command=lambda i=issue: self.event_system.publish(Events.APPLY_FIX, i)).pack(side=LEFT, padx=2)
+                card = tb.Frame(self.issues_list, bootstyle=SECONDARY, padding=5)
+                card.pack(fill=X, pady=2)
+
+                severity_icon = "🔴" if priority == 'Critical' else "🟡"
+                tb.Label(card, text=f"{severity_icon} #{issue_id} {title_short}",
+                         font=('Segoe UI', 8, 'bold')).pack(anchor=W)
+
+                btn_frame = tb.Frame(card)
+                btn_frame.pack(fill=X)
+                tb.Button(btn_frame, text="View", bootstyle="info-outline-sm",
+                          command=lambda i=issue: self.event_system.publish(Events.OPEN_ISSUE_MANAGER, i)).pack(side=LEFT, padx=2)
+                if issue.get('auto_fixable') or issue.get('auto_fixed'):
+                    tb.Button(btn_frame, text="Fix", bootstyle="success-outline-sm",
+                              command=lambda i=issue: self.event_system.publish(Events.APPLY_FIX, i)).pack(side=LEFT, padx=2)
+        except Exception as e:
+            import logging
+            logging.error(f"Error updating issues UI: {e}")
+            tb.Label(self.issues_list, text="⚠️ Error loading issues", foreground="red").pack()
 
     def append_ai_message(self, message):
         self.ai_text.configure(state=NORMAL)
