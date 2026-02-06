@@ -4,6 +4,7 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from ttkbootstrap.scrolled import ScrolledFrame
 from src.ui.rich_components import FileTreeView
+from src.ui.components.tdd_visualizer import TDDVisualizer
 from src.utils.event_system import EventSystem, Events
 
 class Sidebar(tb.Frame):
@@ -19,7 +20,7 @@ class Sidebar(tb.Frame):
 
         # 1. File Tree
         self.tree_frame = tb.Frame(self.paned)
-        self.paned.add(self.tree_frame, weight=3)
+        self.paned.add(self.tree_frame, weight=5)
 
         tb.Label(self.tree_frame, text="📁 FILES", font=('Segoe UI', 10, 'bold')).pack(fill=X, padx=5, pady=5)
         self.file_tree = FileTreeView(
@@ -32,7 +33,11 @@ class Sidebar(tb.Frame):
 
         # 2. Task List & Details
         self.task_frame = tb.Frame(self.paned)
-        self.paned.add(self.task_frame, weight=2)
+        self.paned.add(self.task_frame, weight=4)
+
+        # TDD Phase Indicator
+        self.phase_visualizer = TDDVisualizer(self.task_frame)
+        self.phase_visualizer.pack(fill=X, padx=5, pady=5)
 
         # Current Task Details (Collapsible)
         self.details_visible = tk.BooleanVar(value=True)

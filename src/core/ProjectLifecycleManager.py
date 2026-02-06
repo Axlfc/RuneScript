@@ -671,6 +671,12 @@ class ProjectLifecycleManager:
                 'telemetry_update': lambda d: self.controller.safe_ui_call(
                     self.event_system.publish, Events.TELEMETRY_UPDATE, d
                 ),
+                'update_ai_plan': lambda t: self.controller.safe_ui_call(
+                    self.controller.ui_manager.update_ai_plan, None, t
+                ),
+                'update_metrics': lambda d: self.controller.safe_ui_call(
+                    self.event_system.publish, Events.UPDATE_METRICS, d
+                ),
             }
 
             orchestrator = LoopOrchestrator(path, ui_callbacks=ui_callbacks)
@@ -694,9 +700,13 @@ class ProjectLifecycleManager:
                         # Publish tasks update for Sidebar
                         task_list = []
                         for t in tasks:
+                            status = t.status
+                            if status not in ['completed', 'blocked', 'in_progress']:
+                                status = 'pending'
+
                             task_list.append({
                                 'description': t.description,
-                                'status': 'completed' if t.status == 'completed' else ('blocked' if t.status == 'blocked' else 'pending'),
+                                'status': status,
                                 'details': getattr(t, 'details', '')
                             })
                         self.event_system.publish(Events.UPDATE_TASKS, task_list)
