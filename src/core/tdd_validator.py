@@ -33,6 +33,12 @@ class TDDValidator:
         self.security_auditor = security_auditor
         self.sandbox = SecureSandbox()
         self.analyzer = CodeSecurityAnalyzer()
+        self.allowed_imports = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib']
+
+    def add_allowed_import(self, module_name: str):
+        """Dynamically add a module to the sandbox whitelist."""
+        if module_name not in self.allowed_imports:
+            self.allowed_imports.append(module_name)
 
     def validate_red(self, project_path: Path, test_file: str, test_name: str = None, venv_python: str = None, output_callback=None) -> ValidationResult:
         """
@@ -47,7 +53,8 @@ class TDDValidator:
             "command not found",
             "is not recognized as an internal or external command",
             "test file not found",
-            "python executable not found"
+            "python executable not found",
+            "ModuleNotFoundError: No module named 'selenium'"
         ]
 
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
@@ -307,8 +314,8 @@ class TDDValidator:
                 # but let's try the sandbox first.
                 self.sandbox.timeout = 45 # Slightly more time for tests
 
-                # We need to decide which imports to allow based on the test
-                allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib']
+                # Use dynamic whitelist from instance attribute
+                allowed = self.allowed_imports
 
                 # Check if we should use pytest
                 is_pytest = "import pytest" in code or "def test_" in code
@@ -517,7 +524,9 @@ class TDDValidator:
             # We can't easily run multiple files with our current sandbox.execute
             # so we'll run a script that calls pytest on the whole directory.
             code = "import pytest\nimport sys\nsys.exit(pytest.main(['.', '-v', '--ignore=.venv', '--ignore=venv', '--ignore=node_modules']))"
-            allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib', 'sys']
+
+            # Ensure sys is available for this specific execution
+            allowed = list(set(self.allowed_imports + ['sys']))
 
             result = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path))
 
@@ -549,7 +558,7 @@ class TDDValidator:
                          threats_msg = ", ".join([t['description'] for t in analysis.get('threats', [])])
                          return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=f"Security Violation in test file {py_file.name}: {threats_msg}")
 
-                    allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib']
+                    allowed = self.allowed_imports
                     is_pytest = "import pytest" in code or "def test_" in code
 
                     res = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path), use_pytest=is_pytest)
