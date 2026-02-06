@@ -30,6 +30,13 @@ class IterationState:
             self.test_name = test_name
             logger.info(f"Locked in test file for this iteration: {self.test_file}")
 
+    def update_attempt_status(self, attempt_idx: int, tests_passed: bool):
+        """Updates the status of a specific attempt."""
+        if 0 <= attempt_idx < len(self.tests_passed_history):
+            self.tests_passed_history[attempt_idx] = tests_passed
+        else:
+            logger.warning(f"Attempt to update status for invalid attempt index: {attempt_idx}")
+
     def validate_retry_attempt(self, proposed_files: Dict[str, str], proposed_test_file: str = None) -> Tuple[bool, Optional[str]]:
         """
         Ensure retry attempts maintain consistency.

@@ -1,11 +1,55 @@
 from pathlib import Path
-from .plan_parser import Task, PlanParser
 import logging
+import shutil
+from datetime import datetime
+from typing import List, Optional
+from .plan_parser import Task, PlanParser
+from .plan_validator import PlanValidator
 
 logger = logging.getLogger(__name__)
 
+class PlanVersionControl:
+    """Manages backups of IMPLEMENTATION_PLAN.md"""
+    def __init__(self, plan_path: Path):
+        self.plan_path = plan_path
+        self.backup_dir = plan_path.parent / ".plan_backups"
+        self.backup_dir.mkdir(exist_ok=True, parents=True)
+
+    def backup_current_plan(self) -> Optional[Path]:
+        """Creates a timestamped backup before modification."""
+        if not self.plan_path.exists():
+            return None
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = self.backup_dir / f"plan_{timestamp}.md"
+            shutil.copy(self.plan_path, backup_path)
+            return backup_path
+        except Exception as e:
+            logger.error(f"Failed to create plan backup: {e}")
+            return None
+
+    def rollback_to_last_valid(self, validator: PlanValidator) -> bool:
+        """Restores the latest valid backup."""
+        backups = sorted(self.backup_dir.glob("plan_*.md"), reverse=True)
+
+        for backup in backups:
+            try:
+                content = backup.read_text(encoding='utf-8')
+                if validator.validate(content):
+                    shutil.copy(backup, self.plan_path)
+                    logger.info(f"Successfully rolled back to {backup.name}")
+                    return True
+            except Exception as e:
+                logger.warning(f"Failed to process backup {backup}: {e}")
+
+        logger.error("No valid backup found to restore.")
+        return False
+
 class TaskTracker:
     """Update IMPLEMENTATION_PLAN.md with task progress."""
+
+    def __init__(self):
+        self.validator = PlanValidator()
 
     def validate_integrity(self, content: str) -> bool:
         """Verify the plan is not truncated and has basic markers."""
@@ -30,6 +74,12 @@ class TaskTracker:
     def mark_completed(self, plan_path: Path, task: Task):
         """Mark task as [x] completed."""
         try:
+            # 1. Initialize Version Control
+            pvc = PlanVersionControl(plan_path)
+
+            # 2. Backup current state
+            pvc.backup_current_plan()
+
             content = plan_path.read_text(encoding='utf-8')
             lines = content.split('\n')
 
@@ -50,7 +100,8 @@ class TaskTracker:
             new_content = '\n'.join(lines)
             updated_content = self._update_counters(new_content)
 
-            if self.validate_integrity(updated_content):
+            # 3. Use enhanced validator
+            if self.validator.validate(updated_content):
                 plan_path.write_text(updated_content, encoding='utf-8')
                 logger.info(f"Marked task as completed: {task.description}")
             else:
@@ -63,6 +114,12 @@ class TaskTracker:
     def mark_blocked(self, plan_path: Path, task: Task, reason: str):
         """Mark task as [?] blocked with reason."""
         try:
+            # 1. Initialize Version Control
+            pvc = PlanVersionControl(plan_path)
+
+            # 2. Backup current state
+            pvc.backup_current_plan()
+
             content = plan_path.read_text(encoding='utf-8')
             lines = content.split('\n')
 
@@ -85,7 +142,7 @@ class TaskTracker:
             new_content = '\n'.join(lines)
             updated_content = self._update_counters(new_content)
 
-            if self.validate_integrity(updated_content):
+            if self.validator.validate(updated_content):
                 plan_path.write_text(updated_content, encoding='utf-8')
                 logger.info(f"Marked task as blocked: {task.description} - {reason}")
             else:
