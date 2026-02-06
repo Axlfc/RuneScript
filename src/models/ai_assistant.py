@@ -23,6 +23,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from src.controllers.parameters import read_config_parameter
+from src.core.exceptions import QuotaExhaustedError
 
 # AÃ±ade tu .venv/Lib/site-packages al path si no estÃ¡ ya
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -616,6 +617,10 @@ class ResilientLLMClient:
                     err_msg = str(e)
                     last_error = err_msg
                     if "503" in err_msg or "429" in err_msg or "Service Unavailable" in err_msg or "quota" in err_msg.lower():
+                        if "429" in err_msg or "quota" in err_msg.lower():
+                            # Circuit breaker for quota errors
+                            raise QuotaExhaustedError(f"Quota exhausted for {model_info['id']}: {err_msg}")
+
                         delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
                         logging.warning(f"Transient error with {model_info['id']}: {err_msg}. Retrying in {delay:.2f}s...")
                         time.sleep(delay)
@@ -645,7 +650,12 @@ class AIAssistant:
 
         # If provider is gemini and we have resilience, use it
         if self.provider == "gemini" and self.resilient_client.available_models:
-            return self.resilient_client.call_with_fallback(prompt, current_system, allow_degradation=allow_degradation)
+            try:
+                return self.resilient_client.call_with_fallback(prompt, current_system, allow_degradation=allow_degradation)
+            except QuotaExhaustedError:
+                raise
+            except Exception as e:
+                return f"Error: {str(e)}"
 
         # Capture stdout for other providers (backward compatibility)
         f = io.StringIO()

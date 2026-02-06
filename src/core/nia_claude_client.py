@@ -9,12 +9,21 @@ from .robust_parser import RobustJSONParser
 from src.utils.path_utils import clean_filename, extract_filepath_from_text
 from src.prompts.templates import get_nia_iteration_prompt
 
+SYSTEM_MANAGED_FILES = {
+    'IMPLEMENTATION_PLAN.md',
+    '.nia_config.json',
+    'nia_metrics.json',
+    '.gitignore'
+}
+
 class nIAResponse:
     """Structured response from nIA iteration."""
     def __init__(self, raw_response: str):
         self.raw = raw_response
+        self.parsing_method = "unknown"
         self.files: Dict[str, str] = self._parse_files(raw_response)
-        self.test_file: Optional[str] = self._identify_test_file()
+        self.files = self._filter_system_files(self.files)
+        self.test_file = self._identify_test_file()
         self.test_name: Optional[str] = self._identify_test_name()
 
     def _detect_response_format(self, text: str) -> str:
@@ -139,6 +148,17 @@ class nIAResponse:
 
         return files
 
+    def _filter_system_files(self, files: Dict[str, str]) -> Dict[str, str]:
+        """Removes files that the LLM should not modify."""
+        filtered = {}
+        for path, content in files.items():
+            basename = os.path.basename(path)
+            if basename in SYSTEM_MANAGED_FILES or path in SYSTEM_MANAGED_FILES:
+                logging.warning(f"🚫 AI attempted to modify system file: {path}. Ignoring this file.")
+                continue
+            filtered[path] = content
+        return filtered
+
     def _parse_files(self, text: str) -> Dict[str, str]:
         """Extract files from LLM response (Gemini OR Ollama format)."""
         files = {}
@@ -146,7 +166,6 @@ class nIAResponse:
         logging.info("--- Starting Universal File Parsing ---")
 
         # 0. Pre-processing: If the whole response is one big code block, strip it
-        # but only if it contains multiple "File:" markers (prevents stripping intended single-file responses)
         stripped_text = text.strip()
         if stripped_text.startswith('```') and stripped_text.endswith('```'):
             if stripped_text.count('File:') > 1 or stripped_text.count('Archivo:') > 1:
@@ -155,30 +174,29 @@ class nIAResponse:
                 if len(lines) > 2:
                     text = '\n'.join(lines[1:-1])
 
-        # Detect format
+        # 1. Attempt STRICT JSON
         format_type = self._detect_response_format(text)
-        logging.info(f"📋 Detected format: {format_type}")
-
         if format_type == 'ollama_json':
             files = self._parse_ollama_json(text)
+            if files:
+                self.parsing_method = "strict_json"
         elif format_type == 'ollama_json_tasks':
             files = self._parse_ollama_json_tasks(text)
-        else:
-            # Try both JSON parsers just in case detection failed but it is JSON
-            files = self._parse_ollama_json(text)
-            if not files:
-                files = self._parse_ollama_json_tasks(text)
+            if files:
+                self.parsing_method = "strict_json_tasks"
 
-            # Last resort for JSON-like content: manual regex extraction
-            if not files:
-                files = self._parse_ollama_json_manual(text)
-
-        # If we got files from JSON, we're done.
         if files:
-            logging.info(f"📦 Total files extracted (JSON): {len(files)}")
+            logging.info(f"📦 Total files extracted (Strict JSON): {len(files)}")
             return files
 
-        # Fallback to existing markdown parsing logic
+        # 2. Attempt JSON with manual unescaping/regex
+        files = self._parse_ollama_json_manual(text)
+        if files:
+            logging.info(f"📦 Total files extracted (Cleaned/Manual JSON): {len(files)}")
+            self.parsing_method = "manual_json"
+            return files
+
+        # 3. Fallback to Markdown parsing logic
         logging.info("Falling back to Markdown parsing logic...")
 
         # 1. XML-style tags: <file path="path/to/file">content</file>
@@ -283,8 +301,33 @@ class nIAResponse:
                     logging.info(f"  Detected (Fallback): {filename} ({len(content)} chars)")
                     paths_by_basename[basename] = filename
 
+        if files:
+            self.parsing_method = "markdown_fallback"
+            # Strict validation for markdown fallback
+            if not self._validate_markdown_extraction(files):
+                 logging.warning("⚠️ Markdown extraction failed strict validation.")
+                 return {}
+
         logging.info(f"Total unique files extracted: {len(files)}")
         return files
+
+    def _validate_markdown_extraction(self, files: Dict[str, str]) -> bool:
+        """Validates that markdown extraction didn't result in obvious garbage."""
+        if not files:
+            return False
+
+        for path, content in files.items():
+            # Basic sanity checks
+            if len(path) > 255 or not content.strip():
+                if not path.endswith('.gitkeep'):
+                    return False
+
+            # Check for unfinished code blocks in content
+            if content.count('```') % 2 != 0:
+                logging.warning(f"Possible truncated code block in {path}")
+                # We might still allow it but it's a warning signal
+
+        return True
 
     def _identify_test_file(self) -> Optional[str]:
         for filename in self.files.keys():

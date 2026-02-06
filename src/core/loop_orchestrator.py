@@ -16,6 +16,7 @@ from .test_parser import TestParser
 from .iteration_state import IterationState
 from .issue_manager import IssueManager
 from .file_structure_validator import FileStructureValidator
+from .exceptions import QuotaExhaustedError
 from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
 from src.security.path_validator import ParanoidPathValidator
@@ -172,13 +173,18 @@ class LoopOrchestrator:
                     if iter_state.test_file:
                         combined_context += f"\n\n⚠️ IMPORTANT: You must continue using the existing test file: {iter_state.test_file}"
 
-                    response = self.ai_client.execute_nia_iteration(
-                        spec=spec,
-                        plan=self.plan_path.read_text(encoding='utf-8'),
-                        prompt=prompt,
-                        task=next_task,
-                        context=combined_context
-                    )
+                    try:
+                        response = self.ai_client.execute_nia_iteration(
+                            spec=spec,
+                            plan=self.plan_path.read_text(encoding='utf-8'),
+                            prompt=prompt,
+                            task=next_task,
+                            context=combined_context
+                        )
+                    except QuotaExhaustedError as qe:
+                        self._log(f"⛔ CRITICAL: API Quota Exhausted. {str(qe)}", log_callback)
+                        self.git_manager.create_checkpoint(f"Paused: Quota Exhausted during {next_task.description}")
+                        return LoopResult("QUOTA_EXHAUSTED", iteration, str(qe), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
                     if stop_event.is_set():
                         return LoopResult("STOPPED", iteration, "Loop stopped by user")
@@ -259,13 +265,14 @@ class LoopOrchestrator:
                         continue
 
                     # 6. TDD Cycle: RED Phase (ONLY on attempt 0)
-                    if attempt == 0 and response.test_file:
+                    if attempt == 0:
                         active_test_file = response.test_file
                         active_test_name = response.test_name
 
-                        # Register first attempt to lock in test file
+                        # Register first attempt to lock in files (and test file if present)
                         iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
 
+                    if attempt == 0 and active_test_file:
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'RED')
                         self._log_project_structure(log_callback)
@@ -531,7 +538,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         iter_state.register_attempt(response.files, tests_passed)
                     else:
                         # Attempt 0 was already registered but we update the pass status
-                        iter_state.tests_passed_history[0] = tests_passed
+                        iter_state.update_attempt_status(0, tests_passed)
 
                     # Create a checkpoint after successful GREEN phase
                     # This allows REFACTOR phase to rollback to this state instead of pre-iteration state
