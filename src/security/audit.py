@@ -4,22 +4,22 @@ import os
 import hashlib
 from datetime import datetime
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 class SecurityAuditor:
-    """Comprehensive security event logging for nIA."""
+    """Comprehensive security event logging for nIA with rotation."""
 
-    def __init__(self, log_dir=None):
+    def __init__(self, log_dir=None, max_bytes=10485760, backup_count=7):
         if log_dir is None:
-            # Default to a .nia/security directory in the current working directory
-            # or use a system-wide one if appropriate.
-            # In this environment, /home/claude/.nia/security is good.
             log_dir = os.path.join(os.path.expanduser("~"), ".nia", "security")
 
         self.log_dir = Path(log_dir)
+        self.max_bytes = max_bytes
+        self.backup_count = backup_count
+
         try:
             self.log_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            # If we can't create the log dir, we might have to log to stderr or a temp dir
             import sys
             print(f"CRITICAL: Failed to create security log directory {log_dir}: {e}", file=sys.stderr)
             self.log_dir = Path("/tmp/nia-security")
@@ -46,11 +46,16 @@ class SecurityAuditor:
     def _setup_logger(self, name):
         logger = logging.getLogger(f'nia.security.{name}')
         logger.setLevel(logging.INFO)
-        # Prevent propagation to root logger to avoid double logging
         logger.propagate = False
 
         log_file = self.log_dir / f'{name}.jsonl'
-        handler = logging.FileHandler(log_file, encoding='utf-8')
+        # Using RotatingFileHandler for automatic rotation
+        handler = RotatingFileHandler(
+            log_file,
+            maxBytes=self.max_bytes,
+            backupCount=self.backup_count,
+            encoding='utf-8'
+        )
         handler.setFormatter(logging.Formatter('%(message)s'))
         logger.addHandler(handler)
         return logger
@@ -63,7 +68,6 @@ class SecurityAuditor:
         }
         self.loggers[logger_name].info(json.dumps(event))
 
-        # If it's a critical security violation, also print to stderr for immediate visibility
         if logger_name == 'security_violations' and kwargs.get('severity') == 'CRITICAL':
             import sys
             print(f"\n🚨 SECURITY ALERT [{kwargs.get('category')}]: {kwargs.get('description')}", file=sys.stderr)
