@@ -53,13 +53,6 @@ class LoopOrchestrator:
         self.tech_detector = TechStackDetector()
         self.tech_stack = ""
         self.current_phase = "IDLE"
-
-        # Initialize Telemetry
-        feedback_config = self.config_manager.get_feedback_config()
-        self.telemetry = RateLimitedTelemetry(
-            callback=self._notify_ui,
-            max_events_per_second=feedback_config.max_events_per_second
-        )
         self.venv_python: Optional[str] = None
 
         # 1. Initialize Basic Config & Storage First
