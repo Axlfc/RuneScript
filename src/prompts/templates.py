@@ -141,6 +141,9 @@ NIA_ITERATION_PROMPT = """
 === CURRENT CONTEXT (FILES) ===
 {context}
 
+=== RAM CONTEXT ===
+{ram_context}
+
 === NEXT TASK ===
 {task_description}
 
@@ -201,12 +204,14 @@ CRITICAL: If using JSON, escape all special characters properly:
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 
-def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, plan: str, context: str, task_description: str) -> str:
+def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, plan: str, context: str, task_description: str, ram_context: str = "") -> str:
+    # ram_context is expected to be already wrapped and escaped by PromptFilter
     return NIA_ITERATION_PROMPT.format(
         prompt=prompt,
         test_instructions=test_instructions,
         spec=spec,
         plan=plan,
         context=context,
-        task_description=task_description
+        task_description=task_description,
+        ram_context=ram_context
     )
