@@ -15,9 +15,10 @@ class QualityChecker:
     ALLOWED_PATTERNS = {
         'html': [
             r'<[^>]+\s+placeholder="[^"]*"',           # placeholder attribute
+            r'alt="[^"]*placeholder[^"]*"',            # alt text with placeholder
+            r'src="[^"]*placeholder[^"]*"',            # src with placeholder word
             r'<div[^>]+>Project \d+</div>',            # demo content
             r'<div[^>]+>Coming Soon</div>',            # temporal content
-            r'<img[^>]+alt="Placeholder"',             # placeholder images
             r'src="https://via\.placeholder\.com',     # placeholder.com
             r'<!-- TODO: Add real images -->',         # business TODOs
         ],
@@ -113,12 +114,22 @@ class QualityChecker:
     def check_placeholders(self, files: Dict[str, str]) -> Optional[str]:
         """Check for real placeholders in implementation files, ignoring false positives."""
 
+        documentation_extensions = ['md', 'txt', 'rst', 'adoc']
+        documentation_names = ['README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE', 'IMPLEMENTATION_PLAN']
+
         for filename, content in files.items():
             # SKIP test files
             if 'test' in filename.lower() or '/tests/' in filename:
                 continue
 
-            ext = Path(filename).suffix.lstrip('.').lower()
+            path_obj = Path(filename)
+            ext = path_obj.suffix.lstrip('.').lower()
+            name = path_obj.stem.upper()
+
+            # SKIP documentation files
+            if ext in documentation_extensions or name in documentation_names:
+                continue
+
             lang = 'all'
             if ext in ['html', 'htm']: lang = 'html'
             elif ext == 'py': lang = 'python'
@@ -136,18 +147,22 @@ class QualityChecker:
             for line in clean_content.splitlines():
                 stripped = line.strip()
                 # Matches "...", "// ...", "# ...", "/* ... */", "<!-- ... -->"
+                # Exclude markdown checkboxes [ ] or [x] which might be in strings or comments if not already cleaned
                 if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.|\/\* \.\.\. \*\/|<!-- \.\.\. -->)$', stripped):
                     # Check if it's a false positive like Python def func(...):
                     if lang == 'python' and 'def ' in line:
                          continue
+                    logger.debug(f"Placeholder detected in {filename}: {stripped}")
                     return filename
 
             # 3. Check for FORBIDDEN patterns in specific language
             forbidden = self.FORBIDDEN_PATTERNS.get(lang, []) + self.FORBIDDEN_PATTERNS.get('all', [])
             for pattern in forbidden:
-                if re.search(pattern, clean_content, re.IGNORECASE):
+                match = re.search(pattern, clean_content, re.IGNORECASE)
+                if match:
                     # Special check for common TODO: to allow them if they were already whitelisted in step 1
                     # (but step 1 replaced them with SAFE_CONTENT)
+                    logger.debug(f"Forbidden pattern '{pattern}' detected in {filename}: {match.group(0)}")
                     return filename
 
         return None

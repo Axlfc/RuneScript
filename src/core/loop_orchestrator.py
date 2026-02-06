@@ -324,12 +324,18 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                     # WRITE FILES FIRST ✅ (as requested by user)
                     written_files = []
-                    self._log(f"📝 Writing {len(response.files)} files to disk...", log_callback)
+                    self._log(f"📝 Writing {len(response.files)} files to disk (Attempt {attempt+1}):", log_callback)
                     for filename, content in response.files.items():
-                        # Don't overwrite the test file if we are in a quality retry,
-                        # UNLESS the AI explicitly wants to update the test.
+                        # If it's a retry, we only skip writing the test file if it ALREADY exists.
+                        # This prevents losing the test file after a Git rollback.
                         if attempt > 0 and filename == active_test_file:
-                             continue
+                            if (self.project_path / filename).exists():
+                                self._log(f"  (Skipping existing test file: {filename})", log_callback)
+                                continue
+                            else:
+                                self._log(f"  (Restoring missing test file: {filename})", log_callback)
+
+                        self._log(f"  - Writing: {filename} ({len(content)} bytes)", log_callback)
                         if self._write_file(filename, content, log_callback):
                             written_files.append(filename)
 
@@ -337,12 +343,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log("🔍 Verifying physical file existence...", log_callback)
                     missing_physical = []
                     for f in response.files:
-                        if attempt > 0 and f == active_test_file:
-                            continue
                         full_p = self.project_path / f
                         exists = full_p.exists()
                         status = "✅" if exists else "❌"
-                        self._log(f"{status} {f}: {exists}", log_callback)
+                        self._log(f"    {status} {f}: {exists}", log_callback)
                         if not exists:
                             missing_physical.append(f)
 
@@ -379,10 +383,11 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             # Generar feedback para retry
                             quality_feedback = self.quality_checker.generate_feedback(quality_issues)
                             ai_feedback += "\n\n" + quality_feedback
-                            self._log("🔄 Retrying to improve quality...", log_callback)
+                            self._log(f"🔄 Quality check failed. Attempting rollback to {checkpoint[:8]} and retry...", log_callback)
 
                             # Rollback before retry for quality
                             self.git_manager.rollback_to(checkpoint)
+                            self._log("⏪ Rollback complete. Proceeding to next attempt.", log_callback)
                             continue
                         else:
                              self.issue_manager.create_issue(
@@ -599,7 +604,12 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
 
                 # 13. Update Plan
+                self._log(f"📝 Marking task as completed in plan: {next_task.description}", log_callback)
                 self.tracker.mark_completed(self.plan_path, next_task)
+
+                # IMPORTANT: Commit the plan update so it's not lost if a subsequent step or iteration fails
+                self.git_manager.create_checkpoint(f"Plan Update: Completed {next_task.description}")
+
                 tasks_completed += 1
 
                 # 14. Auto-resolve related issues
