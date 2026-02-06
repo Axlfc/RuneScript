@@ -303,6 +303,82 @@ class GitBasedFileManager:
                 logger.error(f"Rollback failed completely: {e2}")
                 return False
 
+    def smart_rollback(self, failed_files: List[str], checkpoint_sha: str) -> bool:
+        """
+        Selective rollback: Reverts only specific files to their state at checkpoint_sha.
+        Preserves all other progress.
+        """
+        if not failed_files:
+            return True
+
+        logger.info(f"🔄 Performing smart rollback for: {failed_files}")
+
+        try:
+            for file_path in failed_files:
+                try:
+                    # Revert just this file to the checkpoint version
+                    # Use git checkout <sha> -- <file>
+                    self.repo.git.checkout(checkpoint_sha, '--', file_path)
+                    logger.info(f"  - Reverted: {file_path}")
+                except Exception as e:
+                    logger.warning(f"  - Failed to revert {file_path}: {e}")
+
+            # Commit the selective rollback
+            self.repo.git.add(A=True)
+            self.repo.index.commit(f"Smart rollback of: {', '.join(failed_files)}")
+            return True
+        except Exception as e:
+            logger.error(f"Smart rollback failed: {e}")
+            return False
+
+    def rollback_preserving_tests(self, commit_sha: str) -> bool:
+        """
+        Rollback that preserves the 'tests/' directory even after a hard reset.
+        """
+        import shutil
+        import tempfile
+
+        logger.info(f"⏪ Rolling back to {commit_sha[:8]} while preserving tests...")
+
+        # 1. Backup tests/ directory
+        temp_dir = tempfile.mkdtemp()
+        tests_dir = os.path.join(self.project_path, 'tests')
+        backup_created = False
+
+        if os.path.exists(tests_dir):
+            try:
+                shutil.copytree(tests_dir, os.path.join(temp_dir, 'tests'))
+                backup_created = True
+                logger.debug("  - Tests backed up to temporary location")
+            except Exception as e:
+                logger.error(f"  - Failed to backup tests: {e}")
+
+        # 2. Perform hard rollback
+        success = self.rollback_to(commit_sha)
+
+        # 3. Restore tests
+        if backup_created:
+            try:
+                # Remove possibly empty tests dir after rollback
+                if os.path.exists(tests_dir):
+                    shutil.rmtree(tests_dir)
+
+                # Restore from backup
+                shutil.copytree(os.path.join(temp_dir, 'tests'), tests_dir)
+
+                # Commit restored tests
+                self.repo.git.add('tests/')
+                if self.repo.is_dirty():
+                    self.repo.index.commit("Restore tests after rollback")
+
+                logger.info("  - Tests successfully restored and committed")
+            except Exception as e:
+                logger.error(f"  - Failed to restore tests: {e}")
+            finally:
+                shutil.rmtree(temp_dir)
+
+        return success
+
     def _count_lines_changed(self, changes: Dict[str, Any]) -> int:
         total = 0
         all_files = changes['added'] + changes['modified']

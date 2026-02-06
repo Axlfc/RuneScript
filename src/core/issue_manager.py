@@ -118,7 +118,35 @@ class IssueManager:
                      commit_sha: str = None, files_affected: List[str] = None,
                      title: str = None, context: Dict = None, auto_fixed: bool = False,
                      suggestions: List[str] = None) -> int:
-        """Creates a new issue in the system."""
+        """Creates a new issue in the system with validation and defaults."""
+
+        # 1. Validate & default TITLE
+        if not title or not isinstance(title, str) or title.strip() == "":
+            import logging
+            logging.warning("Issue created with empty/invalid title, defaulting to 'Untitled Issue'")
+            title = "Untitled Issue"
+        title = str(title).strip()[:255]
+
+        # 2. Validate & default CATEGORY
+        valid_categories = [self.CAT_GIT, self.CAT_TESTING, self.CAT_QUALITY,
+                           self.CAT_DEPENDENCIES, self.CAT_SECURITY, self.CAT_AI, "General", "FileStructure"]
+        if not category or category not in valid_categories:
+            import logging
+            logging.warning(f"Invalid category '{category}', defaulting to 'General'")
+            category = "General"
+
+        # 3. Validate & default PRIORITY
+        valid_priorities = [self.PRIO_CRITICAL, self.PRIO_HIGH, self.PRIO_MEDIUM, self.PRIO_LOW]
+        if not priority or priority not in valid_priorities:
+            import logging
+            logging.warning(f"Invalid priority '{priority}', defaulting to 'Medium'")
+            priority = self.PRIO_MEDIUM
+
+        # 4. Validate & default DESCRIPTION
+        if not description or not isinstance(description, str):
+            description = "No description provided"
+        description = str(description).strip()
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -134,13 +162,14 @@ class IssueManager:
 
         context_json = json.dumps(full_context)
         now = datetime.now().isoformat()
+        status = 'Auto-Fixed' if auto_fixed else 'Open'
 
         cursor.execute('''
             INSERT INTO issues (title, category, priority, status, description, task,
                                 stack_trace, commit_sha, files_affected, context,
                                 auto_fixed, suggestions, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (title, category, priority, 'Open', description, task,
+        ''', (title, category, priority, status, description, task,
               stack_trace, commit_sha, files_json, context_json,
               1 if auto_fixed else 0, suggestions_json, now))
 
@@ -149,6 +178,8 @@ class IssueManager:
         conn.close()
 
         # Publish update for UI
+        import logging
+        logging.info(f"✅ Issue #{issue_id} created: [{category}] {title}")
         self._notify_ui_update()
 
         return issue_id

@@ -324,12 +324,18 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                     # WRITE FILES FIRST ✅ (as requested by user)
                     written_files = []
-                    self._log(f"📝 Writing {len(response.files)} files to disk...", log_callback)
+                    self._log(f"📝 Writing {len(response.files)} files to disk (Attempt {attempt+1}):", log_callback)
                     for filename, content in response.files.items():
-                        # Don't overwrite the test file if we are in a quality retry,
-                        # UNLESS the AI explicitly wants to update the test.
+                        # If it's a retry, we only skip writing the test file if it ALREADY exists.
+                        # This prevents losing the test file after a Git rollback.
                         if attempt > 0 and filename == active_test_file:
-                             continue
+                            if (self.project_path / filename).exists():
+                                self._log(f"  (Skipping existing test file: {filename})", log_callback)
+                                continue
+                            else:
+                                self._log(f"  (Restoring missing test file: {filename})", log_callback)
+
+                        self._log(f"  - Writing: {filename} ({len(content)} bytes)", log_callback)
                         if self._write_file(filename, content, log_callback):
                             written_files.append(filename)
 
@@ -337,12 +343,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log("🔍 Verifying physical file existence...", log_callback)
                     missing_physical = []
                     for f in response.files:
-                        if attempt > 0 and f == active_test_file:
-                            continue
                         full_p = self.project_path / f
                         exists = full_p.exists()
                         status = "✅" if exists else "❌"
-                        self._log(f"{status} {f}: {exists}", log_callback)
+                        self._log(f"    {status} {f}: {exists}", log_callback)
                         if not exists:
                             missing_physical.append(f)
 
@@ -371,29 +375,45 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     quality_issues = self.quality_checker.validate(response.files, tech_config)
 
                     if quality_issues:
-                        self._log("⚠️ QUALITY ISSUES DETECTED:", log_callback)
-                        for issue in quality_issues:
-                            self._log(f"  - {issue}", log_callback)
+                        # Split issues into errors and warnings
+                        errors = [i for i in quality_issues if i.severity == "ERROR"]
+                        warnings = [i for i in quality_issues if i.severity == "WARNING"]
 
-                        if attempt < max_retries:
-                            # Generar feedback para retry
-                            quality_feedback = self.quality_checker.generate_feedback(quality_issues)
-                            ai_feedback += "\n\n" + quality_feedback
-                            self._log("🔄 Retrying to improve quality...", log_callback)
+                        if warnings:
+                            self._log("⚠️ QUALITY WARNINGS (Proceeding anyway):", log_callback)
+                            for w in warnings:
+                                self._log(f"  - {w}", log_callback)
 
-                            # Rollback before retry for quality
-                            self.git_manager.rollback_to(checkpoint)
-                            continue
+                        if errors:
+                            self._log("❌ QUALITY ERRORS DETECTED:", log_callback)
+                            for e in errors:
+                                self._log(f"  - {e}", log_callback)
+
+                            if attempt < max_retries:
+                                # DA-005: Incremental Quality Improvement
+                                quality_feedback = self.quality_checker.generate_feedback(errors)
+                                ai_feedback += "\n\n" + quality_feedback
+
+                                # DA-001: Smart Rollback (Selective)
+                                failed_files = list(set([i.filename for i in errors]))
+                                self._log(f"🔄 Quality failed. Attempting selective rollback of {len(failed_files)} files...", log_callback)
+
+                                self.git_manager.smart_rollback(failed_files, checkpoint)
+                                self._log("⏪ Selective rollback complete. Retrying with targeted feedback.", log_callback)
+                                continue
+                            else:
+                                error_msgs = [str(e) for e in errors]
+                                self.issue_manager.create_issue(
+                                    category=self.issue_manager.CAT_QUALITY,
+                                    priority=self.issue_manager.PRIO_MEDIUM,
+                                    description=f"Quality standards not met: {', '.join(error_msgs[:3])}",
+                                    task=next_task.description
+                                )
+                                self._log("❌ Quality below standards after all retries.", log_callback)
+                                self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(error_msgs)}")
+                                return LoopResult("BLOCKED", iteration, "Quality standards not met")
                         else:
-                             self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_QUALITY,
-                                priority=self.issue_manager.PRIO_MEDIUM,
-                                description=f"Quality standards not met: {', '.join(quality_issues)}",
-                                task=next_task.description
-                             )
-                             self._log("❌ Quality below standards after all retries.", log_callback)
-                             self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(quality_issues)}")
-                             return LoopResult("BLOCKED", iteration, "Quality standards not met")
+                            self._log("✅ Quality check passed (with warnings)", log_callback)
                     else:
                         self._log("✅ Quality check passed", log_callback)
 
@@ -533,9 +553,9 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         task=next_task.description,
                         stack_trace=val_refactor.stderr
                     )
-                    # ROLLBACK: If refactor/final validation fails, undo everything from this iteration
-                    self._log("⏪ Undoing changes due to validation failure.", log_callback)
-                    self.git_manager.rollback_to(checkpoint)
+                    # DA-004: Rollback preserving tests
+                    self._log("⏪ Undoing changes due to validation failure (preserving tests).", log_callback)
+                    self.git_manager.rollback_preserving_tests(checkpoint)
                     self.git_manager.record_failed_iteration()
                     self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")
                     return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
@@ -599,7 +619,12 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
 
                 # 13. Update Plan
+                self._log(f"📝 Marking task as completed in plan: {next_task.description}", log_callback)
                 self.tracker.mark_completed(self.plan_path, next_task)
+
+                # IMPORTANT: Commit the plan update so it's not lost if a subsequent step or iteration fails
+                self.git_manager.create_checkpoint(f"Plan Update: Completed {next_task.description}")
+
                 tasks_completed += 1
 
                 # 14. Auto-resolve related issues
@@ -632,7 +657,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 )
 
                 # Ensure rollback on finalization error
-                self.git_manager.rollback_to(checkpoint)
+                self.git_manager.rollback_preserving_tests(checkpoint)
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                 return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
