@@ -157,17 +157,25 @@ class SecureSandbox:
                 # To run pytest, we need to write the code to a file
                 # or use a pytest plugin that runs from string.
                 # Writing to a temp file is easier.
-                test_file = "test_in_sandbox.py"
-                with builtins.open(test_file, "w", encoding='utf-8') as f:
-                    f.write(code)
+                import uuid
+                test_file = f"test_in_sandbox_{uuid.uuid4().hex[:8]}.py"
+                try:
+                    with builtins.open(test_file, "w", encoding='utf-8') as f:
+                        f.write(code)
 
-                import pytest
-                # Use pytest.main which returns an ExitCode
-                # 0: all tests passed, 1: tests failed, etc.
-                ret = pytest.main([test_file, "-v", "--no-header"])
-                success = (ret == 0)
-                if not success:
-                    error_msg = f"Tests failed with exit code {ret}"
+                    import pytest
+                    # Use pytest.main which returns an ExitCode
+                    # 0: all tests passed, 1: tests failed, etc.
+                    ret = pytest.main([test_file, "-v", "--no-header"])
+                    success = (ret == 0)
+                    if not success:
+                        error_msg = f"Tests failed with exit code {ret}"
+                finally:
+                    if os.path.exists(test_file):
+                        try:
+                            os.remove(test_file)
+                        except:
+                            pass
             else:
                 exec_globals = {
                     '__builtins__': safe_builtins,

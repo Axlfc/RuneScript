@@ -53,9 +53,20 @@ class ProjectFileManager:
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
+
+                    # NULL-SAFE editor check with fallback
+                    if self.editor is not None and hasattr(self.editor, 'delete'):
                         self.editor.delete('1.0', END)
                         self.editor.insert('1.0', content)
                         self.editor.edit_modified(False)
+                    else:
+                        # Fallback to EventSystem/CodePreview
+                        from src.utils.event_system import EventSystem
+                        rel_path = file_path
+                        if self.current_project:
+                            rel_path = os.path.relpath(file_path, self.current_project)
+                        EventSystem.get_instance().publish("open_file", {'filepath': rel_path, 'content': content})
+
                 except Exception as e:
                     self.log_fn(f"Error reading file: {e}")
                     logging.error(f"Error reading file: {e}")
@@ -82,9 +93,17 @@ class ProjectFileManager:
         try:
             with open(full_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            self.editor.delete('1.0', END)
-            self.editor.insert('1.0', content)
-            self.editor.edit_modified(False)
+
+            # NULL-SAFE editor check with fallback
+            if self.editor is not None and hasattr(self.editor, 'delete'):
+                self.editor.delete('1.0', END)
+                self.editor.insert('1.0', content)
+                self.editor.edit_modified(False)
+            else:
+                # Fallback to EventSystem/CodePreview
+                from src.utils.event_system import EventSystem
+                EventSystem.get_instance().publish("open_file", {'filepath': relative_path, 'content': content})
+
             self.current_file_path = full_path
             self.log_fn(f"Opened file: {relative_path}")
         except Exception as e:

@@ -9,15 +9,27 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+class QualityIssue:
+    def __init__(self, filename: str, message: str, severity: str = "ERROR", type: str = "GENERAL"):
+        self.filename = filename
+        self.message = message
+        self.severity = severity  # "ERROR" or "WARNING"
+        self.type = type
+
+    def __str__(self):
+        prefix = "❌" if self.severity == "ERROR" else "⚠️"
+        return f"{prefix} {self.filename}: {self.message}"
+
 class QualityChecker:
     """Valida que archivos cumplan quality standards del tech stack."""
 
     ALLOWED_PATTERNS = {
         'html': [
             r'<[^>]+\s+placeholder="[^"]*"',           # placeholder attribute
+            r'alt="[^"]*placeholder[^"]*"',            # alt text with placeholder
+            r'src="[^"]*placeholder[^"]*"',            # src with placeholder word
             r'<div[^>]+>Project \d+</div>',            # demo content
             r'<div[^>]+>Coming Soon</div>',            # temporal content
-            r'<img[^>]+alt="Placeholder"',             # placeholder images
             r'src="https://via\.placeholder\.com',     # placeholder.com
             r'<!-- TODO: Add real images -->',         # business TODOs
         ],
@@ -56,7 +68,7 @@ class QualityChecker:
         ]
     }
 
-    def validate(self, files: Dict[str, str], tech_config: dict) -> List[str]:
+    def validate(self, files: Dict[str, str], tech_config: dict) -> List[QualityIssue]:
         """
         Valida archivos contra quality_standards y detecta placeholders.
 
@@ -65,14 +77,20 @@ class QualityChecker:
             tech_config: Config del tech stack con quality_standards
 
         Returns:
-            Lista de issues encontrados (vacía si todo OK)
+            Lista de QualityIssue encontrados (vacía si todo OK)
         """
         issues = []
 
-        # 1. Detectar Placeholders (Migrado de LoopOrchestrator y mejorado)
-        placeholder_file = self.check_placeholders(files)
-        if placeholder_file:
-            issues.append(f"Placeholder or incomplete code found in {placeholder_file}")
+        # 1. Detectar Placeholders
+        for filename, content in files.items():
+            placeholder_detected = self.check_placeholders({filename: content})
+            if placeholder_detected:
+                issues.append(QualityIssue(
+                    filename=filename,
+                    message="Placeholder or incomplete code found (e.g. '...', 'TODO: implement')",
+                    severity="ERROR",
+                    type="PLACEHOLDER"
+                ))
 
         # 2. Quality Standards (Líneas mínimas)
         standards = tech_config.get("quality_standards", {})
@@ -90,35 +108,59 @@ class QualityChecker:
                 actual_lines = len([line for line in content.splitlines() if line.strip()])
 
                 if actual_lines < min_lines:
-                    issue = (
-                        f"{filename} tiene {actual_lines} líneas de código, "
-                        f"requiere mínimo {min_lines} líneas según quality standards"
-                    )
-                    issues.append(issue)
-                    logger.warning(issue)
+                    # DA-002: Line count issues are ALWAYS warnings now, never blocking errors
+                    issues.append(QualityIssue(
+                        filename=filename,
+                        message=f"File has {actual_lines} lines, suggested minimum {min_lines} lines",
+                        severity="WARNING",
+                        type="LINE_COUNT"
+                    ))
+                    logger.info(f"Quality WARNING for {filename}: {actual_lines}/{min_lines} lines (Informational only)")
 
         # 3. Semantic Checks
         for filename, content in files.items():
             if filename.endswith('.html'):
-                html_issues = self.check_html_completeness(content)
-                if html_issues:
-                    issues.extend([f"{filename}: {issue}" for issue in html_issues])
+                html_msgs = self.check_html_completeness(content)
+                for msg in html_msgs:
+                    issues.append(QualityIssue(filename, msg, "ERROR", "HTML_STRUCTURE"))
+
+            elif filename.endswith('.js'):
+                js_issues = self.check_js_completeness(content)
+                for msg in js_issues:
+                    # JS completeness issues are ERRORS as they are required features
+                    issues.append(QualityIssue(filename, msg, "ERROR", "JS_COMPLETENESS"))
+
+                # Best practice: placeholders without TODO
+                if 'placeholder' in content.lower() and 'TODO' not in content.upper():
+                    issues.append(QualityIssue(filename, "Contains 'placeholder' text without a corresponding TODO marker", "WARNING", "BEST_PRACTICE"))
+
             elif filename.endswith('.css'):
-                 css_issues = self.check_css_completeness(content)
-                 if css_issues:
-                     issues.extend([f"{filename}: {issue}" for issue in css_issues])
+                css_msgs = self.check_css_completeness(content)
+                for msg in css_msgs:
+                    # CSS completeness issues are warnings for now, except critical ones could be errors
+                    issues.append(QualityIssue(filename, msg, "WARNING", "CSS_COMPLETENESS"))
 
         return issues
 
     def check_placeholders(self, files: Dict[str, str]) -> Optional[str]:
         """Check for real placeholders in implementation files, ignoring false positives."""
 
+        documentation_extensions = ['md', 'txt', 'rst', 'adoc']
+        documentation_names = ['README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE', 'IMPLEMENTATION_PLAN']
+
         for filename, content in files.items():
             # SKIP test files
             if 'test' in filename.lower() or '/tests/' in filename:
                 continue
 
-            ext = Path(filename).suffix.lstrip('.').lower()
+            path_obj = Path(filename)
+            ext = path_obj.suffix.lstrip('.').lower()
+            name = path_obj.stem.upper()
+
+            # SKIP documentation files
+            if ext in documentation_extensions or name in documentation_names:
+                continue
+
             lang = 'all'
             if ext in ['html', 'htm']: lang = 'html'
             elif ext == 'py': lang = 'python'
@@ -136,28 +178,32 @@ class QualityChecker:
             for line in clean_content.splitlines():
                 stripped = line.strip()
                 # Matches "...", "// ...", "# ...", "/* ... */", "<!-- ... -->"
+                # Exclude markdown checkboxes [ ] or [x] which might be in strings or comments if not already cleaned
                 if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.|\/\* \.\.\. \*\/|<!-- \.\.\. -->)$', stripped):
                     # Check if it's a false positive like Python def func(...):
                     if lang == 'python' and 'def ' in line:
                          continue
+                    logger.debug(f"Placeholder detected in {filename}: {stripped}")
                     return filename
 
             # 3. Check for FORBIDDEN patterns in specific language
             forbidden = self.FORBIDDEN_PATTERNS.get(lang, []) + self.FORBIDDEN_PATTERNS.get('all', [])
             for pattern in forbidden:
-                if re.search(pattern, clean_content, re.IGNORECASE):
+                match = re.search(pattern, clean_content, re.IGNORECASE)
+                if match:
                     # Special check for common TODO: to allow them if they were already whitelisted in step 1
                     # (but step 1 replaced them with SAFE_CONTENT)
+                    logger.debug(f"Forbidden pattern '{pattern}' detected in {filename}: {match.group(0)}")
                     return filename
 
         return None
 
     def check_html_completeness(self, html: str) -> List[str]:
-        """Valida estructura básica de HTML."""
+        """Valida estructura básica de HTML usando BeautifulSoup si es posible."""
         issues = []
         html_lower = html.lower()
 
-        required = {
+        basic_required = {
             '<!doctype html>': 'Missing DOCTYPE declaration',
             '<html': 'Missing <html> tag',
             '<head': 'Missing <head> section',
@@ -166,22 +212,63 @@ class QualityChecker:
             '</body>': 'Missing closing </body> tag'
         }
 
-        for snippet, msg in required.items():
+        for snippet, msg in basic_required.items():
             if snippet not in html_lower:
                 issues.append(msg)
 
+        # Semantic check with BeautifulSoup
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # Check for critical metadata if head exists
+            if soup.head:
+                if not soup.find('meta', charset=True) and not soup.find('meta', {'http-equiv': 'Content-Type'}):
+                    issues.append("Missing charset meta tag")
+                if not soup.find('title'):
+                    issues.append("Missing <title> tag")
+
+            # Check for content consistency
+            if soup.body:
+                text_content = soup.body.get_text(strip=True)
+                if len(text_content) < 20:
+                    issues.append("HTML body seems to have very little text content")
+        except ImportError:
+            logger.debug("BeautifulSoup4 not available for advanced HTML quality check")
+        except Exception as e:
+            logger.debug(f"Error during BeautifulSoup quality check: {e}")
+
+        return issues
+
+    def check_js_completeness(self, js: str) -> List[str]:
+        """Valida que el JS tenga interactividad básica."""
+        issues = []
+        required = {
+            'DOMContentLoaded': 'Missing DOMContentLoaded event listener',
+            'addEventListener': 'Missing event listeners (interactivity)',
+            'function': 'Missing functions',
+        }
+        for snippet, msg in required.items():
+            if snippet not in js:
+                issues.append(msg)
         return issues
 
     def check_css_completeness(self, css: str) -> List[str]:
         """Valida que el CSS tenga selectores y reglas reales."""
         issues = []
+
+        if ':root' not in css:
+            issues.append("Missing CSS variables in :root")
+        if '@media' not in css:
+            issues.append("Missing responsive breakpoints (@media)")
+
         # Buscar patrones de reglas CSS: selector { propiedad: valor; }
         rules = re.findall(r'[^{}]+\{[^{}]+\}', css)
-        if len(rules) < 3: # Arbitrario, pero un CSS real debería tener varias reglas
+        if len(rules) < 3:
             issues.append("CSS appears too simple or empty of actual rules")
         return issues
 
-    def generate_feedback(self, issues: List[str]) -> str:
+    def generate_feedback(self, issues: List[QualityIssue]) -> str:
         """Genera feedback estructurado para la IA."""
         if not issues:
             return ""
@@ -190,7 +277,7 @@ class QualityChecker:
         feedback += "║ ⚠️ QUALITY STANDARDS NOT MET (IMPLEMENTATION REJECTED)  ║\n"
         feedback += "╚══════════════════════════════════════════════════════════╝\n\n"
         feedback += "The following issues were found in your implementation:\n"
-        feedback += "\n".join(f"❌ {issue}" for issue in issues)
+        feedback += "\n".join(str(issue) for issue in issues)
         feedback += "\n\nREQUIRED ACTION:\n"
         feedback += "1. RE-GENERATE the files with COMPLETE implementations. DO NOT TRUNCATE.\n"
         feedback += "2. REMOVE all placeholders like '...', '// rest of code', or 'TODO'.\n"
