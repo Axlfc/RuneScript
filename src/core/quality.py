@@ -253,6 +253,19 @@ class QualityChecker:
                 issues.append(msg)
         return issues
 
+    def check_js_completeness(self, js: str) -> List[str]:
+        """Valida que el JS tenga interactividad básica."""
+        issues = []
+        required = {
+            'DOMContentLoaded': 'Missing DOMContentLoaded event listener',
+            'addEventListener': 'Missing event listeners (interactivity)',
+            'function': 'Missing functions',
+        }
+        for snippet, msg in required.items():
+            if snippet not in js:
+                issues.append(msg)
+        return issues
+
     def check_css_completeness(self, css: str) -> List[str]:
         """Valida que el CSS tenga selectores y reglas reales."""
         issues = []
