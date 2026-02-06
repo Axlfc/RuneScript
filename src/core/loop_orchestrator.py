@@ -11,8 +11,9 @@ from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
 from .nia_claude_client import nIAClaudeClient, nIAResponse
-from .quality import QualityChecker
+from .quality import QualityChecker, QualityIssue
 from .test_parser import TestParser
+from .iteration_state import IterationState
 from .issue_manager import IssueManager
 from .file_structure_validator import FileStructureValidator
 from lib.nia_git_manager import GitBasedFileManager
@@ -123,6 +124,7 @@ class LoopOrchestrator:
                 self.issue_manager.create_issue(
                     category=self.issue_manager.CAT_DEPENDENCIES,
                     priority=self.issue_manager.PRIO_HIGH,
+                    title=f"File loading error in iteration {iteration}",
                     description=f"File loading error: {str(e)}",
                     stack_trace=f"Iteration: {iteration}\n{str(e)}"
                 )
@@ -142,22 +144,29 @@ class LoopOrchestrator:
             context = self._get_project_context()
 
             # 5. Ask AI for solution (with quality retry)
-            max_retries = 2
+            max_retries = 3
             ai_feedback = ""
             requirements_feedback = ""
             active_test_file = None
             active_test_name = None
 
+            # Initialize iteration state
+            iter_state = IterationState(next_task.description)
+
             for attempt in range(max_retries + 1):
                 try:
                     if attempt > 0:
-                        self._log(f"Attempt {attempt+1}: Retrying with quality feedback...", log_callback)
+                        self._log(f"Attempt {attempt+1}: Retrying with targeted feedback...", log_callback)
 
                     combined_context = context
                     if ai_feedback:
-                        combined_context += f"\n\nFEEDBACK: {ai_feedback}"
+                        combined_context += f"\n\nCRITICAL FEEDBACK FROM PREVIOUS ATTEMPT:\n{ai_feedback}"
                     if requirements_feedback:
                         combined_context += f"\n\n{requirements_feedback}"
+
+                    # If we have a locked test file, insist on it
+                    if iter_state.test_file:
+                        combined_context += f"\n\n⚠️ IMPORTANT: You must continue using the existing test file: {iter_state.test_file}"
 
                     response = self.ai_client.execute_nia_iteration(
                         spec=spec,
@@ -203,6 +212,18 @@ class LoopOrchestrator:
                     # Convert back to dict format
                     response.files = {f["path"]: f["content"] for f in fixed_files}
 
+                    # VALIDATE CONSISTENCY with IterationState
+                    is_consistent, consistency_error = iter_state.validate_retry_attempt(response.files, response.test_file)
+                    if not is_consistent:
+                        self._log(f"⚠️ AI response inconsistent: {consistency_error}", log_callback)
+                        if attempt < max_retries:
+                            ai_feedback = f"INCONSISTENCY ERROR: {consistency_error}. Please stick to the previously established test file and structure."
+                            continue
+                        else:
+                            self._log("❌ Consistency failed after all retries.", log_callback)
+                            # Fallback to graceful degradation if possible
+                            break
+
                     # Specific warning if critical files are missing for frontend_web
                     if self.tech_stack == 'frontend_web':
                         critical_files = ['index.html', 'css/main.css', 'styles/main.css', 'js/app.js', 'js/main.js']
@@ -224,6 +245,7 @@ class LoopOrchestrator:
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_AI,
                                 priority=self.issue_manager.PRIO_MEDIUM,
+                                title=f"AI Empty Response: {next_task.description}",
                                 description="AI provided no code changes after multiple retries",
                                 task=next_task.description
                             )
@@ -236,6 +258,9 @@ class LoopOrchestrator:
                     if attempt == 0 and response.test_file:
                         active_test_file = response.test_file
                         active_test_name = response.test_name
+
+                        # Register first attempt to lock in test file
+                        iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
 
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'RED')
@@ -306,9 +331,12 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                         if not val_red.success:
                             self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
+                            # Note: If RED fails because test PASSES, it's not always a blocker,
+                            # but it might indicate AI is using existing code.
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_TESTING,
                                 priority=self.issue_manager.PRIO_MEDIUM,
+                                title=f"RED Phase Failure: {next_task.description}",
                                 description=f"RED phase failed: {val_red.message}",
                                 task=next_task.description,
                                 stack_trace=val_red.stderr
@@ -324,12 +352,18 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                     # WRITE FILES FIRST ✅ (as requested by user)
                     written_files = []
-                    self._log(f"📝 Writing {len(response.files)} files to disk...", log_callback)
+                    self._log(f"📝 Writing {len(response.files)} files to disk (Attempt {attempt+1}):", log_callback)
                     for filename, content in response.files.items():
-                        # Don't overwrite the test file if we are in a quality retry,
-                        # UNLESS the AI explicitly wants to update the test.
+                        # If it's a retry, we only skip writing the test file if it ALREADY exists.
+                        # This prevents losing the test file after a Git rollback.
                         if attempt > 0 and filename == active_test_file:
-                             continue
+                            if (self.project_path / filename).exists():
+                                self._log(f"  (Skipping existing test file: {filename})", log_callback)
+                                continue
+                            else:
+                                self._log(f"  (Restoring missing test file: {filename})", log_callback)
+
+                        self._log(f"  - Writing: {filename} ({len(content)} bytes)", log_callback)
                         if self._write_file(filename, content, log_callback):
                             written_files.append(filename)
 
@@ -337,12 +371,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log("🔍 Verifying physical file existence...", log_callback)
                     missing_physical = []
                     for f in response.files:
-                        if attempt > 0 and f == active_test_file:
-                            continue
                         full_p = self.project_path / f
                         exists = full_p.exists()
                         status = "✅" if exists else "❌"
-                        self._log(f"{status} {f}: {exists}", log_callback)
+                        self._log(f"    {status} {f}: {exists}", log_callback)
                         if not exists:
                             missing_physical.append(f)
 
@@ -355,6 +387,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_GIT,
                                 priority=self.issue_manager.PRIO_CRITICAL,
+                                title=f"File Write Failure: {next_task.description}",
                                 description=f"Physical file verification failed: {', '.join(missing_physical)}",
                                 task=next_task.description,
                                 files_affected=missing_physical
@@ -371,48 +404,55 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     quality_issues = self.quality_checker.validate(response.files, tech_config)
 
                     if quality_issues:
-                        self._log("⚠️ QUALITY ISSUES DETECTED:", log_callback)
-                        for issue in quality_issues:
-                            self._log(f"  - {issue}", log_callback)
+                        # Split issues into errors and warnings
+                        errors = [i for i in quality_issues if i.severity == "ERROR"]
+                        warnings = [i for i in quality_issues if i.severity == "WARNING"]
 
-                        if attempt < max_retries:
-                            # Generar feedback para retry
-                            quality_feedback = self.quality_checker.generate_feedback(quality_issues)
-                            ai_feedback += "\n\n" + quality_feedback
-                            self._log("🔄 Retrying to improve quality...", log_callback)
+                        if warnings:
+                            self._log("⚠️ QUALITY WARNINGS (Proceeding anyway):", log_callback)
+                            for w in warnings:
+                                self._log(f"  - {w}", log_callback)
 
-                            # Rollback before retry for quality
-                            self.git_manager.rollback_to(checkpoint)
-                            continue
+                        if errors:
+                            self._log("❌ QUALITY ERRORS DETECTED:", log_callback)
+                            for e in errors:
+                                self._log(f"  - {e}", log_callback)
+
+                            if attempt < max_retries:
+                                # DA-005: Incremental Quality Improvement
+                                quality_feedback = self.quality_checker.generate_feedback(errors)
+                                ai_feedback += "\n\n" + quality_feedback
+
+                                # DA-001: Smart Rollback (Selective)
+                                failed_files = list(set([i.filename for i in errors]))
+                                self._log(f"🔄 Quality failed. Attempting selective rollback of {len(failed_files)} files...", log_callback)
+
+                                self.git_manager.smart_rollback(failed_files, checkpoint)
+                                self._log("⏪ Selective rollback complete. Retrying with targeted feedback.", log_callback)
+                                continue
+                            else:
+                                error_msgs = [str(e) for e in errors]
+                                self.issue_manager.create_issue(
+                                    category=self.issue_manager.CAT_QUALITY,
+                                    priority=self.issue_manager.PRIO_MEDIUM,
+                                    title=f"Quality Check Failure: {next_task.description}",
+                                    description=f"Quality standards not met: {', '.join(error_msgs[:3])}",
+                                    task=next_task.description
+                                )
+                                self._log("❌ Quality below standards after all retries.", log_callback)
+                                self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(error_msgs)}")
+                                return LoopResult("BLOCKED", iteration, "Quality standards not met")
                         else:
-                             self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_QUALITY,
-                                priority=self.issue_manager.PRIO_MEDIUM,
-                                description=f"Quality standards not met: {', '.join(quality_issues)}",
-                                task=next_task.description
-                             )
-                             self._log("❌ Quality below standards after all retries.", log_callback)
-                             self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(quality_issues)}")
-                             return LoopResult("BLOCKED", iteration, "Quality standards not met")
+                            self._log("✅ Quality check passed (with warnings)", log_callback)
                     else:
                         self._log("✅ Quality check passed", log_callback)
 
+                    tests_passed = False
                     if active_test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'GREEN')
 
-                        # DEBUG ENVIRONMENT
-                        self._log(f"DEBUG ENV: Python: {sys.executable}", log_callback)
-                        self._log(f"DEBUG ENV: Venv Python: {self.venv_python}", log_callback)
-                        self._log(f"DEBUG ENV: Project Path: {self.project_path}", log_callback)
-
                         test_file_path = self.project_path / active_test_file
-                        self._log(f"=" * 60, log_callback)
-                        self._log(f"DEBUG COMMAND CONSTRUCTION (GREEN):", log_callback)
-                        self._log(f"venv_python: {self.venv_python}", log_callback)
-                        self._log(f"test_file: {active_test_file}", log_callback)
-                        self._log(f"project_path: {self.project_path}", log_callback)
-                        self._log(f"=" * 60, log_callback)
 
                         # Capture test output for UI streaming
                         def green_test_cb(line, out_type='stdout'):
@@ -430,6 +470,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         if not val_green.success:
                             self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
 
+                            # Register failed attempt
+                            if attempt > 0: # Already registered attempt 0
+                                iter_state.register_attempt(response.files, False)
+
                             # Log failed attempt
                             try:
                                 self.git_manager.generate_error_log(
@@ -444,9 +488,20 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 logger.error(f"Error generating error log: {e}")
 
                             if attempt == max_retries:
+                                # Before blocking, check if ANY previous attempt passed tests
+                                last_good_files = iter_state.get_last_successful_files()
+                                if last_good_files:
+                                    self._log("💡 Graceful degradation: Tests passed in a previous attempt. Using that version.", log_callback)
+                                    # Restore that version
+                                    for f, c in last_good_files.items():
+                                        self._write_file(f, c, log_callback)
+                                    tests_passed = True
+                                    break
+
                                 self.issue_manager.create_issue(
                                     category=self.issue_manager.CAT_TESTING,
                                     priority=self.issue_manager.PRIO_HIGH,
+                                    title=f"GREEN Phase Failure: {next_task.description}",
                                     description=f"GREEN phase failed after {max_retries+1} attempts",
                                     task=next_task.description,
                                     stack_trace=val_green.stderr
@@ -455,14 +510,30 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 return LoopResult("BLOCKED", iteration, "GREEN phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
                             similar = self.issue_manager.get_similar_issues(val_green.message)
-                            ai_feedback = f"GREEN phase failed: {val_green.stderr}. Please fix the implementation."
+                            ai_feedback = f"TEST FAILURE: {val_green.stderr}\n\nFIX REQUIRED: Please ensure the implementation satisfies the test requirements. Do NOT change the test file name or structure."
                             ai_feedback += self.issue_manager.format_suggestions(similar)
+
+                            # Selective rollback of implementation files to try again
+                            impl_files = [f for f in response.files if f != active_test_file]
+                            self.git_manager.smart_rollback(impl_files, checkpoint)
                             continue
 
                         self._log("✅ GREEN phase passed.", log_callback)
+                        tests_passed = True
+
+                    # Register successful attempt (for future degradation if quality fails later)
+                    if attempt > 0:
+                        iter_state.register_attempt(response.files, tests_passed)
+                    else:
+                        # Attempt 0 was already registered but we update the pass status
+                        iter_state.tests_passed_history[0] = tests_passed
+
+                    # Create a checkpoint after successful GREEN phase
+                    # This allows REFACTOR phase to rollback to this state instead of pre-iteration state
+                    green_checkpoint = self.git_manager.create_checkpoint(f"GREEN passed: {next_task.description}")
 
                     # MANDATORY FILES VALIDATION
-                    missing_critical = self._validate_critical_files(tech_key)
+                    missing_critical = self._validate_critical_files(self.tech_stack)
                     if missing_critical:
                         self._log(f"⚠️ Warning: Missing critical files: {', '.join(missing_critical)}", log_callback)
                         if attempt < max_retries:
@@ -475,6 +546,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_QUALITY,
                                 priority=self.issue_manager.PRIO_HIGH,
+                                title=f"Missing Critical Files: {next_task.description}",
                                 description=f"Missing critical files: {', '.join(missing_critical)}",
                                 task=next_task.description
                             )
@@ -492,6 +564,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self.issue_manager.create_issue(
                         category=self.issue_manager.CAT_AI,
                         priority=self.issue_manager.PRIO_HIGH,
+                        title=f"Iteration Error: {next_task.description}",
                         description=f"Error during iteration attempt: {str(e)}",
                         task=next_task.description,
                         stack_trace=str(e)
@@ -529,15 +602,18 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self.issue_manager.create_issue(
                         category=self.issue_manager.CAT_TESTING,
                         priority=self.issue_manager.PRIO_HIGH,
+                        title=f"Refactor Failure: {next_task.description}",
                         description=f"REFACTOR phase failed (Regression): {val_refactor.message}",
                         task=next_task.description,
                         stack_trace=val_refactor.stderr
                     )
-                    # ROLLBACK: If refactor/final validation fails, undo everything from this iteration
-                    self._log("⏪ Undoing changes due to validation failure.", log_callback)
-                    self.git_manager.rollback_to(checkpoint)
+                    # DA-004: Rollback preserving tests to the GREEN state
+                    self._log("⏪ Undoing REFACTOR changes due to validation failure (preserving tests).", log_callback)
+                    # Rollback to green_checkpoint if it exists, otherwise to iteration checkpoint
+                    target_sha = green_checkpoint if 'green_checkpoint' in locals() else checkpoint
+                    self.git_manager.rollback_preserving_tests(target_sha)
                     self.git_manager.record_failed_iteration()
-                    self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")
+                    self.tracker.mark_blocked(self.plan_path, next_task, f"Regression detected during refactor phase: {val_refactor.message}")
                     return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
                 self._log("✅ All tests passed.", log_callback)
@@ -599,7 +675,12 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
 
                 # 13. Update Plan
+                self._log(f"📝 Marking task as completed in plan: {next_task.description}", log_callback)
                 self.tracker.mark_completed(self.plan_path, next_task)
+
+                # IMPORTANT: Commit the plan update so it's not lost if a subsequent step or iteration fails
+                self.git_manager.create_checkpoint(f"Plan Update: Completed {next_task.description}")
+
                 tasks_completed += 1
 
                 # 14. Auto-resolve related issues
@@ -626,13 +707,14 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 self.issue_manager.create_issue(
                     category=self.issue_manager.CAT_DEPENDENCIES,
                     priority=self.issue_manager.PRIO_CRITICAL,
+                    title=f"Critical Iteration Error: {next_task.description}",
                     description=f"Critical error during iteration: {str(e)}",
                     task=next_task.description,
                     stack_trace=str(e)
                 )
 
                 # Ensure rollback on finalization error
-                self.git_manager.rollback_to(checkpoint)
+                self.git_manager.rollback_preserving_tests(checkpoint)
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                 return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
@@ -707,6 +789,13 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 msg = f"Skipping file {rel_path}: violates project structure for {tech_stack}"
                 self._log(f"⚠️ {msg}", log_callback)
                 logging.warning(msg)
+                return False
+
+            # VALIDATION: Prevent writing empty files (unless allowed like .gitkeep)
+            if not content.strip() and not rel_path.endswith('.gitkeep'):
+                msg = f"Refusing to write empty file: {rel_path}"
+                self._log(f"❌ {msg}", log_callback)
+                logging.error(msg)
                 return False
 
             # Ensure parent directory exists
