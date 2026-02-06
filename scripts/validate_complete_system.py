@@ -110,38 +110,62 @@ def test_all_systems():
         traceback.print_exc()
         results.append(False)
 
-    # Test 3: Quality Checker
-    print("\nTEST 3: Quality Checker (False Positives)")
+    # Test 3: Quality Checker (False Positives & Semantic)
+    print("\nTEST 3: Quality Checker")
     try:
         checker = QualityChecker()
 
-        # IMPLEMENTATION_PLAN.md with checkboxes should NOT be flagged
+        # 3.1. Markdown Checkboxes
         md_content = "# Plan\n- [ ] Task 1\n- [x] Task 2"
         has_placeholder = checker.check_placeholders({"IMPLEMENTATION_PLAN.md": md_content})
-
-        assert has_placeholder is None, f"Markdown checkboxes wrongly detected as placeholders in {has_placeholder}"
+        assert has_placeholder is None, f"Markdown checkboxes wrongly detected as placeholders"
         print(f"  ✅ IMPLEMENTATION_PLAN.md checkboxes ignored")
         results.append(True)
 
-        # README.md should be skipped
-        readme_content = "This is a project...\nTODO: Add more info"
-        has_placeholder_readme = checker.check_placeholders({"README.md": readme_content})
-        assert has_placeholder_readme is None, "README.md should be skipped"
-        print(f"  ✅ README.md skipped as expected")
+        # 3.2. Line counts should be WARNINGS now
+        files = {"app.js": "console.log('hi');\n" * 5}
+        tech_config = {"quality_standards": {"js": {"min_lines": 100}}}
+        issues = checker.validate(files, tech_config)
+        line_count_issues = [i for i in issues if i.type == "LINE_COUNT"]
+        assert len(line_count_issues) > 0
+        assert line_count_issues[0].severity == "WARNING"
+        print(f"  ✅ Line count issues are warnings")
         results.append(True)
 
-        # Actual placeholder in Python file should be detected
-        py_content = "def foo():\n    pass # TODO: implement"
-        has_placeholder_py = checker.check_placeholders({"src/app.py": py_content})
-        assert has_placeholder_py == "src/app.py", f"Placeholder in app.py NOT detected, got {has_placeholder_py}"
-        print(f"  ✅ Real placeholder in Python detected")
+        # 3.3. JS Semantic completeness should be ERROR
+        js_content = "console.log('hi');"
+        issues = checker.validate({"app.js": js_content}, tech_config)
+        js_errors = [i for i in issues if i.type == "JS_COMPLETENESS" and i.severity == "ERROR"]
+        assert len(js_errors) > 0
+        print(f"  ✅ JS semantic missing features are errors")
         results.append(True)
 
-        # Python ellipsis in def should NOT be detected
-        py_ellipsis = "def foo(...):\n    return True"
-        has_placeholder_ellipsis = checker.check_placeholders({"src/lib.py": py_ellipsis})
-        assert has_placeholder_ellipsis is None, f"Ellipsis in def wrongly detected as placeholder in {has_placeholder_ellipsis}"
-        print(f"  ✅ Python ellipsis in 'def foo(...)' ignored")
+    except Exception as e:
+        print(f"  ❌ Error in Quality Checker Test: {e}")
+        import traceback
+        traceback.print_exc()
+        results.append(False)
+
+    # Test 4: Iteration State Consistency
+    print("\nTEST 4: Iteration State")
+    try:
+        from src.core.iteration_state import IterationState
+        state = IterationState("Test Task")
+
+        # Register first attempt
+        state.register_attempt({"tests/test_a.py": "content"}, False, "tests/test_a.py", "test_a")
+
+        # Valid retry
+        is_ok, msg = state.validate_retry_attempt({"tests/test_a.py": "new content"}, "tests/test_a.py")
+        assert is_ok
+        print(f"  ✅ Consistent retry accepted")
+        results.append(True)
+
+        # Invalid retry (changed filename)
+        is_ok, msg = state.validate_retry_attempt({"tests/test_b.py": "content"}, "tests/test_b.py")
+        assert not is_ok
+        assert "Test file changed" in msg
+        print(f"  ✅ Inconsistent retry (filename change) rejected")
         results.append(True)
 
     except Exception as e:

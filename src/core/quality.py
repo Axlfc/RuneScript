@@ -108,20 +108,14 @@ class QualityChecker:
                 actual_lines = len([line for line in content.splitlines() if line.strip()])
 
                 if actual_lines < min_lines:
-                    # DA-002: Hard line count failures -> Warnings if difference is minimal
-                    diff = min_lines - actual_lines
-                    # If less than 10% or less than 5 lines short, it's just a warning
-                    is_trivial = diff < 5 or diff < (min_lines * 0.1)
-
-                    severity = "WARNING" if is_trivial else "ERROR"
-
+                    # DA-002: Line count issues are ALWAYS warnings now, never blocking errors
                     issues.append(QualityIssue(
                         filename=filename,
-                        message=f"File has {actual_lines} lines, requires minimum {min_lines} lines",
-                        severity=severity,
+                        message=f"File has {actual_lines} lines, suggested minimum {min_lines} lines",
+                        severity="WARNING",
                         type="LINE_COUNT"
                     ))
-                    logger.warning(f"Quality {severity} for {filename}: {actual_lines}/{min_lines} lines")
+                    logger.info(f"Quality WARNING for {filename}: {actual_lines}/{min_lines} lines (Informational only)")
 
         # 3. Semantic Checks
         for filename, content in files.items():
@@ -133,8 +127,8 @@ class QualityChecker:
             elif filename.endswith('.js'):
                 js_issues = self.check_js_completeness(content)
                 for msg in js_issues:
-                    # JS completeness issues are warnings for now
-                    issues.append(QualityIssue(filename, msg, "WARNING", "JS_COMPLETENESS"))
+                    # JS completeness issues are ERRORS as they are required features
+                    issues.append(QualityIssue(filename, msg, "ERROR", "JS_COMPLETENESS"))
 
                 # Best practice: placeholders without TODO
                 if 'placeholder' in content.lower() and 'TODO' not in content.upper():
@@ -143,6 +137,7 @@ class QualityChecker:
             elif filename.endswith('.css'):
                 css_msgs = self.check_css_completeness(content)
                 for msg in css_msgs:
+                    # CSS completeness issues are warnings for now, except critical ones could be errors
                     issues.append(QualityIssue(filename, msg, "WARNING", "CSS_COMPLETENESS"))
 
         return issues
@@ -204,11 +199,11 @@ class QualityChecker:
         return None
 
     def check_html_completeness(self, html: str) -> List[str]:
-        """Valida estructura básica de HTML."""
+        """Valida estructura básica de HTML usando BeautifulSoup si es posible."""
         issues = []
         html_lower = html.lower()
 
-        required = {
+        basic_required = {
             '<!doctype html>': 'Missing DOCTYPE declaration',
             '<html': 'Missing <html> tag',
             '<head': 'Missing <head> section',
@@ -217,10 +212,45 @@ class QualityChecker:
             '</body>': 'Missing closing </body> tag'
         }
 
-        for snippet, msg in required.items():
+        for snippet, msg in basic_required.items():
             if snippet not in html_lower:
                 issues.append(msg)
 
+        # Semantic check with BeautifulSoup
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # Check for critical metadata if head exists
+            if soup.head:
+                if not soup.find('meta', charset=True) and not soup.find('meta', {'http-equiv': 'Content-Type'}):
+                    issues.append("Missing charset meta tag")
+                if not soup.find('title'):
+                    issues.append("Missing <title> tag")
+
+            # Check for content consistency
+            if soup.body:
+                text_content = soup.body.get_text(strip=True)
+                if len(text_content) < 20:
+                    issues.append("HTML body seems to have very little text content")
+        except ImportError:
+            logger.debug("BeautifulSoup4 not available for advanced HTML quality check")
+        except Exception as e:
+            logger.debug(f"Error during BeautifulSoup quality check: {e}")
+
+        return issues
+
+    def check_js_completeness(self, js: str) -> List[str]:
+        """Valida que el JS tenga interactividad básica."""
+        issues = []
+        required = {
+            'DOMContentLoaded': 'Missing DOMContentLoaded event listener',
+            'addEventListener': 'Missing event listeners (interactivity)',
+            'function': 'Missing functions',
+        }
+        for snippet, msg in required.items():
+            if snippet not in js:
+                issues.append(msg)
         return issues
 
     def check_js_completeness(self, js: str) -> List[str]:
