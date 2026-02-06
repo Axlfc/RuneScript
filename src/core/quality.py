@@ -113,12 +113,22 @@ class QualityChecker:
     def check_placeholders(self, files: Dict[str, str]) -> Optional[str]:
         """Check for real placeholders in implementation files, ignoring false positives."""
 
+        documentation_extensions = ['md', 'txt', 'rst', 'adoc']
+        documentation_names = ['README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE', 'IMPLEMENTATION_PLAN']
+
         for filename, content in files.items():
             # SKIP test files
             if 'test' in filename.lower() or '/tests/' in filename:
                 continue
 
-            ext = Path(filename).suffix.lstrip('.').lower()
+            path_obj = Path(filename)
+            ext = path_obj.suffix.lstrip('.').lower()
+            name = path_obj.stem.upper()
+
+            # SKIP documentation files
+            if ext in documentation_extensions or name in documentation_names:
+                continue
+
             lang = 'all'
             if ext in ['html', 'htm']: lang = 'html'
             elif ext == 'py': lang = 'python'
@@ -136,6 +146,7 @@ class QualityChecker:
             for line in clean_content.splitlines():
                 stripped = line.strip()
                 # Matches "...", "// ...", "# ...", "/* ... */", "<!-- ... -->"
+                # Exclude markdown checkboxes [ ] or [x] which might be in strings or comments if not already cleaned
                 if re.match(r'^(\.\.\.|# \.\.\.|\/\/ \.\.\.|\/\* \.\.\. \*\/|<!-- \.\.\. -->)$', stripped):
                     # Check if it's a false positive like Python def func(...):
                     if lang == 'python' and 'def ' in line:
