@@ -791,6 +791,13 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 logging.warning(msg)
                 return False
 
+            # VALIDATION: Prevent writing empty files (unless allowed like .gitkeep)
+            if not content.strip() and not rel_path.endswith('.gitkeep'):
+                msg = f"Refusing to write empty file: {rel_path}"
+                self._log(f"❌ {msg}", log_callback)
+                logging.error(msg)
+                return False
+
             # Ensure parent directory exists
             full_path.parent.mkdir(parents=True, exist_ok=True)
 

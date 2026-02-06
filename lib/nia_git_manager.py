@@ -316,16 +316,38 @@ class GitBasedFileManager:
         try:
             for file_path in failed_files:
                 try:
-                    # Revert just this file to the checkpoint version
-                    # Use git checkout <sha> -- <file>
-                    self.repo.git.checkout(checkpoint_sha, '--', file_path)
-                    logger.info(f"  - Reverted: {file_path}")
+                    # Check if file existed at checkpoint
+                    try:
+                        self.repo.git.ls_tree(checkpoint_sha, file_path)
+                        file_exists_at_checkpoint = True
+                    except:
+                        file_exists_at_checkpoint = False
+
+                    if file_exists_at_checkpoint:
+                        # Revert just this file to the checkpoint version
+                        self.repo.git.checkout(checkpoint_sha, '--', file_path)
+                        logger.info(f"  - Reverted: {file_path} (restored from checkpoint)")
+                    else:
+                        # File is new, delete it to revert to state where it didn't exist
+                        full_path = os.path.join(self.project_path, file_path)
+                        if os.path.exists(full_path):
+                            if os.path.isdir(full_path):
+                                import shutil
+                                shutil.rmtree(full_path)
+                            else:
+                                os.remove(full_path)
+                            logger.info(f"  - Deleted: {file_path} (file did not exist at checkpoint)")
+
+                        # Tell git about the deletion
+                        self.repo.git.add(file_path)
+
                 except Exception as e:
-                    logger.warning(f"  - Failed to revert {file_path}: {e}")
+                    logger.warning(f"  - Failed to handle {file_path} during rollback: {e}")
 
             # Commit the selective rollback
-            self.repo.git.add(A=True)
-            self.repo.index.commit(f"Smart rollback of: {', '.join(failed_files)}")
+            if self.repo.is_dirty():
+                self.repo.git.add(A=True)
+                self.repo.index.commit(f"Smart rollback of: {', '.join(failed_files)}")
             return True
         except Exception as e:
             logger.error(f"Smart rollback failed: {e}")

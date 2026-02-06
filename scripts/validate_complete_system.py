@@ -174,6 +174,47 @@ def test_all_systems():
         traceback.print_exc()
         results.append(False)
 
+    # Test 5: Markdown Parsing Robustness
+    print("\nTEST 5: Markdown Parsing Robustness")
+    try:
+        from src.core.nia_claude_client import nIAResponse
+
+        # 5.1 Case: All files in one big block
+        raw_response_1 = """```python
+File: tests/test_index.py
+import pytest
+def test_one():
+    assert True
+
+File: index.html
+<html><body>Hello</body></html>
+
+File: css/style.css
+body { color: red; }
+```"""
+        resp1 = nIAResponse(raw_response_1)
+        ok1 = len(resp1.files) == 3 and 'index.html' in resp1.files
+        print(f"  {'✅' if ok1 else '❌'} Case 1: One big block (Detected {len(resp1.files)} files)")
+        results.append(ok1)
+
+        # 5.2 Case: Empty block before code (Fallback check)
+        raw_response_2 = """
+File: a.py
+```python
+```
+actual code here
+"""
+        resp2 = nIAResponse(raw_response_2)
+        ok2 = len(resp2.files) == 1 and 'actual code here' in resp2.files['a.py']
+        print(f"  {'✅' if ok2 else '❌'} Case 2: Empty block before code (Fallback used)")
+        results.append(ok2)
+
+    except Exception as e:
+        print(f"  ❌ Error in Markdown Parsing Test: {e}")
+        import traceback
+        traceback.print_exc()
+        results.append(False)
+
     # Results
     print("\n" + "="*60)
     passed = sum(results)
