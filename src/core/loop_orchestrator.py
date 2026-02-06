@@ -310,6 +310,22 @@ class LoopOrchestrator:
                         )
                         self._log_validation_result(val_red, "RED", log_callback)
 
+                        # AUTO-FIX for missing selenium in frontend_web
+                        if not val_red.success and "ModuleNotFoundError: No module named 'selenium'" in val_red.stderr and self.tech_stack == 'frontend_web':
+                            self._log("🔍 Detected missing 'selenium' dependency in RED phase. Auto-fixing...", log_callback)
+                            self._handle_missing_selenium(log_callback)
+
+                            # Retry RED phase
+                            self._log("🔄 Retrying RED phase after auto-fix...", log_callback)
+                            val_red = self.validator.validate_red(
+                                self.project_path,
+                                str(test_file_path),
+                                active_test_name,
+                                self.venv_python,
+                                output_callback=red_test_cb
+                            )
+                            self._log_validation_result(val_red, "RED (RETRY)", log_callback)
+
                         # Extract requirements from test for implementation phase
                         try:
                             reqs = TestParser.extract_requirements(test_content)
@@ -1105,6 +1121,50 @@ For example, if the test expects id="work", DO NOT use id="projects".
             missing.append(filename)
 
         return missing
+
+    def _handle_missing_selenium(self, log_callback=None):
+        """
+        Adds selenium to requirements.txt, updates sandbox whitelist, and installs the package.
+        """
+        self._log("📦 Auto-adding missing 'selenium' dependency...", log_callback)
+
+        try:
+            # 1. Add to requirements.txt
+            req_path = self.project_path / "requirements.txt"
+            content = ""
+            if req_path.exists():
+                try:
+                    content = req_path.read_text(encoding='utf-8')
+                except Exception:
+                    pass
+
+            if "selenium" not in content.lower():
+                new_content = content.rstrip() + "\nselenium\n"
+                req_path.write_text(new_content, encoding='utf-8')
+                self._log(f"✅ Added 'selenium' to {req_path.name}", log_callback)
+
+            # 2. Add to SecureSandbox whitelist via TDDValidator
+            if hasattr(self.validator, 'add_allowed_import'):
+                self.validator.add_allowed_import('selenium')
+                self._log("✅ Added 'selenium' to sandbox whitelist", log_callback)
+
+            # 3. Install package
+            python_exe = self.venv_python or sys.executable
+            self._log(f"Installing selenium using {python_exe}...", log_callback)
+
+            # Use --break-system-packages if we're using system python
+            cmd = [python_exe, "-m", "pip", "install", "selenium"]
+            if python_exe == sys.executable:
+                cmd.append("--break-system-packages")
+
+            result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace')
+            if result.returncode == 0:
+                self._log("✅ selenium installed successfully.", log_callback)
+            else:
+                self._log(f"❌ Failed to install selenium: {result.stderr}", log_callback)
+
+        except Exception as e:
+            self._log(f"❌ Error during selenium auto-fix: {e}", log_callback)
 
     def _log_validation_result(self, result, phase_name: str, log_callback):
         """Log detailed validation result."""
