@@ -145,6 +145,16 @@ class nIAResponse:
 
         logging.info("--- Starting Universal File Parsing ---")
 
+        # 0. Pre-processing: If the whole response is one big code block, strip it
+        # but only if it contains multiple "File:" markers (prevents stripping intended single-file responses)
+        stripped_text = text.strip()
+        if stripped_text.startswith('```') and stripped_text.endswith('```'):
+            if stripped_text.count('File:') > 1 or stripped_text.count('Archivo:') > 1:
+                logging.info("  Detected whole response wrapped in code block. Stripping markers for parsing...")
+                lines = stripped_text.split('\n')
+                if len(lines) > 2:
+                    text = '\n'.join(lines[1:-1])
+
         # Detect format
         format_type = self._detect_response_format(text)
         logging.info(f"📋 Detected format: {format_type}")
@@ -205,7 +215,9 @@ class nIAResponse:
             # Find the FIRST code block in this section
             # Robust pattern to catch empty files (like .gitkeep) and files without trailing newline
             block_match = re.search(r'```[^\n]*\n?(.*?)\n?```', section, re.DOTALL)
-            if filename and block_match:
+
+            # Use code block if found and not empty (unless it's a .gitkeep)
+            if filename and block_match and (block_match.group(1).strip() or filename.endswith('.gitkeep')):
                 content = block_match.group(1)
 
                 # If it's a .gitkeep or empty file, ensure it's treated correctly
@@ -215,8 +227,20 @@ class nIAResponse:
                 if filename not in files:
                     files[filename] = content
                     logging.info(f"  Detected (Split): {filename} ({len(content)} chars)")
-                    if not content and filename.endswith('.gitkeep'):
-                        logging.info(f"    ⚠️ .gitkeep file (empty content)")
+
+            elif filename:
+                # FALLBACK: If no code block found in section, use the rest of the section as content
+                # This handles cases where code is NOT wrapped in internal blocks (e.g. LLM used one big block)
+                content = '\n'.join(lines[1:]).strip()
+
+                # Basic cleanup of stray markers that might have been part of the split
+                if content.endswith('```'):
+                    content = content[:-3].strip()
+
+                if content or filename.endswith('.gitkeep'):
+                    if filename not in files:
+                        files[filename] = content
+                        logging.info(f"  Detected (Split-Fallback): {filename} ({len(content)} chars)")
 
         # 3. Fallback pattern: catch files that might not have the "File:" prefix
         # but have a filename on a line before a code block

@@ -12,11 +12,23 @@ class FileStructureValidator:
     """
 
     STRUCTURE_RULES = {
+        "_base": {
+            "tests": r"^tests/.*\.py$",
+            "config": r"^[\w.-]+\.(json|md|txt|yaml|yml|ini|toml)$",
+            "gitkeep": r"^.*\.gitkeep$",
+            "gitignore": r"^\.gitignore$",
+            "readme": r"^README\.md$",
+            "requirements": r"^requirements\.txt$"
+        },
         "frontend_web": {
-            "html": r"^(?!project/|src/|public/|assets/).*\.html$",  # Root level only, NO subdirectories including assets/
+            "html": r"^(?!project/|src/|public/|assets/|tests/|css/|js/)[\w-]+\.html$",  # Root level only
             "css": r"^css/.*\.css$",
             "js": r"^js/.*\.js$",
             "assets": r"^assets/.*"
+        },
+        "backend_python": {
+            "python": r"^[\w/]+\.py$",
+            "requirements": r"^requirements\.txt$"
         }
     }
 
@@ -69,23 +81,24 @@ class FileStructureValidator:
 
     def is_valid(self, path: str, tech_stack: str) -> bool:
         """Comprova si un path és vàlid per al tech_stack donat"""
+
+        # 1. Check base rules first (apply to all stacks)
+        base_rules = self.STRUCTURE_RULES.get("_base", {})
+        for category, pattern in base_rules.items():
+            if re.match(pattern, path):
+                return True
+
+        # 2. Check tech-specific rules
         if tech_stack not in self.STRUCTURE_RULES:
-            return True
+            # If stack not defined, allow root files by default
+            return '/' not in path
 
         rules = self.STRUCTURE_RULES[tech_stack]
 
-        if path.endswith('.html'):
-            return bool(re.match(rules['html'], path))
-        elif path.endswith('.css'):
-            return bool(re.match(rules['css'], path))
-        elif path.endswith('.js'):
-            return bool(re.match(rules['js'], path))
-        elif path.startswith('assets/'):
-            return bool(re.match(rules['assets'], path))
-
-        # Per defecte permetem fitxers a root que no siguin els anteriors (ex: README, package.json)
-        if '/' not in path:
-            return True
+        # Check against each rule in the tech stack
+        for category, pattern in rules.items():
+            if re.match(pattern, path):
+                return True
 
         return False
 
