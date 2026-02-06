@@ -543,10 +543,11 @@ class TDDValidator:
             for py_file in test_dir.glob("**/test*.py"):
                 try:
                     code = py_file.read_text(encoding='utf-8')
-                    # Basic check
-                    analysis = self.analyzer.analyze(code)
+                    # Basic check - ensure it's analyzed as a test to use permissive whitelist
+                    analysis = self.analyzer.analyze(code, is_test=True)
                     if not analysis['is_safe']:
-                         return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="Security Violation in test file")
+                         threats_msg = ", ".join([t['description'] for t in analysis.get('threats', [])])
+                         return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=f"Security Violation in test file {py_file.name}: {threats_msg}")
 
                     allowed = ['pytest', 'bs4', 'beautifulsoup4', 're', 'json', 'math', 'unittest', 'os', 'pathlib']
                     is_pytest = "import pytest" in code or "def test_" in code

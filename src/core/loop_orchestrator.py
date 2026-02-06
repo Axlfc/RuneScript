@@ -124,6 +124,7 @@ class LoopOrchestrator:
                 self.issue_manager.create_issue(
                     category=self.issue_manager.CAT_DEPENDENCIES,
                     priority=self.issue_manager.PRIO_HIGH,
+                    title=f"File loading error in iteration {iteration}",
                     description=f"File loading error: {str(e)}",
                     stack_trace=f"Iteration: {iteration}\n{str(e)}"
                 )
@@ -244,6 +245,7 @@ class LoopOrchestrator:
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_AI,
                                 priority=self.issue_manager.PRIO_MEDIUM,
+                                title=f"AI Empty Response: {next_task.description}",
                                 description="AI provided no code changes after multiple retries",
                                 task=next_task.description
                             )
@@ -334,6 +336,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_TESTING,
                                 priority=self.issue_manager.PRIO_MEDIUM,
+                                title=f"RED Phase Failure: {next_task.description}",
                                 description=f"RED phase failed: {val_red.message}",
                                 task=next_task.description,
                                 stack_trace=val_red.stderr
@@ -384,6 +387,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_GIT,
                                 priority=self.issue_manager.PRIO_CRITICAL,
+                                title=f"File Write Failure: {next_task.description}",
                                 description=f"Physical file verification failed: {', '.join(missing_physical)}",
                                 task=next_task.description,
                                 files_affected=missing_physical
@@ -431,6 +435,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 self.issue_manager.create_issue(
                                     category=self.issue_manager.CAT_QUALITY,
                                     priority=self.issue_manager.PRIO_MEDIUM,
+                                    title=f"Quality Check Failure: {next_task.description}",
                                     description=f"Quality standards not met: {', '.join(error_msgs[:3])}",
                                     task=next_task.description
                                 )
@@ -496,6 +501,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 self.issue_manager.create_issue(
                                     category=self.issue_manager.CAT_TESTING,
                                     priority=self.issue_manager.PRIO_HIGH,
+                                    title=f"GREEN Phase Failure: {next_task.description}",
                                     description=f"GREEN phase failed after {max_retries+1} attempts",
                                     task=next_task.description,
                                     stack_trace=val_green.stderr
@@ -522,6 +528,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         # Attempt 0 was already registered but we update the pass status
                         iter_state.tests_passed_history[0] = tests_passed
 
+                    # Create a checkpoint after successful GREEN phase
+                    # This allows REFACTOR phase to rollback to this state instead of pre-iteration state
+                    green_checkpoint = self.git_manager.create_checkpoint(f"GREEN passed: {next_task.description}")
+
                     # MANDATORY FILES VALIDATION
                     missing_critical = self._validate_critical_files(self.tech_stack)
                     if missing_critical:
@@ -536,6 +546,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                             self.issue_manager.create_issue(
                                 category=self.issue_manager.CAT_QUALITY,
                                 priority=self.issue_manager.PRIO_HIGH,
+                                title=f"Missing Critical Files: {next_task.description}",
                                 description=f"Missing critical files: {', '.join(missing_critical)}",
                                 task=next_task.description
                             )
@@ -553,6 +564,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self.issue_manager.create_issue(
                         category=self.issue_manager.CAT_AI,
                         priority=self.issue_manager.PRIO_HIGH,
+                        title=f"Iteration Error: {next_task.description}",
                         description=f"Error during iteration attempt: {str(e)}",
                         task=next_task.description,
                         stack_trace=str(e)
@@ -590,15 +602,18 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self.issue_manager.create_issue(
                         category=self.issue_manager.CAT_TESTING,
                         priority=self.issue_manager.PRIO_HIGH,
+                        title=f"Refactor Failure: {next_task.description}",
                         description=f"REFACTOR phase failed (Regression): {val_refactor.message}",
                         task=next_task.description,
                         stack_trace=val_refactor.stderr
                     )
-                    # DA-004: Rollback preserving tests
-                    self._log("⏪ Undoing changes due to validation failure (preserving tests).", log_callback)
-                    self.git_manager.rollback_preserving_tests(checkpoint)
+                    # DA-004: Rollback preserving tests to the GREEN state
+                    self._log("⏪ Undoing REFACTOR changes due to validation failure (preserving tests).", log_callback)
+                    # Rollback to green_checkpoint if it exists, otherwise to iteration checkpoint
+                    target_sha = green_checkpoint if 'green_checkpoint' in locals() else checkpoint
+                    self.git_manager.rollback_preserving_tests(target_sha)
                     self.git_manager.record_failed_iteration()
-                    self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")
+                    self.tracker.mark_blocked(self.plan_path, next_task, f"Regression detected during refactor phase: {val_refactor.message}")
                     return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
                 self._log("✅ All tests passed.", log_callback)
@@ -692,6 +707,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 self.issue_manager.create_issue(
                     category=self.issue_manager.CAT_DEPENDENCIES,
                     priority=self.issue_manager.PRIO_CRITICAL,
+                    title=f"Critical Iteration Error: {next_task.description}",
                     description=f"Critical error during iteration: {str(e)}",
                     task=next_task.description,
                     stack_trace=str(e)
