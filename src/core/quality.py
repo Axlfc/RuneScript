@@ -9,6 +9,17 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+class QualityIssue:
+    def __init__(self, filename: str, message: str, severity: str = "ERROR", type: str = "GENERAL"):
+        self.filename = filename
+        self.message = message
+        self.severity = severity  # "ERROR" or "WARNING"
+        self.type = type
+
+    def __str__(self):
+        prefix = "❌" if self.severity == "ERROR" else "⚠️"
+        return f"{prefix} {self.filename}: {self.message}"
+
 class QualityChecker:
     """Valida que archivos cumplan quality standards del tech stack."""
 
@@ -57,7 +68,7 @@ class QualityChecker:
         ]
     }
 
-    def validate(self, files: Dict[str, str], tech_config: dict) -> List[str]:
+    def validate(self, files: Dict[str, str], tech_config: dict) -> List[QualityIssue]:
         """
         Valida archivos contra quality_standards y detecta placeholders.
 
@@ -66,14 +77,20 @@ class QualityChecker:
             tech_config: Config del tech stack con quality_standards
 
         Returns:
-            Lista de issues encontrados (vacía si todo OK)
+            Lista de QualityIssue encontrados (vacía si todo OK)
         """
         issues = []
 
-        # 1. Detectar Placeholders (Migrado de LoopOrchestrator y mejorado)
-        placeholder_file = self.check_placeholders(files)
-        if placeholder_file:
-            issues.append(f"Placeholder or incomplete code found in {placeholder_file}")
+        # 1. Detectar Placeholders
+        for filename, content in files.items():
+            placeholder_detected = self.check_placeholders({filename: content})
+            if placeholder_detected:
+                issues.append(QualityIssue(
+                    filename=filename,
+                    message="Placeholder or incomplete code found (e.g. '...', 'TODO: implement')",
+                    severity="ERROR",
+                    type="PLACEHOLDER"
+                ))
 
         # 2. Quality Standards (Líneas mínimas)
         standards = tech_config.get("quality_standards", {})
@@ -91,23 +108,42 @@ class QualityChecker:
                 actual_lines = len([line for line in content.splitlines() if line.strip()])
 
                 if actual_lines < min_lines:
-                    issue = (
-                        f"{filename} tiene {actual_lines} líneas de código, "
-                        f"requiere mínimo {min_lines} líneas según quality standards"
-                    )
-                    issues.append(issue)
-                    logger.warning(issue)
+                    # DA-002: Hard line count failures -> Warnings if difference is minimal
+                    diff = min_lines - actual_lines
+                    # If less than 10% or less than 5 lines short, it's just a warning
+                    is_trivial = diff < 5 or diff < (min_lines * 0.1)
+
+                    severity = "WARNING" if is_trivial else "ERROR"
+
+                    issues.append(QualityIssue(
+                        filename=filename,
+                        message=f"File has {actual_lines} lines, requires minimum {min_lines} lines",
+                        severity=severity,
+                        type="LINE_COUNT"
+                    ))
+                    logger.warning(f"Quality {severity} for {filename}: {actual_lines}/{min_lines} lines")
 
         # 3. Semantic Checks
         for filename, content in files.items():
             if filename.endswith('.html'):
-                html_issues = self.check_html_completeness(content)
-                if html_issues:
-                    issues.extend([f"{filename}: {issue}" for issue in html_issues])
+                html_msgs = self.check_html_completeness(content)
+                for msg in html_msgs:
+                    issues.append(QualityIssue(filename, msg, "ERROR", "HTML_STRUCTURE"))
+
+            elif filename.endswith('.js'):
+                js_issues = self.check_js_completeness(content)
+                for msg in js_issues:
+                    # JS completeness issues are warnings for now
+                    issues.append(QualityIssue(filename, msg, "WARNING", "JS_COMPLETENESS"))
+
+                # Best practice: placeholders without TODO
+                if 'placeholder' in content.lower() and 'TODO' not in content.upper():
+                    issues.append(QualityIssue(filename, "Contains 'placeholder' text without a corresponding TODO marker", "WARNING", "BEST_PRACTICE"))
+
             elif filename.endswith('.css'):
-                 css_issues = self.check_css_completeness(content)
-                 if css_issues:
-                     issues.extend([f"{filename}: {issue}" for issue in css_issues])
+                css_msgs = self.check_css_completeness(content)
+                for msg in css_msgs:
+                    issues.append(QualityIssue(filename, msg, "WARNING", "CSS_COMPLETENESS"))
 
         return issues
 
@@ -187,16 +223,35 @@ class QualityChecker:
 
         return issues
 
+    def check_js_completeness(self, js: str) -> List[str]:
+        """Valida que el JS tenga interactividad básica."""
+        issues = []
+        required = {
+            'DOMContentLoaded': 'Missing DOMContentLoaded event listener',
+            'addEventListener': 'Missing event listeners (interactivity)',
+            'function': 'Missing functions',
+        }
+        for snippet, msg in required.items():
+            if snippet not in js:
+                issues.append(msg)
+        return issues
+
     def check_css_completeness(self, css: str) -> List[str]:
         """Valida que el CSS tenga selectores y reglas reales."""
         issues = []
+
+        if ':root' not in css:
+            issues.append("Missing CSS variables in :root")
+        if '@media' not in css:
+            issues.append("Missing responsive breakpoints (@media)")
+
         # Buscar patrones de reglas CSS: selector { propiedad: valor; }
         rules = re.findall(r'[^{}]+\{[^{}]+\}', css)
-        if len(rules) < 3: # Arbitrario, pero un CSS real debería tener varias reglas
+        if len(rules) < 3:
             issues.append("CSS appears too simple or empty of actual rules")
         return issues
 
-    def generate_feedback(self, issues: List[str]) -> str:
+    def generate_feedback(self, issues: List[QualityIssue]) -> str:
         """Genera feedback estructurado para la IA."""
         if not issues:
             return ""
@@ -205,7 +260,7 @@ class QualityChecker:
         feedback += "║ ⚠️ QUALITY STANDARDS NOT MET (IMPLEMENTATION REJECTED)  ║\n"
         feedback += "╚══════════════════════════════════════════════════════════╝\n\n"
         feedback += "The following issues were found in your implementation:\n"
-        feedback += "\n".join(f"❌ {issue}" for issue in issues)
+        feedback += "\n".join(str(issue) for issue in issues)
         feedback += "\n\nREQUIRED ACTION:\n"
         feedback += "1. RE-GENERATE the files with COMPLETE implementations. DO NOT TRUNCATE.\n"
         feedback += "2. REMOVE all placeholders like '...', '// rest of code', or 'TODO'.\n"

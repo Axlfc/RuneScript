@@ -375,30 +375,45 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     quality_issues = self.quality_checker.validate(response.files, tech_config)
 
                     if quality_issues:
-                        self._log("⚠️ QUALITY ISSUES DETECTED:", log_callback)
-                        for issue in quality_issues:
-                            self._log(f"  - {issue}", log_callback)
+                        # Split issues into errors and warnings
+                        errors = [i for i in quality_issues if i.severity == "ERROR"]
+                        warnings = [i for i in quality_issues if i.severity == "WARNING"]
 
-                        if attempt < max_retries:
-                            # Generar feedback para retry
-                            quality_feedback = self.quality_checker.generate_feedback(quality_issues)
-                            ai_feedback += "\n\n" + quality_feedback
-                            self._log(f"🔄 Quality check failed. Attempting rollback to {checkpoint[:8]} and retry...", log_callback)
+                        if warnings:
+                            self._log("⚠️ QUALITY WARNINGS (Proceeding anyway):", log_callback)
+                            for w in warnings:
+                                self._log(f"  - {w}", log_callback)
 
-                            # Rollback before retry for quality
-                            self.git_manager.rollback_to(checkpoint)
-                            self._log("⏪ Rollback complete. Proceeding to next attempt.", log_callback)
-                            continue
+                        if errors:
+                            self._log("❌ QUALITY ERRORS DETECTED:", log_callback)
+                            for e in errors:
+                                self._log(f"  - {e}", log_callback)
+
+                            if attempt < max_retries:
+                                # DA-005: Incremental Quality Improvement
+                                quality_feedback = self.quality_checker.generate_feedback(errors)
+                                ai_feedback += "\n\n" + quality_feedback
+
+                                # DA-001: Smart Rollback (Selective)
+                                failed_files = list(set([i.filename for i in errors]))
+                                self._log(f"🔄 Quality failed. Attempting selective rollback of {len(failed_files)} files...", log_callback)
+
+                                self.git_manager.smart_rollback(failed_files, checkpoint)
+                                self._log("⏪ Selective rollback complete. Retrying with targeted feedback.", log_callback)
+                                continue
+                            else:
+                                error_msgs = [str(e) for e in errors]
+                                self.issue_manager.create_issue(
+                                    category=self.issue_manager.CAT_QUALITY,
+                                    priority=self.issue_manager.PRIO_MEDIUM,
+                                    description=f"Quality standards not met: {', '.join(error_msgs[:3])}",
+                                    task=next_task.description
+                                )
+                                self._log("❌ Quality below standards after all retries.", log_callback)
+                                self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(error_msgs)}")
+                                return LoopResult("BLOCKED", iteration, "Quality standards not met")
                         else:
-                             self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_QUALITY,
-                                priority=self.issue_manager.PRIO_MEDIUM,
-                                description=f"Quality standards not met: {', '.join(quality_issues)}",
-                                task=next_task.description
-                             )
-                             self._log("❌ Quality below standards after all retries.", log_callback)
-                             self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(quality_issues)}")
-                             return LoopResult("BLOCKED", iteration, "Quality standards not met")
+                            self._log("✅ Quality check passed (with warnings)", log_callback)
                     else:
                         self._log("✅ Quality check passed", log_callback)
 
@@ -538,9 +553,9 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         task=next_task.description,
                         stack_trace=val_refactor.stderr
                     )
-                    # ROLLBACK: If refactor/final validation fails, undo everything from this iteration
-                    self._log("⏪ Undoing changes due to validation failure.", log_callback)
-                    self.git_manager.rollback_to(checkpoint)
+                    # DA-004: Rollback preserving tests
+                    self._log("⏪ Undoing changes due to validation failure (preserving tests).", log_callback)
+                    self.git_manager.rollback_preserving_tests(checkpoint)
                     self.git_manager.record_failed_iteration()
                     self.tracker.mark_blocked(self.plan_path, next_task, "Regression detected during refactor phase.")
                     return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
@@ -642,7 +657,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 )
 
                 # Ensure rollback on finalization error
-                self.git_manager.rollback_to(checkpoint)
+                self.git_manager.rollback_preserving_tests(checkpoint)
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                 return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
