@@ -135,6 +135,10 @@ class LoopOrchestrator:
             if not next_task:
                 return LoopResult("ALL_COMPLETE", iteration, "✅ All tasks completed!", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
+            # Mark as in_progress for UI
+            next_task.status = 'in_progress'
+            self._notify_ui('update_ai_plan', tasks)
+
             self._log(f"Target Task: {next_task.description}", log_callback)
 
             # 3. Create Checkpoint
@@ -520,6 +524,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                         self._log("✅ GREEN phase passed.", log_callback)
                         tests_passed = True
+                        self._last_test_passed = True
 
                     # Register successful attempt (for future degradation if quality fails later)
                     if attempt > 0:
@@ -598,6 +603,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 self._log_validation_result(val_refactor, "REFACTOR", log_callback)
 
                 if not val_refactor.success:
+                    self._last_test_passed = False
                     self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
                     self.issue_manager.create_issue(
                         category=self.issue_manager.CAT_TESTING,
@@ -617,6 +623,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
                 self._log("✅ All tests passed.", log_callback)
+                self._last_test_passed = True
 
                 # 11. Code Quality Metrics (Informational)
                 try:
@@ -695,6 +702,9 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     self.issue_manager.generate_wiki()
                 except Exception as we:
                     logger.warning(f"Error updating issues or generating wiki: {we}")
+
+                # 15. Update UI Metrics
+                self._publish_metrics()
 
                 # Back to IDLE
                 self._notify_ui('phase_change', 'IDLE')
@@ -854,6 +864,30 @@ For example, if the test expects id="work", DO NOT use id="projects".
         except Exception as e:
             self._log(f"Warning during env setup: {e}. Proceeding with system python.", log_callback)
             self.venv_python = sys.executable
+
+    def _publish_metrics(self):
+        """Calculates and publishes project metrics to the UI."""
+        try:
+            open_issues = self.issue_manager.get_issues(status='Open')
+            quality_issues = [i for i in open_issues if i['category'] == self.issue_manager.CAT_QUALITY]
+
+            # Basic stats
+            stats = self._analyze_code_quality()
+
+            # For tests, we use the last validation result if available
+            # This is a simplified version; real suite parsing would be better
+            test_info = "0/0"
+            if hasattr(self, '_last_test_passed'):
+                test_info = "1/1" if self._last_test_passed else "0/1"
+
+            metrics = {
+                'tests': test_info,
+                'coverage': 0, # Placeholder
+                'quality': len(quality_issues)
+            }
+            self._notify_ui('update_metrics', metrics)
+        except Exception as e:
+            logger.error(f"Error publishing metrics: {e}")
 
     def _git_commit(self, message: str):
         """Safe git commit (Delegated to GitBasedFileManager)."""

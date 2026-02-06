@@ -29,23 +29,23 @@ class TDDVisualizer(tb.Frame):
 
     def _create_widgets(self):
         self.container = tb.Frame(self)
-        self.container.pack(pady=10)
+        self.container.pack(pady=5)
 
         self.bubbles = {}
         phases_list = ['RED', 'GREEN', 'REFACTOR']
 
         for i, phase in enumerate(phases_list):
             frame = tb.Frame(self.container)
-            frame.pack(side=LEFT, padx=20)
+            frame.pack(side=LEFT, padx=10)
 
-            bubble = tb.Label(frame, text=self.PHASES[phase]['icon'], font=('Segoe UI', 32))
+            bubble = tb.Label(frame, text=self.PHASES[phase]['icon'], font=('Segoe UI', 20))
             bubble.pack()
             self.bubbles[phase] = bubble
 
-            tb.Label(frame, text=self.PHASES[phase]['label'], font=('Segoe UI', 9, 'bold'), foreground="#888888").pack()
+            tb.Label(frame, text=self.PHASES[phase]['label'], font=('Segoe UI', 8, 'bold'), foreground="#888888").pack()
 
             if i < len(phases_list) - 1:
-                tb.Label(self.container, text="→", font=('Segoe UI', 24), foreground="#444444").pack(side=LEFT)
+                tb.Label(self.container, text="→", font=('Segoe UI', 14), foreground="#444444").pack(side=LEFT)
 
     def _setup_event_listeners(self):
         self.event_system.subscribe(Events.PHASE_CHANGED, self.set_phase)

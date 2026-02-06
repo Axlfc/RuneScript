@@ -117,20 +117,16 @@ class UIManager:
             self.center_panel = ttk.PanedWindow(self.center_container, orient=tk.VERTICAL)
             self.center_panel.pack(fill=tk.BOTH, expand=True)
 
-            # Phase Indicator (Visualizer)
-            self.phase_indicator = TDDVisualizer(self.center_panel)
-            self.center_panel.add(self.phase_indicator, weight=0) # Fixed height for visualizer
-
             # File Editor (Code Preview) - Main Workspace part (Phi weight)
             self.code_preview = CodePreview(self.center_panel)
-            self.center_panel.add(self.code_preview, weight=1618)
+            self.center_panel.add(self.code_preview, weight=2000)
 
             # Legacy pointers for compatibility
             self.file_editor = None # Will be set on file open
 
-            # Test Results Panel - Secondary Workspace part (1 weight)
+            # Test Results Panel - Secondary Workspace part
             self.test_results = TestResultsPanel(self.center_panel)
-            self.center_panel.add(self.test_results, weight=1000)
+            self.center_panel.add(self.test_results, weight=800)
             # Legacy pointer
             self.test_result_panel = self.test_results
 
@@ -240,7 +236,7 @@ class UIManager:
         else:
             self.outer_paned.add(self.console_frame, weight=1)
 
-    def toggle_console_expand(self):
+    def toggle_console_expand(self, data=None):
         """Maximizes/Minimizes the console area."""
         if self.outer_paned.sashpos(0) > 100:
             # Currently has space for workspace, so minimize workspace
@@ -411,9 +407,13 @@ class UIManager:
             # Update sidebar task list too
             task_list = []
             for t in tasks:
+                status = t.status
+                if status not in ['completed', 'blocked', 'in_progress']:
+                    status = 'pending'
+
                 task_list.append({
                     'description': t.description,
-                    'status': 'completed' if t.status == 'completed' else ('blocked' if t.status == 'blocked' else 'pending'),
+                    'status': status,
                     'details': getattr(t, 'details', '')
                 })
             self.event_system.publish(Events.UPDATE_TASKS, task_list)

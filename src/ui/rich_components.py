@@ -189,7 +189,16 @@ class FileTreeView(ttk.Frame):
 
     def _format_size(self, path):
         try:
-            size = os.path.getsize(path)
+            if os.path.isfile(path):
+                size = os.path.getsize(path)
+            else:
+                size = 0
+                for root, dirs, files in os.walk(path):
+                    for f in files:
+                        fp = os.path.join(root, f)
+                        if not os.path.islink(fp):
+                            size += os.path.getsize(fp)
+
             for unit in ['B', 'KB', 'MB', 'GB']:
                 if size < 1024: return f"{size:.1f} {unit}"
                 size /= 1024

@@ -90,6 +90,8 @@ class IssueManagerOverlay(tb.Frame):
         self.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.lift()
         if issues:
+            if isinstance(issues, dict):
+                issues = [issues]
             self.all_issues = issues
             self._display_issues(issues)
         elif self.all_issues:
