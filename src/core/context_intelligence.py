@@ -50,22 +50,41 @@ class NIAMetricsManager:
             return self._ensure_metrics_structure({})
 
     def _ensure_metrics_structure(self, metrics: Dict[str, Any]) -> Dict[str, Any]:
-        """Ensures that the metrics dictionary has all required keys."""
+        """Ensures that the metrics dictionary has all required keys safely."""
         if not isinstance(metrics, dict):
             metrics = {}
 
         metrics.setdefault("schema_version", self.schema_version)
-        tdd = metrics.setdefault("tdd_loop", {})
+
+        # Robustly ensure tdd_loop is a dict
+        if "tdd_loop" not in metrics or not isinstance(metrics["tdd_loop"], dict):
+            metrics["tdd_loop"] = {}
+        tdd = metrics["tdd_loop"]
+
         tdd.setdefault("total_iterations", 0)
-        pb = tdd.setdefault("phase_breakdown", {})
+
+        # Robustly ensure phase_breakdown is a dict
+        if "phase_breakdown" not in tdd or not isinstance(tdd["phase_breakdown"], dict):
+            tdd["phase_breakdown"] = {}
+        pb = tdd["phase_breakdown"]
+
         pb.setdefault("red_cycles", 0)
         pb.setdefault("green_cycles", 0)
         pb.setdefault("refactor_cycles", 0)
-        tdd.setdefault("auto_fixes", [])
-        pr = tdd.setdefault("pattern_recognition", {})
+
+        if "auto_fixes" not in tdd or not isinstance(tdd["auto_fixes"], list):
+            tdd["auto_fixes"] = []
+
+        if "pattern_recognition" not in tdd or not isinstance(tdd["pattern_recognition"], dict):
+            tdd["pattern_recognition"] = {}
+        pr = tdd["pattern_recognition"]
+
         pr.setdefault("common_failures", [])
         pr.setdefault("common_solutions", [])
-        metrics.setdefault("quality_progress", {})
+
+        if "quality_progress" not in metrics or not isinstance(metrics["quality_progress"], dict):
+            metrics["quality_progress"] = {}
+
         metrics.setdefault("last_updated", datetime.now().isoformat())
         return metrics
 
@@ -78,7 +97,8 @@ class NIAMetricsManager:
             metrics["tdd_loop"]["total_iterations"] += 1
 
         if "phase" in data:
-            phase = data["phase"].lower()
+            phase = str(data["phase"]).lower()
+            # pb is already ensured to be a dict by _ensure_metrics_structure in _load_metrics
             pb = metrics["tdd_loop"]["phase_breakdown"]
             if phase == "red":
                 pb["red_cycles"] = pb.get("red_cycles", 0) + 1
@@ -118,29 +138,47 @@ class RAMContextManager:
 
     def refresh(self, iteration_data: Dict[str, Any]):
         """Regenerates the RAM context file based on latest data."""
-        # In a real implementation, this would pull from metrics, config, and current state
-        # For now, we'll implement a basic structure
+        # Pull data with safe fallbacks
+        tech_stack = iteration_data.get('tech_stack') or "unknown"
+        quality_bar = iteration_data.get('quality_standards') or "standard"
+        iterations = iteration_data.get('iterations', 0)
+        auto_deps = iteration_data.get('auto_detected', [])
+        phase = iteration_data.get('phase', 'UNKNOWN')
+        active_test = iteration_data.get('active_test', 'none')
+        failure_pattern = iteration_data.get('failure_pattern', 'none')
+
+        # Pull patterns from metrics if available
+        metrics = iteration_data.get('metrics', {})
+        tdd_loop = metrics.get('tdd_loop', {})
+        patterns = tdd_loop.get('pattern_recognition', {})
+        successful_fixes = patterns.get('common_solutions', [])
+
+        warnings = iteration_data.get('warnings') or ["None"]
+        if isinstance(warnings, list):
+            warnings_str = "\n- ".join(str(w) for w in warnings)
+        else:
+            warnings_str = str(warnings)
 
         context = [
             "# 🧠 Active Development Context",
             f"\n## 🏗️ Architecture Snapshot",
-            f"- Tech Stack: {iteration_data.get('tech_stack', 'unknown')}",
-            f"- Quality Bar: {iteration_data.get('quality_standards', 'standard')}",
+            f"- Tech Stack: {tech_stack}",
+            f"- Quality Bar: {quality_bar}",
 
             f"\n## 📊 Performance Insights",
-            f"- Plan iterations: {iteration_data.get('iterations', 0)}",
-            f"- Auto-detected deps: {iteration_data.get('auto_detected', [])}",
+            f"- Plan iterations: {iterations}",
+            f"- Auto-detected deps: {auto_deps}",
 
             f"\n## 🔄 TDD Phase Context",
-            f"### Current: {iteration_data.get('phase', 'UNKNOWN')}",
-            f"- Active test: {iteration_data.get('active_test', 'none')}",
-            f"- Failure pattern: {iteration_data.get('failure_pattern', 'none')}",
+            f"### Current: {phase}",
+            f"- Active test: {active_test}",
+            f"- Failure pattern: {failure_pattern}",
 
             f"\n## 💡 Learned Patterns",
-            f"- Successful fixes: {iteration_data.get('successful_fixes', [])[:5]}",
+            f"- Successful fixes: {successful_fixes[:5]}",
 
             f"\n## 🚨 Active Warnings",
-            f"- {iteration_data.get('warnings', ['None'])}"
+            f"- {warnings_str}"
         ]
 
         content = "\n".join(context)

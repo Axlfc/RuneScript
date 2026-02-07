@@ -133,6 +133,8 @@ class LoopOrchestrator:
                 return LoopResult("BLOCKED", iteration, f"Blocked by {len(critical_issues)} critical issues.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
             self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
+            self._log(f"📍 Project Path: {self.project_path}", log_callback)
+            self._log(f"📂 Current Work Dir: {os.getcwd()}", log_callback)
 
             # Publish telemetry update
             self._notify_ui('telemetry_update', {
@@ -222,6 +224,11 @@ class LoopOrchestrator:
                             logger.warning(f"Failed to fetch intelligence context: {e}")
 
                     try:
+                        self._log(f"🤖 Calling AI Assistant (Attempt {attempt+1}/{max_retries+1})...", log_callback)
+                        start_ai = time.time()
+
+                        # Added a conceptual timeout if execute_nia_iteration supported it,
+                        # but usually it's handled inside the client.
                         response = self.ai_client.execute_nia_iteration(
                             spec=spec,
                             plan=self.plan_path.read_text(encoding='utf-8'),
@@ -230,6 +237,7 @@ class LoopOrchestrator:
                             context=combined_context,
                             ram_context=ram_context
                         )
+                        self._log(f"✅ AI response received in {time.time() - start_ai:.2f}s", log_callback)
                     except QuotaExhaustedError as qe:
                         self._log(f"⛔ CRITICAL: API Quota Exhausted. {str(qe)}", log_callback)
                         self.git_manager.create_checkpoint(f"Paused: Quota Exhausted during {next_task.description}")
@@ -1345,6 +1353,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
             return
 
         self._log(f"🏗️ Aligning project structure for {self.tech_stack}...", log_callback)
+        self._log(f"  Target directory: {self.project_path}", log_callback)
         created_dirs = []
 
         for item in default_structure:
@@ -1362,7 +1371,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         logger.error(f"Failed to create directory {item}: {e}")
 
         if created_dirs and self.intelligence:
+            # Provide more complete data for RAM refresh
             self.intelligence.update_after_iteration({
+                "tech_stack": self.tech_stack,
+                "phase": "INIT",
                 "auto_fix": {"type": "structure", "dirs": created_dirs},
                 "warnings": [f"Auto-created: {', '.join(created_dirs)}"]
             })
