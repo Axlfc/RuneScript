@@ -51,7 +51,7 @@ class SafeOpen:
 class SecureSandbox:
     """Execute untrusted code in a multiprocessing-based sandbox."""
 
-    def __init__(self, timeout=30, memory_limit_mb=512):
+    def __init__(self, timeout=60, memory_limit_mb=512):
         self.timeout = timeout
         self.memory_limit = memory_limit_mb * 1024 * 1024
 
@@ -183,7 +183,7 @@ class SecureSandbox:
                 }
                 exec(code, exec_globals)
                 success = True
-        except Exception:
+        except BaseException:
             error_msg = traceback.format_exc()
             success = False
 
