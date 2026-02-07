@@ -42,28 +42,22 @@ class LoopOrchestrator:
     def __init__(self, project_path: Path, ui_callbacks=None):
         self.project_path = Path(os.path.abspath(project_path))
         self.ui_callbacks = ui_callbacks or {}
-        self.parser = PlanParser()
-        self.tracker = TaskTracker()
-        self.validator = TDDValidator()
-        self.ai_client = nIAClaudeClient()
-        self.quality_checker = QualityChecker()
-        self.git_manager = GitBasedFileManager(str(self.project_path))
-        self.issue_manager = IssueManager(self.project_path)
-        self.structure_validator = FileStructureValidator(self.issue_manager)
-        self.tech_detector = TechStackDetector()
-        self.tech_stack = ""
-        self.current_phase = "IDLE"
-        self.venv_python: Optional[str] = None
 
-        # 1. Initialize Basic Config & Storage First
+        # 1. Initialize Basic Config & Storage First (Critical Path)
         try:
             self.storage = FileSystemStorage(self.project_path)
             self.config_manager = ConfigManager()
+            logger.info("✓ ConfigManager initialized")
         except Exception as e:
             logger.error(f"Failed to initialize config/storage: {e}")
-            # This is critical, but we'll try to continue with defaults if possible
+            # Fallback to defaults
             from .config.defaults import DEFAULT_CONFIG
-            self.config_manager = type('MockConfigManager', (), {'config': DEFAULT_CONFIG, 'get_feedback_config': lambda: DEFAULT_CONFIG.feedback, 'get_intelligence_config': lambda: DEFAULT_CONFIG.intelligence})()
+            self.config_manager = type('MockConfigManager', (), {
+                'config': DEFAULT_CONFIG,
+                'get_feedback_config': lambda: DEFAULT_CONFIG.feedback,
+                'get_intelligence_config': lambda: DEFAULT_CONFIG.intelligence,
+                'get_security_config': lambda: DEFAULT_CONFIG.security
+            })()
 
         # 2. Initialize Intelligence (can be None in degraded mode)
         try:
@@ -76,11 +70,28 @@ class LoopOrchestrator:
             self.intelligence = None
 
         # 3. Initialize Telemetry (using config)
-        feedback_config = self.config_manager.get_feedback_config()
-        self.telemetry = RateLimitedTelemetry(
-            callback=self._notify_ui,
-            max_events_per_second=feedback_config.max_events_per_second
-        )
+        if self.config_manager:
+            feedback_config = self.config_manager.get_feedback_config()
+            self.telemetry = RateLimitedTelemetry(
+                callback=self._notify_ui,
+                max_events_per_second=feedback_config.max_events_per_second
+            )
+        else:
+            # Emergency fallback for telemetry
+            self.telemetry = RateLimitedTelemetry(callback=self._notify_ui, max_events_per_second=10)
+
+        self.parser = PlanParser()
+        self.tracker = TaskTracker()
+        self.validator = TDDValidator()
+        self.ai_client = nIAClaudeClient()
+        self.quality_checker = QualityChecker()
+        self.git_manager = GitBasedFileManager(str(self.project_path))
+        self.issue_manager = IssueManager(self.project_path)
+        self.structure_validator = FileStructureValidator(self.issue_manager)
+        self.tech_detector = TechStackDetector()
+        self.tech_stack = ""
+        self.current_phase = "IDLE"
+        self.venv_python: Optional[str] = None
 
         # Security Components
         self.security_auditor = SecurityAuditor(log_dir=os.path.join(self.project_path, ".nia", "security"))
