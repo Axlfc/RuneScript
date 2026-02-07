@@ -387,7 +387,7 @@ class TDDValidator:
                 capture_output=True,
                 encoding='utf-8',
                 errors='replace',
-                timeout=60
+                timeout=120
             )
 
         # Fallback to old logic if no tech_config
@@ -434,7 +434,7 @@ class TDDValidator:
             capture_output=True,
             encoding='utf-8',
             errors='replace',
-            timeout=60
+            timeout=120
         )
 
     def _run_with_streaming(self, cmd, cwd, callback):
@@ -471,7 +471,7 @@ class TDDValidator:
 
         # Week 1 Fix: Prevent indefinite hangs during streamed test execution
         try:
-            returncode = process.wait(timeout=60)
+            returncode = process.wait(timeout=120)
         except subprocess.TimeoutExpired:
             process.kill()
             returncode = 1

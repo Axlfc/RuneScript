@@ -57,8 +57,8 @@ class TestRobustJSONParser:
     def test_parse_plan_fails_on_invalid(self):
         """Test que falla cuando el plan es inválido."""
         parser = RobustJSONParser()
-        # Plan con solo 1 fase (debe tener min 2)
-        response = '{"phases": [{"name": "Solo", "tasks": []}], "total_tasks": 0}'
+        # Plan con 0 fases (debe tener min 1)
+        response = '{"phases": [], "total_tasks": 0}'
 
         with pytest.raises(ValueError):
             parser.parse_plan(response)

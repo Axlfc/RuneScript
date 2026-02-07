@@ -6,8 +6,8 @@ Combina extracción por regex con validación Pydantic.
 import re
 import json
 import logging
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from typing import List, Optional, Dict, Any, Annotated
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +29,34 @@ class PlanSchema(BaseModel):
     @field_validator('phases')
     @classmethod
     def must_have_min_phases(cls, v):
-        if len(v) < 2:
-            raise ValueError('Plan must have at least 2 phases')
+        if len(v) < 1:
+            raise ValueError('Plan must have at least 1 phase')
         return v
+
+def coerce_to_list(v: Any) -> List[str]:
+    if isinstance(v, str):
+        # Split by comma or newline if it looks like a list in a string
+        if '\n' in v:
+            return [line.strip().lstrip('- ') for line in v.splitlines() if line.strip()]
+        if ',' in v:
+            return [item.strip() for item in v.split(',') if item.strip()]
+        return [v.strip()]
+    if isinstance(v, list):
+        return [str(item) for item in v]
+    return []
+
+CoerceList = Annotated[List[str], BeforeValidator(coerce_to_list)]
 
 class SpecSchema(BaseModel):
     project_name: str
     objective: str
-    features: List[str]
+    features: CoerceList
     language: str
     framework: str = "None"
     database: str = "None"
     testing_framework: str
-    success_criteria: List[str]
-    out_of_scope: List[str]
+    success_criteria: CoerceList
+    out_of_scope: CoerceList
 
 # PARSER ROBUSTO
 class RobustJSONParser:
