@@ -51,13 +51,18 @@ class IterationState:
                 f"{proposed_test_file}. Retries must use the same test file."
             )
 
-        # Also check if a test file exists in proposed_files that is different from locked one
-        new_test_files = [f for f in proposed_files if f.startswith('tests/') and f.endswith('.py')]
-        if new_test_files and self.test_file not in new_test_files:
-             return False, (
-                f"Original test file {self.test_file} missing from response. "
-                f"AI proposed new test files: {new_test_files}. Consistency required."
-            )
+        # Also check if any test file in proposed_files is different from the locked one
+        # Filter files that look like tests (usually in tests/ or starting with test_)
+        new_test_files = [f for f in proposed_files if ('tests/' in f or f.startswith('test_')) and f.endswith('.py')]
+
+        if new_test_files:
+            if self.test_file not in new_test_files:
+                 return False, (
+                    f"Original test file {self.test_file} missing from response. "
+                    f"AI proposed different test files: {new_test_files}. You MUST use the same test file name."
+                )
+            if len(new_test_files) > 1:
+                logger.warning(f"AI proposed multiple test files: {new_test_files}. Using the locked one: {self.test_file}")
 
         return True, None
 
