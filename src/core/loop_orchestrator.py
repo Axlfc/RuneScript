@@ -16,7 +16,12 @@ from .test_parser import TestParser
 from .iteration_state import IterationState
 from .issue_manager import IssueManager
 from .file_structure_validator import FileStructureValidator
+from .tech_detector import TechStackDetector
 from .exceptions import QuotaExhaustedError
+from src.utils.telemetry import RateLimitedTelemetry
+from .storage import FileSystemStorage
+from .config.manager import ConfigManager
+from .intelligence_orchestrator import IntelligenceOrchestrator
 from lib.nia_git_manager import GitBasedFileManager
 from src.utils.path_utils import clean_filename
 from src.security.path_validator import ParanoidPathValidator
@@ -45,8 +50,37 @@ class LoopOrchestrator:
         self.git_manager = GitBasedFileManager(str(self.project_path))
         self.issue_manager = IssueManager(self.project_path)
         self.structure_validator = FileStructureValidator(self.issue_manager)
+        self.tech_detector = TechStackDetector()
         self.tech_stack = ""
+        self.current_phase = "IDLE"
         self.venv_python: Optional[str] = None
+
+        # 1. Initialize Basic Config & Storage First
+        try:
+            self.storage = FileSystemStorage(self.project_path)
+            self.config_manager = ConfigManager()
+        except Exception as e:
+            logger.error(f"Failed to initialize config/storage: {e}")
+            # This is critical, but we'll try to continue with defaults if possible
+            from .config.defaults import DEFAULT_CONFIG
+            self.config_manager = type('MockConfigManager', (), {'config': DEFAULT_CONFIG, 'get_feedback_config': lambda: DEFAULT_CONFIG.feedback, 'get_intelligence_config': lambda: DEFAULT_CONFIG.intelligence})()
+
+        # 2. Initialize Intelligence (can be None in degraded mode)
+        try:
+            self.intelligence = IntelligenceOrchestrator(
+                config=self.config_manager.get_intelligence_config(),
+                storage=self.storage
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize intelligence: {e}")
+            self.intelligence = None
+
+        # 3. Initialize Telemetry (using config)
+        feedback_config = self.config_manager.get_feedback_config()
+        self.telemetry = RateLimitedTelemetry(
+            callback=self._notify_ui,
+            max_events_per_second=feedback_config.max_events_per_second
+        )
 
         # Security Components
         self.security_auditor = SecurityAuditor(log_dir=os.path.join(self.project_path, ".nia", "security"))
@@ -60,6 +94,9 @@ class LoopOrchestrator:
 
     def _notify_ui(self, event_type, data):
         """Notify UI of state changes."""
+        if event_type == 'phase_change':
+            self.current_phase = data
+
         if event_type in self.ui_callbacks:
             try:
                 # Many UI frameworks require calls from the main thread
@@ -112,6 +149,9 @@ class LoopOrchestrator:
                 if not self.tech_stack:
                     self._log("⚠️ No tech_stack specified in .nia_config.json, defaulting to 'frontend_web'", log_callback)
                     self.tech_stack = "frontend_web"
+
+                # Auto-align structure
+                self._align_project_structure(log_callback)
 
             # 1. Load fresh state
             try:
@@ -173,13 +213,22 @@ class LoopOrchestrator:
                     if iter_state.test_file:
                         combined_context += f"\n\n⚠️ IMPORTANT: You must continue using the existing test file: {iter_state.test_file}"
 
+                    # Fetch intelligence context
+                    ram_context = ""
+                    if self.intelligence:
+                        try:
+                            ram_context = self.intelligence.get_context()
+                        except Exception as e:
+                            logger.warning(f"Failed to fetch intelligence context: {e}")
+
                     try:
                         response = self.ai_client.execute_nia_iteration(
                             spec=spec,
                             plan=self.plan_path.read_text(encoding='utf-8'),
                             prompt=prompt,
                             task=next_task,
-                            context=combined_context
+                            context=combined_context,
+                            ram_context=ram_context
                         )
                     except QuotaExhaustedError as qe:
                         self._log(f"⛔ CRITICAL: API Quota Exhausted. {str(qe)}", log_callback)
@@ -221,6 +270,9 @@ class LoopOrchestrator:
 
                     # Convert back to dict format
                     response.files = {f["path"]: f["content"] for f in fixed_files}
+
+                    # RE-IDENTIFY test file after structure correction
+                    response.test_file = response._identify_test_file()
 
                     # VALIDATE CONSISTENCY with IterationState
                     is_consistent, consistency_error = iter_state.validate_retry_attempt(response.files, response.test_file)
@@ -275,6 +327,7 @@ class LoopOrchestrator:
                     if attempt == 0 and active_test_file:
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'RED')
+                        self._log_progress_bars(log_callback)
                         self._log_project_structure(log_callback)
 
                         # DEBUG ENVIRONMENT
@@ -313,7 +366,7 @@ class LoopOrchestrator:
                         # AUTO-FIX for missing selenium in frontend_web
                         if not val_red.success and "ModuleNotFoundError: No module named 'selenium'" in val_red.stderr and self.tech_stack == 'frontend_web':
                             self._log("🔍 Detected missing 'selenium' dependency in RED phase. Auto-fixing...", log_callback)
-                            self._handle_missing_selenium(log_callback)
+                            self._handle_missing_dependency("selenium", log_callback)
 
                             # Retry RED phase
                             self._log("🔄 Retrying RED phase after auto-fix...", log_callback)
@@ -430,6 +483,24 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     tech_config = nia_config.get("tech_config", {})
                     quality_issues = self.quality_checker.validate(response.files, tech_config)
 
+                    # MANDATORY CRITICAL FILES for frontend_web
+                    if self.tech_stack == 'frontend_web':
+                        detected_paths = set(response.files.keys())
+                        if 'index.html' not in detected_paths:
+                            quality_issues.append(QualityIssue(
+                                "index.html",
+                                "CRITICAL: index.html missing. All frontend tasks must include index.html to maintain project state.",
+                                "ERROR", "MISSING_CRITICAL"
+                            ))
+
+                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
+                        if not has_css:
+                            quality_issues.append(QualityIssue(
+                                "css/style.css",
+                                "CRITICAL: No CSS file detected. Always provide styles.",
+                                "ERROR", "MISSING_CRITICAL"
+                            ))
+
                     if quality_issues:
                         # Split issues into errors and warnings
                         errors = [i for i in quality_issues if i.severity == "ERROR"]
@@ -478,6 +549,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     if active_test_file:
                         self._log(f"=== STARTING GREEN PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'GREEN')
+                        self._log_progress_bars(log_callback)
 
                         test_file_path = self.project_path / active_test_file
 
@@ -496,6 +568,17 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                         if not val_green.success:
                             self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
+
+                            # Update Intelligence with failure
+                            if self.intelligence:
+                                try:
+                                    self.intelligence.update_after_iteration({
+                                        "phase": "GREEN",
+                                        "success": False,
+                                        "failure_type": "LogicError", # Could be more specific
+                                        "solution_attempted": next_task.description
+                                    })
+                                except: pass
 
                             # Register failed attempt
                             if attempt > 0: # Already registered attempt 0
@@ -613,6 +696,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
             try:
                 self._log("=== STARTING REFACTOR PHASE ===", log_callback)
                 self._notify_ui('phase_change', 'REFACTOR')
+                self._log_progress_bars(log_callback)
                 self._log("Verifying all tests...", log_callback)
                 # Capture test output for UI streaming
                 def refactor_test_cb(line, out_type='stdout'):
@@ -650,10 +734,31 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                 # 11. Code Quality Metrics (Informational)
                 try:
-                    metrics = self._analyze_code_quality()
+                    q_metrics = self._analyze_code_quality()
                     self._log("📊 Code Quality Metrics (Informational):", log_callback)
-                    for key, value in metrics.items():
+                    for key, value in q_metrics.items():
                         self._log(f"  - {key}: {value}", log_callback)
+
+                    # Update Intelligence with quality data
+                    if self.intelligence:
+                        # Extract per-file quality
+                        file_quality = {}
+                        exclude_dirs = {'.git', '__pycache__', 'node_modules', '.venv', 'venv', 'tests'}
+                        for root, dirs, files in os.walk(self.project_path):
+                            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+                            for file in files:
+                                if file.endswith(('.py', '.js', '.ts', '.html', '.css')):
+                                    path = Path(root) / file
+                                    rel_path = str(path.relative_to(self.project_path))
+                                    try:
+                                        content = path.read_text(encoding='utf-8', errors='replace')
+                                        lines = len([l for l in content.splitlines() if l.strip()])
+                                        file_quality[rel_path] = {"current": lines}
+                                    except: pass
+
+                        self.intelligence.update_after_iteration({
+                            "quality_update": file_quality
+                        })
                 except Exception as me:
                     logger.warning(f"Error during quality analysis: {me}")
 
@@ -728,6 +833,24 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                 # 15. Update UI Metrics
                 self._publish_metrics()
+
+                # 16. Update Intelligence
+                if self.intelligence:
+                    try:
+                        # Collect iteration results
+                        it_data = {
+                            "iteration_increment": True,
+                            "phase": "REFACTOR", # Final phase of successful loop
+                            "success": True,
+                            "tech_stack": self.tech_stack,
+                            "iterations": iteration + 1,
+                            "quality_standards": "standard", # Could be more dynamic
+                            "active_test": active_test_file,
+                            "solution_attempted": next_task.description
+                        }
+                        self.intelligence.update_after_iteration(it_data)
+                    except Exception as e:
+                        logger.warning(f"Failed to update intelligence: {e}")
 
                 # Back to IDLE
                 self._notify_ui('phase_change', 'IDLE')
@@ -1122,11 +1245,23 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
         return missing
 
-    def _handle_missing_selenium(self, log_callback=None):
+    def _handle_missing_dependency(self, package: str, log_callback=None):
         """
-        Adds selenium to requirements.txt, updates sandbox whitelist, and installs the package.
+        Adds package to requirements.txt, updates sandbox whitelist, and installs it.
+        Strictly follows whitelist and security patterns.
         """
-        self._log("📦 Auto-adding missing 'selenium' dependency...", log_callback)
+        # Validate package name security
+        security_config = self.config_manager.get_security_config()
+        pattern = security_config.package_name_pattern
+        if not re.match(pattern, package):
+            self._log(f"❌ SECURITY ALERT: Blocked invalid package name: {package}", log_callback)
+            return False
+
+        if package not in security_config.safe_packages:
+            self._log(f"⚠️ Package '{package}' is not in safe whitelist. Skipping auto-install.", log_callback)
+            return False
+
+        self._log(f"📦 Auto-adding missing dependency: {package}...", log_callback)
 
         try:
             # 1. Add to requirements.txt
@@ -1138,33 +1273,46 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 except Exception:
                     pass
 
-            if "selenium" not in content.lower():
-                new_content = content.rstrip() + "\nselenium\n"
+            if package.lower() not in content.lower():
+                new_content = content.rstrip() + f"\n{package}\n"
                 req_path.write_text(new_content, encoding='utf-8')
-                self._log(f"✅ Added 'selenium' to {req_path.name}", log_callback)
+                self._log(f"✅ Added '{package}' to {req_path.name}", log_callback)
 
             # 2. Add to SecureSandbox whitelist via TDDValidator
             if hasattr(self.validator, 'add_allowed_import'):
-                self.validator.add_allowed_import('selenium')
-                self._log("✅ Added 'selenium' to sandbox whitelist", log_callback)
+                self.validator.add_allowed_import(package)
+                self._log(f"✅ Added '{package}' to sandbox whitelist", log_callback)
 
             # 3. Install package
             python_exe = self.venv_python or sys.executable
-            self._log(f"Installing selenium using {python_exe}...", log_callback)
+            self._log(f"Installing {package} using {python_exe}...", log_callback)
 
             # Use --break-system-packages if we're using system python
-            cmd = [python_exe, "-m", "pip", "install", "selenium"]
+            cmd = [python_exe, "-m", "pip", "install", package]
             if python_exe == sys.executable:
                 cmd.append("--break-system-packages")
 
-            result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace')
-            if result.returncode == 0:
-                self._log("✅ selenium installed successfully.", log_callback)
-            else:
-                self._log(f"❌ Failed to install selenium: {result.stderr}", log_callback)
+            timeout = security_config.pip_install_timeout
+            result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=timeout)
 
+            if result.returncode == 0:
+                self._log(f"✅ {package} installed successfully.", log_callback)
+                if self.intelligence:
+                    self.intelligence.update_after_iteration({
+                        "auto_fix": {"type": "dependency", "package": package},
+                        "auto_detected": [package]
+                    })
+                return True
+            else:
+                self._log(f"❌ Failed to install {package}: {result.stderr}", log_callback)
+                return False
+
+        except subprocess.TimeoutExpired:
+             self._log(f"❌ Timeout installing {package} (max {timeout}s)", log_callback)
+             return False
         except Exception as e:
-            self._log(f"❌ Error during selenium auto-fix: {e}", log_callback)
+            self._log(f"❌ Error during {package} auto-fix: {e}", log_callback)
+            return False
 
     def _log_validation_result(self, result, phase_name: str, log_callback):
         """Log detailed validation result."""
@@ -1184,3 +1332,109 @@ For example, if the test expects id="work", DO NOT use id="projects".
         self._log(f"Message: {result.message}", log_callback)
         self._log(f"Status: {'✅ PASSED' if result.success else '❌ FAILED'}", log_callback)
         self._log(f"{'='*60}\n", log_callback)
+
+    def _align_project_structure(self, log_callback=None):
+        """Auto-creates missing folders from default_structure with .gitkeep."""
+        if not self.tech_stack:
+            return
+
+        tech_config = self.tech_detector.get_config(self.tech_stack)
+        default_structure = tech_config.get('default_structure', [])
+
+        if not default_structure:
+            return
+
+        self._log(f"🏗️ Aligning project structure for {self.tech_stack}...", log_callback)
+        created_dirs = []
+
+        for item in default_structure:
+            if item.endswith('/'):
+                dir_path = self.project_path / item
+                if not dir_path.exists():
+                    try:
+                        dir_path.mkdir(parents=True, exist_ok=True)
+                        # Add .gitkeep to ensure git tracks the empty directory
+                        gitkeep = dir_path / ".gitkeep"
+                        gitkeep.touch()
+                        created_dirs.append(item)
+                        self._log(f"  ✅ Auto-created: {item} (with .gitkeep)", log_callback)
+                    except Exception as e:
+                        logger.error(f"Failed to create directory {item}: {e}")
+
+        if created_dirs and self.intelligence:
+            self.intelligence.update_after_iteration({
+                "auto_fix": {"type": "structure", "dirs": created_dirs},
+                "warnings": [f"Auto-created: {', '.join(created_dirs)}"]
+            })
+
+    def _log_progress_bars(self, log_callback=None):
+        """Displays ASCII progress bars for the project."""
+        if not self.intelligence or not self.intelligence.metrics_manager:
+            return
+
+        metrics = self.intelligence.metrics_manager.get_metrics()
+
+        # Calculate percentages (simplified)
+        tasks = self.parser.parse(self.plan_path)
+        total_tasks = len(tasks)
+        completed_tasks = len([t for t in tasks if t.status == 'completed'])
+
+        goal_pct = int((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
+
+        # Structure alignment pct
+        tech_config = self.tech_detector.get_config(self.tech_stack)
+        default_structure = tech_config.get('default_structure', [])
+        existing_dirs = 0
+        total_dirs = len([i for i in default_structure if i.endswith('/')])
+        if total_dirs > 0:
+            for item in default_structure:
+                if item.endswith('/') and (self.project_path / item).exists():
+                    existing_dirs += 1
+            struct_pct = int((existing_dirs / total_dirs * 100))
+        else:
+            struct_pct = 100
+
+        # Quality pct
+        quality_standards = tech_config.get('quality_standards', {})
+        total_q_types = len(quality_standards)
+        quality_pct = 0
+        if total_q_types > 0:
+             q_prog = metrics.get('quality_progress', {})
+             total_score = 0
+             for ext, std in quality_standards.items():
+                 target = std.get('min_lines', 0)
+                 if target > 0:
+                     # Find max current lines for this extension
+                     current_max = 0
+                     for f_path, f_data in q_prog.items():
+                         if f_path.endswith(ext):
+                             current_max = max(current_max, f_data.get('current', 0))
+
+                     score = min(1.0, current_max / target)
+                     total_score += score
+                 else:
+                     total_score += 1.0
+             quality_pct = int((total_score / total_q_types) * 100)
+        else:
+             quality_pct = 100
+
+        def get_bar(pct):
+            filled = int(pct / 10)
+            return "█" * filled + "░" * (10 - filled)
+
+        self._log("\n📈 Project Progress", log_callback)
+        self._log(f"├─ Structure: {get_bar(struct_pct)} {struct_pct}%", log_callback)
+        self._log(f"├─ Quality:   {get_bar(quality_pct)} {quality_pct}%", log_callback)
+        self._log(f"├─ Goal:      {get_bar(goal_pct)} {goal_pct}%", log_callback)
+        self._log("└─ Phase:     " + self._get_current_phase(), log_callback)
+
+        # Emit telemetry
+        self.telemetry.emit('progress_update', {
+            "structure": struct_pct,
+            "quality": quality_pct,
+            "goal": goal_pct,
+            "phase": self._get_current_phase()
+        })
+
+    def _get_current_phase(self) -> str:
+        return self.current_phase

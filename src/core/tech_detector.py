@@ -32,7 +32,7 @@ class TechStackDetector:
             'test_framework': 'pytest',
             'test_command': '{python} -m pytest {test_file} -v',
             'test_pattern': 'test_*.py',
-            'default_structure': ['src/', 'tests/', 'requirements.txt'],
+            'default_structure': ['src/', 'tests/', 'requirements.txt', 'scripts/'],
             'quality_standards': {
                 'py': {'min_lines': 100}
             }

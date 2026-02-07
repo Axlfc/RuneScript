@@ -65,7 +65,7 @@ def get_spec_system_prompt(tools: dict) -> str:
 
 def get_plan_system_prompt(tech_info: str = "", complexity: str = "medium") -> str:
     info_str = f"TECH STACK DETAILS:\n{tech_info}\nPROJECT COMPLEXITY: {complexity.upper()}" if tech_info else f"PROJECT COMPLEXITY: {complexity.upper()}"
-    return PLAN_SYSTEM_PROMPT.format(tech_info=info_str)
+    return PLAN_SYSTEM_PROMPT.format(tech_info=info_str.replace('{', '{{').replace('}', '}}'))
 
 REVIEWER_PROMPT = """
 Eres un arquitecto de software experto revisando un plan de implementación.
@@ -110,11 +110,16 @@ Si approved=false, genera un improved_plan que sea exhaustivo, sin placeholders 
 """
 
 def get_reviewer_prompt(user_request: str, spec_content: str, current_plan: str, tech_stack: str = "unknown") -> str:
+    def safe_escape(text: str) -> str:
+        if not isinstance(text, str):
+            return ""
+        return text.replace('{', '{{').replace('}', '}}')
+
     return REVIEWER_PROMPT.format(
-        user_request=user_request,
-        spec_content=spec_content,
-        current_plan=current_plan,
-        tech_stack=tech_stack
+        user_request=safe_escape(user_request),
+        spec_content=safe_escape(spec_content),
+        current_plan=safe_escape(current_plan),
+        tech_stack=safe_escape(tech_stack)
     )
 
 NIA_ITERATION_PROMPT = """
@@ -140,6 +145,9 @@ NIA_ITERATION_PROMPT = """
 
 === CURRENT CONTEXT (FILES) ===
 {context}
+
+=== RAM CONTEXT ===
+{ram_context}
 
 === NEXT TASK ===
 {task_description}
@@ -201,12 +209,29 @@ CRITICAL: If using JSON, escape all special characters properly:
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 
-def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, plan: str, context: str, task_description: str) -> str:
+def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, plan: str, context: str, task_description: str, ram_context: str = "") -> str:
+    """
+    Generates the full prompt for a nIA iteration, ensuring all dynamic content
+    is safely escaped for f-string/format curly braces.
+    """
+    def safe_escape(text: str) -> str:
+        if not isinstance(text, str):
+            return ""
+        return text.replace('{', '{{').replace('}', '}}')
+
+    # ram_context is expected to be already wrapped and escaped by PromptFilter,
+    # but we'll be extra safe if it's not.
+    # Actually, if PromptFilter already escaped it, doubling it again would be wrong
+    # IF we want the braces to remain as literals in the final prompt.
+    # PromptFilter returns wrapped content with {{ }}.
+    # .format() will turn {{ }} into { }. Correct.
+
     return NIA_ITERATION_PROMPT.format(
-        prompt=prompt,
-        test_instructions=test_instructions,
-        spec=spec,
-        plan=plan,
-        context=context,
-        task_description=task_description
+        prompt=safe_escape(prompt),
+        test_instructions=safe_escape(test_instructions),
+        spec=safe_escape(spec),
+        plan=safe_escape(plan),
+        context=safe_escape(context),
+        task_description=safe_escape(task_description),
+        ram_context=ram_context # Already escaped by PromptFilter
     )
