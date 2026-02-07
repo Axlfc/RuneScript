@@ -389,7 +389,8 @@ class ProjectLifecycleManager:
             cmd = [sys.executable, str(setup_script), str(project_path)]
             if dependencies:
                 cmd.extend(dependencies)
-            subprocess.run(cmd, capture_output=True)
+            # Week 1 Fix: Prevent indefinite hangs during venv setup
+            subprocess.run(cmd, capture_output=True, timeout=120)
 
         # Initial Git Commit for these files
         try:

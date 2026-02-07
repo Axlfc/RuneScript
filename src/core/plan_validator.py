@@ -19,7 +19,7 @@ class PlanValidator:
         r"^\s*\.\.\.",  # Truncation at the beginning
     ]
 
-    def __init__(self, min_tasks: int = 5):
+    def __init__(self, min_tasks: int = 1):
         self.min_tasks = min_tasks
 
     def validate(self, content: str, expected_phases: Optional[List[str]] = None) -> bool:

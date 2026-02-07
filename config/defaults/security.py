@@ -1,0 +1,13 @@
+# Default security configuration
+DEFAULT_SECURITY_CONFIG = {
+    "safe_packages": [
+        "selenium", "beautifulsoup4", "lxml", "pytest", "requests", "pillow"
+    ],
+    "package_name_pattern": r"^[a-z0-9][a-z0-9._-]*$",
+    "max_package_name_length": 100,
+    "pip_install_timeout": 30,
+    "regex_timeout": 1,
+    "audit_log_path": ".nia/security_audit.log",
+    "max_log_bytes": 10485760,
+    "backup_count": 7
+}
