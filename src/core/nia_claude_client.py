@@ -309,6 +309,23 @@ class nIAResponse:
                  return {}
 
         logging.info(f"Total unique files extracted: {len(files)}")
+        return self._strip_root_folders(files)
+
+    def _strip_root_folders(self, files: Dict[str, str]) -> Dict[str, str]:
+        """Removes common root folder prefixes like 'project/' if they wrap all files."""
+        if len(files) < 1:
+            return files
+
+        # Potential roots to strip
+        potential_roots = ['project/', 'src/', 'app/']
+
+        for root in potential_roots:
+            if all(f.startswith(root) for f in files.keys()):
+                # Check that we don't strip something important if there's only one file
+                # but usually if all files are under 'project/' it's a wrapper
+                logging.info(f"  📂 Detected common root folder '{root}'. Stripping from all paths.")
+                return {f[len(root):]: c for f, c in files.items()}
+
         return files
 
     def _validate_markdown_extraction(self, files: Dict[str, str]) -> bool:

@@ -40,12 +40,34 @@ class NIAMetricsManager:
 
     def _load_metrics(self) -> Dict[str, Any]:
         try:
+            if not self.storage.exists(self.metrics_path):
+                self._init_metrics()
             content = self.storage.read(self.metrics_path)
-            return json.loads(content)
+            metrics = json.loads(content)
+            return self._ensure_metrics_structure(metrics)
         except Exception as e:
             logger.error(f"Failed to load metrics: {e}")
-            # Return basic structure if loading fails
-            return {"schema_version": self.schema_version, "tdd_loop": {}}
+            return self._ensure_metrics_structure({})
+
+    def _ensure_metrics_structure(self, metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensures that the metrics dictionary has all required keys."""
+        if not isinstance(metrics, dict):
+            metrics = {}
+
+        metrics.setdefault("schema_version", self.schema_version)
+        tdd = metrics.setdefault("tdd_loop", {})
+        tdd.setdefault("total_iterations", 0)
+        pb = tdd.setdefault("phase_breakdown", {})
+        pb.setdefault("red_cycles", 0)
+        pb.setdefault("green_cycles", 0)
+        pb.setdefault("refactor_cycles", 0)
+        tdd.setdefault("auto_fixes", [])
+        pr = tdd.setdefault("pattern_recognition", {})
+        pr.setdefault("common_failures", [])
+        pr.setdefault("common_solutions", [])
+        metrics.setdefault("quality_progress", {})
+        metrics.setdefault("last_updated", datetime.now().isoformat())
+        return metrics
 
     def update(self, data: Dict[str, Any]):
         """Update metrics with new data."""
@@ -53,19 +75,20 @@ class NIAMetricsManager:
 
         # Merge logic here
         if "iteration_increment" in data:
-            metrics["tdd_loop"]["total_iterations"] = metrics["tdd_loop"].get("total_iterations", 0) + 1
+            metrics["tdd_loop"]["total_iterations"] += 1
 
         if "phase" in data:
             phase = data["phase"].lower()
+            pb = metrics["tdd_loop"]["phase_breakdown"]
             if phase == "red":
-                metrics["tdd_loop"]["phase_breakdown"]["red_cycles"] += 1
+                pb["red_cycles"] = pb.get("red_cycles", 0) + 1
             elif phase == "green":
-                metrics["tdd_loop"]["phase_breakdown"]["green_cycles"] += 1
+                pb["green_cycles"] = pb.get("green_cycles", 0) + 1
             elif phase == "refactor":
-                metrics["tdd_loop"]["phase_breakdown"]["refactor_cycles"] += 1
+                pb["refactor_cycles"] = pb.get("refactor_cycles", 0) + 1
 
         if "auto_fix" in data:
-            metrics["tdd_loop"].setdefault("auto_fixes", []).append(data["auto_fix"])
+            metrics["tdd_loop"]["auto_fixes"].append(data["auto_fix"])
 
         if "quality_update" in data:
             metrics["quality_progress"].update(data["quality_update"])

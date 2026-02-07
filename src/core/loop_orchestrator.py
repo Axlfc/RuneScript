@@ -271,6 +271,9 @@ class LoopOrchestrator:
                     # Convert back to dict format
                     response.files = {f["path"]: f["content"] for f in fixed_files}
 
+                    # RE-IDENTIFY test file after structure correction
+                    response.test_file = response._identify_test_file()
+
                     # VALIDATE CONSISTENCY with IterationState
                     is_consistent, consistency_error = iter_state.validate_retry_attempt(response.files, response.test_file)
                     if not is_consistent:
@@ -479,6 +482,24 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     nia_config = self._get_nia_config()
                     tech_config = nia_config.get("tech_config", {})
                     quality_issues = self.quality_checker.validate(response.files, tech_config)
+
+                    # MANDATORY CRITICAL FILES for frontend_web
+                    if self.tech_stack == 'frontend_web':
+                        detected_paths = set(response.files.keys())
+                        if 'index.html' not in detected_paths:
+                            quality_issues.append(QualityIssue(
+                                "index.html",
+                                "CRITICAL: index.html missing. All frontend tasks must include index.html to maintain project state.",
+                                "ERROR", "MISSING_CRITICAL"
+                            ))
+
+                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
+                        if not has_css:
+                            quality_issues.append(QualityIssue(
+                                "css/style.css",
+                                "CRITICAL: No CSS file detected. Always provide styles.",
+                                "ERROR", "MISSING_CRITICAL"
+                            ))
 
                     if quality_issues:
                         # Split issues into errors and warnings
