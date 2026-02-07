@@ -47,14 +47,21 @@ def coerce_to_list(v: Any) -> List[str]:
 
 CoerceList = Annotated[List[str], BeforeValidator(coerce_to_list)]
 
+def coerce_to_string(v: Any) -> str:
+    if isinstance(v, list):
+        return ", ".join([str(i) for i in v if i])
+    return str(v)
+
+CoerceString = Annotated[str, BeforeValidator(coerce_to_string)]
+
 class SpecSchema(BaseModel):
     project_name: str
     objective: str
     features: CoerceList
-    language: str
-    framework: str = "None"
-    database: str = "None"
-    testing_framework: str
+    language: CoerceString
+    framework: CoerceString = "None"
+    database: CoerceString = "None"
+    testing_framework: CoerceString
     success_criteria: CoerceList
     out_of_scope: CoerceList
 

@@ -541,7 +541,7 @@ class TDDValidator:
         if not test_dir.exists():
             test_dir = project_path
 
-        for py_file in test_dir.glob("**/test*.py"):
+        for py_file in test_dir.glob("**/test_*.py"):
             try:
                 if "import pytest" in py_file.read_text(encoding='utf-8'):
                     uses_pytest = True
@@ -579,7 +579,7 @@ class TDDValidator:
         else:
             # Run all test files as individual scripts in sandbox
             last_result = None
-            for py_file in test_dir.glob("**/test*.py"):
+            for py_file in test_dir.glob("**/test_*.py"):
                 try:
                     code = py_file.read_text(encoding='utf-8')
                     # Basic check - ensure it's analyzed as a test to use permissive whitelist

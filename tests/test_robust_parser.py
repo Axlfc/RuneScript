@@ -69,3 +69,20 @@ class TestRobustJSONParser:
         response = '{"error": "Ollama timed out"}'
         with pytest.raises(ValueError, match="AI Provider Error: Ollama timed out"):
             parser.extract_json(response)
+
+    def test_spec_schema_coercion(self):
+        """Test que SpecSchema coerciona listas a strings y viceversa."""
+        parser = RobustJSONParser()
+        response = '''{
+            "project_name": "Test",
+            "objective": "Test",
+            "features": "Feature 1\\nFeature 2",
+            "language": ["Python", "JS"],
+            "testing_framework": ["pytest"],
+            "success_criteria": "Done",
+            "out_of_scope": "None"
+        }'''
+        spec = parser.parse_spec(response)
+        assert spec.language == "Python, JS"
+        assert spec.features == ["Feature 1", "Feature 2"]
+        assert spec.testing_framework == "pytest"

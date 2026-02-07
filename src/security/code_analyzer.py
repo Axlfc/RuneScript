@@ -63,6 +63,12 @@ class CodeSecurityAnalyzer:
             'print',
             'assert',
             'run', # For subprocess.run
+            'getattr',
+            'hasattr',
+        ],
+        'dynamic_access': [
+            r'getattr\s*\(',
+            r'hasattr\s*\(',
         ]
     }
 
