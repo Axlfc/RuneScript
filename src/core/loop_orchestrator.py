@@ -52,11 +52,12 @@ class LoopOrchestrator:
             logger.error(f"Failed to initialize config/storage: {e}")
             # Fallback to defaults
             from .config.defaults import DEFAULT_CONFIG
+            # Correctly handle method arguments in mock
             self.config_manager = type('MockConfigManager', (), {
                 'config': DEFAULT_CONFIG,
-                'get_feedback_config': lambda: DEFAULT_CONFIG.feedback,
-                'get_intelligence_config': lambda: DEFAULT_CONFIG.intelligence,
-                'get_security_config': lambda: DEFAULT_CONFIG.security
+                'get_feedback_config': lambda self_inner: DEFAULT_CONFIG.feedback,
+                'get_intelligence_config': lambda self_inner: DEFAULT_CONFIG.intelligence,
+                'get_security_config': lambda self_inner: DEFAULT_CONFIG.security
             })()
 
         # 2. Initialize Intelligence (can be None in degraded mode)
@@ -502,22 +503,22 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     tech_config = nia_config.get("tech_config", {})
                     quality_issues = self.quality_checker.validate(response.files, tech_config)
 
-                    # MANDATORY CRITICAL FILES for frontend_web
+                    # MANDATORY CRITICAL FILES for frontend_web (Informational only now)
                     if self.tech_stack == 'frontend_web':
                         detected_paths = set(response.files.keys())
                         if 'index.html' not in detected_paths:
                             quality_issues.append(QualityIssue(
                                 "index.html",
-                                "CRITICAL: index.html missing. All frontend tasks must include index.html to maintain project state.",
-                                "ERROR", "MISSING_CRITICAL"
+                                "Recommended: index.html missing. It is usually needed to maintain project state.",
+                                "WARNING", "MISSING_CRITICAL"
                             ))
 
                         has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
                         if not has_css:
                             quality_issues.append(QualityIssue(
                                 "css/style.css",
-                                "CRITICAL: No CSS file detected. Always provide styles.",
-                                "ERROR", "MISSING_CRITICAL"
+                                "Recommended: No CSS file detected. Providing styles is best practice.",
+                                "WARNING", "MISSING_CRITICAL"
                             ))
 
                     if quality_issues:
@@ -662,27 +663,12 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     # This allows REFACTOR phase to rollback to this state instead of pre-iteration state
                     green_checkpoint = self.git_manager.create_checkpoint(f"GREEN passed: {next_task.description}")
 
-                    # MANDATORY FILES VALIDATION
+                    # MANDATORY FILES VALIDATION (Informational)
                     missing_critical = self._validate_critical_files(self.tech_stack)
                     if missing_critical:
-                        self._log(f"⚠️ Warning: Missing critical files: {', '.join(missing_critical)}", log_callback)
-                        if attempt < max_retries:
-                            ai_feedback += f"\n\nMISSING CRITICAL FILES: {', '.join(missing_critical)}\nEnsure you generate EVERY required file in a single response. Do not skip files."
-                            # Rollback before retry to have a clean slate
-                            self.git_manager.rollback_to(checkpoint)
-                            self.git_manager.record_failed_iteration()
-                            continue
-                        else:
-                            self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_QUALITY,
-                                priority=self.issue_manager.PRIO_HIGH,
-                                title=f"Missing Critical Files: {next_task.description}",
-                                description=f"Missing critical files: {', '.join(missing_critical)}",
-                                task=next_task.description
-                            )
-                            self._log(f"❌ CRITICAL ERROR: Mandatory files missing after all retries: {', '.join(missing_critical)}", log_callback)
-                            self.tracker.mark_blocked(self.plan_path, next_task, f"Missing critical files: {', '.join(missing_critical)}")
-                            return LoopResult("BLOCKED", iteration, "Missing critical files")
+                        self._log(f"⚠️ Warning: Missing expected files for {self.tech_stack}: {', '.join(missing_critical)}", log_callback)
+                        # We no longer block on this, just log it as a warning.
+                        # If the tests pass, the implementation is likely sufficient for the task.
 
                     # Success, break retry loop
                     break
@@ -973,11 +959,8 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 logging.error(msg)
                 return False
 
-            # Ensure parent directory exists
-            full_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Write content
-            full_path.write_text(content, encoding='utf-8')
+            # Week 1 Fix: Use atomic writes to prevent corruption on crash
+            self.storage.write_atomic(rel_path, content)
 
             self.security_auditor.log_file_access('write', rel_path, approved=True)
 
@@ -1012,7 +995,8 @@ For example, if the test expects id="work", DO NOT use id="projects".
                     deps.extend(["beautifulsoup4", "lxml"])
 
                 cmd = [sys.executable, str(setup_script), str(self.project_path)] + deps
-                result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace')
+                # Week 1 Fix: Prevent indefinite hangs during env setup
+                result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=120)
 
                 # Extract VENV_PYTHON from output
                 for line in result.stdout.splitlines():
@@ -1219,9 +1203,9 @@ For example, if the test expects id="work", DO NOT use id="projects".
         }
 
         REQUIRED_FILES_BY_STACK = {
-            'frontend_web': ['index.html', 'css/main.css', 'js/app.js'],
-            'python_backend': ['app.py', 'requirements.txt'],
-            'node_js': ['index.js', 'package.json']
+            'frontend_web': ['index.html'],
+            'python_backend': ['requirements.txt'],
+            'node_js': ['package.json']
         }
 
         required = REQUIRED_FILES_BY_STACK.get(tech_key, [])

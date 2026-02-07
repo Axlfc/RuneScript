@@ -1,0 +1,9 @@
+# Git configuration for nIA TDD Loop
+auto_commit:
+  enabled: true
+  prefix: "✅"
+  include_diff: true
+
+checkpoints:
+  enabled: true
+  frequency: "per_task"
