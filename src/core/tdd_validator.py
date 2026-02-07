@@ -54,15 +54,21 @@ class TDDValidator:
             "is not recognized as an internal or external command",
             "test file not found",
             "python executable not found",
-            "ModuleNotFoundError: No module named 'selenium'"
+            "ModuleNotFoundError: No module named 'selenium'",
+            "Process exceeded time limit",
+            "Execution timed out"
         ]
 
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
         if has_execution_error:
+            msg = "RED phase failed: Execution error detected"
+            if "time limit" in result.stderr.lower() or "timed out" in result.stderr.lower():
+                msg = "RED phase failed: Execution timed out"
+
             return ValidationResult(
                 success=False,
-                message=f"RED phase failed: Execution error detected (not a test failure). Check paths and environment.",
+                message=f"{msg} (not a test failure). Check paths and environment.",
                 stdout=result.stdout,
                 stderr=result.stderr
             )
@@ -96,14 +102,20 @@ class TDDValidator:
             "command not found",
             "is not recognized as an internal or external command",
             "test file not found",
-            "python executable not found"
+            "python executable not found",
+            "Process exceeded time limit",
+            "Execution timed out"
         ]
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
         if has_execution_error:
+            msg = "GREEN phase failed: Execution error detected"
+            if "time limit" in result.stderr.lower() or "timed out" in result.stderr.lower():
+                msg = "GREEN phase failed: Execution timed out"
+
             return ValidationResult(
                 success=False,
-                message=f"GREEN phase failed: Execution error detected. Check paths and environment.",
+                message=f"{msg}. Check paths and environment.",
                 stdout=result.stdout,
                 stderr=result.stderr
             )
@@ -136,14 +148,20 @@ class TDDValidator:
             "command not found",
             "is not recognized as an internal or external command",
             "test file not found",
-            "python executable not found"
+            "python executable not found",
+            "Process exceeded time limit",
+            "Execution timed out"
         ]
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
         if has_execution_error:
+            msg = "REFACTOR failed: Execution error detected"
+            if "time limit" in result.stderr.lower() or "timed out" in result.stderr.lower():
+                msg = "REFACTOR failed: Execution timed out"
+
             return ValidationResult(
                 success=False,
-                message=f"REFACTOR failed: Execution error detected. Check paths and environment.",
+                message=f"{msg}. Check paths and environment.",
                 stdout=result.stdout,
                 stderr=result.stderr
             )
@@ -312,7 +330,7 @@ class TDDValidator:
                 # For now, if it's a simple test, we run it in the Python sandbox.
                 # If it's a complex pytest, we might still need a more robust runner,
                 # but let's try the sandbox first.
-                self.sandbox.timeout = 45 # Slightly more time for tests
+                self.sandbox.timeout = 180 # Match sandbox default for tests
 
                 # Use dynamic whitelist from instance attribute
                 allowed = self.allowed_imports
@@ -387,7 +405,7 @@ class TDDValidator:
                 capture_output=True,
                 encoding='utf-8',
                 errors='replace',
-                timeout=60
+                timeout=180
             )
 
         # Fallback to old logic if no tech_config
@@ -434,7 +452,7 @@ class TDDValidator:
             capture_output=True,
             encoding='utf-8',
             errors='replace',
-            timeout=60
+            timeout=180
         )
 
     def _run_with_streaming(self, cmd, cwd, callback):
@@ -471,7 +489,7 @@ class TDDValidator:
 
         # Week 1 Fix: Prevent indefinite hangs during streamed test execution
         try:
-            returncode = process.wait(timeout=60)
+            returncode = process.wait(timeout=180)
         except subprocess.TimeoutExpired:
             process.kill()
             returncode = 1
@@ -513,7 +531,7 @@ class TDDValidator:
                 capture_output=True,
                 encoding='utf-8',
                 errors='replace',
-                timeout=120
+                timeout=240
             )
 
         # Python/Pytest
