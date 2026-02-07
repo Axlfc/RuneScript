@@ -6,8 +6,8 @@ Combina extracción por regex con validación Pydantic.
 import re
 import json
 import logging
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from typing import List, Optional, Dict, Any, Annotated
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +29,41 @@ class PlanSchema(BaseModel):
     @field_validator('phases')
     @classmethod
     def must_have_min_phases(cls, v):
-        if len(v) < 2:
-            raise ValueError('Plan must have at least 2 phases')
+        if len(v) < 1:
+            raise ValueError('Plan must have at least 1 phase')
         return v
+
+def coerce_to_list(v: Any) -> List[str]:
+    if isinstance(v, str):
+        # Split by comma or newline if it looks like a list in a string
+        if '\n' in v:
+            return [line.strip().lstrip('- ') for line in v.splitlines() if line.strip()]
+        if ',' in v:
+            return [item.strip() for item in v.split(',') if item.strip()]
+        return [v.strip()]
+    if isinstance(v, list):
+        return [str(item) for item in v]
+    return []
+
+CoerceList = Annotated[List[str], BeforeValidator(coerce_to_list)]
+
+def coerce_to_string(v: Any) -> str:
+    if isinstance(v, list):
+        return ", ".join([str(i) for i in v if i])
+    return str(v)
+
+CoerceString = Annotated[str, BeforeValidator(coerce_to_string)]
 
 class SpecSchema(BaseModel):
     project_name: str
     objective: str
-    features: List[str]
-    language: str
-    framework: str = "None"
-    database: str = "None"
-    testing_framework: str
-    success_criteria: List[str]
-    out_of_scope: List[str]
+    features: CoerceList
+    language: CoerceString
+    framework: CoerceString = "None"
+    database: CoerceString = "None"
+    testing_framework: CoerceString
+    success_criteria: CoerceList
+    out_of_scope: CoerceList
 
 # PARSER ROBUSTO
 class RobustJSONParser:
@@ -100,6 +121,8 @@ class RobustJSONParser:
                 try:
                     data = json.loads(json_content)
                     logger.debug("JSON extracted via markdown pattern")
+                    if isinstance(data, dict) and "error" in data:
+                        raise ValueError(f"AI Provider Error: {data['error']}")
                     return data
                 except json.JSONDecodeError:
                     # Try sanitizing
@@ -120,6 +143,8 @@ class RobustJSONParser:
             try:
                 data = json.loads(potential_json)
                 logger.debug("JSON extracted via direct search")
+                if isinstance(data, dict) and "error" in data:
+                    raise ValueError(f"AI Provider Error: {data['error']}")
                 return data
             except json.JSONDecodeError:
                 # Try sanitizing
@@ -136,6 +161,8 @@ class RobustJSONParser:
             try:
                 data = json.loads(candidate)
                 logger.debug("JSON extracted via candidate search")
+                if isinstance(data, dict) and "error" in data:
+                    raise ValueError(f"AI Provider Error: {data['error']}")
                 return data
             except json.JSONDecodeError:
                 continue

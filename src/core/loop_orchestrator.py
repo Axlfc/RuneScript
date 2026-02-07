@@ -226,6 +226,9 @@ class LoopOrchestrator:
                     # If we have a locked test file, insist on it
                     if iter_state.test_file:
                         combined_context += f"\n\n⚠️ IMPORTANT: You must continue using the existing test file: {iter_state.test_file}"
+                        # Ensure we use the locked file even if the AI didn't return it in this specific response
+                        active_test_file = iter_state.test_file
+                        active_test_name = iter_state.test_name
 
                     # Fetch intelligence context
                     ram_context = ""
@@ -996,7 +999,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                 cmd = [sys.executable, str(setup_script), str(self.project_path)] + deps
                 # Week 1 Fix: Prevent indefinite hangs during env setup
-                result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=120)
+                result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=180)
 
                 # Extract VENV_PYTHON from output
                 for line in result.stdout.splitlines():

@@ -63,6 +63,12 @@ class CodeSecurityAnalyzer:
             'print',
             'assert',
             'run', # For subprocess.run
+            'getattr',
+            'hasattr',
+        ],
+        'dynamic_access': [
+            r'getattr\s*\(',
+            r'hasattr\s*\(',
         ]
     }
 
@@ -90,7 +96,7 @@ class CodeSecurityAnalyzer:
                     name = alias.name.split('.')[0]
                     if name in cls.FORBIDDEN_IMPORTS:
                         # Allow certain imports in tests
-                        if is_test and name in ['os', 'sys']:
+                        if is_test and name in ['os', 'sys', 'pathlib', 'subprocess']:
                             continue
 
                         threats.append({
@@ -106,7 +112,7 @@ class CodeSecurityAnalyzer:
                     name = node.module.split('.')[0]
                     if name in cls.FORBIDDEN_IMPORTS:
                         # Allow certain imports in tests
-                        if is_test and name in ['os', 'sys']:
+                        if is_test and name in ['os', 'sys', 'pathlib', 'subprocess']:
                             continue
 
                         threats.append({
@@ -152,13 +158,23 @@ class CodeSecurityAnalyzer:
 
         # Step 3: Pattern matching on raw code
         for pattern in cls.SUSPICIOUS_PATTERNS:
-            # Skip if pattern is in whitelist and we are in test mode
+            # Skip certain patterns in test mode
             if is_test:
+                if pattern in [r'\.system\s*\(', r'\.popen\s*\(', r'socket\.', r'subprocess\.']:
+                    # These are still suspicious, but we might want to allow them if they are part of test infra
+                    # For now, let's allow subprocess and os.path (os.path is not in patterns though)
+                    if pattern == r'subprocess\.':
+                        continue
+
+                # More robust whitelist check
                 is_whitelisted = False
-                for cat in cls.ALLOWED_PATTERNS.values():
-                    if pattern in cat:
-                        is_whitelisted = True
-                        break
+                for cat_name, patterns in cls.ALLOWED_PATTERNS.items():
+                    for allowed_p in patterns:
+                        if allowed_p == pattern or (cat_name == 'imports' and pattern.strip('.\\') in allowed_p):
+                            is_whitelisted = True
+                            break
+                    if is_whitelisted: break
+
                 if is_whitelisted:
                     continue
 
