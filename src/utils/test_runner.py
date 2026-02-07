@@ -17,12 +17,14 @@ def run_pytest(project_path: str) -> TestResult:
         TestResult(success, stdout, stderr)
     """
     try:
+        # Week 1 Fix: Add timeout to pytest runs
         result = subprocess.run(
             ['pytest'],
             capture_output=True,
             encoding='utf-8',
             errors='replace',
-            cwd=project_path
+            cwd=project_path,
+            timeout=60
         )
 
         return TestResult(

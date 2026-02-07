@@ -333,8 +333,8 @@ class TDDValidator:
                 final_res = subprocess.CompletedProcess(
                     args=['sandbox', str(rel_test_file)],
                     returncode=0 if result['success'] else 1,
-                    stdout=result['stdout'],
-                    stderr=result['stderr'] or (result['error'] if not result['success'] else "")
+                    stdout=result['stdout'] or "",
+                    stderr=result['stderr'] or (result['error'] if not result['success'] else "") or ""
                 )
 
                 if output_callback:
@@ -379,13 +379,15 @@ class TDDValidator:
             if output_callback:
                 return self._run_with_streaming(cmd, project_path, output_callback)
 
+            # Week 1 Fix: Add timeout to test execution
             return subprocess.run(
                 cmd,
                 shell=False,
                 cwd=str(project_path),
                 capture_output=True,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                timeout=60
             )
 
         # Fallback to old logic if no tech_config
@@ -424,13 +426,15 @@ class TDDValidator:
         if output_callback:
             return self._run_with_streaming(cmd, project_path, output_callback)
 
+        # Week 1 Fix: Add timeout to test execution
         return subprocess.run(
             cmd,
             shell=False,
             cwd=str(project_path),
             capture_output=True,
             encoding='utf-8',
-            errors='replace'
+            errors='replace',
+            timeout=60
         )
 
     def _run_with_streaming(self, cmd, cwd, callback):
@@ -465,7 +469,13 @@ class TDDValidator:
         t1.start()
         t2.start()
 
-        returncode = process.wait()
+        # Week 1 Fix: Prevent indefinite hangs during streamed test execution
+        try:
+            returncode = process.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            returncode = 1
+            logging.error("Test execution timed out after 60s")
         t1.join()
         t2.join()
 
@@ -495,13 +505,15 @@ class TDDValidator:
         # Check for package.json (Node.js)
         if (project_path / "package.json").exists():
             npm_cmd = "npm.cmd" if os.name == 'nt' else "npm"
+            # Week 1 Fix: Add timeout to test execution
             return subprocess.run(
                 [npm_cmd, "test"],
                 shell=False,
                 cwd=str(project_path),
                 capture_output=True,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                timeout=120
             )
 
         # Python/Pytest
@@ -533,8 +545,8 @@ class TDDValidator:
             final_res = subprocess.CompletedProcess(
                 args=['sandbox', 'all_tests'],
                 returncode=0 if result['success'] else 1,
-                stdout=result['stdout'],
-                stderr=result['stderr'] or (result['error'] if not result['success'] else "")
+                stdout=result['stdout'] or "",
+                stderr=result['stderr'] or (result['error'] if not result['success'] else "") or ""
             )
 
             if output_callback:
@@ -566,8 +578,8 @@ class TDDValidator:
                     last_result = subprocess.CompletedProcess(
                         args=['sandbox', str(py_file)],
                         returncode=0 if res['success'] else 1,
-                        stdout=res['stdout'],
-                        stderr=res['stderr'] or (res['error'] if not res['success'] else "")
+                        stdout=res['stdout'] or "",
+                        stderr=res['stderr'] or (res['error'] if not res['success'] else "") or ""
                     )
                     if last_result.returncode != 0:
                         return last_result
