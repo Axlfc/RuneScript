@@ -221,7 +221,7 @@ def process_gemini_chat(client, prompt):
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     try:
         response = requests.post(
-            f"{client['base_url']}?key={client['api_key']}", headers=headers, json=data
+            f"{client['base_url']}?key={client['api_key']}", headers=headers, json=data, timeout=60
         )
         response.raise_for_status()
         result = response.json()
@@ -364,7 +364,7 @@ def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
         "system": system_prompt
     }
     try:
-        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data)
+        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data, timeout=120)
         response.raise_for_status()
         result = response.json()
         return result.get("response", "Error: No response received from Ollama.")
@@ -484,7 +484,7 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
         if not full_url.startswith("http"):
             full_url = "http://" + full_url
 
-        response = requests.post(full_url, headers=headers, json=data)
+        response = requests.post(full_url, headers=headers, json=data, timeout=120)
         response.raise_for_status()
         # TODO: Only getting the content under 'response' but if it invents another it may not be properly parsing
         raw_response = response.json().get("response", "")
