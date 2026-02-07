@@ -114,6 +114,8 @@ class RobustJSONParser:
                 try:
                     data = json.loads(json_content)
                     logger.debug("JSON extracted via markdown pattern")
+                    if isinstance(data, dict) and "error" in data:
+                        raise ValueError(f"AI Provider Error: {data['error']}")
                     return data
                 except json.JSONDecodeError:
                     # Try sanitizing
@@ -134,6 +136,8 @@ class RobustJSONParser:
             try:
                 data = json.loads(potential_json)
                 logger.debug("JSON extracted via direct search")
+                if isinstance(data, dict) and "error" in data:
+                    raise ValueError(f"AI Provider Error: {data['error']}")
                 return data
             except json.JSONDecodeError:
                 # Try sanitizing
@@ -150,6 +154,8 @@ class RobustJSONParser:
             try:
                 data = json.loads(candidate)
                 logger.debug("JSON extracted via candidate search")
+                if isinstance(data, dict) and "error" in data:
+                    raise ValueError(f"AI Provider Error: {data['error']}")
                 return data
             except json.JSONDecodeError:
                 continue

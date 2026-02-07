@@ -62,3 +62,10 @@ class TestRobustJSONParser:
 
         with pytest.raises(ValueError):
             parser.parse_plan(response)
+
+    def test_extract_json_error_detection(self):
+        """Test que extract_json detecta errores del proveedor de IA."""
+        parser = RobustJSONParser()
+        response = '{"error": "Ollama timed out"}'
+        with pytest.raises(ValueError, match="AI Provider Error: Ollama timed out"):
+            parser.extract_json(response)
