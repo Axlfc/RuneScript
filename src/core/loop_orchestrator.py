@@ -312,21 +312,44 @@ class LoopOrchestrator:
                             self._log("❌ Consistency failed after all retries.", log_callback)
                             # Fallback to graceful degradation if possible
                             break
+                    elif consistency_error and consistency_error.startswith("FIXABLE:RENAME_TEST:"):
+                        # Week 2 Fix: Auto-rename test file if AI changed the name but it's clearly a single test
+                        new_name = consistency_error.split(":")[-1]
+                        self._log(f"🔄 AI renamed test to {new_name}. Auto-renaming back to {iter_state.test_file} for consistency.", log_callback)
+                        if new_name in response.files:
+                            response.files[iter_state.test_file] = response.files.pop(new_name)
+                            response.test_file = iter_state.test_file
 
-                    # Specific warning if critical files are missing for frontend_web
+                    # Specific warning if critical files are missing
+                    critical_warnings = []
+                    detected_paths = set(response.files.keys())
+
                     if self.tech_stack == 'frontend_web':
-                        critical_files = ['index.html', 'css/main.css', 'styles/main.css', 'js/app.js', 'js/main.js']
-                        detected_paths = set(response.files.keys())
-                        if 'index.html' not in detected_paths:
-                            self._log("⚠️ CRITICAL: index.html not detected in AI response!", log_callback)
+                        if 'index.html' not in detected_paths and not (self.project_path / 'index.html').exists():
+                            critical_warnings.append("index.html is missing.")
 
-                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css'])
-                        if not has_css:
-                             self._log("⚠️ CRITICAL: No CSS file detected in AI response!", log_callback)
+                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
+                        if not has_css and not any((self.project_path / f).exists() for f in ['css/style.css', 'style.css']):
+                             critical_warnings.append("CSS file is missing (e.g., css/style.css).")
 
-                        has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js'])
-                        if not has_js:
-                             self._log("⚠️ CRITICAL: No JS file detected in AI response!", log_callback)
+                        has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js', 'app.js'])
+                        if not has_js and not any((self.project_path / f).exists() for f in ['js/app.js', 'app.js']):
+                             critical_warnings.append("JavaScript file is missing (e.g., js/app.js).")
+
+                    # Check for files required by the test
+                    current_test_file = response.test_file or iter_state.test_file
+                    if current_test_file and current_test_file in response.files:
+                        test_reqs = TestParser.extract_requirements(response.files[current_test_file])
+                        for req_file in test_reqs.get('required_files', []):
+                            if req_file not in detected_paths and not (self.project_path / req_file).exists():
+                                critical_warnings.append(f"Required implementation file '{req_file}' is missing (detected from test).")
+
+                    if critical_warnings:
+                        for w in critical_warnings:
+                            self._log(f"⚠️ CRITICAL: {w}", log_callback)
+                        # Add to feedback for next attempt
+                        ai_feedback += f"\n\nCRITICAL MISSING FILES:\n" + "\n".join([f"- {w}" for w in critical_warnings])
+                        ai_feedback += "\n\nYou MUST provide these files in your response to pass the tests."
 
                     if not response.files:
                         self._log("❌ AI provided no code changes.", log_callback)
@@ -430,6 +453,9 @@ Your implementation MUST include these EXACT values to pass the tests:
 
 ✓ Required text content:
   {', '.join(reqs['required_text']) if reqs['required_text'] else 'None'}
+
+✓ Required Implementation Files:
+  {', '.join(reqs['required_files']) if reqs['required_files'] else 'None'}
 
 ⚠️ IMPORTANT: Use the EXACT IDs and tags listed above.
 For example, if the test expects id="work", DO NOT use id="projects".

@@ -45,15 +45,14 @@ class IterationState:
         """
         Ensure retry attempts maintain consistency.
         Returns: (is_valid, error_message)
+
+        If error_message starts with 'FIXABLE:', it means the orchestrator can auto-resolve it.
         """
         if not self.test_file:
             return True, None
 
         if proposed_test_file and proposed_test_file != self.test_file:
-            return False, (
-                f"Test file changed from {self.test_file} to "
-                f"{proposed_test_file}. Retries must use the same test file."
-            )
+            return True, f"FIXABLE:RENAME_TEST:{proposed_test_file}"
 
         # Also check if any test file in proposed_files is different from the locked one
         # Filter files that look like tests (usually in tests/ or starting with test_)
@@ -61,6 +60,9 @@ class IterationState:
 
         if new_test_files:
             if self.test_file not in new_test_files:
+                 if len(new_test_files) == 1:
+                     return True, f"FIXABLE:RENAME_TEST:{new_test_files[0]}"
+
                  return False, (
                     f"Original test file {self.test_file} missing from response. "
                     f"AI proposed different test files: {new_test_files}. You MUST use the same test file name."
