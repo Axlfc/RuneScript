@@ -405,8 +405,8 @@ class GitBasedFileManager:
         success = self.rollback_to(commit_sha)
 
         # 3. Restore tests
-        if backup_created:
-            try:
+        try:
+            if backup_created:
                 for root, dirs, files in os.walk(temp_dir):
                     for file in files:
                         temp_f_path = os.path.join(root, file)
@@ -423,9 +423,10 @@ class GitBasedFileManager:
                     self.repo.index.commit("Restore tests after rollback")
 
                 logger.info("  - Tests successfully restored and committed")
-            except Exception as e:
-                logger.error(f"  - Failed to restore tests: {e}")
-            finally:
+        except Exception as e:
+            logger.error(f"  - Failed to restore tests: {e}")
+        finally:
+            if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
 
         return success

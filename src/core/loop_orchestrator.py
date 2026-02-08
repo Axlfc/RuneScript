@@ -343,15 +343,16 @@ class LoopOrchestrator:
                         ai_feedback = "You provided no code changes. Please provide the necessary implementation files."
                         continue
 
-                    # 6. TDD Cycle: RED Phase (ONLY on attempt 0)
-                    if attempt == 0:
+                    # 6. TDD Cycle: RED Phase (Run on the first successful response)
+                    is_first_response = len(iter_state.generated_files_history) == 0
+                    if is_first_response:
                         active_test_file = response.test_file
                         active_test_name = response.test_name
 
-                        # Register first attempt to lock in files (and test file if present)
+                        # Register first successful attempt to lock in files (and test file if present)
                         iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
 
-                    if attempt == 0 and active_test_file:
+                    if is_first_response and active_test_file:
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'RED')
                         self._log_progress_bars(log_callback)
@@ -613,7 +614,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 except: pass
 
                             # Register failed attempt
-                            if attempt > 0: # Already registered attempt 0
+                            if not is_first_response:
                                 iter_state.register_attempt(response.files, False)
 
                             # Log failed attempt
@@ -665,10 +666,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         self._last_test_passed = True
 
                     # Register successful attempt (for future degradation if quality fails later)
-                    if attempt > 0:
+                    if not is_first_response:
                         iter_state.register_attempt(response.files, tests_passed)
                     else:
-                        # Attempt 0 was already registered but we update the pass status
+                        # First attempt was already registered but we update the pass status
                         iter_state.update_attempt_status(0, tests_passed)
 
                     # Create a checkpoint after successful GREEN phase
