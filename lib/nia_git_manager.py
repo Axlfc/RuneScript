@@ -311,10 +311,22 @@ class GitBasedFileManager:
         if not failed_files:
             return True
 
-        logger.info(f"🔄 Performing smart rollback for: {failed_files}")
+        # Safety: Filter out test files from selective rollback
+        safe_failed_files = []
+        for f in failed_files:
+            if 'tests/' in f or os.path.basename(f).startswith('test_'):
+                logger.warning(f"⚠️ SAFETY: Ignoring rollback request for test file: {f}")
+                continue
+            safe_failed_files.append(f)
+
+        if not safe_failed_files:
+            logger.info("No non-test files to rollback.")
+            return True
+
+        logger.info(f"🔄 Performing smart rollback for: {safe_failed_files}")
 
         try:
-            for file_path in failed_files:
+            for file_path in safe_failed_files:
                 try:
                     # Check if file existed at checkpoint
                     try:
@@ -355,23 +367,37 @@ class GitBasedFileManager:
 
     def rollback_preserving_tests(self, commit_sha: str) -> bool:
         """
-        Rollback that preserves the 'tests/' directory even after a hard reset.
+        Rollback that preserves all test files even after a hard reset.
         """
         import shutil
         import tempfile
+        import glob
 
         logger.info(f"⏪ Rolling back to {commit_sha[:8]} while preserving tests...")
 
-        # 1. Backup tests/ directory
+        # 1. Backup all test files (in tests/ or starting with test_)
         temp_dir = tempfile.mkdtemp()
-        tests_dir = os.path.join(self.project_path, 'tests')
         backup_created = False
 
-        if os.path.exists(tests_dir):
+        test_patterns = [
+            os.path.join(self.project_path, 'tests', '**', '*.py'),
+            os.path.join(self.project_path, 'test_*.py')
+        ]
+
+        test_files_to_backup = []
+        for pattern in test_patterns:
+            test_files_to_backup.extend(glob.glob(pattern, recursive=True))
+
+        if test_files_to_backup:
             try:
-                shutil.copytree(tests_dir, os.path.join(temp_dir, 'tests'))
+                for f_path in test_files_to_backup:
+                    rel_p = os.path.relpath(f_path, self.project_path)
+                    dest_p = os.path.join(temp_dir, rel_p)
+                    os.makedirs(os.path.dirname(dest_p), exist_ok=True)
+                    shutil.copy2(f_path, dest_p)
+
                 backup_created = True
-                logger.debug("  - Tests backed up to temporary location")
+                logger.debug(f"  - {len(test_files_to_backup)} tests backed up to temporary location")
             except Exception as e:
                 logger.error(f"  - Failed to backup tests: {e}")
 
@@ -379,24 +405,28 @@ class GitBasedFileManager:
         success = self.rollback_to(commit_sha)
 
         # 3. Restore tests
-        if backup_created:
-            try:
-                # Remove possibly empty tests dir after rollback
-                if os.path.exists(tests_dir):
-                    shutil.rmtree(tests_dir)
+        try:
+            if backup_created:
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        temp_f_path = os.path.join(root, file)
+                        rel_p = os.path.relpath(temp_f_path, temp_dir)
+                        dest_f_path = os.path.join(self.project_path, rel_p)
 
-                # Restore from backup
-                shutil.copytree(os.path.join(temp_dir, 'tests'), tests_dir)
+                        os.makedirs(os.path.dirname(dest_f_path), exist_ok=True)
+                        shutil.copy2(temp_f_path, dest_f_path)
 
-                # Commit restored tests
-                self.repo.git.add('tests/')
+                        # Tell git about the restored file
+                        self.repo.git.add(rel_p)
+
                 if self.repo.is_dirty():
                     self.repo.index.commit("Restore tests after rollback")
 
                 logger.info("  - Tests successfully restored and committed")
-            except Exception as e:
-                logger.error(f"  - Failed to restore tests: {e}")
-            finally:
+        except Exception as e:
+            logger.error(f"  - Failed to restore tests: {e}")
+        finally:
+            if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
 
         return success
