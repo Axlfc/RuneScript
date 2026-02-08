@@ -101,9 +101,9 @@ class LoopOrchestrator:
         self.path_validator = ParanoidPathValidator(base_dir=self.project_path)
         self.validator.security_auditor = self.security_auditor
 
-        self.spec_path = project_path / "SPEC.md"
-        self.plan_path = project_path / "IMPLEMENTATION_PLAN.md"
-        self.prompt_path = project_path / "NIA_PROMPT.md"
+        self.spec_path = self.project_path / "SPEC.md"
+        self.plan_path = self.project_path / "IMPLEMENTATION_PLAN.md"
+        self.prompt_path = self.project_path / "NIA_PROMPT.md"
 
     def _notify_ui(self, event_type, data):
         """Notify UI of state changes."""
