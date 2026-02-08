@@ -45,6 +45,12 @@ class SafeOpen:
         try:
             safe_path = self.validator.validate(str(file))
             return self.original_open(safe_path, mode, *args, **kwargs)
+        except FileNotFoundError:
+            # Let FileNotFoundError propagate naturally (expected in RED phase)
+            raise
+        except PermissionError:
+            # Re-raise explicit permission errors
+            raise
         except Exception as e:
             raise PermissionError(f"Sandbox blocked access to file: {file} - {e}")
 
