@@ -225,7 +225,11 @@ class LoopOrchestrator:
 
                     # If we have a locked test file, insist on it
                     if iter_state.test_file:
-                        combined_context += f"\n\n⚠️ IMPORTANT: You must continue using the existing test file: {iter_state.test_file}"
+                        combined_context += f"\n\n⚠️ CRITICAL: You must include the original test file in your response exactly as shown below:\n\n"
+                        combined_context += f"File: {iter_state.test_file}\n"
+                        combined_context += f"```python\n{iter_state.test_file_content}\n```\n"
+                        combined_context += f"\nDO NOT modify the test file. Fix ONLY the implementation issues."
+
                         # Ensure we use the locked file even if the AI didn't return it in this specific response
                         active_test_file = iter_state.test_file
                         active_test_name = iter_state.test_name
@@ -452,6 +456,11 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                     # 7. TDD Cycle: GREEN Phase
                     self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
+
+                    # Week 2 Fix: Auto-inject test file if missing from AI response
+                    if iter_state.test_file and iter_state.test_file not in response.files:
+                        self._log(f"⚠️ LLM omitted test file {iter_state.test_file}. Auto-injecting from IterationState.", log_callback)
+                        response.files[iter_state.test_file] = iter_state.test_file_content
 
                     # WRITE FILES FIRST ✅ (as requested by user)
                     written_files = []
@@ -689,8 +698,8 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         stack_trace=str(e)
                     )
 
-                    # Rollback on unexpected error
-                    self.git_manager.rollback_to(checkpoint)
+                    # Rollback on unexpected error - Preservation fix
+                    self.git_manager.rollback_preserving_tests(checkpoint)
                     self.git_manager.record_failed_iteration()
                     if attempt == max_retries:
                         self.tracker.mark_blocked(self.plan_path, next_task, str(e))
