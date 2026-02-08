@@ -104,11 +104,22 @@ class SecureSandbox:
             }
 
         if result_queue.empty():
+            exit_code = process.exitcode
+            error_msg = f"Sandbox crashed or exited without result (Exit code: {exit_code})"
+
+            # Common exit codes
+            if exit_code == -signal.SIGSEGV:
+                error_msg += " - Segmentation fault"
+            elif exit_code == -signal.SIGABRT:
+                error_msg += " - Aborted"
+            elif exit_code == -signal.SIGKILL:
+                error_msg += " - Killed (possibly out of memory or timeout)"
+
             return {
                 'success': False,
-                'error': 'Sandbox crashed or exited without result',
+                'error': error_msg,
                 'stdout': '',
-                'stderr': ''
+                'stderr': error_msg
             }
 
         return result_queue.get()
