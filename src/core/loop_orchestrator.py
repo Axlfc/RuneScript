@@ -400,6 +400,10 @@ class LoopOrchestrator:
                             # Write ONLY the test file
                             test_content = response.files[active_test_file]
                             self._write_file(active_test_file, test_content, log_callback)
+
+                            # DA-006: Auto-fix test syntax errors before execution
+                            self._validate_and_fix_test_syntax(active_test_file, log_callback)
+
                             self._log_file_content(active_test_file, log_callback)
 
                             # DEBUG LOGS
@@ -545,6 +549,11 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 return LoopResult("ERROR", iteration, "Physical file verification failed")
 
                         self._log(f"✅ Successfully written: {len(written_files)} files", log_callback)
+
+                        # DA-006: Auto-fix test syntax errors if AI modified the test
+                        if active_test_file:
+                            self._validate_and_fix_test_syntax(active_test_file, log_callback)
+
                         self._log_project_structure(log_callback)
 
                         # Quality Check AFTER writing files
@@ -970,6 +979,59 @@ For example, if the test expects id="work", DO NOT use id="projects".
             return True
 
         return self.structure_validator.is_valid(filepath, tech_stack)
+
+    def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
+        """Validate and auto-fix common test syntax issues."""
+        test_path = self.project_path / test_file_rel
+        try:
+            if not test_path.exists():
+                return True
+
+            test_code = test_path.read_text(encoding='utf-8')
+        except (FileNotFoundError, PermissionError):
+            return True
+
+        # Check syntax
+        try:
+            compile(test_code, test_file_rel, 'exec')
+            return True
+        except SyntaxError as e:
+            self._log(f"⚠️ Test '{test_file_rel}' has syntax error at line {e.lineno}, attempting auto-fix...", log_callback)
+
+            # Auto-fix common patterns
+            fixed_code = test_code
+
+            # Pattern 1: assert soup, soup.find(...) → assert soup.find(...)
+            fixed_code = re.sub(
+                r'assert\s+soup\s*,\s+(soup\.find\([^)]+\))',
+                r'assert \1',
+                fixed_code
+            )
+
+            # Pattern 2: More generic fix for assert X, Y, "msg" where X is soup
+            fixed_code = re.sub(
+                r'assert\s+soup\s*,\s*(soup\.find\([^)]+\))\s*,\s*(["\'].*?["\'])',
+                r'assert \1, \2',
+                fixed_code
+            )
+
+            # Pattern 3: requests.get() on local files
+            if 'requests.get' in fixed_code and ('index.html' in fixed_code or 'index.htm' in fixed_code):
+                fixed_code = re.sub(
+                    r"response\s*=\s*requests\.get\(['\"]index\.html?['\"]\)\s*\n\s*soup\s*=\s*BeautifulSoup\(response\.text,\s*['\"]html\.parser['\"]\)",
+                    "with open('index.html', 'r', encoding='utf-8') as f:\n        soup = BeautifulSoup(f.read(), 'html.parser')",
+                    fixed_code
+                )
+
+            # Validate fixed version
+            try:
+                compile(fixed_code, test_file_rel, 'exec')
+                test_path.write_text(fixed_code, encoding='utf-8')
+                self._log(f"✅ Auto-fixed test syntax error in {test_file_rel}", log_callback)
+                return True
+            except Exception as e2:
+                self._log(f"❌ Could not auto-fix syntax error in {test_file_rel}: {e2}", log_callback)
+                return False
 
     def _write_file(self, rel_path: str, content: str, log_callback=None) -> bool:
         """

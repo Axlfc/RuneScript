@@ -200,6 +200,12 @@ When generating tests (especially for frontend):
 - **DESCRIPTIVE ERRORS**: Always include helpful messages in assertions.
   - GOOD: `assert soup.find(id="main"), "CRITICAL: Element with id='main' is missing from index.html"`
 
+### 🚫 COMMON MISTAKES TO AVOID
+- **NO SYNTAX ERRORS IN ASSERTIONS**:
+  - ❌ BAD: `assert soup, soup.find(id='skills'), "Message"` (Syntax Error: invalid syntax)
+  - ✅ GOOD: `assert soup.find(id='skills'), "Message"`
+- **ONE ASSERTION PER CHECK**: Don't chain multiple elements in a single `assert` if it breaks syntax.
+
 ### 💎 PRODUCTION CODE STANDARDS
 - **NO STUBS**: Every file must be fully functional. No "TODO" comments in place of logic.
 - **MANDATORY LENGTH**:
