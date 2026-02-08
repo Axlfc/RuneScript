@@ -186,6 +186,14 @@ Specify filenames as 'File: path/to/file' OR use a JSON response with a "files" 
 
 ### 🧪 TEST WRITING GUIDELINES
 When generating tests (especially for frontend):
+- **NEVER use `requests.get()` for local files**: Tests run in a restricted sandbox without a web server. To test HTML/CSS files, read them directly from the disk.
+  - ❌ BAD: `response = requests.get('index.html')`
+  - ✅ GOOD: `with open('index.html', 'r', encoding='utf-8') as f: html_content = f.read()`
+- **Use BeautifulSoup with local content**:
+  ```python
+  with open('index.html', 'r', encoding='utf-8') as f:
+      soup = BeautifulSoup(f.read(), 'html.parser')
+  ```
 - **ROBUST PATHS**: Use `.endswith()` or normalized paths when checking `href` or `src`.
   - BAD: `assert link['href'] == 'css/style.css'`
   - GOOD: `assert 'css/style.css' in link['href']` or `assert link['href'].endswith('css/style.css')`

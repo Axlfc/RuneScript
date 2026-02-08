@@ -56,7 +56,8 @@ class TDDValidator:
             "python executable not found",
             "ModuleNotFoundError: No module named 'selenium'",
             "Process exceeded time limit",
-            "Execution timed out"
+            "Execution timed out",
+            "Sandbox crashed"
         ]
 
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
@@ -104,7 +105,8 @@ class TDDValidator:
             "test file not found",
             "python executable not found",
             "Process exceeded time limit",
-            "Execution timed out"
+            "Execution timed out",
+            "Sandbox crashed"
         ]
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
@@ -150,7 +152,8 @@ class TDDValidator:
             "test file not found",
             "python executable not found",
             "Process exceeded time limit",
-            "Execution timed out"
+            "Execution timed out",
+            "Sandbox crashed"
         ]
         has_execution_error = any(err.lower() in result.stderr.lower() for err in execution_errors)
 
