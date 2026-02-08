@@ -389,6 +389,7 @@ class nIAClaudeClient:
 IMPORTANT FOR FRONTEND PROJECTS:
 - Generate standalone Python scripts for testing (e.g., in 'tests/test_structure.py').
 - DO NOT use 'import pytest'.
+- **NEVER use `requests.get()` for local files**: Read them from disk with `open()`.
 - Use 'from bs4 import BeautifulSoup' for HTML parsing.
 - Use 'assert' for validations and 'print("✅ ...")' for success messages.
 - Include 'if __name__ == "__main__":' to execute all test functions.

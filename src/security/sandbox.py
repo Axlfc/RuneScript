@@ -45,6 +45,12 @@ class SafeOpen:
         try:
             safe_path = self.validator.validate(str(file))
             return self.original_open(safe_path, mode, *args, **kwargs)
+        except FileNotFoundError:
+            # Let FileNotFoundError propagate naturally (expected in RED phase)
+            raise
+        except PermissionError:
+            # Re-raise explicit permission errors
+            raise
         except Exception as e:
             raise PermissionError(f"Sandbox blocked access to file: {file} - {e}")
 
@@ -98,11 +104,26 @@ class SecureSandbox:
             }
 
         if result_queue.empty():
+            exit_code = process.exitcode
+            error_msg = f"Sandbox crashed or exited without result (Exit code: {exit_code})"
+
+            # Common exit codes (Unix-specific signals handled safely for Windows)
+            sigsegv = getattr(signal, 'SIGSEGV', None)
+            sigabrt = getattr(signal, 'SIGABRT', None)
+            sigkill = getattr(signal, 'SIGKILL', None)
+
+            if sigsegv and exit_code == -sigsegv:
+                error_msg += " - Segmentation fault"
+            elif sigabrt and exit_code == -sigabrt:
+                error_msg += " - Aborted"
+            elif sigkill and exit_code == -sigkill:
+                error_msg += " - Killed (possibly out of memory or timeout)"
+
             return {
                 'success': False,
-                'error': 'Sandbox crashed or exited without result',
+                'error': error_msg,
                 'stdout': '',
-                'stderr': ''
+                'stderr': error_msg
             }
 
         return result_queue.get()

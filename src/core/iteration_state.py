@@ -13,6 +13,7 @@ class IterationState:
     def __init__(self, task_description: str):
         self.task_description = task_description
         self.test_file: Optional[str] = None  # Lock this in on first attempt
+        self.test_file_content: Optional[str] = None
         self.test_name: Optional[str] = None
         self.attempt_number = 0
         self.generated_files_history: List[Dict[str, str]] = []
@@ -28,6 +29,9 @@ class IterationState:
         if not self.test_file and test_file:
             self.test_file = test_file
             self.test_name = test_name
+            # Capture content from the generated files
+            if test_file in files_generated:
+                self.test_file_content = files_generated[test_file]
             logger.info(f"Locked in test file for this iteration: {self.test_file}")
 
     def update_attempt_status(self, attempt_idx: int, tests_passed: bool):
@@ -41,15 +45,14 @@ class IterationState:
         """
         Ensure retry attempts maintain consistency.
         Returns: (is_valid, error_message)
+
+        If error_message starts with 'FIXABLE:', it means the orchestrator can auto-resolve it.
         """
         if not self.test_file:
             return True, None
 
         if proposed_test_file and proposed_test_file != self.test_file:
-            return False, (
-                f"Test file changed from {self.test_file} to "
-                f"{proposed_test_file}. Retries must use the same test file."
-            )
+            return True, f"FIXABLE:RENAME_TEST:{proposed_test_file}"
 
         # Also check if any test file in proposed_files is different from the locked one
         # Filter files that look like tests (usually in tests/ or starting with test_)
@@ -57,6 +60,9 @@ class IterationState:
 
         if new_test_files:
             if self.test_file not in new_test_files:
+                 if len(new_test_files) == 1:
+                     return True, f"FIXABLE:RENAME_TEST:{new_test_files[0]}"
+
                  return False, (
                     f"Original test file {self.test_file} missing from response. "
                     f"AI proposed different test files: {new_test_files}. You MUST use the same test file name."

@@ -74,6 +74,7 @@
             "ollama_model": "qwen2.5-coder",
             "server_url": "http://localhost:8004/v1/",
             "api_key": "not-needed",
+            "ollama_timeout": 600,
             "euriai_api_key": "your-euri-api-key",
             "euriai_model": "gpt-4.1-nano",
             "euriai_temperature": 0.7,
