@@ -107,12 +107,16 @@ class SecureSandbox:
             exit_code = process.exitcode
             error_msg = f"Sandbox crashed or exited without result (Exit code: {exit_code})"
 
-            # Common exit codes
-            if exit_code == -signal.SIGSEGV:
+            # Common exit codes (Unix-specific signals handled safely for Windows)
+            sigsegv = getattr(signal, 'SIGSEGV', None)
+            sigabrt = getattr(signal, 'SIGABRT', None)
+            sigkill = getattr(signal, 'SIGKILL', None)
+
+            if sigsegv and exit_code == -sigsegv:
                 error_msg += " - Segmentation fault"
-            elif exit_code == -signal.SIGABRT:
+            elif sigabrt and exit_code == -sigabrt:
                 error_msg += " - Aborted"
-            elif exit_code == -signal.SIGKILL:
+            elif sigkill and exit_code == -sigkill:
                 error_msg += " - Killed (possibly out of memory or timeout)"
 
             return {
