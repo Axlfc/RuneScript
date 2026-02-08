@@ -225,7 +225,11 @@ class LoopOrchestrator:
 
                     # If we have a locked test file, insist on it
                     if iter_state.test_file:
-                        combined_context += f"\n\n⚠️ IMPORTANT: You must continue using the existing test file: {iter_state.test_file}"
+                        combined_context += f"\n\n⚠️ CRITICAL: You must include the original test file in your response exactly as shown below:\n\n"
+                        combined_context += f"File: {iter_state.test_file}\n"
+                        combined_context += f"```python\n{iter_state.test_file_content}\n```\n"
+                        combined_context += f"\nDO NOT modify the test file. Fix ONLY the implementation issues."
+
                         # Ensure we use the locked file even if the AI didn't return it in this specific response
                         active_test_file = iter_state.test_file
                         active_test_name = iter_state.test_name
@@ -339,15 +343,16 @@ class LoopOrchestrator:
                         ai_feedback = "You provided no code changes. Please provide the necessary implementation files."
                         continue
 
-                    # 6. TDD Cycle: RED Phase (ONLY on attempt 0)
-                    if attempt == 0:
+                    # 6. TDD Cycle: RED Phase (Run on the first successful response)
+                    is_first_response = len(iter_state.generated_files_history) == 0
+                    if is_first_response:
                         active_test_file = response.test_file
                         active_test_name = response.test_name
 
-                        # Register first attempt to lock in files (and test file if present)
+                        # Register first successful attempt to lock in files (and test file if present)
                         iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
 
-                    if attempt == 0 and active_test_file:
+                    if is_first_response and active_test_file:
                         self._log(f"=== STARTING RED PHASE ===", log_callback)
                         self._notify_ui('phase_change', 'RED')
                         self._log_progress_bars(log_callback)
@@ -452,6 +457,11 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                     # 7. TDD Cycle: GREEN Phase
                     self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
+
+                    # Week 2 Fix: Auto-inject test file if missing from AI response
+                    if iter_state.test_file and iter_state.test_file not in response.files:
+                        self._log(f"⚠️ LLM omitted test file {iter_state.test_file}. Auto-injecting from IterationState.", log_callback)
+                        response.files[iter_state.test_file] = iter_state.test_file_content
 
                     # WRITE FILES FIRST ✅ (as requested by user)
                     written_files = []
@@ -604,7 +614,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
                                 except: pass
 
                             # Register failed attempt
-                            if attempt > 0: # Already registered attempt 0
+                            if not is_first_response:
                                 iter_state.register_attempt(response.files, False)
 
                             # Log failed attempt
@@ -656,10 +666,10 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         self._last_test_passed = True
 
                     # Register successful attempt (for future degradation if quality fails later)
-                    if attempt > 0:
+                    if not is_first_response:
                         iter_state.register_attempt(response.files, tests_passed)
                     else:
-                        # Attempt 0 was already registered but we update the pass status
+                        # First attempt was already registered but we update the pass status
                         iter_state.update_attempt_status(0, tests_passed)
 
                     # Create a checkpoint after successful GREEN phase
@@ -689,8 +699,8 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         stack_trace=str(e)
                     )
 
-                    # Rollback on unexpected error
-                    self.git_manager.rollback_to(checkpoint)
+                    # Rollback on unexpected error - Preservation fix
+                    self.git_manager.rollback_preserving_tests(checkpoint)
                     self.git_manager.record_failed_iteration()
                     if attempt == max_retries:
                         self.tracker.mark_blocked(self.plan_path, next_task, str(e))
