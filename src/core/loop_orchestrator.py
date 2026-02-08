@@ -40,6 +40,7 @@ class LoopResult:
 
 class LoopOrchestrator:
     def __init__(self, project_path: Path, ui_callbacks=None):
+        self.root_path = Path(os.getcwd()).absolute()
         self.project_path = Path(os.path.abspath(project_path))
         self.ui_callbacks = ui_callbacks or {}
 
@@ -129,298 +130,291 @@ class LoopOrchestrator:
         tasks_planned = 0
         tasks_completed = 0
 
-        for iteration in range(max_iterations):
-            # CHECK STOP EVENT
-            if stop_event.is_set():
-                self._log(f"Loop stopped by user at iteration {iteration}", log_callback)
-                return LoopResult("STOPPED", iteration, "Loop stopped by user", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+        # Change working directory to project path for the duration of the loop
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.project_path)
+            self._log(f"📂 Switched working directory to: {os.getcwd()}", log_callback)
+        except Exception as e:
+            self._log(f"❌ Failed to change working directory: {e}", log_callback)
 
-            # CHECK FOR BLOCKING ISSUES
-            open_issues = self.issue_manager.get_issues(status='Open')
-            critical_issues = [i for i in open_issues if i['priority'] == 'Critical']
-            if critical_issues:
-                self._log(f"🛑 BLOCKING: Found {len(critical_issues)} CRITICAL issues. Autonomous loop paused.", log_callback)
-                self._notify_ui('phase_change', 'IDLE')
-                # Wait or abort? Let's abort this run so user can fix and resume.
-                return LoopResult("BLOCKED", iteration, f"Blocked by {len(critical_issues)} critical issues.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+        try:
+            for iteration in range(max_iterations):
+                # CHECK STOP EVENT
+                if stop_event.is_set():
+                    self._log(f"Loop stopped by user at iteration {iteration}", log_callback)
+                    return LoopResult("STOPPED", iteration, "Loop stopped by user", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-            self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
-            self._log(f"📍 Project Path: {self.project_path}", log_callback)
-            self._log(f"📂 Current Work Dir: {os.getcwd()}", log_callback)
+                # CHECK FOR BLOCKING ISSUES
+                open_issues = self.issue_manager.get_issues(status='Open')
+                critical_issues = [i for i in open_issues if i['priority'] == 'Critical']
+                if critical_issues:
+                    self._log(f"🛑 BLOCKING: Found {len(critical_issues)} CRITICAL issues. Autonomous loop paused.", log_callback)
+                    self._notify_ui('phase_change', 'IDLE')
+                    # Wait or abort? Let's abort this run so user can fix and resume.
+                    return LoopResult("BLOCKED", iteration, f"Blocked by {len(critical_issues)} critical issues.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-            # Publish telemetry update
-            self._notify_ui('telemetry_update', {
-                'loop_current': iteration + 1,
-                'loop_total': max_iterations
-            })
+                self._log(f"\n=== nIA ITERATION {iteration + 1}/{max_iterations} ===", log_callback)
+                self._log(f"📍 Project Path: {self.project_path}", log_callback)
+                self._log(f"📂 Current Work Dir: {os.getcwd()}", log_callback)
 
-            # 0. Ensure environment is ready
-            if iteration == 0:
-                self._setup_environment(log_callback)
-                # Initialize tech_stack
-                nia_config = self._get_nia_config()
-                self.tech_stack = nia_config.get("tech_stack", "")
-                if not self.tech_stack:
-                    self._log("⚠️ No tech_stack specified in .nia_config.json, defaulting to 'frontend_web'", log_callback)
-                    self.tech_stack = "frontend_web"
+                # Publish telemetry update
+                self._notify_ui('telemetry_update', {
+                    'loop_current': iteration + 1,
+                    'loop_total': max_iterations
+                })
 
-                # Auto-align structure
-                self._align_project_structure(log_callback)
+                # 0. Ensure environment is ready
+                if iteration == 0:
+                    self._setup_environment(log_callback)
+                    # Initialize tech_stack
+                    nia_config = self._get_nia_config()
+                    self.tech_stack = nia_config.get("tech_stack", "")
+                    if not self.tech_stack:
+                        self._log("⚠️ No tech_stack specified in .nia_config.json, defaulting to 'frontend_web'", log_callback)
+                        self.tech_stack = "frontend_web"
 
-            # 1. Load fresh state
-            try:
-                spec = self.spec_path.read_text(encoding='utf-8')
-                tasks = self.parser.parse(self.plan_path)
-                tasks_planned = len(tasks)
-                prompt = self.prompt_path.read_text(encoding='utf-8')
-            except Exception as e:
-                logger.error(f"Error loading files: {e}", exc_info=True)
-                self._log(f"❌ Error loading files: {str(e)}", log_callback)
-                self.issue_manager.create_issue(
-                    category=self.issue_manager.CAT_DEPENDENCIES,
-                    priority=self.issue_manager.PRIO_HIGH,
-                    title=f"File loading error in iteration {iteration}",
-                    description=f"File loading error: {str(e)}",
-                    stack_trace=f"Iteration: {iteration}\n{str(e)}"
-                )
-                return LoopResult("ERROR", iteration, f"File loading error: {e}", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                    # Auto-align structure
+                    self._align_project_structure(log_callback)
 
-            # 2. Find next task
-            next_task = self.parser.find_next_pending(tasks)
-            if not next_task:
-                return LoopResult("ALL_COMPLETE", iteration, "✅ All tasks completed!", self._get_final_stats(start_time, tasks_planned, tasks_completed))
-
-            # Mark as in_progress for UI
-            next_task.status = 'in_progress'
-            self._notify_ui('update_ai_plan', tasks)
-
-            self._log(f"Target Task: {next_task.description}", log_callback)
-
-            # 3. Create Checkpoint
-            checkpoint = self.git_manager.create_checkpoint(f"Before: {next_task.description}")
-
-            # 4. Get context (all project files)
-            context = self._get_project_context()
-
-            # 5. Ask AI for solution (with quality retry)
-            max_retries = 3
-            ai_feedback = ""
-            requirements_feedback = ""
-            active_test_file = None
-            active_test_name = None
-
-            # Initialize iteration state
-            iter_state = IterationState(next_task.description)
-
-            for attempt in range(max_retries + 1):
+                # 1. Load fresh state
                 try:
-                    if attempt > 0:
-                        self._log(f"Attempt {attempt+1}: Retrying with targeted feedback...", log_callback)
-
-                    combined_context = context
-                    if ai_feedback:
-                        combined_context += f"\n\nCRITICAL FEEDBACK FROM PREVIOUS ATTEMPT:\n{ai_feedback}"
-                    if requirements_feedback:
-                        combined_context += f"\n\n{requirements_feedback}"
-
-                    # If we have a locked test file, insist on it
-                    if iter_state.test_file:
-                        combined_context += f"\n\n⚠️ CRITICAL: You must include the original test file in your response exactly as shown below:\n\n"
-                        combined_context += f"File: {iter_state.test_file}\n"
-                        combined_context += f"```python\n{iter_state.test_file_content}\n```\n"
-                        combined_context += f"\nDO NOT modify the test file. Fix ONLY the implementation issues."
-
-                        # Ensure we use the locked file even if the AI didn't return it in this specific response
-                        active_test_file = iter_state.test_file
-                        active_test_name = iter_state.test_name
-
-                    # Fetch intelligence context
-                    ram_context = ""
-                    if self.intelligence:
-                        try:
-                            ram_context = self.intelligence.get_context()
-                        except Exception as e:
-                            logger.warning(f"Failed to fetch intelligence context: {e}")
-
-                    try:
-                        self._log(f"🤖 Calling AI Assistant (Attempt {attempt+1}/{max_retries+1})...", log_callback)
-                        start_ai = time.time()
-
-                        # Added a conceptual timeout if execute_nia_iteration supported it,
-                        # but usually it's handled inside the client.
-                        response = self.ai_client.execute_nia_iteration(
-                            spec=spec,
-                            plan=self.plan_path.read_text(encoding='utf-8'),
-                            prompt=prompt,
-                            task=next_task,
-                            context=combined_context,
-                            ram_context=ram_context
-                        )
-                        self._log(f"✅ AI response received in {time.time() - start_ai:.2f}s", log_callback)
-                    except QuotaExhaustedError as qe:
-                        self._log(f"⛔ CRITICAL: API Quota Exhausted. {str(qe)}", log_callback)
-                        self.git_manager.create_checkpoint(f"Paused: Quota Exhausted during {next_task.description}")
-                        return LoopResult("QUOTA_EXHAUSTED", iteration, str(qe), self._get_final_stats(start_time, tasks_planned, tasks_completed))
-
-                    if stop_event.is_set():
-                        return LoopResult("STOPPED", iteration, "Loop stopped by user")
-
-                    # DETECT INCORRECT EXECUTION SIGNALS (mkdir, cd, etc.)
-                    raw_lower = response.raw.lower()
-                    if "mkdir" in raw_lower or "cd " in raw_lower or "npm " in raw_lower:
-                        self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
-
-                    # LOG PARSED FILES DIAGNOSTICS
-                    self._log(f"\n=== FILE PROCESSING DEBUG ===", log_callback)
-                    self._log(f"Files detected by parser: {len(response.files)}", log_callback)
-                    for filename in response.files:
-                        content = response.files[filename]
-                        self._log(f"  - {filename} ({len(content)} chars)", log_callback)
-
-                        if filename.endswith('.gitkeep'):
-                            self._log(f"    ⚠️ .gitkeep file (empty content expected)", log_callback)
-
-                        if '/' in filename or '\\' in filename:
-                            parts = filename.replace('\\', '/').split('/')
-                            if len(parts) > 1:
-                                self._log(f"    📁 Nested path detected: {'/'.join(parts[:-1])}", log_callback)
-
-                    # VALIDATE & AUTO-FIX structure
-                    parsed_files = [{"path": p, "content": c} for p, c in response.files.items()]
-                    fixed_files, warnings = self.structure_validator.validate_and_fix(
-                        files=parsed_files,
-                        tech_stack=self.tech_stack
+                    spec = self.spec_path.read_text(encoding='utf-8')
+                    tasks = self.parser.parse(self.plan_path)
+                    tasks_planned = len(tasks)
+                    prompt = self.prompt_path.read_text(encoding='utf-8')
+                except Exception as e:
+                    logger.error(f"Error loading files: {e}", exc_info=True)
+                    self._log(f"❌ Error loading files: {str(e)}", log_callback)
+                    self.issue_manager.create_issue(
+                        category=self.issue_manager.CAT_DEPENDENCIES,
+                        priority=self.issue_manager.PRIO_HIGH,
+                        title=f"File loading error in iteration {iteration}",
+                        description=f"File loading error: {str(e)}",
+                        stack_trace=f"Iteration: {iteration}\n{str(e)}"
                     )
+                    return LoopResult("ERROR", iteration, f"File loading error: {e}", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-                    for warning in warnings:
-                        self._log(f"⚠️ {warning}", log_callback)
+                # 2. Find next task
+                next_task = self.parser.find_next_pending(tasks)
+                if not next_task:
+                    return LoopResult("ALL_COMPLETE", iteration, "✅ All tasks completed!", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-                    # Convert back to dict format
-                    response.files = {f["path"]: f["content"] for f in fixed_files}
+                # Mark as in_progress for UI
+                next_task.status = 'in_progress'
+                self._notify_ui('update_ai_plan', tasks)
 
-                    # RE-IDENTIFY test file after structure correction
-                    response.test_file = response._identify_test_file()
+                self._log(f"Target Task: {next_task.description}", log_callback)
 
-                    # VALIDATE CONSISTENCY with IterationState
-                    is_consistent, consistency_error = iter_state.validate_retry_attempt(response.files, response.test_file)
-                    if not is_consistent:
-                        self._log(f"⚠️ AI response inconsistent: {consistency_error}", log_callback)
-                        if attempt < max_retries:
-                            ai_feedback = f"INCONSISTENCY ERROR: {consistency_error}. Please stick to the previously established test file and structure."
-                            continue
-                        else:
-                            self._log("❌ Consistency failed after all retries.", log_callback)
-                            # Fallback to graceful degradation if possible
-                            break
-                    elif consistency_error and consistency_error.startswith("FIXABLE:RENAME_TEST:"):
-                        # Week 2 Fix: Auto-rename test file if AI changed the name but it's clearly a single test
-                        new_name = consistency_error.split(":")[-1]
-                        self._log(f"🔄 AI renamed test to {new_name}. Auto-renaming back to {iter_state.test_file} for consistency.", log_callback)
-                        if new_name in response.files:
-                            response.files[iter_state.test_file] = response.files.pop(new_name)
-                            response.test_file = iter_state.test_file
+                # 3. Create Checkpoint
+                checkpoint = self.git_manager.create_checkpoint(f"Before: {next_task.description}")
 
-                    # Specific warning if critical files are missing
-                    critical_warnings = []
-                    detected_paths = set(response.files.keys())
+                # 4. Get context (all project files)
+                context = self._get_project_context()
 
-                    if self.tech_stack == 'frontend_web':
-                        if 'index.html' not in detected_paths and not (self.project_path / 'index.html').exists():
-                            critical_warnings.append("index.html is missing.")
+                # 5. Ask AI for solution (with quality retry)
+                max_retries = 3
+                ai_feedback = ""
+                requirements_feedback = ""
+                active_test_file = None
+                active_test_name = None
 
-                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
-                        if not has_css and not any((self.project_path / f).exists() for f in ['css/style.css', 'style.css']):
-                             critical_warnings.append("CSS file is missing (e.g., css/style.css).")
+                # Initialize iteration state
+                iter_state = IterationState(next_task.description)
 
-                        has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js', 'app.js'])
-                        if not has_js and not any((self.project_path / f).exists() for f in ['js/app.js', 'app.js']):
-                             critical_warnings.append("JavaScript file is missing (e.g., js/app.js).")
+                for attempt in range(max_retries + 1):
+                    try:
+                        if attempt > 0:
+                            self._log(f"Attempt {attempt+1}: Retrying with targeted feedback...", log_callback)
 
-                    # Check for files required by the test
-                    current_test_file = response.test_file or iter_state.test_file
-                    if current_test_file and current_test_file in response.files:
-                        test_reqs = TestParser.extract_requirements(response.files[current_test_file])
-                        for req_file in test_reqs.get('required_files', []):
-                            if req_file not in detected_paths and not (self.project_path / req_file).exists():
-                                critical_warnings.append(f"Required implementation file '{req_file}' is missing (detected from test).")
+                        combined_context = context
+                        if ai_feedback:
+                            combined_context += f"\n\nCRITICAL FEEDBACK FROM PREVIOUS ATTEMPT:\n{ai_feedback}"
+                        if requirements_feedback:
+                            combined_context += f"\n\n{requirements_feedback}"
 
-                    if critical_warnings:
-                        for w in critical_warnings:
-                            self._log(f"⚠️ CRITICAL: {w}", log_callback)
-                        # Add to feedback for next attempt
-                        ai_feedback += f"\n\nCRITICAL MISSING FILES:\n" + "\n".join([f"- {w}" for w in critical_warnings])
-                        ai_feedback += "\n\nYou MUST provide these files in your response to pass the tests."
+                        # If we have a locked test file, insist on it
+                        if iter_state.test_file:
+                            combined_context += f"\n\n⚠️ CRITICAL: You must include the original test file in your response exactly as shown below:\n\n"
+                            combined_context += f"File: {iter_state.test_file}\n"
+                            combined_context += f"```python\n{iter_state.test_file_content}\n```\n"
+                            combined_context += f"\nDO NOT modify the test file. Fix ONLY the implementation issues."
 
-                    if not response.files:
-                        self._log("❌ AI provided no code changes.", log_callback)
-                        if attempt == max_retries:
-                            self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_AI,
-                                priority=self.issue_manager.PRIO_MEDIUM,
-                                title=f"AI Empty Response: {next_task.description}",
-                                description="AI provided no code changes after multiple retries",
-                                task=next_task.description
+                            # Ensure we use the locked file even if the AI didn't return it in this specific response
+                            active_test_file = iter_state.test_file
+                            active_test_name = iter_state.test_name
+
+                        # Fetch intelligence context
+                        ram_context = ""
+                        if self.intelligence:
+                            try:
+                                ram_context = self.intelligence.get_context()
+                            except Exception as e:
+                                logger.warning(f"Failed to fetch intelligence context: {e}")
+
+                        try:
+                            self._log(f"🤖 Calling AI Assistant (Attempt {attempt+1}/{max_retries+1})...", log_callback)
+                            start_ai = time.time()
+
+                            # Added a conceptual timeout if execute_nia_iteration supported it,
+                            # but usually it's handled inside the client.
+                            response = self.ai_client.execute_nia_iteration(
+                                spec=spec,
+                                plan=self.plan_path.read_text(encoding='utf-8'),
+                                prompt=prompt,
+                                task=next_task,
+                                context=combined_context,
+                                ram_context=ram_context
                             )
-                            self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes after retries.")
-                            return LoopResult("BLOCKED", iteration, "AI provided no code changes.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
-                        ai_feedback = "You provided no code changes. Please provide the necessary implementation files."
-                        continue
+                            self._log(f"✅ AI response received in {time.time() - start_ai:.2f}s", log_callback)
+                        except QuotaExhaustedError as qe:
+                            self._log(f"⛔ CRITICAL: API Quota Exhausted. {str(qe)}", log_callback)
+                            self.git_manager.create_checkpoint(f"Paused: Quota Exhausted during {next_task.description}")
+                            return LoopResult("QUOTA_EXHAUSTED", iteration, str(qe), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-                    # 6. TDD Cycle: RED Phase (Run on the first successful response)
-                    is_first_response = len(iter_state.generated_files_history) == 0
-                    if is_first_response:
-                        active_test_file = response.test_file
-                        active_test_name = response.test_name
+                        if stop_event.is_set():
+                            return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-                        # Register first successful attempt to lock in files (and test file if present)
-                        iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
+                        # DETECT INCORRECT EXECUTION SIGNALS (mkdir, cd, etc.)
+                        raw_lower = response.raw.lower()
+                        if "mkdir" in raw_lower or "cd " in raw_lower or "npm " in raw_lower:
+                            self._log("⚠️ WARNING: AI attempted to use bash commands (mkdir/cd/npm). These are NOT executed. AI must use file blocks.", log_callback)
 
-                    if is_first_response and active_test_file:
-                        self._log(f"=== STARTING RED PHASE ===", log_callback)
-                        self._notify_ui('phase_change', 'RED')
-                        self._log_progress_bars(log_callback)
-                        self._log_project_structure(log_callback)
+                        # LOG PARSED FILES DIAGNOSTICS
+                        self._log(f"\n=== FILE PROCESSING DEBUG ===", log_callback)
+                        self._log(f"Files detected by parser: {len(response.files)}", log_callback)
+                        for filename in response.files:
+                            content = response.files[filename]
+                            self._log(f"  - {filename} ({len(content)} chars)", log_callback)
 
-                        # DEBUG ENVIRONMENT
-                        self._log(f"DEBUG ENV: Python: {sys.executable}", log_callback)
-                        self._log(f"DEBUG ENV: Venv Python: {self.venv_python}", log_callback)
-                        self._log(f"DEBUG ENV: Project Path: {self.project_path}", log_callback)
+                            if filename.endswith('.gitkeep'):
+                                self._log(f"    ⚠️ .gitkeep file (empty content expected)", log_callback)
 
-                        self._log(f"Checking RED phase for {active_test_file}...", log_callback)
-                        # Write ONLY the test file
-                        test_content = response.files[active_test_file]
-                        self._write_file(active_test_file, test_content, log_callback)
-                        self._log_file_content(active_test_file, log_callback)
+                            if '/' in filename or '\\' in filename:
+                                parts = filename.replace('\\', '/').split('/')
+                                if len(parts) > 1:
+                                    self._log(f"    📁 Nested path detected: {'/'.join(parts[:-1])}", log_callback)
 
-                        # DEBUG LOGS
-                        test_file_path = self.project_path / active_test_file
-                        self._log(f"=" * 60, log_callback)
-                        self._log(f"DEBUG COMMAND CONSTRUCTION (RED):", log_callback)
-                        self._log(f"venv_python: {self.venv_python}", log_callback)
-                        self._log(f"test_file: {active_test_file}", log_callback)
-                        self._log(f"project_path: {self.project_path}", log_callback)
-                        self._log(f"=" * 60, log_callback)
-
-                        # Capture test output for UI streaming
-                        def red_test_cb(line, out_type='stdout'):
-                            self._notify_ui('test_output', {'line': line, 'type': out_type})
-
-                        val_red = self.validator.validate_red(
-                            self.project_path,
-                            str(test_file_path),
-                            active_test_name,
-                            self.venv_python,
-                            output_callback=red_test_cb
+                        # VALIDATE & AUTO-FIX structure
+                        parsed_files = [{"path": p, "content": c} for p, c in response.files.items()]
+                        fixed_files, warnings = self.structure_validator.validate_and_fix(
+                            files=parsed_files,
+                            tech_stack=self.tech_stack
                         )
-                        self._log_validation_result(val_red, "RED", log_callback)
 
-                        # AUTO-FIX for missing selenium in frontend_web
-                        if not val_red.success and "ModuleNotFoundError: No module named 'selenium'" in val_red.stderr and self.tech_stack == 'frontend_web':
-                            self._log("🔍 Detected missing 'selenium' dependency in RED phase. Auto-fixing...", log_callback)
-                            self._handle_missing_dependency("selenium", log_callback)
+                        for warning in warnings:
+                            self._log(f"⚠️ {warning}", log_callback)
 
-                            # Retry RED phase
-                            self._log("🔄 Retrying RED phase after auto-fix...", log_callback)
+                        # Convert back to dict format
+                        response.files = {f["path"]: f["content"] for f in fixed_files}
+
+                        # RE-IDENTIFY test file after structure correction
+                        response.test_file = response._identify_test_file()
+
+                        # VALIDATE CONSISTENCY with IterationState
+                        is_consistent, consistency_error = iter_state.validate_retry_attempt(response.files, response.test_file)
+                        if not is_consistent:
+                            self._log(f"⚠️ AI response inconsistent: {consistency_error}", log_callback)
+                            if attempt < max_retries:
+                                ai_feedback = f"INCONSISTENCY ERROR: {consistency_error}. Please stick to the previously established test file and structure."
+                                continue
+                            else:
+                                self._log("❌ Consistency failed after all retries.", log_callback)
+                                # Fallback to graceful degradation if possible
+                                break
+                        elif consistency_error and consistency_error.startswith("FIXABLE:RENAME_TEST:"):
+                            # Week 2 Fix: Auto-rename test file if AI changed the name but it's clearly a single test
+                            new_name = consistency_error.split(":")[-1]
+                            self._log(f"🔄 AI renamed test to {new_name}. Auto-renaming back to {iter_state.test_file} for consistency.", log_callback)
+                            if new_name in response.files:
+                                response.files[iter_state.test_file] = response.files.pop(new_name)
+                                response.test_file = iter_state.test_file
+
+                        # Specific warning if critical files are missing
+                        critical_warnings = []
+                        detected_paths = set(response.files.keys())
+
+                        if self.tech_stack == 'frontend_web':
+                            if 'index.html' not in detected_paths and not (self.project_path / 'index.html').exists():
+                                critical_warnings.append("index.html is missing.")
+
+                            has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
+                            if not has_css and not any((self.project_path / f).exists() for f in ['css/style.css', 'style.css']):
+                                 critical_warnings.append("CSS file is missing (e.g., css/style.css).")
+
+                            has_js = any(f in detected_paths for f in ['js/app.js', 'js/main.js', 'js/script.js', 'app.js'])
+                            if not has_js and not any((self.project_path / f).exists() for f in ['js/app.js', 'app.js']):
+                                 critical_warnings.append("JavaScript file is missing (e.g., js/app.js).")
+
+                        # Check for files required by the test
+                        current_test_file = response.test_file or iter_state.test_file
+                        if current_test_file and current_test_file in response.files:
+                            test_reqs = TestParser.extract_requirements(response.files[current_test_file])
+                            for req_file in test_reqs.get('required_files', []):
+                                if req_file not in detected_paths and not (self.project_path / req_file).exists():
+                                    critical_warnings.append(f"Required implementation file '{req_file}' is missing (detected from test).")
+
+                        if critical_warnings:
+                            for w in critical_warnings:
+                                self._log(f"⚠️ CRITICAL: {w}", log_callback)
+                            # Add to feedback for next attempt
+                            ai_feedback += f"\n\nCRITICAL MISSING FILES:\n" + "\n".join([f"- {w}" for w in critical_warnings])
+                            ai_feedback += "\n\nYou MUST provide these files in your response to pass the tests."
+
+                        if not response.files:
+                            self._log("❌ AI provided no code changes.", log_callback)
+                            if attempt == max_retries:
+                                self.issue_manager.create_issue(
+                                    category=self.issue_manager.CAT_AI,
+                                    priority=self.issue_manager.PRIO_MEDIUM,
+                                    title=f"AI Empty Response: {next_task.description}",
+                                    description="AI provided no code changes after multiple retries",
+                                    task=next_task.description
+                                )
+                                self.tracker.mark_blocked(self.plan_path, next_task, "AI provided no code changes after retries.")
+                                return LoopResult("BLOCKED", iteration, "AI provided no code changes.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                            ai_feedback = "You provided no code changes. Please provide the necessary implementation files."
+                            continue
+
+                        # 6. TDD Cycle: RED Phase (Run on the first successful response)
+                        is_first_response = len(iter_state.generated_files_history) == 0
+                        if is_first_response:
+                            active_test_file = response.test_file
+                            active_test_name = response.test_name
+
+                            # Register first successful attempt to lock in files (and test file if present)
+                            iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
+
+                        if is_first_response and active_test_file:
+                            self._log(f"=== STARTING RED PHASE ===", log_callback)
+                            self._notify_ui('phase_change', 'RED')
+                            self._log_progress_bars(log_callback)
+                            self._log_project_structure(log_callback)
+
+                            # DEBUG ENVIRONMENT
+                            self._log(f"DEBUG ENV: Python: {sys.executable}", log_callback)
+                            self._log(f"DEBUG ENV: Venv Python: {self.venv_python}", log_callback)
+                            self._log(f"DEBUG ENV: Project Path: {self.project_path}", log_callback)
+
+                            self._log(f"Checking RED phase for {active_test_file}...", log_callback)
+                            # Write ONLY the test file
+                            test_content = response.files[active_test_file]
+                            self._write_file(active_test_file, test_content, log_callback)
+                            self._log_file_content(active_test_file, log_callback)
+
+                            # DEBUG LOGS
+                            test_file_path = self.project_path / active_test_file
+                            self._log(f"=" * 60, log_callback)
+                            self._log(f"DEBUG COMMAND CONSTRUCTION (RED):", log_callback)
+                            self._log(f"venv_python: {self.venv_python}", log_callback)
+                            self._log(f"test_file: {active_test_file}", log_callback)
+                            self._log(f"project_path: {self.project_path}", log_callback)
+                            self._log(f"=" * 60, log_callback)
+
+                            # Capture test output for UI streaming
+                            def red_test_cb(line, out_type='stdout'):
+                                self._notify_ui('test_output', {'line': line, 'type': out_type})
+
                             val_red = self.validator.validate_red(
                                 self.project_path,
                                 str(test_file_path),
@@ -428,14 +422,30 @@ class LoopOrchestrator:
                                 self.venv_python,
                                 output_callback=red_test_cb
                             )
-                            self._log_validation_result(val_red, "RED (RETRY)", log_callback)
+                            self._log_validation_result(val_red, "RED", log_callback)
 
-                        # Extract requirements from test for implementation phase
-                        try:
-                            reqs = TestParser.extract_requirements(test_content)
-                            if any(reqs.values()):
-                                self._log(f"📋 Test requirements extracted: IDs: {reqs['required_ids']}, Tags: {reqs['required_tags']}", log_callback)
-                                requirements_feedback = f"""
+                            # AUTO-FIX for missing selenium in frontend_web
+                            if not val_red.success and "ModuleNotFoundError: No module named 'selenium'" in val_red.stderr and self.tech_stack == 'frontend_web':
+                                self._log("🔍 Detected missing 'selenium' dependency in RED phase. Auto-fixing...", log_callback)
+                                self._handle_missing_dependency("selenium", log_callback)
+
+                                # Retry RED phase
+                                self._log("🔄 Retrying RED phase after auto-fix...", log_callback)
+                                val_red = self.validator.validate_red(
+                                    self.project_path,
+                                    str(test_file_path),
+                                    active_test_name,
+                                    self.venv_python,
+                                    output_callback=red_test_cb
+                                )
+                                self._log_validation_result(val_red, "RED (RETRY)", log_callback)
+
+                            # Extract requirements from test for implementation phase
+                            try:
+                                reqs = TestParser.extract_requirements(test_content)
+                                if any(reqs.values()):
+                                    self._log(f"📋 Test requirements extracted: IDs: {reqs['required_ids']}, Tags: {reqs['required_tags']}", log_callback)
+                                    requirements_feedback = f"""
 ╔══════════════════════════════════════════════════════════╗
 ║ 🔴 CRITICAL REQUIREMENTS FROM TEST (DO NOT IGNORE)      ║
 ╚══════════════════════════════════════════════════════════╝
@@ -460,278 +470,278 @@ Your implementation MUST include these EXACT values to pass the tests:
 ⚠️ IMPORTANT: Use the EXACT IDs and tags listed above.
 For example, if the test expects id="work", DO NOT use id="projects".
 """
-                        except Exception as e:
-                            logger.error(f"Error extracting requirements: {e}")
-
-                        if not val_red.success:
-                            self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
-                            # Note: If RED fails because test PASSES, it's not always a blocker,
-                            # but it might indicate AI is using existing code.
-                            self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_TESTING,
-                                priority=self.issue_manager.PRIO_MEDIUM,
-                                title=f"RED Phase Failure: {next_task.description}",
-                                description=f"RED phase failed: {val_red.message}",
-                                task=next_task.description,
-                                stack_trace=val_red.stderr
-                            )
-                            # We proceed anyway to try GREEN, or we could retry RED?
-                            # Usually if RED fails (test passes), it means implementation is already there or test is bad.
-
-                    if stop_event.is_set():
-                        return LoopResult("STOPPED", iteration, "Loop stopped by user")
-
-                    # 7. TDD Cycle: GREEN Phase
-                    self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
-
-                    # Week 2 Fix: Auto-inject test file if missing from AI response
-                    if iter_state.test_file and iter_state.test_file not in response.files:
-                        self._log(f"⚠️ LLM omitted test file {iter_state.test_file}. Auto-injecting from IterationState.", log_callback)
-                        response.files[iter_state.test_file] = iter_state.test_file_content
-
-                    # WRITE FILES FIRST ✅ (as requested by user)
-                    written_files = []
-                    self._log(f"📝 Writing {len(response.files)} files to disk (Attempt {attempt+1}):", log_callback)
-                    for filename, content in response.files.items():
-                        # If it's a retry, we only skip writing the test file if it ALREADY exists.
-                        # This prevents losing the test file after a Git rollback.
-                        if attempt > 0 and filename == active_test_file:
-                            if (self.project_path / filename).exists():
-                                self._log(f"  (Skipping existing test file: {filename})", log_callback)
-                                continue
-                            else:
-                                self._log(f"  (Restoring missing test file: {filename})", log_callback)
-
-                        self._log(f"  - Writing: {filename} ({len(content)} bytes)", log_callback)
-                        if self._write_file(filename, content, log_callback):
-                            written_files.append(filename)
-
-                    # PHYSICAL VERIFICATION
-                    self._log("🔍 Verifying physical file existence...", log_callback)
-                    missing_physical = []
-                    for f in response.files:
-                        full_p = self.project_path / f
-                        exists = full_p.exists()
-                        status = "✅" if exists else "❌"
-                        self._log(f"    {status} {f}: {exists}", log_callback)
-                        if not exists:
-                            missing_physical.append(f)
-
-                    if missing_physical:
-                        self._log(f"❌ CRITICAL ERROR: Files not found on disk after write: {', '.join(missing_physical)}", log_callback)
-                        if attempt < max_retries:
-                            ai_feedback = f"System failed to write files to disk: {', '.join(missing_physical)}. Please ensure paths are correct and provide full content."
-                            continue
-                        else:
-                            self.issue_manager.create_issue(
-                                category=self.issue_manager.CAT_GIT,
-                                priority=self.issue_manager.PRIO_CRITICAL,
-                                title=f"File Write Failure: {next_task.description}",
-                                description=f"Physical file verification failed: {', '.join(missing_physical)}",
-                                task=next_task.description,
-                                files_affected=missing_physical
-                            )
-                            self.tracker.mark_blocked(self.plan_path, next_task, f"File system write failure: {', '.join(missing_physical)}")
-                            return LoopResult("ERROR", iteration, "Physical file verification failed")
-
-                    self._log(f"✅ Successfully written: {len(written_files)} files", log_callback)
-                    self._log_project_structure(log_callback)
-
-                    # Quality Check AFTER writing files
-                    nia_config = self._get_nia_config()
-                    tech_config = nia_config.get("tech_config", {})
-                    quality_issues = self.quality_checker.validate(response.files, tech_config)
-
-                    # MANDATORY CRITICAL FILES for frontend_web (Informational only now)
-                    if self.tech_stack == 'frontend_web':
-                        detected_paths = set(response.files.keys())
-                        if 'index.html' not in detected_paths:
-                            quality_issues.append(QualityIssue(
-                                "index.html",
-                                "Recommended: index.html missing. It is usually needed to maintain project state.",
-                                "WARNING", "MISSING_CRITICAL"
-                            ))
-
-                        has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
-                        if not has_css:
-                            quality_issues.append(QualityIssue(
-                                "css/style.css",
-                                "Recommended: No CSS file detected. Providing styles is best practice.",
-                                "WARNING", "MISSING_CRITICAL"
-                            ))
-
-                    if quality_issues:
-                        # Split issues into errors and warnings
-                        errors = [i for i in quality_issues if i.severity == "ERROR"]
-                        warnings = [i for i in quality_issues if i.severity == "WARNING"]
-
-                        if warnings:
-                            self._log("⚠️ QUALITY WARNINGS (Proceeding anyway):", log_callback)
-                            for w in warnings:
-                                self._log(f"  - {w}", log_callback)
-
-                        if errors:
-                            self._log("❌ QUALITY ERRORS DETECTED:", log_callback)
-                            for e in errors:
-                                self._log(f"  - {e}", log_callback)
-
-                            if attempt < max_retries:
-                                # DA-005: Incremental Quality Improvement
-                                quality_feedback = self.quality_checker.generate_feedback(errors)
-                                ai_feedback += "\n\n" + quality_feedback
-
-                                # DA-001: Smart Rollback (Selective)
-                                failed_files = list(set([i.filename for i in errors]))
-                                self._log(f"🔄 Quality failed. Attempting selective rollback of {len(failed_files)} files...", log_callback)
-
-                                self.git_manager.smart_rollback(failed_files, checkpoint)
-                                self._log("⏪ Selective rollback complete. Retrying with targeted feedback.", log_callback)
-                                continue
-                            else:
-                                error_msgs = [str(e) for e in errors]
-                                self.issue_manager.create_issue(
-                                    category=self.issue_manager.CAT_QUALITY,
-                                    priority=self.issue_manager.PRIO_MEDIUM,
-                                    title=f"Quality Check Failure: {next_task.description}",
-                                    description=f"Quality standards not met: {', '.join(error_msgs[:3])}",
-                                    task=next_task.description
-                                )
-                                self._log("❌ Quality below standards after all retries.", log_callback)
-                                self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(error_msgs)}")
-                                return LoopResult("BLOCKED", iteration, "Quality standards not met")
-                        else:
-                            self._log("✅ Quality check passed (with warnings)", log_callback)
-                    else:
-                        self._log("✅ Quality check passed", log_callback)
-
-                    tests_passed = False
-                    if active_test_file:
-                        self._log(f"=== STARTING GREEN PHASE ===", log_callback)
-                        self._notify_ui('phase_change', 'GREEN')
-                        self._log_progress_bars(log_callback)
-
-                        test_file_path = self.project_path / active_test_file
-
-                        # Capture test output for UI streaming
-                        def green_test_cb(line, out_type='stdout'):
-                            self._notify_ui('test_output', {'line': line, 'type': out_type})
-
-                        val_green = self.validator.validate_green(
-                            self.project_path,
-                            str(test_file_path),
-                            active_test_name,
-                            self.venv_python,
-                            output_callback=green_test_cb
-                        )
-                        self._log_validation_result(val_green, "GREEN", log_callback)
-
-                        if not val_green.success:
-                            self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
-
-                            # Update Intelligence with failure
-                            if self.intelligence:
-                                try:
-                                    self.intelligence.update_after_iteration({
-                                        "phase": "GREEN",
-                                        "success": False,
-                                        "failure_type": "LogicError", # Could be more specific
-                                        "solution_attempted": next_task.description
-                                    })
-                                except: pass
-
-                            # Register failed attempt
-                            if not is_first_response:
-                                iter_state.register_attempt(response.files, False)
-
-                            # Log failed attempt
-                            try:
-                                self.git_manager.generate_error_log(
-                                    task_description=next_task.description,
-                                    phase="GREEN",
-                                    error_message=val_green.message,
-                                    test_output=val_green.stdout + "\n" + val_green.stderr,
-                                    files_generated=list(response.files.keys()),
-                                    attempt=attempt + 1
-                                )
                             except Exception as e:
-                                logger.error(f"Error generating error log: {e}")
+                                logger.error(f"Error extracting requirements: {e}")
 
-                            if attempt == max_retries:
-                                # Before blocking, check if ANY previous attempt passed tests
-                                last_good_files = iter_state.get_last_successful_files()
-                                if last_good_files:
-                                    self._log("💡 Graceful degradation: Tests passed in a previous attempt. Using that version.", log_callback)
-                                    # Restore that version
-                                    for f, c in last_good_files.items():
-                                        self._write_file(f, c, log_callback)
-                                    tests_passed = True
-                                    break
-
+                            if not val_red.success:
+                                self._log(f"❌ RED Phase failed: {val_red.message}", log_callback)
+                                # Note: If RED fails because test PASSES, it's not always a blocker,
+                                # but it might indicate AI is using existing code.
                                 self.issue_manager.create_issue(
                                     category=self.issue_manager.CAT_TESTING,
-                                    priority=self.issue_manager.PRIO_HIGH,
-                                    title=f"GREEN Phase Failure: {next_task.description}",
-                                    description=f"GREEN phase failed after {max_retries+1} attempts",
+                                    priority=self.issue_manager.PRIO_MEDIUM,
+                                    title=f"RED Phase Failure: {next_task.description}",
+                                    description=f"RED phase failed: {val_red.message}",
                                     task=next_task.description,
-                                    stack_trace=val_green.stderr
+                                    stack_trace=val_red.stderr
                                 )
-                                self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
-                                return LoopResult("BLOCKED", iteration, "GREEN phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                                # We proceed anyway to try GREEN, or we could retry RED?
+                                # Usually if RED fails (test passes), it means implementation is already there or test is bad.
 
-                            similar = self.issue_manager.get_similar_issues(val_green.message)
-                            ai_feedback = f"TEST FAILURE: {val_green.stderr}\n\nFIX REQUIRED: Please ensure the implementation satisfies the test requirements. Do NOT change the test file name or structure."
-                            ai_feedback += self.issue_manager.format_suggestions(similar)
+                        if stop_event.is_set():
+                            return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-                            # Selective rollback of implementation files to try again
-                            impl_files = [f for f in response.files if f != active_test_file]
-                            self.git_manager.smart_rollback(impl_files, checkpoint)
-                            continue
+                        # 7. TDD Cycle: GREEN Phase
+                        self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
 
-                        self._log("✅ GREEN phase passed.", log_callback)
-                        tests_passed = True
-                        self._last_test_passed = True
+                        # Week 2 Fix: Auto-inject test file if missing from AI response
+                        if iter_state.test_file and iter_state.test_file not in response.files:
+                            self._log(f"⚠️ LLM omitted test file {iter_state.test_file}. Auto-injecting from IterationState.", log_callback)
+                            response.files[iter_state.test_file] = iter_state.test_file_content
 
-                    # Register successful attempt (for future degradation if quality fails later)
-                    if not is_first_response:
-                        iter_state.register_attempt(response.files, tests_passed)
-                    else:
-                        # First attempt was already registered but we update the pass status
-                        iter_state.update_attempt_status(0, tests_passed)
+                        # WRITE FILES FIRST ✅ (as requested by user)
+                        written_files = []
+                        self._log(f"📝 Writing {len(response.files)} files to disk (Attempt {attempt+1}):", log_callback)
+                        for filename, content in response.files.items():
+                            # If it's a retry, we only skip writing the test file if it ALREADY exists.
+                            # This prevents losing the test file after a Git rollback.
+                            if attempt > 0 and filename == active_test_file:
+                                if (self.project_path / filename).exists():
+                                    self._log(f"  (Skipping existing test file: {filename})", log_callback)
+                                    continue
+                                else:
+                                    self._log(f"  (Restoring missing test file: {filename})", log_callback)
 
-                    # Create a checkpoint after successful GREEN phase
-                    # This allows REFACTOR phase to rollback to this state instead of pre-iteration state
-                    green_checkpoint = self.git_manager.create_checkpoint(f"GREEN passed: {next_task.description}")
+                            self._log(f"  - Writing: {filename} ({len(content)} bytes)", log_callback)
+                            if self._write_file(filename, content, log_callback):
+                                written_files.append(filename)
 
-                    # MANDATORY FILES VALIDATION (Informational)
-                    missing_critical = self._validate_critical_files(self.tech_stack)
-                    if missing_critical:
-                        self._log(f"⚠️ Warning: Missing expected files for {self.tech_stack}: {', '.join(missing_critical)}", log_callback)
-                        # We no longer block on this, just log it as a warning.
-                        # If the tests pass, the implementation is likely sufficient for the task.
+                        # PHYSICAL VERIFICATION
+                        self._log("🔍 Verifying physical file existence...", log_callback)
+                        missing_physical = []
+                        for f in response.files:
+                            full_p = self.project_path / f
+                            exists = full_p.exists()
+                            status = "✅" if exists else "❌"
+                            self._log(f"    {status} {f}: {exists}", log_callback)
+                            if not exists:
+                                missing_physical.append(f)
 
-                    # Success, break retry loop
-                    break
+                        if missing_physical:
+                            self._log(f"❌ CRITICAL ERROR: Files not found on disk after write: {', '.join(missing_physical)}", log_callback)
+                            if attempt < max_retries:
+                                ai_feedback = f"System failed to write files to disk: {', '.join(missing_physical)}. Please ensure paths are correct and provide full content."
+                                continue
+                            else:
+                                self.issue_manager.create_issue(
+                                    category=self.issue_manager.CAT_GIT,
+                                    priority=self.issue_manager.PRIO_CRITICAL,
+                                    title=f"File Write Failure: {next_task.description}",
+                                    description=f"Physical file verification failed: {', '.join(missing_physical)}",
+                                    task=next_task.description,
+                                    files_affected=missing_physical
+                                )
+                                self.tracker.mark_blocked(self.plan_path, next_task, f"File system write failure: {', '.join(missing_physical)}")
+                                return LoopResult("ERROR", iteration, "Physical file verification failed")
 
-                except Exception as e:
-                    logger.error(f"Error during iteration attempt: {e}", exc_info=True)
-                    self._log(f"❌ Error during iteration attempt: {str(e)}", log_callback)
+                        self._log(f"✅ Successfully written: {len(written_files)} files", log_callback)
+                        self._log_project_structure(log_callback)
 
-                    self.issue_manager.create_issue(
-                        category=self.issue_manager.CAT_AI,
-                        priority=self.issue_manager.PRIO_HIGH,
-                        title=f"Iteration Error: {next_task.description}",
-                        description=f"Error during iteration attempt: {str(e)}",
-                        task=next_task.description,
-                        stack_trace=str(e)
-                    )
+                        # Quality Check AFTER writing files
+                        nia_config = self._get_nia_config()
+                        tech_config = nia_config.get("tech_config", {})
+                        quality_issues = self.quality_checker.validate(response.files, tech_config)
 
-                    # Rollback on unexpected error - Preservation fix
-                    self.git_manager.rollback_preserving_tests(checkpoint)
-                    self.git_manager.record_failed_iteration()
-                    if attempt == max_retries:
-                        self.tracker.mark_blocked(self.plan_path, next_task, str(e))
-                        return LoopResult("ERROR", iteration, str(e))
-                    ai_feedback = f"Error during implementation: {str(e)}"
+                        # MANDATORY CRITICAL FILES for frontend_web (Informational only now)
+                        if self.tech_stack == 'frontend_web':
+                            detected_paths = set(response.files.keys())
+                            if 'index.html' not in detected_paths:
+                                quality_issues.append(QualityIssue(
+                                    "index.html",
+                                    "Recommended: index.html missing. It is usually needed to maintain project state.",
+                                    "WARNING", "MISSING_CRITICAL"
+                                ))
+
+                            has_css = any(f in detected_paths for f in ['css/main.css', 'styles/main.css', 'css/style.css', 'style.css'])
+                            if not has_css:
+                                quality_issues.append(QualityIssue(
+                                    "css/style.css",
+                                    "Recommended: No CSS file detected. Providing styles is best practice.",
+                                    "WARNING", "MISSING_CRITICAL"
+                                ))
+
+                        if quality_issues:
+                            # Split issues into errors and warnings
+                            errors = [i for i in quality_issues if i.severity == "ERROR"]
+                            warnings = [i for i in quality_issues if i.severity == "WARNING"]
+
+                            if warnings:
+                                self._log("⚠️ QUALITY WARNINGS (Proceeding anyway):", log_callback)
+                                for w in warnings:
+                                    self._log(f"  - {w}", log_callback)
+
+                            if errors:
+                                self._log("❌ QUALITY ERRORS DETECTED:", log_callback)
+                                for e in errors:
+                                    self._log(f"  - {e}", log_callback)
+
+                                if attempt < max_retries:
+                                    # DA-005: Incremental Quality Improvement
+                                    quality_feedback = self.quality_checker.generate_feedback(errors)
+                                    ai_feedback += "\n\n" + quality_feedback
+
+                                    # DA-001: Smart Rollback (Selective)
+                                    failed_files = list(set([i.filename for i in errors]))
+                                    self._log(f"🔄 Quality failed. Attempting selective rollback of {len(failed_files)} files...", log_callback)
+
+                                    self.git_manager.smart_rollback(failed_files, checkpoint)
+                                    self._log("⏪ Selective rollback complete. Retrying with targeted feedback.", log_callback)
+                                    continue
+                                else:
+                                    error_msgs = [str(e) for e in errors]
+                                    self.issue_manager.create_issue(
+                                        category=self.issue_manager.CAT_QUALITY,
+                                        priority=self.issue_manager.PRIO_MEDIUM,
+                                        title=f"Quality Check Failure: {next_task.description}",
+                                        description=f"Quality standards not met: {', '.join(error_msgs[:3])}",
+                                        task=next_task.description
+                                    )
+                                    self._log("❌ Quality below standards after all retries.", log_callback)
+                                    self.tracker.mark_blocked(self.plan_path, next_task, f"Quality standards not met: {', '.join(error_msgs)}")
+                                    return LoopResult("BLOCKED", iteration, "Quality standards not met")
+                            else:
+                                self._log("✅ Quality check passed (with warnings)", log_callback)
+                        else:
+                            self._log("✅ Quality check passed")
+
+                        tests_passed = False
+                        if active_test_file:
+                            self._log(f"=== STARTING GREEN PHASE ===", log_callback)
+                            self._notify_ui('phase_change', 'GREEN')
+                            self._log_progress_bars(log_callback)
+
+                            test_file_path = self.project_path / active_test_file
+
+                            # Capture test output for UI streaming
+                            def green_test_cb(line, out_type='stdout'):
+                                self._notify_ui('test_output', {'line': line, 'type': out_type})
+
+                            val_green = self.validator.validate_green(
+                                self.project_path,
+                                str(test_file_path),
+                                active_test_name,
+                                self.venv_python,
+                                output_callback=green_test_cb
+                            )
+                            self._log_validation_result(val_green, "GREEN", log_callback)
+
+                            if not val_green.success:
+                                self._log(f"❌ GREEN Phase failed: {val_green.message}", log_callback)
+
+                                # Update Intelligence with failure
+                                if self.intelligence:
+                                    try:
+                                        self.intelligence.update_after_iteration({
+                                            "phase": "GREEN",
+                                            "success": False,
+                                            "failure_type": "LogicError", # Could be more specific
+                                            "solution_attempted": next_task.description
+                                        })
+                                    except: pass
+
+                                # Register failed attempt
+                                if not is_first_response:
+                                    iter_state.register_attempt(response.files, False)
+
+                                # Log failed attempt
+                                try:
+                                    self.git_manager.generate_error_log(
+                                        task_description=next_task.description,
+                                        phase="GREEN",
+                                        error_message=val_green.message,
+                                        test_output=val_green.stdout + "\n" + val_green.stderr,
+                                        files_generated=list(response.files.keys()),
+                                        attempt=attempt + 1
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Error generating error log: {e}")
+
+                                if attempt == max_retries:
+                                    # Before blocking, check if ANY previous attempt passed tests
+                                    last_good_files = iter_state.get_last_successful_files()
+                                    if last_good_files:
+                                        self._log("💡 Graceful degradation: Tests passed in a previous attempt. Using that version.", log_callback)
+                                        # Restore that version
+                                        for f, c in last_good_files.items():
+                                            self._write_file(f, c, log_callback)
+                                        tests_passed = True
+                                        break
+
+                                    self.issue_manager.create_issue(
+                                        category=self.issue_manager.CAT_TESTING,
+                                        priority=self.issue_manager.PRIO_HIGH,
+                                        title=f"GREEN Phase Failure: {next_task.description}",
+                                        description=f"GREEN phase failed after {max_retries+1} attempts",
+                                        task=next_task.description,
+                                        stack_trace=val_green.stderr
+                                    )
+                                    self.tracker.mark_blocked(self.plan_path, next_task, f"GREEN phase failed: {val_green.stderr}")
+                                    return LoopResult("BLOCKED", iteration, "GREEN phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+
+                                similar = self.issue_manager.get_similar_issues(val_green.message)
+                                ai_feedback = f"TEST FAILURE: {val_green.stderr}\n\nFIX REQUIRED: Please ensure the implementation satisfies the test requirements. Do NOT change the test file name or structure."
+                                ai_feedback += self.issue_manager.format_suggestions(similar)
+
+                                # Selective rollback of implementation files to try again
+                                impl_files = [f for f in response.files if f != active_test_file]
+                                self.git_manager.smart_rollback(impl_files, checkpoint)
+                                continue
+
+                            self._log("✅ GREEN phase passed.", log_callback)
+                            tests_passed = True
+                            self._last_test_passed = True
+
+                        # Register successful attempt (for future degradation if quality fails later)
+                        if not is_first_response:
+                            iter_state.register_attempt(response.files, tests_passed)
+                        else:
+                            # First attempt was already registered but we update the pass status
+                            iter_state.update_attempt_status(0, tests_passed)
+
+                        # Create a checkpoint after successful GREEN phase
+                        # This allows REFACTOR phase to rollback to this state instead of pre-iteration state
+                        green_checkpoint = self.git_manager.create_checkpoint(f"GREEN passed: {next_task.description}")
+
+                        # MANDATORY FILES VALIDATION (Informational)
+                        missing_critical = self._validate_critical_files(self.tech_stack)
+                        if missing_critical:
+                            self._log(f"⚠️ Warning: Missing expected files for {self.tech_stack}: {', '.join(missing_critical)}", log_callback)
+                            # We no longer block on this, just log it as a warning.
+                            # If the tests pass, the implementation is likely sufficient for the task.
+
+                        # Success, break retry loop
+                        break
+
+                    except Exception as e:
+                        logger.error(f"Error during iteration attempt: {e}", exc_info=True)
+                        self._log(f"❌ Error during iteration attempt: {str(e)}", log_callback)
+
+                        self.issue_manager.create_issue(
+                            category=self.issue_manager.CAT_AI,
+                            priority=self.issue_manager.PRIO_HIGH,
+                            title=f"Iteration Error: {next_task.description}",
+                            description=f"Error during iteration attempt: {str(e)}",
+                            task=next_task.description,
+                            stack_trace=str(e)
+                        )
+
+                        # Rollback on unexpected error - Preservation fix
+                        self.git_manager.rollback_preserving_tests(checkpoint)
+                        self.git_manager.record_failed_iteration()
+                        if attempt == max_retries:
+                            self.tracker.mark_blocked(self.plan_path, next_task, str(e))
+                            return LoopResult("ERROR", iteration, str(e))
+                        ai_feedback = f"Error during implementation: {str(e)}"
 
             if stop_event.is_set():
                 return LoopResult("STOPPED", iteration, "Loop stopped by user")
@@ -918,9 +928,16 @@ For example, if the test expects id="work", DO NOT use id="projects".
                 self.tracker.mark_blocked(self.plan_path, next_task, str(e))
                 return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-            time.sleep(1)
+                time.sleep(1)
 
-        return LoopResult("MAX_ITERATIONS", max_iterations, f"Reached max iterations ({max_iterations})", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+            return LoopResult("MAX_ITERATIONS", max_iterations, f"Reached max iterations ({max_iterations})", self._get_final_stats(start_time, tasks_planned, tasks_completed))
+        finally:
+            # Restore original working directory
+            try:
+                os.chdir(original_cwd)
+                self._log(f"📂 Restored working directory to: {os.getcwd()}", log_callback)
+            except Exception as e:
+                logger.error(f"Failed to restore original working directory: {e}")
 
     def _get_project_context(self) -> str:
         """Collect all relevant source files for context."""
@@ -1025,7 +1042,7 @@ For example, if the test expects id="work", DO NOT use id="projects".
             is_python = "Language: Python" in spec_content or "pytest" in spec_content
             is_frontend = "HTML/CSS" in spec_content or "BeautifulSoup" in spec_content
 
-            setup_script = Path("scripts/setup_project_venv.py")
+            setup_script = self.root_path / "scripts" / "setup_project_venv.py"
             if setup_script.exists():
                 deps = []
                 if is_python:
