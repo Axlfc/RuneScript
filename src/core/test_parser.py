@@ -27,7 +27,8 @@ class TestParser:
             'required_ids': [],
             'required_tags': [],
             'required_classes': [],
-            'required_text': []
+            'required_text': [],
+            'required_files': []
         }
 
         if not test_code:
@@ -73,6 +74,22 @@ class TestParser:
 
             # 5. Extract Attr Checks (e.g. href="#work")
             requirements['required_text'].extend(re.findall(r'\[[\"\']href[\"\']\]\s*==\s*["\']([^"\']+)["\']', test_code))
+
+            # 6. Extract Required Files (e.g. open('index.html'), os.path.exists('css/style.css'))
+            # Look for common file patterns in open() or exists() calls
+            file_patterns = [
+                r'open\s*\(\s*["\']([^"\']+\.[a-z0-9]+)["\']',
+                r'path\.exists\s*\(\s*["\']([^"\']+\.[a-z0-9]+)["\']',
+                r'FILE_PATHS\s*=\s*\[(.*?)\]'
+            ]
+
+            for pattern in file_patterns:
+                matches = re.findall(pattern, test_code, re.DOTALL)
+                for match in matches:
+                    if ',' in match or '[' in match: # Likely a list from FILE_PATHS
+                        requirements['required_files'].extend(re.findall(r'["\']([^"\']+\.[a-z0-9]+)["\']', match))
+                    else:
+                        requirements['required_files'].append(match)
 
             # Cleanup, deduplicate and filter
             common_non_tags = {'html.parser', 'lxml', 'xml', 'utf-8', 'utf8'}

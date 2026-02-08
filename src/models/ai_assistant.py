@@ -315,7 +315,11 @@ def chat_loop_gemini(prompt, client, system_prompt, session_id):
 def initialize_claude_client():
     ollama_url = read_config_parameter("options.network_settings.ollama_url") or "http://localhost:11434"
     base_url = f"{ollama_url.rstrip('/')}/v1"
-    return anthropic.Anthropic(base_url=base_url, api_key="ollama")
+
+    # Get timeout from config or use 600s as default
+    timeout = read_config_parameter("options.network_settings.ollama_timeout") or 600
+
+    return anthropic.Anthropic(base_url=base_url, api_key="ollama", timeout=timeout)
 
 
 def initialize_real_claude_client():
@@ -363,8 +367,12 @@ def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
         "stream": False,
         "system": system_prompt
     }
+
+    # Get timeout from config or use 600s as default
+    timeout = read_config_parameter("options.network_settings.ollama_timeout") or 600
+
     try:
-        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data, timeout=300)
+        response = requests.post(f"{ollama_url}/api/generate", headers=headers, json=data, timeout=timeout)
         response.raise_for_status()
         result = response.json()
         return result.get("response", "Error: No response received from Ollama.")
@@ -463,6 +471,9 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
         print("Error: Ollama model not specified in the configuration.")
         return
 
+    # Get timeout from config or use 600s as default
+    timeout = read_config_parameter("options.network_settings.ollama_timeout") or 600
+
     # ðŸ’¡ Enforce strict JSON output instruction
     system_prompt += "\n\nIMPORTANT: Respond ONLY with a valid JSON object. Do NOT include explanations or text outside the JSON. Do NOT use markdown. The entire response must be pure JSON."
 
@@ -484,7 +495,7 @@ def chat_loop_ollama(prompt, system_prompt, session_id):
         if not full_url.startswith("http"):
             full_url = "http://" + full_url
 
-        response = requests.post(full_url, headers=headers, json=data, timeout=300)
+        response = requests.post(full_url, headers=headers, json=data, timeout=timeout)
         response.raise_for_status()
         # TODO: Only getting the content under 'response' but if it invents another it may not be properly parsing
         raw_response = response.json().get("response", "")
