@@ -980,6 +980,75 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
         return self.structure_validator.is_valid(filepath, tech_stack)
 
+    def _fix_backslash_continuation(self, code: str) -> str:
+        """Fix backslash continuation errors (common LLM mistake)."""
+        lines = code.split('\n')
+        fixed_lines = []
+
+        for line in lines:
+            # Detect any line ending with : \
+            if re.search(r':\s*\\\s*$', line):
+                # PRIORITY 1: for loop with concatenation (+)
+                for_match = re.search(r'for\s+(\w+)\s+in\s+(.+?):\s*\\\s*$', line)
+                if for_match and '+' in for_match.group(2):
+                    var_name = for_match.group(1)
+                    expression = for_match.group(2).strip()
+                    indent = len(line) - len(line.lstrip())
+                    fixed_line = f"{' ' * indent}for {var_name} in ({expression}):"
+                    fixed_lines.append(fixed_line)
+                    continue
+
+                # PRIORITY 2: if/while with long expressions
+                if_match = re.search(r'(if|while)\s+(.+?):\s*\\\s*$', line)
+                if if_match and (' and ' in if_match.group(2) or ' or ' in if_match.group(2)):
+                    keyword = if_match.group(1)
+                    expression = if_match.group(2).strip()
+                    indent = len(line) - len(line.lstrip())
+                    fixed_line = f"{' ' * indent}{keyword} ({expression}):"
+                    fixed_lines.append(fixed_line)
+                    continue
+
+                # FALLBACK: Just remove the backslash
+                fixed_line = re.sub(r'\s*\\\s*$', ':', line)
+                fixed_lines.append(fixed_line)
+            else:
+                fixed_lines.append(line)
+
+        return '\n'.join(fixed_lines)
+
+    def _fix_double_assert(self, code: str) -> str:
+        """Fix double assert pattern: assert soup, soup.find(...)"""
+        # Pattern 1: assert soup, soup.find(...) → assert soup.find(...)
+        code = re.sub(
+            r'assert\s+soup\s*,\s+(soup\.find\([^)]+\))',
+            r'assert \1',
+            code
+        )
+
+        # Pattern 2: More generic fix for assert X, Y, "msg" where X is soup
+        code = re.sub(
+            r'assert\s+soup\s*,\s*(soup\.find\([^)]+\))\s*,\s*(["\'].*?["\'])',
+            r'assert \1, \2',
+            code
+        )
+        return code
+
+    def _fix_requests_on_local_files(self, code: str) -> str:
+        """Fix using requests.get() on local files."""
+        # response = requests.get('index.html')
+        # soup = BeautifulSoup(response.text, 'html.parser')
+        code = re.sub(
+            r"response\s*=\s*requests\.get\(['\"]([^'\"]+\.html?)['\"]\)\s*\n(\s*)soup\s*=\s*BeautifulSoup\(response\.text,\s*['\"]html\.parser['\"]\)",
+            r"with open('\1', 'r', encoding='utf-8') as f:\n\2    soup = BeautifulSoup(f.read(), 'html.parser')",
+            code
+        )
+        return code
+
+    def _fix_incorrect_paths(self, code: str) -> str:
+        """Fix common incorrect paths in tests."""
+        # project/index.html -> index.html
+        return re.sub(r"(['\"])project/([^'\"]+)(['\"])", r"\1\2\3", code)
+
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
         test_path = self.project_path / test_file_rel
@@ -991,37 +1060,25 @@ For example, if the test expects id="work", DO NOT use id="projects".
         except (FileNotFoundError, PermissionError):
             return True
 
+        fixed_code = test_code
+        # 1. Logical fixes (Always apply as they are safe and prevent runtime errors)
+        fixed_code = self._fix_requests_on_local_files(fixed_code)
+        fixed_code = self._fix_incorrect_paths(fixed_code)
+
         # Check syntax
         try:
-            compile(test_code, test_file_rel, 'exec')
+            compile(fixed_code, test_file_rel, 'exec')
+            # If changed by logical fixes, save it
+            if fixed_code != test_code:
+                test_path.write_text(fixed_code, encoding='utf-8')
+                self._log(f"✅ Auto-fixed test logical issues in {test_file_rel}", log_callback)
             return True
         except SyntaxError as e:
             self._log(f"⚠️ Test '{test_file_rel}' has syntax error at line {e.lineno}, attempting auto-fix...", log_callback)
 
-            # Auto-fix common patterns
-            fixed_code = test_code
-
-            # Pattern 1: assert soup, soup.find(...) → assert soup.find(...)
-            fixed_code = re.sub(
-                r'assert\s+soup\s*,\s+(soup\.find\([^)]+\))',
-                r'assert \1',
-                fixed_code
-            )
-
-            # Pattern 2: More generic fix for assert X, Y, "msg" where X is soup
-            fixed_code = re.sub(
-                r'assert\s+soup\s*,\s*(soup\.find\([^)]+\))\s*,\s*(["\'].*?["\'])',
-                r'assert \1, \2',
-                fixed_code
-            )
-
-            # Pattern 3: requests.get() on local files
-            if 'requests.get' in fixed_code and ('index.html' in fixed_code or 'index.htm' in fixed_code):
-                fixed_code = re.sub(
-                    r"response\s*=\s*requests\.get\(['\"]index\.html?['\"]\)\s*\n\s*soup\s*=\s*BeautifulSoup\(response\.text,\s*['\"]html\.parser['\"]\)",
-                    "with open('index.html', 'r', encoding='utf-8') as f:\n        soup = BeautifulSoup(f.read(), 'html.parser')",
-                    fixed_code
-                )
+            # 2. Syntax-specific fixes
+            fixed_code = self._fix_backslash_continuation(fixed_code)
+            fixed_code = self._fix_double_assert(fixed_code)
 
             # Validate fixed version
             try:
