@@ -596,7 +596,42 @@ For example, if the test expects id="work", DO NOT use id="projects".
 
                                 if attempt < max_retries:
                                     # DA-005: Incremental Quality Improvement
-                                    quality_feedback = self.quality_checker.generate_feedback(errors)
+                                    has_placeholders = any(e.type == "PLACEHOLDER" for e in errors)
+
+                                    if has_placeholders:
+                                        self._log("🚨 CRITICAL: Placeholder detected. Using aggressive feedback.", log_callback)
+                                        issues_str = "\n".join([str(e) for e in errors])
+                                        quality_feedback = f"""
+CRITICAL ERROR: You generated placeholder code (..., TODO comments).
+
+This is ABSOLUTELY FORBIDDEN.
+
+You MUST provide COMPLETE, WORKING code.
+
+NOT:
+```javascript
+function test() {{
+  ...  // This is FORBIDDEN
+}}
+```
+
+BUT:
+```javascript
+function test() {{
+  const element = document.querySelector('#test');
+  element.addEventListener('click', () => alert('test'));
+  return true;
+}}
+```
+
+Current issues:
+{issues_str}
+
+REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
+"""
+                                    else:
+                                        quality_feedback = self.quality_checker.generate_feedback(errors)
+
                                     ai_feedback += "\n\n" + quality_feedback
 
                                     # DA-001: Smart Rollback (Selective)
