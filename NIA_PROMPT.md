@@ -56,6 +56,32 @@ project/
 
 ---
 
+## 🚨 CRITICAL JSON FORMAT REQUIREMENTS
+
+**Your response MUST be valid JSON. Common mistakes to AVOID:**
+
+```json
+// ❌ WRONG - Template literals (backticks):
+{
+  "path": "index.html",
+  "content": `<!DOCTYPE html>...</html>`
+}
+
+// ✅ CORRECT - JSON strings (double quotes):
+{
+  "path": "index.html",
+  "content": "<!DOCTYPE html>...</html>"
+}
+```
+
+**Rules:**
+1. Use DOUBLE QUOTES `"` for all strings.
+2. NO backticks `` ` `` (those are JavaScript, not JSON).
+3. Escape special characters: `\n` for newlines, `\"` for quotes, `\\` for backslashes.
+4. NO trailing commas.
+
+---
+
 ## 🚨 CRITICAL ERRORS TO AVOID
 
 ### ❌ ERROR #1: Tests in Wrong Location
