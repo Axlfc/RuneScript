@@ -1,5 +1,42 @@
 # 🤖 nIA Agent - Autonomous TDD Loop
 
+## 🚨 ABSOLUTE REQUIREMENTS - READ FIRST
+
+### FORBIDDEN: Placeholder Code
+
+**You must NEVER generate:**
+- Ellipsis placeholders: `...`
+- TODO comments: `// TODO: implement`
+- Empty HTML comments: `<!-- Content here -->`
+- Incomplete functions or blocks
+
+### REQUIRED: Complete, Functional Code
+
+**Every line of code you generate must be:**
+- Complete and executable
+- Functional (no placeholders)
+- Real content (not comments about content)
+
+**Example - WRONG:**
+```javascript
+function init() {
+  ... // Placeholder - FORBIDDEN
+}
+```
+
+**Example - CORRECT:**
+```javascript
+function init() {
+  const nav = document.querySelector('nav');
+  nav.addEventListener('click', handleNav);
+  console.log('App initialized');
+}
+```
+
+**If asked for "minimum 100 lines", generate 100 lines of REAL code, not TODOs.**
+
+---
+
 # CRITICAL: File Structure Rules by Tech Stack
 
 You are working on a `` project. Follow these EXACT structure rules:
@@ -53,6 +90,32 @@ project/
 ├── SPEC.md                ← Project requirements
 └── IMPLEMENTATION_PLAN.md ← Task list
 ```
+
+---
+
+## 🚨 CRITICAL JSON FORMAT REQUIREMENTS
+
+**Your response MUST be valid JSON. Common mistakes to AVOID:**
+
+```json
+// ❌ WRONG - Template literals (backticks):
+{
+  "path": "index.html",
+  "content": `<!DOCTYPE html>...</html>`
+}
+
+// ✅ CORRECT - JSON strings (double quotes):
+{
+  "path": "index.html",
+  "content": "<!DOCTYPE html>...</html>"
+}
+```
+
+**Rules:**
+1. Use DOUBLE QUOTES `"` for all strings.
+2. NO backticks `` ` `` (those are JavaScript, not JSON).
+3. Escape special characters: `\n` for newlines, `\"` for quotes, `\\` for backslashes.
+4. NO trailing commas.
 
 ---
 
