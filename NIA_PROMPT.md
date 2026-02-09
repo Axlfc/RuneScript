@@ -113,6 +113,52 @@ Example: `File: assets/img/.gitkeep` (empty file).
 
 ---
 
+## 🧪 TEST FILE REQUIREMENTS
+
+### Syntax Rules
+
+**CRITICAL: NEVER use backslash (`\`) for line continuation in test files:**
+
+```python
+# ❌ WRONG - Backslash causes syntax errors:
+for element in soup.find_all('input') + soup.find_all('textarea'): \
+    if element.parent.name == 'label':
+        pass
+
+# ✅ CORRECT - Use parentheses for multi-line expressions:
+for element in (soup.find_all('input') +
+                soup.find_all('textarea')):
+    if element.parent.name == 'label':
+        pass
+```
+
+### File Reading Rules
+
+**CRITICAL: Tests run locally, NOT via HTTP:**
+
+```python
+# ❌ WRONG - requests.get() doesn't work on local files:
+response = requests.get('index.html')
+soup = BeautifulSoup(response.text, 'html.parser')
+
+# ✅ CORRECT - Read files directly:
+with open('index.html', 'r', encoding='utf-8') as f:
+    soup = BeautifulSoup(f.read(), 'html.parser')
+```
+
+### Path Resolution
+
+**Tests are in `tests/` directory, source files are in parent:**
+
+```python
+# ✅ CORRECT:
+test_file_path = os.path.join(os.path.dirname(__file__), '..', 'index.html')
+with open(test_file_path, 'r', encoding='utf-8') as f:
+    html_content = f.read()
+```
+
+---
+
 ## 📊 FINAL REPORT FORMAT
 End each iteration with:
 ```
