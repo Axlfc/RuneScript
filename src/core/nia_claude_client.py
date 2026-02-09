@@ -26,6 +26,30 @@ class nIAResponse:
         self.test_file = self._identify_test_file()
         self.test_name: Optional[str] = self._identify_test_name()
 
+    def _sanitize_llm_json(self, raw_response: str) -> str:
+        """Fix common JSON formatting errors from LLM, like template literals."""
+        import re
+
+        # Fix template literals (backticks) -> JSON strings for specific keys
+        def fix_backtick_content(match):
+            key = match.group(1)
+            content = match.group(2)
+            # Escape backslashes first, then quotes
+            content = content.replace('\\', '\\\\').replace('"', '\\"')
+            # Replace actual newlines with \n
+            content = content.replace('\n', '\\n').replace('\r', '')
+            return f'"{key}": "{content}"'
+
+        # Pattern: "key": `value`
+        sanitized = re.sub(
+            r'"(content|path|File)"\s*:\s*`([^`]*)`',
+            fix_backtick_content,
+            raw_response,
+            flags=re.DOTALL
+        )
+
+        return sanitized
+
     def _detect_response_format(self, text: str) -> str:
         """Detect if response is Gemini markdown or Ollama JSON."""
         # Try to extract JSON first
@@ -165,7 +189,10 @@ class nIAResponse:
 
         logging.info("--- Starting Universal File Parsing ---")
 
-        # 0. Pre-processing: If the whole response is one big code block, strip it
+        # 0. Pre-processing: Fix common JSON errors like backticks
+        text = self._sanitize_llm_json(text)
+
+        # 0.1. If the whole response is one big code block, strip it
         stripped_text = text.strip()
         if stripped_text.startswith('```') and stripped_text.endswith('```'):
             if stripped_text.count('File:') > 1 or stripped_text.count('Archivo:') > 1:
