@@ -86,7 +86,25 @@ class RobustJSONParser:
 
         json_str = re.sub(r'\\([^"\\/bfnrtu])', fix_backslash, json_str)
 
-        # 2. Handle literal newlines and tabs inside strings
+        # 2. Fix template literals (backticks) -> JSON strings for specific keys
+        def fix_backtick_content(match):
+            key = match.group(1)
+            content = match.group(2)
+            # Escape backslashes first, then quotes
+            content = content.replace('\\', '\\\\').replace('"', '\\"')
+            # Replace actual newlines with \n
+            content = content.replace('\n', '\\n').replace('\r', '')
+            return f'"{key}": "{content}"'
+
+        # Pattern: "key": `value`
+        json_str = re.sub(
+            r'"(content|path|File)"\s*:\s*`([^`]*)`',
+            fix_backtick_content,
+            json_str,
+            flags=re.DOTALL
+        )
+
+        # 3. Handle literal newlines and tabs inside strings
         # This is trickier because we need to distinguish between newlines in strings vs between keys
         # A simple heuristic: if a newline is followed by something that doesn't look like a key or end of object,
         # it might be inside a string. But that's risky.
