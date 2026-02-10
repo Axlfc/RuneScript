@@ -119,6 +119,41 @@ project/
 
 ---
 
+## 🧪 TEST FILE REQUIREMENTS
+
+### Safe Attribute Access in BeautifulSoup
+
+**ALWAYS use `.get()` when accessing HTML attributes** to avoid KeyError:
+
+```python
+# ❌ WRONG - Will crash if attribute missing:
+if link['id'] in nav_links:
+    pass
+
+# ✅ CORRECT - Safe attribute access:
+if link.get('id') in nav_links:
+    pass
+
+# ✅ ALSO CORRECT - With default value:
+link_id = link.get('id', '')
+if link_id in nav_links:
+    pass
+```
+
+**Remember**: Not all HTML elements have all attributes. Always use `.get()` for safe access.
+
+### Path Resolution in Tests
+
+**ALWAYS use paths relative to the project root.** Tests are executed from the project root directory.
+
+```python
+# ❌ WRONG - Assuming execution from tests/ folder:
+HTML_FILE = '../index.html'
+
+# ✅ CORRECT - Relative to project root:
+HTML_FILE = 'index.html'
+```
+
 ## 🚨 CRITICAL ERRORS TO AVOID
 
 ### ❌ ERROR #1: Tests in Wrong Location

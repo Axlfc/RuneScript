@@ -1093,7 +1093,34 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
     def _fix_incorrect_paths(self, code: str) -> str:
         """Fix common incorrect paths in tests."""
         # project/index.html -> index.html
-        return re.sub(r"(['\"])project/([^'\"]+)(['\"])", r"\1\2\3", code)
+        code = re.sub(r"(['\"])project/([^'\"]+)(['\"])", r"\1\2\3", code)
+
+        # ../index.html -> index.html (Tests run from root)
+        code = re.sub(r"(['\"])(\.\./)+([^'\"]+)(['\"])", r"\1\3\4", code)
+
+        return code
+
+    def _fix_unsafe_bs4_access(self, code: str) -> str:
+        """Fix unsafe BeautifulSoup attribute access like link['id']."""
+        # link['href'].startswith(...) -> link.get('href', '').startswith(...)
+        code = re.sub(
+            r"(\w+)\[(['\"])(href)(['\"])\]\.startswith\(",
+            r"\1.get(\2\3\4, '').startswith(",
+            code
+        )
+        # link['class'] -> link.get('class', []) (Because class is usually a list in BS4)
+        code = re.sub(
+            r"(\w+)\[(['\"])(class)(['\"])\]",
+            r"\1.get(\2\3\4, [])",
+            code
+        )
+        # link['id'] in ... -> link.get('id') in ...
+        code = re.sub(
+            r"(\w+)\[(['\"])(id|href)(['\"])\]",
+            r"\1.get(\2\3\4)",
+            code
+        )
+        return code
 
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
@@ -1110,6 +1137,7 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         # 1. Logical fixes (Always apply as they are safe and prevent runtime errors)
         fixed_code = self._fix_requests_on_local_files(fixed_code)
         fixed_code = self._fix_incorrect_paths(fixed_code)
+        fixed_code = self._fix_unsafe_bs4_access(fixed_code)
 
         # Check syntax
         try:
