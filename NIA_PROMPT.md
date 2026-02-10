@@ -142,6 +142,18 @@ if link_id in nav_links:
 
 **Remember**: Not all HTML elements have all attributes. Always use `.get()` for safe access.
 
+### Path Resolution in Tests
+
+**ALWAYS use paths relative to the project root.** Tests are executed from the project root directory.
+
+```python
+# ❌ WRONG - Assuming execution from tests/ folder:
+HTML_FILE = '../index.html'
+
+# ✅ CORRECT - Relative to project root:
+HTML_FILE = 'index.html'
+```
+
 ## 🚨 CRITICAL ERRORS TO AVOID
 
 ### ❌ ERROR #1: Tests in Wrong Location
