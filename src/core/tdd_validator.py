@@ -329,26 +329,22 @@ class TDDValidator:
                         )
                     return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=msg)
 
-                # 2. Sandbox Execution
-                # For now, if it's a simple test, we run it in the Python sandbox.
-                # If it's a complex pytest, we might still need a more robust runner,
-                # but let's try the sandbox first.
-                self.sandbox.timeout = 180 # Match sandbox default for tests
-
-                # Use dynamic whitelist from instance attribute
-                allowed = self.allowed_imports
+                # 2. Sandbox Execution (Isolated Subprocess)
+                # We use execute_test to avoid multiprocessing 'spawn' issues on Windows
+                self.sandbox.timeout = 180
 
                 # Check if we should use pytest
                 is_pytest = "import pytest" in code or "def test_" in code
 
-                result = self.sandbox.execute(
-                    code,
-                    allowed_imports=allowed,
-                    cwd=str(project_path),
+                result = self.sandbox.execute_test(
+                    test_file_path=full_test_path,
+                    project_path=project_path,
+                    timeout=180,
                     use_pytest=is_pytest
                 )
 
                 if self.security_auditor:
+                    # Log execution for audit trail
                     self.security_auditor.log_code_execution(code, source=str(rel_test_file), approved=result['success'], result=result)
 
                 final_res = subprocess.CompletedProcess(
@@ -553,15 +549,14 @@ class TDDValidator:
                 pass
 
         if uses_pytest:
-            # For REFACTOR phase, running all tests in sandbox
-            # We can't easily run multiple files with our current sandbox.execute
-            # so we'll run a script that calls pytest on the whole directory.
-            code = "import pytest\nimport sys\nsys.exit(pytest.main(['.', '-v', '--ignore=.venv', '--ignore=venv', '--ignore=node_modules']))"
-
-            # Ensure sys is available for this specific execution
-            allowed = list(set(self.allowed_imports + ['sys']))
-
-            result = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path))
+            # For REFACTOR phase, running all tests using pytest module
+            # We use execute_test with the current directory to run all tests
+            result = self.sandbox.execute_test(
+                test_file_path=".",
+                project_path=project_path,
+                timeout=180,
+                use_pytest=True
+            )
 
             final_res = subprocess.CompletedProcess(
                 args=['sandbox', 'all_tests'],
@@ -591,10 +586,14 @@ class TDDValidator:
                          threats_msg = ", ".join([t['description'] for t in analysis.get('threats', [])])
                          return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=f"Security Violation in test file {py_file.name}: {threats_msg}")
 
-                    allowed = self.allowed_imports
                     is_pytest = "import pytest" in code or "def test_" in code
 
-                    res = self.sandbox.execute(code, allowed_imports=allowed, cwd=str(project_path), use_pytest=is_pytest)
+                    res = self.sandbox.execute_test(
+                        test_file_path=py_file,
+                        project_path=project_path,
+                        timeout=180,
+                        use_pytest=is_pytest
+                    )
 
                     last_result = subprocess.CompletedProcess(
                         args=['sandbox', str(py_file)],

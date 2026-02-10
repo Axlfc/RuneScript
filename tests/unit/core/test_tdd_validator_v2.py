@@ -13,7 +13,7 @@ def test_add_allowed_import():
 def test_run_test_python_sandbox(mock_analyzer, mock_sandbox, tmp_path):
     v = TDDValidator()
     mock_analyzer.return_value.analyze.return_value = {"is_safe": True, "threats": []}
-    mock_sandbox.return_value.execute.return_value = {"success": True, "stdout": "Passed", "stderr": "", "error": None}
+    mock_sandbox.return_value.execute_test.return_value = {"success": True, "stdout": "Passed", "stderr": "", "error": None}
 
     test_file = tmp_path / "test_simple.py"
     test_file.write_text("def test_pass(): assert True")
