@@ -1122,6 +1122,28 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         )
         return code
 
+    def _fix_unsafe_bs4_access(self, code: str) -> str:
+        """Fix unsafe BeautifulSoup attribute access like link['id']."""
+        # link['href'].startswith(...) -> link.get('href', '').startswith(...)
+        code = re.sub(
+            r"(\w+)\[(['\"])(href)(['\"])\]\.startswith\(",
+            r"\1.get(\2\3\4, '').startswith(",
+            code
+        )
+        # link['class'] -> link.get('class', []) (Because class is usually a list in BS4)
+        code = re.sub(
+            r"(\w+)\[(['\"])(class)(['\"])\]",
+            r"\1.get(\2\3\4, [])",
+            code
+        )
+        # link['id'] in ... -> link.get('id') in ...
+        code = re.sub(
+            r"(\w+)\[(['\"])(id|href)(['\"])\]",
+            r"\1.get(\2\3\4)",
+            code
+        )
+        return code
+
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
         test_path = self.project_path / test_file_rel
