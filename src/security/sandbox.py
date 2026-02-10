@@ -128,6 +128,65 @@ class SecureSandbox:
 
         return result_queue.get()
 
+    def execute_test(self, test_file_path, project_path, timeout=None, use_pytest=False):
+        """
+        Execute a test file in an isolated subprocess.
+        This avoids multiprocessing 'spawn' issues on Windows where main.py is re-imported.
+        """
+        import subprocess
+
+        if timeout is None:
+            timeout = self.timeout
+
+        # Construction of the command
+        if use_pytest:
+            # Use module execution for pytest to ensure it's picked up from the correct environment
+            cmd = [sys.executable, "-m", "pytest", str(test_file_path), "-v", "--no-header"]
+        else:
+            cmd = [sys.executable, str(test_file_path)]
+
+        # Environment setup: prevent .pyc files and set PYTHONPATH
+        env = {
+            **os.environ,
+            'PYTHONDONTWRITEBYTECODE': '1',
+            'PYTHONPATH': str(project_path)
+        }
+
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=str(project_path),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env
+            )
+
+            return {
+                'success': result.returncode == 0,
+                'stdout': result.stdout,
+                'stderr': result.stderr,
+                'returncode': result.returncode,
+                'error': None if result.returncode == 0 else f"Test execution failed with return code {result.returncode}"
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                'success': False,
+                'stdout': '',
+                'stderr': f'Test execution exceeded {timeout}s timeout',
+                'returncode': 124,
+                'error': 'Execution timed out'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'stdout': '',
+                'stderr': f'Sandbox subprocess error: {str(e)}',
+                'returncode': 1,
+                'error': str(e)
+            }
+
     def _worker(self, code, allowed_imports, cwd, use_pytest, result_queue):
         """The function that runs in the child process."""
         # 1. Set Working Directory
