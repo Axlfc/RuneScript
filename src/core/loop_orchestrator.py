@@ -384,6 +384,17 @@ class LoopOrchestrator:
                             active_test_file = response.test_file
                             active_test_name = response.test_name
 
+                            # DA-009: Auto-rediscover existing tests if AI omits them
+                            if not active_test_file and any(kw in next_task.description.lower() for kw in ['test:', 'verify', 'check']):
+                                tests_dir = self.project_path / "tests"
+                                if tests_dir.exists():
+                                    existing_tests = list(tests_dir.glob("test_*.py"))
+                                    if existing_tests:
+                                        # Use the most recently modified test file
+                                        existing_tests.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                                        active_test_file = str(existing_tests[0].relative_to(self.project_path))
+                                        self._log(f"🔍 AI omitted test in response, using existing test: {active_test_file}", log_callback)
+
                             # Register first successful attempt to lock in files (and test file if present)
                             iter_state.register_attempt(response.files, False, active_test_file, active_test_name)
 
@@ -798,192 +809,192 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
                             return LoopResult("ERROR", iteration, str(e))
                         ai_feedback = f"Error during implementation: {str(e)}"
 
-            if stop_event.is_set():
-                return LoopResult("STOPPED", iteration, "Loop stopped by user")
+                if stop_event.is_set():
+                    return LoopResult("STOPPED", iteration, "Loop stopped by user")
 
-            # 10. TDD Cycle: REFACTOR Phase
-            try:
-                self._log("=== STARTING REFACTOR PHASE ===", log_callback)
-                self._notify_ui('phase_change', 'REFACTOR')
-                self._log_progress_bars(log_callback)
-                self._log("Verifying all tests...", log_callback)
-                # Capture test output for UI streaming
-                def refactor_test_cb(line, out_type='stdout'):
-                    self._notify_ui('test_output', {'line': line, 'type': out_type})
-
-                val_refactor = self.validator.validate_refactor(
-                    self.project_path,
-                    self.venv_python,
-                    output_callback=refactor_test_cb
-                )
-                self._log_validation_result(val_refactor, "REFACTOR", log_callback)
-
-                if not val_refactor.success:
-                    self._last_test_passed = False
-                    self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
-                    self.issue_manager.create_issue(
-                        category=self.issue_manager.CAT_TESTING,
-                        priority=self.issue_manager.PRIO_HIGH,
-                        title=f"Refactor Failure: {next_task.description}",
-                        description=f"REFACTOR phase failed (Regression): {val_refactor.message}",
-                        task=next_task.description,
-                        stack_trace=val_refactor.stderr
-                    )
-                    # DA-004: Rollback preserving tests to the GREEN state
-                    self._log("⏪ Undoing REFACTOR changes due to validation failure (preserving tests).", log_callback)
-                    # Rollback to green_checkpoint if it exists, otherwise to iteration checkpoint
-                    target_sha = green_checkpoint if 'green_checkpoint' in locals() else checkpoint
-                    self.git_manager.rollback_preserving_tests(target_sha)
-                    self.git_manager.record_failed_iteration()
-                    self.tracker.mark_blocked(self.plan_path, next_task, f"Regression detected during refactor phase: {val_refactor.message}")
-                    return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
-
-                self._log("✅ All tests passed.", log_callback)
-                self._last_test_passed = True
-
-                # 11. Code Quality Metrics (Informational)
+                # 10. TDD Cycle: REFACTOR Phase
                 try:
-                    q_metrics = self._analyze_code_quality()
-                    self._log("📊 Code Quality Metrics (Informational):", log_callback)
-                    for key, value in q_metrics.items():
-                        self._log(f"  - {key}: {value}", log_callback)
+                    self._log("=== STARTING REFACTOR PHASE ===", log_callback)
+                    self._notify_ui('phase_change', 'REFACTOR')
+                    self._log_progress_bars(log_callback)
+                    self._log("Verifying all tests...", log_callback)
+                    # Capture test output for UI streaming
+                    def refactor_test_cb(line, out_type='stdout'):
+                        self._notify_ui('test_output', {'line': line, 'type': out_type})
 
-                    # Update Intelligence with quality data
-                    if self.intelligence:
-                        # Extract per-file quality
-                        file_quality = {}
-                        exclude_dirs = {'.git', '__pycache__', 'node_modules', '.venv', 'venv', 'tests'}
-                        for root, dirs, files in os.walk(self.project_path):
-                            dirs[:] = [d for d in dirs if d not in exclude_dirs]
-                            for file in files:
-                                if file.endswith(('.py', '.js', '.ts', '.html', '.css')):
-                                    path = Path(root) / file
-                                    rel_path = str(path.relative_to(self.project_path))
-                                    try:
-                                        content = path.read_text(encoding='utf-8', errors='replace')
-                                        lines = len([l for l in content.splitlines() if l.strip()])
-                                        file_quality[rel_path] = {"current": lines}
-                                    except: pass
-
-                        self.intelligence.update_after_iteration({
-                            "quality_update": file_quality
-                        })
-                except Exception as me:
-                    logger.warning(f"Error during quality analysis: {me}")
-
-                # 12. FINALIZE ITERATION: Detect Changes, Commit and Patch System
-                self._log("💾 Finalizing task and generating patches...", log_callback)
-
-                # Commit changes (if any)
-                commit_msg = f"✅ {next_task.description}"
-                current_sha = self.git_manager.create_checkpoint(commit_msg)
-
-                # Detect exactly what changed since the start of this iteration
-                changes = self.git_manager.get_changes_since(checkpoint)
-
-                # Generate Patch System files
-                patch_path, diff_path = self.git_manager.generate_patch(checkpoint, next_task.description)
-
-                if patch_path:
-                    log_path = self.git_manager.generate_patch_log(
-                        patch_path,
-                        next_task.description,
-                        changes,
-                        val_refactor
+                    val_refactor = self.validator.validate_refactor(
+                        self.project_path,
+                        self.venv_python,
+                        output_callback=refactor_test_cb
                     )
+                    self._log_validation_result(val_refactor, "REFACTOR", log_callback)
 
-                    # Update manifest with detailed patch info
-                    patch_info = {
-                        "sequence": len(self.git_manager._load_manifest()['patches']) + 1,
-                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                        "patch_file": os.path.basename(patch_path),
-                        "task": next_task.description,
-                        "commit": current_sha,
-                        "files_changed": len(changes['added']) + len(changes['modified']) + len(changes['deleted']),
-                        "lines_changed": self.git_manager._count_lines_changed(changes),
-                        "status": "success"
-                    }
-                    self.git_manager.update_manifest(patch_info)
+                    if not val_refactor.success:
+                        self._last_test_passed = False
+                        self._log(f"❌ REFACTOR Phase failed: {val_refactor.message}", log_callback)
+                        self.issue_manager.create_issue(
+                            category=self.issue_manager.CAT_TESTING,
+                            priority=self.issue_manager.PRIO_HIGH,
+                            title=f"Refactor Failure: {next_task.description}",
+                            description=f"REFACTOR phase failed (Regression): {val_refactor.message}",
+                            task=next_task.description,
+                            stack_trace=val_refactor.stderr
+                        )
+                        # DA-004: Rollback preserving tests to the GREEN state
+                        self._log("⏪ Undoing REFACTOR changes due to validation failure (preserving tests).", log_callback)
+                        # Rollback to green_checkpoint if it exists, otherwise to iteration checkpoint
+                        target_sha = green_checkpoint if 'green_checkpoint' in locals() else checkpoint
+                        self.git_manager.rollback_preserving_tests(target_sha)
+                        self.git_manager.record_failed_iteration()
+                        self.tracker.mark_blocked(self.plan_path, next_task, f"Regression detected during refactor phase: {val_refactor.message}")
+                        return LoopResult("BLOCKED", iteration, "Refactor phase failed.", self._get_final_stats(start_time, tasks_planned, tasks_completed))
 
-                    self._log(f"✅ Patch saved: {os.path.basename(patch_path)}", log_callback)
-                    self._log(f"📊 Diff saved: {os.path.basename(diff_path)}", log_callback)
-                    self._log(f"📝 Log saved: {os.path.basename(log_path)}", log_callback)
+                    self._log("✅ All tests passed.", log_callback)
+                    self._last_test_passed = True
 
-                    # Notify UI of commit and diff
+                    # 11. Code Quality Metrics (Informational)
                     try:
-                        diff_content = Path(diff_path).read_text(encoding='utf-8')
-                        self._notify_ui('git_commit', {'message': commit_msg, 'diff': diff_content})
-                    except:
-                        pass
-                else:
-                    self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
+                        q_metrics = self._analyze_code_quality()
+                        self._log("📊 Code Quality Metrics (Informational):", log_callback)
+                        for key, value in q_metrics.items():
+                            self._log(f"  - {key}: {value}", log_callback)
 
-                # 13. Update Plan
-                self._log(f"📝 Marking task as completed in plan: {next_task.description}", log_callback)
-                self.tracker.mark_completed(self.plan_path, next_task)
+                        # Update Intelligence with quality data
+                        if self.intelligence:
+                            # Extract per-file quality
+                            file_quality = {}
+                            exclude_dirs = {'.git', '__pycache__', 'node_modules', '.venv', 'venv', 'tests'}
+                            for root, dirs, files in os.walk(self.project_path):
+                                dirs[:] = [d for d in dirs if d not in exclude_dirs]
+                                for file in files:
+                                    if file.endswith(('.py', '.js', '.ts', '.html', '.css')):
+                                        path = Path(root) / file
+                                        rel_path = str(path.relative_to(self.project_path))
+                                        try:
+                                            content = path.read_text(encoding='utf-8', errors='replace')
+                                            lines = len([l for l in content.splitlines() if l.strip()])
+                                            file_quality[rel_path] = {"current": lines}
+                                        except: pass
 
-                # IMPORTANT: Commit the plan update so it's not lost if a subsequent step or iteration fails
-                self.git_manager.create_checkpoint(f"Plan Update: Completed {next_task.description}")
+                            self.intelligence.update_after_iteration({
+                                "quality_update": file_quality
+                            })
+                    except Exception as me:
+                        logger.warning(f"Error during quality analysis: {me}")
 
-                tasks_completed += 1
+                    # 12. FINALIZE ITERATION: Detect Changes, Commit and Patch System
+                    self._log("💾 Finalizing task and generating patches...", log_callback)
 
-                # 14. Auto-resolve related issues
-                try:
-                    self.issue_manager.resolve_issues_by_task(
-                        task_description=next_task.description,
-                        resolution=f"Successfully completed task: {next_task.description}",
-                        prevention="Verified by TDD cycle and REFACTOR phase passing."
-                    )
+                    # Commit changes (if any)
+                    commit_msg = f"✅ {next_task.description}"
+                    current_sha = self.git_manager.create_checkpoint(commit_msg)
 
-                    # Regenerate Wiki
-                    self.issue_manager.generate_wiki()
-                except Exception as we:
-                    logger.warning(f"Error updating issues or generating wiki: {we}")
+                    # Detect exactly what changed since the start of this iteration
+                    changes = self.git_manager.get_changes_since(checkpoint)
 
-                # 15. Update UI Metrics
-                self._publish_metrics()
+                    # Generate Patch System files
+                    patch_path, diff_path = self.git_manager.generate_patch(checkpoint, next_task.description)
 
-                # 16. Update Intelligence
-                if self.intelligence:
-                    try:
-                        # Collect iteration results
-                        it_data = {
-                            "iteration_increment": True,
-                            "phase": "REFACTOR", # Final phase of successful loop
-                            "success": True,
-                            "tech_stack": self.tech_stack,
-                            "iterations": iteration + 1,
-                            "quality_standards": "standard", # Could be more dynamic
-                            "active_test": active_test_file,
-                            "solution_attempted": next_task.description
+                    if patch_path:
+                        log_path = self.git_manager.generate_patch_log(
+                            patch_path,
+                            next_task.description,
+                            changes,
+                            val_refactor
+                        )
+
+                        # Update manifest with detailed patch info
+                        patch_info = {
+                            "sequence": len(self.git_manager._load_manifest()['patches']) + 1,
+                            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                            "patch_file": os.path.basename(patch_path),
+                            "task": next_task.description,
+                            "commit": current_sha,
+                            "files_changed": len(changes['added']) + len(changes['modified']) + len(changes['deleted']),
+                            "lines_changed": self.git_manager._count_lines_changed(changes),
+                            "status": "success"
                         }
-                        self.intelligence.update_after_iteration(it_data)
-                    except Exception as e:
-                        logger.warning(f"Failed to update intelligence: {e}")
+                        self.git_manager.update_manifest(patch_info)
 
-                # Back to IDLE
-                self._notify_ui('phase_change', 'IDLE')
+                        self._log(f"✅ Patch saved: {os.path.basename(patch_path)}", log_callback)
+                        self._log(f"📊 Diff saved: {os.path.basename(diff_path)}", log_callback)
+                        self._log(f"📝 Log saved: {os.path.basename(log_path)}", log_callback)
 
-            except Exception as e:
-                self._notify_ui('phase_change', 'IDLE')
-                logger.error(f"Error during iteration: {e}", exc_info=True)
-                self._log(f"❌ Error during iteration: {str(e)}", log_callback)
+                        # Notify UI of commit and diff
+                        try:
+                            diff_content = Path(diff_path).read_text(encoding='utf-8')
+                            self._notify_ui('git_commit', {'message': commit_msg, 'diff': diff_content})
+                        except:
+                            pass
+                    else:
+                        self._log("⚠️ No patch generated (possibly no changes committed).", log_callback)
 
-                self.issue_manager.create_issue(
-                    category=self.issue_manager.CAT_DEPENDENCIES,
-                    priority=self.issue_manager.PRIO_CRITICAL,
-                    title=f"Critical Iteration Error: {next_task.description}",
-                    description=f"Critical error during iteration: {str(e)}",
-                    task=next_task.description,
-                    stack_trace=str(e)
-                )
+                    # 13. Update Plan
+                    self._log(f"📝 Marking task as completed in plan: {next_task.description}", log_callback)
+                    self.tracker.mark_completed(self.plan_path, next_task)
 
-                # Ensure rollback on finalization error
-                self.git_manager.rollback_preserving_tests(checkpoint)
-                self.tracker.mark_blocked(self.plan_path, next_task, str(e))
-                return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
+                    # IMPORTANT: Commit the plan update so it's not lost if a subsequent step or iteration fails
+                    self.git_manager.create_checkpoint(f"Plan Update: Completed {next_task.description}")
 
-                time.sleep(1)
+                    tasks_completed += 1
+
+                    # 14. Auto-resolve related issues
+                    try:
+                        self.issue_manager.resolve_issues_by_task(
+                            task_description=next_task.description,
+                            resolution=f"Successfully completed task: {next_task.description}",
+                            prevention="Verified by TDD cycle and REFACTOR phase passing."
+                        )
+
+                        # Regenerate Wiki
+                        self.issue_manager.generate_wiki()
+                    except Exception as we:
+                        logger.warning(f"Error updating issues or generating wiki: {we}")
+
+                    # 15. Update UI Metrics
+                    self._publish_metrics()
+
+                    # 16. Update Intelligence
+                    if self.intelligence:
+                        try:
+                            # Collect iteration results
+                            it_data = {
+                                "iteration_increment": True,
+                                "phase": "REFACTOR", # Final phase of successful loop
+                                "success": True,
+                                "tech_stack": self.tech_stack,
+                                "iterations": iteration + 1,
+                                "quality_standards": "standard", # Could be more dynamic
+                                "active_test": active_test_file,
+                                "solution_attempted": next_task.description
+                            }
+                            self.intelligence.update_after_iteration(it_data)
+                        except Exception as e:
+                            logger.warning(f"Failed to update intelligence: {e}")
+
+                    # Back to IDLE
+                    self._notify_ui('phase_change', 'IDLE')
+
+                except Exception as e:
+                    self._notify_ui('phase_change', 'IDLE')
+                    logger.error(f"Error during iteration: {e}", exc_info=True)
+                    self._log(f"❌ Error during iteration: {str(e)}", log_callback)
+
+                    self.issue_manager.create_issue(
+                        category=self.issue_manager.CAT_DEPENDENCIES,
+                        priority=self.issue_manager.PRIO_CRITICAL,
+                        title=f"Critical Iteration Error: {next_task.description}",
+                        description=f"Critical error during iteration: {str(e)}",
+                        task=next_task.description,
+                        stack_trace=str(e)
+                    )
+
+                    # Ensure rollback on finalization error
+                    self.git_manager.rollback_preserving_tests(checkpoint)
+                    self.tracker.mark_blocked(self.plan_path, next_task, str(e))
+                    return LoopResult("ERROR", iteration, str(e), self._get_final_stats(start_time, tasks_planned, tasks_completed))
+
+                    time.sleep(1)
 
             return LoopResult("MAX_ITERATIONS", max_iterations, f"Reached max iterations ({max_iterations})", self._get_final_stats(start_time, tasks_planned, tasks_completed))
         finally:
@@ -1098,28 +1109,6 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         # ../index.html -> index.html (Tests run from root)
         code = re.sub(r"(['\"])(\.\./)+([^'\"]+)(['\"])", r"\1\3\4", code)
 
-        return code
-
-    def _fix_unsafe_bs4_access(self, code: str) -> str:
-        """Fix unsafe BeautifulSoup attribute access like link['id']."""
-        # link['href'].startswith(...) -> link.get('href', '').startswith(...)
-        code = re.sub(
-            r"(\w+)\[(['\"])(href)(['\"])\]\.startswith\(",
-            r"\1.get(\2\3\4, '').startswith(",
-            code
-        )
-        # link['class'] -> link.get('class', []) (Because class is usually a list in BS4)
-        code = re.sub(
-            r"(\w+)\[(['\"])(class)(['\"])\]",
-            r"\1.get(\2\3\4, [])",
-            code
-        )
-        # link['id'] in ... -> link.get('id') in ...
-        code = re.sub(
-            r"(\w+)\[(['\"])(id|href)(['\"])\]",
-            r"\1.get(\2\3\4)",
-            code
-        )
         return code
 
     def _fix_unsafe_bs4_access(self, code: str) -> str:
