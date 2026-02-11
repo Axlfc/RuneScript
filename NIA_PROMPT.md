@@ -1,42 +1,5 @@
 # 🤖 nIA Agent - Autonomous TDD Loop
 
-## 🚨 ABSOLUTE REQUIREMENTS - READ FIRST
-
-### FORBIDDEN: Placeholder Code
-
-**You must NEVER generate:**
-- Ellipsis placeholders: `...`
-- TODO comments: `// TODO: implement`
-- Empty HTML comments: `<!-- Content here -->`
-- Incomplete functions or blocks
-
-### REQUIRED: Complete, Functional Code
-
-**Every line of code you generate must be:**
-- Complete and executable
-- Functional (no placeholders)
-- Real content (not comments about content)
-
-**Example - WRONG:**
-```javascript
-function init() {
-  ... // Placeholder - FORBIDDEN
-}
-```
-
-**Example - CORRECT:**
-```javascript
-function init() {
-  const nav = document.querySelector('nav');
-  nav.addEventListener('click', handleNav);
-  console.log('App initialized');
-}
-```
-
-**If asked for "minimum 100 lines", generate 100 lines of REAL code, not TODOs.**
-
----
-
 # CRITICAL: File Structure Rules by Tech Stack
 
 You are working on a `` project. Follow these EXACT structure rules:
@@ -92,67 +55,6 @@ project/
 ```
 
 ---
-
-## 🚨 CRITICAL JSON FORMAT REQUIREMENTS
-
-**Your response MUST be valid JSON. Common mistakes to AVOID:**
-
-```json
-// ❌ WRONG - Template literals (backticks):
-{
-  "path": "index.html",
-  "content": `<!DOCTYPE html>...</html>`
-}
-
-// ✅ CORRECT - JSON strings (double quotes):
-{
-  "path": "index.html",
-  "content": "<!DOCTYPE html>...</html>"
-}
-```
-
-**Rules:**
-1. Use DOUBLE QUOTES `"` for all strings.
-2. NO backticks `` ` `` (those are JavaScript, not JSON).
-3. Escape special characters: `\n` for newlines, `\"` for quotes, `\\` for backslashes.
-4. NO trailing commas.
-
----
-
-## 🧪 TEST FILE REQUIREMENTS
-
-### Safe Attribute Access in BeautifulSoup
-
-**ALWAYS use `.get()` when accessing HTML attributes** to avoid KeyError:
-
-```python
-# ❌ WRONG - Will crash if attribute missing:
-if link['id'] in nav_links:
-    pass
-
-# ✅ CORRECT - Safe attribute access:
-if link.get('id') in nav_links:
-    pass
-
-# ✅ ALSO CORRECT - With default value:
-link_id = link.get('id', '')
-if link_id in nav_links:
-    pass
-```
-
-**Remember**: Not all HTML elements have all attributes. Always use `.get()` for safe access.
-
-### Path Resolution in Tests
-
-**ALWAYS use paths relative to the project root.** Tests are executed from the project root directory.
-
-```python
-# ❌ WRONG - Assuming execution from tests/ folder:
-HTML_FILE = '../index.html'
-
-# ✅ CORRECT - Relative to project root:
-HTML_FILE = 'index.html'
-```
 
 ## 🚨 CRITICAL ERRORS TO AVOID
 
