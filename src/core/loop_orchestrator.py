@@ -653,6 +653,20 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
 """
                                     else:
                                         quality_feedback = self.quality_checker.generate_feedback(errors)
+                                        # Specific feedback for HTML structure
+                                        html_structure_errors = [e for e in errors if e.type == "HTML_STRUCTURE"]
+                                        if html_structure_errors:
+                                            quality_feedback += """
+
+❌ Your HTML is incomplete or malformed. You MUST include:
+1. <!DOCTYPE html>
+2. <html lang="en">
+3. <head> with <meta charset="UTF-8"> and <title>
+4. <body> section with meaningful content
+5. Closing </body> and </html> tags
+
+Generate COMPLETE, valid HTML5 structure.
+"""
 
                                     ai_feedback += "\n\n" + quality_feedback
 
@@ -1133,6 +1147,16 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         )
         return code
 
+    def _fix_test_escapes(self, code: str) -> str:
+        """Fix unnecessary escape sequences in test assertions."""
+        fixes = [
+            (r"'\\function ", r"'function "),  # Remove backslash before function
+            (r'"\\function ', r'"function '),
+        ]
+        for pattern, replacement in fixes:
+            code = re.sub(pattern, replacement, code)
+        return code
+
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
         test_path = self.project_path / test_file_rel
@@ -1149,6 +1173,7 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         fixed_code = self._fix_requests_on_local_files(fixed_code)
         fixed_code = self._fix_incorrect_paths(fixed_code)
         fixed_code = self._fix_unsafe_bs4_access(fixed_code)
+        fixed_code = self._fix_test_escapes(fixed_code)
 
         # Check syntax
         try:
