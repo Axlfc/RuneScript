@@ -667,6 +667,19 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
 
 Generate COMPLETE, valid HTML5 structure.
 """
+                                        # Specific feedback for CSS completeness
+                                        css_completeness_errors = [e for e in errors if e.type == "CSS_COMPLETENESS"]
+                                        if css_completeness_errors:
+                                            quality_feedback += """
+
+❌ Your CSS is incomplete or missing critical rules. You MUST include:
+1. :root variables for colors and spacing
+2. Layout rules (Flexbox/Grid)
+3. Media queries for responsiveness (@media)
+4. Animations or transitions (@keyframes)
+
+Generate the FULL CSS file. DO NOT truncate.
+"""
 
                                     ai_feedback += "\n\n" + quality_feedback
 
@@ -1147,6 +1160,26 @@ Generate COMPLETE, valid HTML5 structure.
         )
         return code
 
+    def _fix_bs4_find_selector(self, code: str) -> str:
+        """Fix incorrect BS4 find() usage with CSS selectors and improve robustness."""
+        # 1. find('.class') -> find(class_='class')
+        code = re.sub(r"\.find\(['\"]\.([^'\"]+)['\"]\)", r".find(class_='\1')", code)
+
+        # 2. find('#id') -> find(id='id')
+        code = re.sub(r"\.find\(['\"]#([^'\"]+)['\"]\)", r".find(id='\1')", code)
+
+        # 3. find('tag[attr="val"]') -> select_one('tag[attr="val"]')
+        code = re.sub(r"\.find\(['\"]([^'\"\[\(]+\[[^\]\)]+\])['\"]\)", r".select_one('\1')", code)
+
+        # 4. Robustness fix for submit buttons: find(class_='submit-btn') or select_one('.submit-btn')
+        # -> select_one('button[type="submit"], input[type="submit"], .submit-btn')
+        code = re.sub(
+            r"\.(find\(class_=['\"]submit-btn['\"]\)|select_one\(['\"]\.submit-btn['\"]\))",
+            r".select_one('button[type=\"submit\"], input[type=\"submit\"], .submit-btn')",
+            code
+        )
+        return code
+
     def _fix_test_escapes(self, code: str) -> str:
         """Fix unnecessary escape sequences in test assertions."""
         fixes = [
@@ -1173,6 +1206,7 @@ Generate COMPLETE, valid HTML5 structure.
         fixed_code = self._fix_requests_on_local_files(fixed_code)
         fixed_code = self._fix_incorrect_paths(fixed_code)
         fixed_code = self._fix_unsafe_bs4_access(fixed_code)
+        fixed_code = self._fix_bs4_find_selector(fixed_code)
         fixed_code = self._fix_test_escapes(fixed_code)
 
         # Check syntax
