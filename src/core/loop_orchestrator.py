@@ -1190,6 +1190,24 @@ Generate the FULL CSS file. DO NOT truncate.
             code = re.sub(pattern, replacement, code)
         return code
 
+    def _fix_main_block_indentation(self, code: str) -> str:
+        """Fix missing indentation after if __name__ == '__main__':"""
+        lines = code.split('\n')
+        new_lines = []
+        in_main = False
+        for line in lines:
+            if re.match(r"^if\s+__name__\s*==\s*['\"]__main__['\"]\s*:", line.strip()):
+                in_main = True
+                new_lines.append(line)
+                continue
+
+            if in_main and line.strip() and not line.startswith(' ') and not line.startswith('\t'):
+                # Missing indentation!
+                new_lines.append('    ' + line)
+            else:
+                new_lines.append(line)
+        return '\n'.join(new_lines)
+
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
         test_path = self.project_path / test_file_rel
@@ -1208,6 +1226,7 @@ Generate the FULL CSS file. DO NOT truncate.
         fixed_code = self._fix_unsafe_bs4_access(fixed_code)
         fixed_code = self._fix_bs4_find_selector(fixed_code)
         fixed_code = self._fix_test_escapes(fixed_code)
+        fixed_code = self._fix_main_block_indentation(fixed_code)
 
         # Check syntax
         try:
