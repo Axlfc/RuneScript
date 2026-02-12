@@ -27,11 +27,13 @@ class FileStructureValidator:
             "html": r"^(?!project/|src/|public/|assets/|tests/|test_data/|css/|js/)[\w-]+\.html$",  # Root level only
             "css": r"^css/.*\.css$",
             "js": r"^js/.*\.js$",
-            "assets": r"^assets/.*"
+            "assets": r"^assets/.*",
+            "test_data": r"^test_data/.*"
         },
         "backend_python": {
             "python": r"^[\w/]+\.py$",
-            "requirements": r"^requirements\.txt$"
+            "requirements": r"^requirements\.txt$",
+            "test_data": r"^test_data/.*"
         }
     }
 
