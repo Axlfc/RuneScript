@@ -1,9 +1,9 @@
 {
   "project_id": ".",
-  "created_at": "2026-02-09T19:49:36Z",
+  "created_at": "2026-02-11T15:47:33Z",
   "plan_review": {
     "iterations": 1,
-    "approval_time_seconds": 0.0004582405090332031,
+    "approval_time_seconds": 0.0007338523864746094,
     "final_approved": false,
     "issues_found": [
       "Error parsing AI response: Expecting value: line 1 column 1 (char 0)"
@@ -12,12 +12,12 @@
   "dependencies": {
     "requirements_generated": true,
     "auto_detected": [
+      "tkinter",
+      "shutil",
       "typer",
+      "customtkinter",
       "uuid",
       "yaml",
-      "tkinter",
-      "customtkinter",
-      "shutil",
       "src",
       "bs4",
       "beautifulsoup4",

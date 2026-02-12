@@ -329,11 +329,9 @@ class GitBasedFileManager:
             for file_path in safe_failed_files:
                 try:
                     # Check if file existed at checkpoint
-                    try:
-                        self.repo.git.ls_tree(checkpoint_sha, file_path)
-                        file_exists_at_checkpoint = True
-                    except:
-                        file_exists_at_checkpoint = False
+                    # Note: ls_tree returns empty string if not found, doesn't raise exception
+                    ls_output = self.repo.git.ls_tree(checkpoint_sha, file_path)
+                    file_exists_at_checkpoint = bool(ls_output.strip())
 
                     if file_exists_at_checkpoint:
                         # Revert just this file to the checkpoint version
@@ -350,8 +348,7 @@ class GitBasedFileManager:
                                 os.remove(full_path)
                             logger.info(f"  - Deleted: {file_path} (file did not exist at checkpoint)")
 
-                        # Tell git about the deletion
-                        self.repo.git.add(file_path)
+                        # No need to git add a deleted file that was untracked
 
                 except Exception as e:
                     logger.warning(f"  - Failed to handle {file_path} during rollback: {e}")

@@ -653,6 +653,33 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
 """
                                     else:
                                         quality_feedback = self.quality_checker.generate_feedback(errors)
+                                        # Specific feedback for HTML structure
+                                        html_structure_errors = [e for e in errors if e.type == "HTML_STRUCTURE"]
+                                        if html_structure_errors:
+                                            quality_feedback += """
+
+❌ Your HTML is incomplete or malformed. You MUST include:
+1. <!DOCTYPE html>
+2. <html lang="en">
+3. <head> with <meta charset="UTF-8"> and <title>
+4. <body> section with meaningful content
+5. Closing </body> and </html> tags
+
+Generate COMPLETE, valid HTML5 structure.
+"""
+                                        # Specific feedback for CSS completeness
+                                        css_completeness_errors = [e for e in errors if e.type == "CSS_COMPLETENESS"]
+                                        if css_completeness_errors:
+                                            quality_feedback += """
+
+❌ Your CSS is incomplete or missing critical rules. You MUST include:
+1. :root variables for colors and spacing
+2. Layout rules (Flexbox/Grid)
+3. Media queries for responsiveness (@media)
+4. Animations or transitions (@keyframes)
+
+Generate the FULL CSS file. DO NOT truncate.
+"""
 
                                     ai_feedback += "\n\n" + quality_feedback
 
@@ -1133,6 +1160,36 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         )
         return code
 
+    def _fix_bs4_find_selector(self, code: str) -> str:
+        """Fix incorrect BS4 find() usage with CSS selectors and improve robustness."""
+        # 1. find('.class') -> find(class_='class')
+        code = re.sub(r"\.find\(['\"]\.([^'\"]+)['\"]\)", r".find(class_='\1')", code)
+
+        # 2. find('#id') -> find(id='id')
+        code = re.sub(r"\.find\(['\"]#([^'\"]+)['\"]\)", r".find(id='\1')", code)
+
+        # 3. find('tag[attr="val"]') -> select_one('tag[attr="val"]')
+        code = re.sub(r"\.find\(['\"]([^'\"\[\(]+\[[^\]\)]+\])['\"]\)", r".select_one('\1')", code)
+
+        # 4. Robustness fix for submit buttons: find(class_='submit-btn') or select_one('.submit-btn')
+        # -> select_one('button[type="submit"], input[type="submit"], .submit-btn')
+        code = re.sub(
+            r"\.(find\(class_=['\"]submit-btn['\"]\)|select_one\(['\"]\.submit-btn['\"]\))",
+            r".select_one('button[type=\"submit\"], input[type=\"submit\"], .submit-btn')",
+            code
+        )
+        return code
+
+    def _fix_test_escapes(self, code: str) -> str:
+        """Fix unnecessary escape sequences in test assertions."""
+        fixes = [
+            (r"'\\function ", r"'function "),  # Remove backslash before function
+            (r'"\\function ', r'"function '),
+        ]
+        for pattern, replacement in fixes:
+            code = re.sub(pattern, replacement, code)
+        return code
+
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
         test_path = self.project_path / test_file_rel
@@ -1149,6 +1206,8 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         fixed_code = self._fix_requests_on_local_files(fixed_code)
         fixed_code = self._fix_incorrect_paths(fixed_code)
         fixed_code = self._fix_unsafe_bs4_access(fixed_code)
+        fixed_code = self._fix_bs4_find_selector(fixed_code)
+        fixed_code = self._fix_test_escapes(fixed_code)
 
         # Check syntax
         try:
