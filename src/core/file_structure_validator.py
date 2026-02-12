@@ -13,12 +13,14 @@ class FileStructureValidator:
 
     STRUCTURE_RULES = {
         "_base": {
-            "tests": r"^tests/.*\.py$",
+            "tests": r"^tests/.*",
             "test_data": r"^test_data/.*",
             "config": r"^[\w.-]+\.(json|md|txt|yaml|yml|ini|toml)$",
             "gitkeep": r"^.*\.gitkeep$",
             "gitignore": r"^\.gitignore$",
             "readme": r"^README\.md$",
+            "plan": r"^IMPLEMENTATION_PLAN\.md$",
+            "spec": r"^SPEC\.md$",
             "requirements": r"^requirements\.txt$"
         },
         "frontend_web": {

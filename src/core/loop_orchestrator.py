@@ -1136,6 +1136,9 @@ Generate the FULL CSS file. DO NOT truncate.
         # ../index.html -> index.html (Tests run from root)
         code = re.sub(r"(['\"])(\.\./)+([^'\"]+)(['\"])", r"\1\3\4", code)
 
+        # /js/app.js -> js/app.js (Remove leading slash in assertions)
+        code = re.sub(r"(['\"])/(\w+/)", r"\1\2", code)
+
         return code
 
     def _fix_unsafe_bs4_access(self, code: str) -> str:
@@ -1178,6 +1181,14 @@ Generate the FULL CSS file. DO NOT truncate.
             r".select_one('button[type=\"submit\"], input[type=\"submit\"], .submit-btn')",
             code
         )
+
+        # 5. Fix checking for onsubmit attribute which is often missing
+        # 'onsubmit' in form.attrs -> form.find('button', type='submit') is not None
+        code = re.sub(
+            r"['\"]onsubmit['\"]\s+in\s+(\w+)\.attrs",
+            r"(\1.find('button', type='submit') is not None or \1.find('input', type='submit') is not None)",
+            code
+        )
         return code
 
     def _fix_test_escapes(self, code: str) -> str:
@@ -1188,6 +1199,12 @@ Generate the FULL CSS file. DO NOT truncate.
         ]
         for pattern, replacement in fixes:
             code = re.sub(pattern, replacement, code)
+        return code
+
+    def _fix_unittest_mock_import(self, code: str) -> str:
+        """Fix AttributeError: module 'unittest' has no attribute 'mock'"""
+        if 'unittest.mock' in code and 'from unittest import mock' not in code:
+            code = code.replace('import unittest', 'import unittest\nfrom unittest import mock')
         return code
 
     def _fix_main_block_indentation(self, code: str) -> str:
@@ -1227,6 +1244,7 @@ Generate the FULL CSS file. DO NOT truncate.
         fixed_code = self._fix_bs4_find_selector(fixed_code)
         fixed_code = self._fix_test_escapes(fixed_code)
         fixed_code = self._fix_main_block_indentation(fixed_code)
+        fixed_code = self._fix_unittest_mock_import(fixed_code)
 
         # Check syntax
         try:

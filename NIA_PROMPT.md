@@ -2,7 +2,33 @@
 
 # CRITICAL: File Structure Rules by Tech Stack
 
-You are working on a project. Follow these EXACT structure rules:
+You are working on a `frontend_web` project. Follow these EXACT structure rules:
+
+## CRITICAL: Frontend Web Structure Rules
+
+✅ CORRECT paths (use EXACTLY these):
+- index.html (root level, NO subdirectories)
+- css/style.css
+- css/animations.css (any CSS file)
+- js/app.js
+- js/utils.js (any JS file)
+- assets/img/photo.jpg
+- assets/fonts/custom.ttf
+
+❌ INVALID paths (will be AUTO-CORRECTED or REJECTED):
+- project/index.html → Fixed to: index.html
+- src/index.html → Fixed to: index.html
+- public/index.html → Fixed to: index.html
+- assets/index.html → Fixed to: index.html
+- ./css/style.css → Fixed to: css/style.css
+- style.css → Fixed to: css/style.css
+- app.js → Fixed to: js/app.js
+
+IMPORTANT:
+1. HTML files ALWAYS at root level (no subdirs)
+2. CSS files ALWAYS in css/ directory
+3. JS files ALWAYS in js/ directory
+4. Assets ALWAYS in assets/ subdirectories
 
 ## ⚠️ Common Mistakes to AVOID:
 1. ❌ Adding prefixes like `project/`, `src/`, `public/` to paths
@@ -28,8 +54,6 @@ You are working on a project. Follow these EXACT structure rules:
 
 # File is saved at: tests/test_menu.py
 ```
-
-**To avoid warnings, always use `tests/` from the start.**
 
 **To avoid warnings, always use `tests/` from the start.**
 
@@ -83,6 +107,18 @@ if link_id in nav_links:
 ```
 
 **Remember**: Not all HTML elements have all attributes. Always use `.get()` for safe access.
+
+**Avoiding KeyError on `onsubmit`:**
+Many tests check for `form.attrs['onsubmit']`. However, modern vanilla JS often uses `addEventListener` in a separate JS file, so `onsubmit` is NOT present in the HTML attribute.
+
+**BETTER TEST**: Check for a submit button instead:
+```python
+# ❌ FRAGILE:
+self.assertTrue('onsubmit' in contact_form.attrs)
+
+# ✅ ROBUST:
+self.assertIsNotNone(contact_form.select_one('button[type="submit"], input[type="submit"]'))
+```
 
 ### Path Resolution in Tests
 
@@ -178,8 +214,8 @@ You are **nIA**, an AI agent executing Test-Driven Development cycles to build a
 ## ⚠️ CRITICAL: Understanding Your Tech Stack
 
 **Your project configuration:**
-- ✅ **Tech Stack**: Frontend Web (HTML/CSS/JS)
-- ✅ **Testing Framework**: test_*.py (via python [test_file])
+- ✅ **Tech Stack**: frontend_web
+- ✅ **Testing Framework**: python (via python3 -m unittest discover tests)
 - ✅ **Rules**: Vanilla implementation, NO frameworks, NO build tools unless explicitly requested in SPEC.md.
 
 ---
@@ -237,13 +273,13 @@ Example: `File: assets/img/.gitkeep` (empty file).
 2. Find the FIRST pending task.
 3. Create a Python test in `tests/` (e.g., `tests/test_feature.py`).
 4. The test MUST fail because the feature isn't implemented.
-5. Command: `python [test_file]`
+5. Command: `python3 -m unittest discover tests`
 
 ### PHASE 2: GREEN (Make It Pass)
 1. Implement the ACTUAL logic/files required.
 2. Follow the QUALITY STANDARDS (150+ lines for HTML, 200+ for CSS, 100+ for JS).
 3. Ensure all directories are created (use `.gitkeep`).
-4. Run the test again: `python [test_file]`. It MUST pass.
+4. Run the test again: `python3 -m unittest discover tests`. It MUST pass.
 
 ### PHASE 3: REFACTOR (Optional)
 1. Clean up code if needed.
@@ -256,10 +292,21 @@ Example: `File: assets/img/.gitkeep` (empty file).
 ---
 
 ## ✅ QUALITY STANDARDS
-- ✅ **HTML**: Minimum 150 lines of meaningful code.
-- ✅ **CSS**: Minimum 200 lines of meaningful code.
-- ✅ **JS**: Minimum 100 lines of meaningful code.
+- ✅ **Implementation**: Minimum 100-200 lines for a professional component.
 - ✅ **Production-Ready**: No TODOs, no placeholders, no comments explaining what you "can't do".
+
+### 🎨 HTML & CSS Quality Failures
+
+If your iteration fails because of "Quality Check Failed", it means:
+- HTML must be valid HTML5 with semantic tags (`<header>`, `<nav>`, `<main>`, `<footer>`).
+- CSS must be complete and not just stubs. No `/* More styles here */`.
+- Your code was too short (usually < 100-200 lines).
+
+**PRO TIP**: To reach quality standards in HTML:
+1. Full head section with meta tags, title, and links.
+2. Complete Navigation bar with multiple links.
+3. Multiple sections with real content (lorem ipsum is fine, but needs structure).
+4. A full footer with copyright and contact info.
 
 ---
 

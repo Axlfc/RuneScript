@@ -147,6 +147,18 @@ if link_id in nav_links:
 
 **Remember**: Not all HTML elements have all attributes. Always use `.get()` for safe access.
 
+**Avoiding KeyError on `onsubmit`:**
+Many tests check for `form.attrs['onsubmit']`. However, modern vanilla JS often uses `addEventListener` in a separate JS file, so `onsubmit` is NOT present in the HTML attribute.
+
+**BETTER TEST**: Check for a submit button instead:
+```python
+# ❌ FRAGILE:
+self.assertTrue('onsubmit' in contact_form.attrs)
+
+# ✅ ROBUST:
+self.assertIsNotNone(contact_form.select_one('button[type="submit"], input[type="submit"]'))
+```
+
 ### Path Resolution in Tests
 
 **ALWAYS use paths relative to the project root.** Tests are executed from the project root directory.
@@ -327,6 +339,19 @@ Example: `File: assets/img/.gitkeep` (empty file).
 - ✅ **Implementation**: Minimum 100-200 lines for a professional component.
 {%- endif %}
 - ✅ **Production-Ready**: No TODOs, no placeholders, no comments explaining what you "can't do".
+
+### 🎨 HTML & CSS Quality Failures
+
+If your iteration fails because of "Quality Check Failed", it means:
+- HTML must be valid HTML5 with semantic tags (`<header>`, `<nav>`, `<main>`, `<footer>`).
+- CSS must be complete and not just stubs. No `/* More styles here */`.
+- Your code was too short (usually < 100-200 lines).
+
+**PRO TIP**: To reach quality standards in HTML:
+1. Full head section with meta tags, title, and links.
+2. Complete Navigation bar with multiple links.
+3. Multiple sections with real content (lorem ipsum is fine, but needs structure).
+4. A full footer with copyright and contact info.
 
 ---
 
