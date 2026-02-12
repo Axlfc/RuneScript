@@ -653,6 +653,33 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
 """
                                     else:
                                         quality_feedback = self.quality_checker.generate_feedback(errors)
+                                        # Specific feedback for HTML structure
+                                        html_structure_errors = [e for e in errors if e.type == "HTML_STRUCTURE"]
+                                        if html_structure_errors:
+                                            quality_feedback += """
+
+❌ Your HTML is incomplete or malformed. You MUST include:
+1. <!DOCTYPE html>
+2. <html lang="en">
+3. <head> with <meta charset="UTF-8"> and <title>
+4. <body> section with meaningful content
+5. Closing </body> and </html> tags
+
+Generate COMPLETE, valid HTML5 structure.
+"""
+                                        # Specific feedback for CSS completeness
+                                        css_completeness_errors = [e for e in errors if e.type == "CSS_COMPLETENESS"]
+                                        if css_completeness_errors:
+                                            quality_feedback += """
+
+❌ Your CSS is incomplete or missing critical rules. You MUST include:
+1. :root variables for colors and spacing
+2. Layout rules (Flexbox/Grid)
+3. Media queries for responsiveness (@media)
+4. Animations or transitions (@keyframes)
+
+Generate the FULL CSS file. DO NOT truncate.
+"""
 
                                     ai_feedback += "\n\n" + quality_feedback
 
@@ -1109,6 +1136,9 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         # ../index.html -> index.html (Tests run from root)
         code = re.sub(r"(['\"])(\.\./)+([^'\"]+)(['\"])", r"\1\3\4", code)
 
+        # /js/app.js -> js/app.js (Remove leading slash in assertions)
+        code = re.sub(r"(['\"])/(\w+/)", r"\1\2", code)
+
         return code
 
     def _fix_unsafe_bs4_access(self, code: str) -> str:
@@ -1133,6 +1163,68 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         )
         return code
 
+    def _fix_bs4_find_selector(self, code: str) -> str:
+        """Fix incorrect BS4 find() usage with CSS selectors and improve robustness."""
+        # 1. find('.class') -> find(class_='class')
+        code = re.sub(r"\.find\(['\"]\.([^'\"]+)['\"]\)", r".find(class_='\1')", code)
+
+        # 2. find('#id') -> find(id='id')
+        code = re.sub(r"\.find\(['\"]#([^'\"]+)['\"]\)", r".find(id='\1')", code)
+
+        # 3. find('tag[attr="val"]') -> select_one('tag[attr="val"]')
+        code = re.sub(r"\.find\(['\"]([^'\"\[\(]+\[[^\]\)]+\])['\"]\)", r".select_one('\1')", code)
+
+        # 4. Robustness fix for submit buttons: find(class_='submit-btn') or select_one('.submit-btn')
+        # -> select_one('button[type="submit"], input[type="submit"], .submit-btn')
+        code = re.sub(
+            r"\.(find\(class_=['\"]submit-btn['\"]\)|select_one\(['\"]\.submit-btn['\"]\))",
+            r".select_one('button[type=\"submit\"], input[type=\"submit\"], .submit-btn')",
+            code
+        )
+
+        # 5. Fix checking for onsubmit attribute which is often missing
+        # 'onsubmit' in form.attrs -> form.find('button', type='submit') is not None
+        code = re.sub(
+            r"['\"]onsubmit['\"]\s+in\s+(\w+)\.attrs",
+            r"(\1.find('button', type='submit') is not None or \1.find('input', type='submit') is not None)",
+            code
+        )
+        return code
+
+    def _fix_test_escapes(self, code: str) -> str:
+        """Fix unnecessary escape sequences in test assertions."""
+        fixes = [
+            (r"'\\function ", r"'function "),  # Remove backslash before function
+            (r'"\\function ', r'"function '),
+        ]
+        for pattern, replacement in fixes:
+            code = re.sub(pattern, replacement, code)
+        return code
+
+    def _fix_unittest_mock_import(self, code: str) -> str:
+        """Fix AttributeError: module 'unittest' has no attribute 'mock'"""
+        if 'unittest.mock' in code and 'from unittest import mock' not in code:
+            code = code.replace('import unittest', 'import unittest\nfrom unittest import mock')
+        return code
+
+    def _fix_main_block_indentation(self, code: str) -> str:
+        """Fix missing indentation after if __name__ == '__main__':"""
+        lines = code.split('\n')
+        new_lines = []
+        in_main = False
+        for line in lines:
+            if re.match(r"^if\s+__name__\s*==\s*['\"]__main__['\"]\s*:", line.strip()):
+                in_main = True
+                new_lines.append(line)
+                continue
+
+            if in_main and line.strip() and not line.startswith(' ') and not line.startswith('\t'):
+                # Missing indentation!
+                new_lines.append('    ' + line)
+            else:
+                new_lines.append(line)
+        return '\n'.join(new_lines)
+
     def _validate_and_fix_test_syntax(self, test_file_rel, log_callback):
         """Validate and auto-fix common test syntax issues."""
         test_path = self.project_path / test_file_rel
@@ -1149,6 +1241,10 @@ REGENERATE with COMPLETE code. NO placeholders. NO TODOs.
         fixed_code = self._fix_requests_on_local_files(fixed_code)
         fixed_code = self._fix_incorrect_paths(fixed_code)
         fixed_code = self._fix_unsafe_bs4_access(fixed_code)
+        fixed_code = self._fix_bs4_find_selector(fixed_code)
+        fixed_code = self._fix_test_escapes(fixed_code)
+        fixed_code = self._fix_main_block_indentation(fixed_code)
+        fixed_code = self._fix_unittest_mock_import(fixed_code)
 
         # Check syntax
         try:

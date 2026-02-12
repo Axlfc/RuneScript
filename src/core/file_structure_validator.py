@@ -6,22 +6,25 @@ logger = logging.getLogger(__name__)
 
 class FileStructureValidator:
     """
-    Valida i auto-corregeix estructures de fitxers segons tech_stack.
+    Validates and auto-corrects file structures according to tech_stack.
 
     If no tech_stack is provided, it defaults to 'frontend_web'.
     """
 
     STRUCTURE_RULES = {
         "_base": {
-            "tests": r"^tests/.*\.py$",
+            "tests": r"^tests/.*",
+            "test_data": r"^test_data/.*",
             "config": r"^[\w.-]+\.(json|md|txt|yaml|yml|ini|toml)$",
             "gitkeep": r"^.*\.gitkeep$",
             "gitignore": r"^\.gitignore$",
             "readme": r"^README\.md$",
+            "plan": r"^IMPLEMENTATION_PLAN\.md$",
+            "spec": r"^SPEC\.md$",
             "requirements": r"^requirements\.txt$"
         },
         "frontend_web": {
-            "html": r"^(?!project/|src/|public/|assets/|tests/|css/|js/)[\w-]+\.html$",  # Root level only
+            "html": r"^(?!project/|src/|public/|assets/|tests/|test_data/|css/|js/)[\w-]+\.html$",  # Root level only
             "css": r"^css/.*\.css$",
             "js": r"^js/.*\.js$",
             "assets": r"^assets/.*"
@@ -36,10 +39,11 @@ class FileStructureValidator:
 
     def __init__(self, issue_manager=None):
         self.issue_manager = issue_manager
+        self.metrics = {"auto_corrections": 0}
 
     def validate_and_fix(self, files: List[Dict], tech_stack: Optional[str] = None) -> Tuple[List[Dict], List[str]]:
         """
-        Valida fitxers i intenta auto-corregir paths incorrectes.
+        Validates files and attempts to auto-correct common incorrect paths.
 
         Returns:
             (fixed_files, warnings)
@@ -58,8 +62,10 @@ class FileStructureValidator:
             if fixed_path != original_path:
                 warning = f"Auto-fixed path: {original_path} → {fixed_path}"
                 warnings.append(warning)
+                self.metrics["auto_corrections"] += 1
+                logger.warning(f"⚠️ Auto-corrected path: {original_path} → {fixed_path}")
 
-                # Crear issue si tenim IssueManager
+                # Create issue if we have an IssueManager
                 if self.issue_manager:
                     self.issue_manager.create_issue(
                         title=f"Invalid file path auto-corrected: {original_path}",
@@ -80,7 +86,7 @@ class FileStructureValidator:
         return fixed_files, warnings
 
     def is_valid(self, path: str, tech_stack: str) -> bool:
-        """Comprova si un path és vàlid per al tech_stack donat"""
+        """Checks if a path is valid for the given tech_stack"""
 
         # 1. Check base rules first (apply to all stacks)
         base_rules = self.STRUCTURE_RULES.get("_base", {})
@@ -103,32 +109,38 @@ class FileStructureValidator:
         return False
 
     def _auto_fix_path(self, path: str, tech_stack: str) -> str:
-        """Intenta corregir automàticament paths comuns incorrectes"""
+        """Attempts to automatically fix common incorrect paths"""
         # Strip common wrong prefixes
         for prefix in self.COMMON_PREFIXES_TO_STRIP:
             if path.startswith(prefix):
                 path = path[len(prefix):]
 
-        # Validar segons tech_stack
+        # Normalize .tests/ or test/ to tests/
+        if path.startswith('.tests/'):
+            path = path.replace('.tests/', 'tests/', 1)
+        elif path.startswith('test/') and not path.startswith('tests/'):
+            path = path.replace('test/', 'tests/', 1)
+
+        # Validate according to tech_stack
         if tech_stack == "frontend_web":
-            # Assegurar que CSS va a css/
-            if path.endswith('.css') and not path.startswith('css/'):
+            # Ensure CSS goes to css/ (unless it's test_data or tests)
+            if path.endswith('.css') and not any(path.startswith(d) for d in ['css/', 'test_data/', 'tests/']):
                 path = f"css/{path}"
 
-            # Assegurar que JS va a js/
-            if path.endswith('.js') and not path.startswith('js/'):
+            # Ensure JS goes to js/ (unless it's test_data or tests)
+            if path.endswith('.js') and not any(path.startswith(d) for d in ['js/', 'test_data/', 'tests/']):
                 path = f"js/{path}"
 
-            # Assegurar que HTML va a root (si estava en algun subfolder que hem stripat o si l'AI ho ha posat malament)
-            if path.endswith('.html'):
-                # Si encara té '/' vol dir que està en un subdir no stripat
+            # Ensure HTML goes to root (unless it's test_data or tests)
+            if path.endswith('.html') and not any(path.startswith(d) for d in ['test_data/', 'tests/']):
+                # If it still has '/' it means it's in an unstripped subdir
                 if '/' in path:
                     path = path.split('/')[-1]
 
         return path
 
     def generate_structure_guide(self, tech_stack: str) -> str:
-        """Genera una guia clara d'estructura per incluir en prompts"""
+        """Generates a clear structure guide to include in prompts"""
         guides = {
             "frontend_web": """
 ## CRITICAL: Frontend Web Structure Rules

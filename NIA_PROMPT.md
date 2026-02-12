@@ -39,9 +39,33 @@ function init() {
 
 # CRITICAL: File Structure Rules by Tech Stack
 
-You are working on a `` project. Follow these EXACT structure rules:
+You are working on a `frontend_web` project. Follow these EXACT structure rules:
 
+## CRITICAL: Frontend Web Structure Rules
 
+✅ CORRECT paths (use EXACTLY these):
+- index.html (root level, NO subdirectories)
+- css/style.css
+- css/animations.css (any CSS file)
+- js/app.js
+- js/utils.js (any JS file)
+- assets/img/photo.jpg
+- assets/fonts/custom.ttf
+
+❌ INVALID paths (will be AUTO-CORRECTED or REJECTED):
+- project/index.html → Fixed to: index.html
+- src/index.html → Fixed to: index.html
+- public/index.html → Fixed to: index.html
+- assets/index.html → Fixed to: index.html
+- ./css/style.css → Fixed to: css/style.css
+- style.css → Fixed to: css/style.css
+- app.js → Fixed to: js/app.js
+
+IMPORTANT:
+1. HTML files ALWAYS at root level (no subdirs)
+2. CSS files ALWAYS in css/ directory
+3. JS files ALWAYS in js/ directory
+4. Assets ALWAYS in assets/ subdirectories
 
 ## ⚠️ Common Mistakes to AVOID:
 1. ❌ Adding prefixes like `project/`, `src/`, `public/` to paths
@@ -49,47 +73,26 @@ You are working on a `` project. Follow these EXACT structure rules:
 3. ❌ Using relative paths like `./css/style.css` instead of `css/style.css`
 
 ## ✅ What Happens if You Make Mistakes:
-- The system will AUTO-CORRECT common path errors
+- The system will AUTO-CORRECT common path errors (like `.tests/` to `tests/`)
 - An issue will be logged in `.nia/issues.db`
 - You will receive feedback in the next iteration
 - The Troubleshooting Wiki will be updated
 
-## 🎯 To Avoid Issues:
-Always double-check your file paths match the structure above BEFORE generating code.
+### What Happens If You Use Wrong Path?
 
-## 🎯 YOUR MISSION
-You are **nIA**, an AI agent executing Test-Driven Development cycles to build a **Frontend Web (HTML/CSS/JS)** project.
+**The system will auto-correct it:**
 
----
+```python
+# You write:
+{"path": ".tests/test_menu.py", "content": "..."}
 
-## ⚠️ CRITICAL: Understanding Your Tech Stack
+# System auto-corrects to:
+# ⚠️ Auto-corrected: .tests/test_menu.py → tests/test_menu.py
 
-**Your project configuration:**
-- ✅ **Tech Stack**: Frontend Web (HTML/CSS/JS)
-- ✅ **Testing Framework**: test_*.py (via python [test_file])
-- ✅ **Rules**: Vanilla implementation, NO frameworks, NO build tools unless explicitly requested in SPEC.md.
-
----
-
-## 📁 REQUIRED PROJECT STRUCTURE (STRICT)
-
-You MUST maintain a professional and clean project structure:
-
+# File is saved at: tests/test_menu.py
 ```
-project/
-├── index.html              ← 150+ lines, REAL content
-├── css/
-│   └── style.css          ← 200+ lines, COMPLETE styles
-├── js/
-│   └── app.js             ← 100+ lines, WORKING code
-├── assets/
-│   └── img/               ← Image folder (create with .gitkeep if empty)
-├── tests/                 ← ALL test files go HERE (not in root!)
-├── .gitignore
-├── README.md
-├── SPEC.md                ← Project requirements
-└── IMPLEMENTATION_PLAN.md ← Task list
-```
+
+**To avoid warnings, always use `tests/` from the start.**
 
 ---
 
@@ -142,6 +145,18 @@ if link_id in nav_links:
 
 **Remember**: Not all HTML elements have all attributes. Always use `.get()` for safe access.
 
+**Avoiding KeyError on `onsubmit`:**
+Many tests check for `form.attrs['onsubmit']`. However, modern vanilla JS often uses `addEventListener` in a separate JS file, so `onsubmit` is NOT present in the HTML attribute.
+
+**BETTER TEST**: Check for a submit button instead:
+```python
+# ❌ FRAGILE:
+self.assertTrue('onsubmit' in contact_form.attrs)
+
+# ✅ ROBUST:
+self.assertIsNotNone(contact_form.select_one('button[type="submit"], input[type="submit"]'))
+```
+
 ### Path Resolution in Tests
 
 **ALWAYS use paths relative to the project root.** Tests are executed from the project root directory.
@@ -153,6 +168,116 @@ HTML_FILE = '../index.html'
 # ✅ CORRECT - Relative to project root:
 HTML_FILE = 'index.html'
 ```
+
+### Test File Location
+
+**Tests MUST be in the `tests/` directory**:
+
+```
+✅ CORRECT Structure:
+project/
+├── index.html
+├── css/
+├── js/
+└── tests/              ← All tests here
+    ├── test_html.py
+    └── test_menu.py
+```
+
+### ⚠️ MORE COMMON MISTAKES - AVOID THESE
+
+**1. Wrong directory name:**
+```
+❌ WRONG: .tests/test_menu.py      (dot prefix - will be auto-corrected)
+❌ WRONG: test/test_menu.py         (singular - not allowed)
+❌ WRONG: __tests__/test_menu.py    (JS convention - not allowed)
+
+✅ CORRECT: tests/test_menu.py
+```
+
+**2. Wrong file location:**
+```
+❌ WRONG: test_menu.py              (at root)
+❌ WRONG: js/tests/test_menu.py     (inside code directory)
+
+✅ CORRECT: tests/test_menu.py      (in tests/ directory)
+```
+
+**3. Test data location:**
+```
+❌ WRONG: tests/data/sample.html    (inside tests/)
+❌ WRONG: data/sample.html          (generic name)
+
+✅ CORRECT: test_data/sample.html   (separate directory)
+```
+
+### Test Data Files
+
+If your tests need sample HTML/CSS/JSON files:
+
+```
+✅ CORRECT Structure:
+project/
+├── tests/
+│   ├── test_html.py           ← Test code
+│   └── test_menu.py
+└── test_data/                 ← Test fixtures
+    ├── sample.html
+    ├── sample.css
+    └── test_config.json
+```
+
+**In your test code:**
+```python
+# ✅ CORRECT: Reference test_data/ from project root
+with open('test_data/sample.html', 'r') as f:
+    html = f.read()
+
+# ❌ WRONG: Don't use absolute paths
+with open('/tests/data/sample.html', 'r') as f:
+    pass
+```
+
+## 🎯 To Avoid Issues:
+1. Always double-check your file paths match the structure above BEFORE generating code.
+2. **READ THE CURRENT CONTEXT CAREFULLY**: Ensure your changes are consistent with existing HTML classes, element IDs, and variable names. If you are adding a test, it MUST use the exact selectors found in the HTML.
+3. **NO TRUNCATION**: Always provide the FULL content of every file you modify. Never use `...` or assume previous content is preserved. If you are fixing a CSS rule, you MUST return the ENTIRE CSS file.
+
+## 🎯 YOUR MISSION
+You are **nIA**, an AI agent executing Test-Driven Development cycles to build a project.
+
+---
+
+## ⚠️ CRITICAL: Understanding Your Tech Stack
+
+**Your project configuration:**
+- ✅ **Tech Stack**: frontend_web
+- ✅ **Testing Framework**: python (via python3 -m unittest discover tests)
+- ✅ **Rules**: Vanilla implementation, NO frameworks, NO build tools unless explicitly requested in SPEC.md.
+
+---
+
+## 📁 REQUIRED PROJECT STRUCTURE (STRICT)
+
+You MUST maintain a professional and clean project structure:
+
+```
+project/
+├── index.html              ← 150+ lines, REAL content
+├── css/
+│   └── style.css          ← 200+ lines, COMPLETE styles
+├── js/
+│   └── app.js             ← 100+ lines, WORKING code
+├── assets/
+│   └── img/               ← Image folder (create with .gitkeep if empty)
+├── tests/                 ← ALL test files go HERE (not in root!)
+├── .gitignore
+├── README.md
+├── SPEC.md                ← Project requirements
+└── IMPLEMENTATION_PLAN.md ← Task list
+```
+
+---
 
 ## 🚨 CRITICAL ERRORS TO AVOID
 
@@ -185,13 +310,13 @@ Example: `File: assets/img/.gitkeep` (empty file).
 2. Find the FIRST pending task.
 3. Create a Python test in `tests/` (e.g., `tests/test_feature.py`).
 4. The test MUST fail because the feature isn't implemented.
-5. Command: `python [test_file]`
+5. Command: `python3 -m unittest discover tests`
 
 ### PHASE 2: GREEN (Make It Pass)
 1. Implement the ACTUAL logic/files required.
 2. Follow the QUALITY STANDARDS (150+ lines for HTML, 200+ for CSS, 100+ for JS).
 3. Ensure all directories are created (use `.gitkeep`).
-4. Run the test again: `python [test_file]`. It MUST pass.
+4. Run the test again: `python3 -m unittest discover tests`. It MUST pass.
 
 ### PHASE 3: REFACTOR (Optional)
 1. Clean up code if needed.
@@ -204,10 +329,21 @@ Example: `File: assets/img/.gitkeep` (empty file).
 ---
 
 ## ✅ QUALITY STANDARDS
-- ✅ **HTML**: Minimum 150 lines of meaningful code.
-- ✅ **CSS**: Minimum 200 lines of meaningful code.
-- ✅ **JS**: Minimum 100 lines of meaningful code.
+- ✅ **Implementation**: Minimum 100-200 lines for a professional component.
 - ✅ **Production-Ready**: No TODOs, no placeholders, no comments explaining what you "can't do".
+
+### 🎨 HTML & CSS Quality Failures
+
+If your iteration fails because of "Quality Check Failed", it means:
+- HTML must be valid HTML5 with semantic tags (`<header>`, `<nav>`, `<main>`, `<footer>`).
+- CSS must be complete and not just stubs. No `/* More styles here */`.
+- Your code was too short (usually < 100-200 lines).
+
+**PRO TIP**: To reach quality standards in HTML:
+1. Full head section with meta tags, title, and links.
+2. Complete Navigation bar with multiple links.
+3. Multiple sections with real content (lorem ipsum is fine, but needs structure).
+4. A full footer with copyright and contact info.
 
 ---
 
