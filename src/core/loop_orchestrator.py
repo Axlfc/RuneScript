@@ -6,7 +6,8 @@ import json
 import sys
 import subprocess
 import threading
-from typing import Optional, List
+import ast
+from typing import Optional, List, Tuple
 from .plan_parser import PlanParser, Task
 from .task_tracker import TaskTracker
 from .tdd_validator import TDDValidator
@@ -313,6 +314,56 @@ class LoopOrchestrator:
                         # RE-IDENTIFY test file after structure correction
                         response.test_file = response._identify_test_file()
 
+                        # NEW: Auto-inject and purge broken tests
+                        if iter_state.test_file and iter_state.test_file not in response.files:
+                            is_valid, _ = self._validate_python_syntax(iter_state.test_file_content, iter_state.test_file)
+                            if is_valid:
+                                self._log(f"⚠️ LLM omitted test file {iter_state.test_file}. Auto-injecting from IterationState.", log_callback)
+                                response.files[iter_state.test_file] = iter_state.test_file_content
+                            else:
+                                self._log(f"🔴 NEVER re-injecting broken test '{iter_state.test_file}'. Purging from state.", log_callback)
+                                purged_test = iter_state.test_file
+                                iter_state.test_file = None
+                                iter_state.test_file_content = None
+
+                                if attempt < max_retries:
+                                    ai_feedback = (
+                                        f"⚠️ CRITICAL: Previous test '{purged_test}' had syntax errors and was purged. "
+                                        "You MUST regenerate the COMPLETE test file with valid Python syntax. "
+                                        "DO NOT omit this test file in your response."
+                                    )
+                                    continue
+
+                        # NEW: PRE-VALIDATE Python syntax for all files
+                        python_syntax_errors = []
+                        for f_path, f_content in response.files.items():
+                            if f_path.endswith('.py'):
+                                is_valid, err_msg = self._validate_python_syntax(f_content, f_path)
+                                if not is_valid:
+                                    python_syntax_errors.append(err_msg)
+
+                        if python_syntax_errors:
+                            error_report = "\n".join([f"  • {err}" for err in python_syntax_errors])
+                            self._log(f"❌ Python syntax errors detected:\n{error_report}", log_callback)
+
+                            if attempt < max_retries:
+                                ai_feedback = (
+                                    "⚠️ SYNTAX ERROR IN GENERATED CODE - REGENERATION REQUIRED\n"
+                                    f"{error_report}\n"
+                                    "\nYou MUST provide a COMPLETE, SYNTAX-CORRECT version of these files.\n"
+                                    "Requirements:\n"
+                                    "  • Proper indentation (4 spaces per level)\n"
+                                    "  • All blocks (if/for/def) must have indented bodies\n"
+                                    "  • No trailing whitespace before newlines\n"
+                                    "  • Include full test class/function structure\n"
+                                    "\nDO NOT omit these files. Your response MUST contain the corrected version."
+                                )
+                                continue
+                            else:
+                                self._log("❌ Syntax errors persist after all retries.", log_callback)
+                                self.tracker.mark_blocked(self.plan_path, next_task, f"Persistent syntax errors: {python_syntax_errors[0]}")
+                                return LoopResult("BLOCKED", iteration, "Persistent syntax errors")
+
                         # VALIDATE CONSISTENCY with IterationState
                         is_consistent, consistency_error = iter_state.validate_retry_attempt(response.files, response.test_file)
                         if not is_consistent:
@@ -511,10 +562,6 @@ For example, if the test expects id="work", DO NOT use id="projects".
                         # 7. TDD Cycle: GREEN Phase
                         self._log("=== APPLYING IMPLEMENTATION CODE ===", log_callback)
 
-                        # Week 2 Fix: Auto-inject test file if missing from AI response
-                        if iter_state.test_file and iter_state.test_file not in response.files:
-                            self._log(f"⚠️ LLM omitted test file {iter_state.test_file}. Auto-injecting from IterationState.", log_callback)
-                            response.files[iter_state.test_file] = iter_state.test_file_content
 
                         # WRITE FILES FIRST ✅ (as requested by user)
                         written_files = []
@@ -1401,6 +1448,16 @@ Generate the FULL CSS file. DO NOT truncate.
             logger.info(f"Git commit successful: {message}")
         except Exception as e:
             logger.warning(f"Delegated git commit failed: {e}")
+
+    def _validate_python_syntax(self, content: str, filepath: str) -> Tuple[bool, Optional[str]]:
+        """Validate Python syntax using ast.parse. Returns (is_valid, error_message)"""
+        try:
+            ast.parse(content, filename=filepath)
+            return True, None
+        except SyntaxError as e:
+            return False, f"Syntax error in {filepath} at line {e.lineno}, column {e.offset}: {e.msg}"
+        except Exception as e:
+            return False, f"Unexpected error validating {filepath}: {str(e)}"
 
     def _log(self, message: str, callback):
         if callback:
