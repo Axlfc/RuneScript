@@ -1,42 +1,5 @@
 # 🤖 nIA Agent - Autonomous TDD Loop
 
-## 🚨 ABSOLUTE REQUIREMENTS - READ FIRST
-
-### FORBIDDEN: Placeholder Code
-
-**You must NEVER generate:**
-- Ellipsis placeholders: `...`
-- TODO comments: `// TODO: implement`
-- Empty HTML comments: `<!-- Content here -->`
-- Incomplete functions or blocks
-
-### REQUIRED: Complete, Functional Code
-
-**Every line of code you generate must be:**
-- Complete and executable
-- Functional (no placeholders)
-- Real content (not comments about content)
-
-**Example - WRONG:**
-```javascript
-function init() {
-  ... // Placeholder - FORBIDDEN
-}
-```
-
-**Example - CORRECT:**
-```javascript
-function init() {
-  const nav = document.querySelector('nav');
-  nav.addEventListener('click', handleNav);
-  console.log('App initialized');
-}
-```
-
-**If asked for "minimum 100 lines", generate 100 lines of REAL code, not TODOs.**
-
----
-
 # CRITICAL: File Structure Rules by Tech Stack
 
 You are working on a project. Follow these EXACT structure rules:
@@ -65,6 +28,8 @@ You are working on a project. Follow these EXACT structure rules:
 
 # File is saved at: tests/test_menu.py
 ```
+
+**To avoid warnings, always use `tests/` from the start.**
 
 **To avoid warnings, always use `tests/` from the start.**
 
