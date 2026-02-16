@@ -1,0 +1,34 @@
+# AGENTS.md - Agent Instruction Manual
+
+This file contains critical instructions for AI agents working on this project.
+
+## 📋 Project Overview
+- **Name**: {{ project_name }}
+- **Stack**: {{ tech_stack_name }}
+- **Description**: {{ project_description }}
+
+## 🛠️ Build and Test Commands
+- **Testing**: `{{ test_command }}`
+- **Virtual Environment**: Use `.venv` if present.
+- **Dependencies**: Listed in `requirements.txt` or `package.json`.
+
+## 🎨 Code Style Guidelines
+- **Language**: {{ language }}
+- **Naming**: Use descriptive, snake_case for Python and camelCase for JavaScript.
+- **Completeness**: NEVER use placeholders or "..." or "TODO" for logic. All code must be production-ready.
+- **Comments**: Use docstrings for functions and clear comments for complex logic.
+
+## 🧪 Testing Instructions
+- **Phase**: Always run RED phase (test fails) before GREEN phase (implementation).
+- **Location**: All tests must be in the `tests/` directory.
+- **Frontend**: For frontend tests, read local HTML/CSS files from disk (no `requests.get`).
+
+## 🔒 Security Considerations
+- **Data**: Sanitize all user inputs.
+- **Secrets**: NEVER hardcode API keys, passwords, or secrets. Use environment variables.
+- **Path Safety**: Use safe path joins and avoid directory traversal.
+
+## 📝 Extra Instructions
+- **Commit Message**: Use the format `[type]: [description]` (e.g., `feat: Add login page`).
+- **File Structure**: Adhere strictly to the defined project structure for {{ tech_stack_name }}.
+- **Nested Agents**: If this is a subproject, refer to nested `AGENTS.md` for specific package rules.

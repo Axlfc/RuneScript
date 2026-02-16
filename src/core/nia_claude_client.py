@@ -403,7 +403,8 @@ class nIAClaudeClient:
         prompt: str,
         task: Task,
         context: str = "",
-        ram_context: str = ""
+        ram_context: str = "",
+        agents_rules: str = ""
     ) -> nIAResponse:
         """
         Execute one nIA iteration.
@@ -426,7 +427,7 @@ IMPORTANT FOR FRONTEND PROJECTS:
 - If the task involves creating a project structure, ensure that your implementation code includes at least one file for each directory that needs to exist (use '.gitkeep' if the directory is intended to be empty).
 """
 
-        full_prompt = get_nia_iteration_prompt(prompt, test_instructions, spec, plan, context, task.description, ram_context)
+        full_prompt = get_nia_iteration_prompt(prompt, test_instructions, spec, plan, context, task.description, ram_context, agents_rules)
 
         response = self.ai.generate(full_prompt)
 

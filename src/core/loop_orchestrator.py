@@ -107,6 +107,7 @@ class LoopOrchestrator:
         self.spec_path = self.project_path / "SPEC.md"
         self.plan_path = self.project_path / "IMPLEMENTATION_PLAN.md"
         self.prompt_path = self.project_path / "NIA_PROMPT.md"
+        self.agents_path = self.project_path / "AGENTS.md"
 
     def _notify_ui(self, event_type, data):
         """Notify UI of state changes."""
@@ -186,6 +187,7 @@ class LoopOrchestrator:
                     tasks = self.parser.parse(self.plan_path)
                     tasks_planned = len(tasks)
                     prompt = self.prompt_path.read_text(encoding='utf-8')
+                    agents_rules = self._get_all_agents_rules()
                 except Exception as e:
                     logger.error(f"Error loading files: {e}", exc_info=True)
                     self._log(f"❌ Error loading files: {str(e)}", log_callback)
@@ -267,7 +269,8 @@ class LoopOrchestrator:
                                 prompt=prompt,
                                 task=next_task,
                                 context=combined_context,
-                                ram_context=ram_context
+                                ram_context=ram_context,
+                                agents_rules=agents_rules
                             )
                             self._log(f"✅ AI response received in {time.time() - start_ai:.2f}s", log_callback)
                         except QuotaExhaustedError as qe:
@@ -1090,7 +1093,7 @@ Generate the FULL CSS file. DO NOT truncate.
                 if file.endswith(('.py', '.js', '.ts', '.html', '.css', '.md')):
                     path = Path(root) / file
                     rel_path = path.relative_to(self.project_path)
-                    if rel_path.name in ['SPEC.md', 'IMPLEMENTATION_PLAN.md', 'NIA_PROMPT.md']:
+                    if rel_path.name in ['SPEC.md', 'IMPLEMENTATION_PLAN.md', 'NIA_PROMPT.md', 'AGENTS.md']:
                         continue
                     try:
                         content = path.read_text(encoding='utf-8')
@@ -1448,6 +1451,27 @@ Generate the FULL CSS file. DO NOT truncate.
             logger.info(f"Git commit successful: {message}")
         except Exception as e:
             logger.warning(f"Delegated git commit failed: {e}")
+
+    def _get_all_agents_rules(self) -> str:
+        """Collect all AGENTS.md files in the project for context."""
+        rules = []
+        try:
+            for root, dirs, files in os.walk(self.project_path):
+                # Ignore common directories
+                dirs[:] = [d for d in dirs if d not in ['.venv', '.git', '__pycache__', 'node_modules']]
+
+                if 'AGENTS.md' in files:
+                    path = Path(root) / 'AGENTS.md'
+                    rel_path = path.relative_to(self.project_path)
+                    try:
+                        content = path.read_text(encoding='utf-8')
+                        rules.append(f"File: {rel_path}\n---\n{content}\n---")
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"Error collecting AGENTS.md files: {e}")
+
+        return "\n\n".join(rules)
 
     def _validate_python_syntax(self, content: str, filepath: str) -> Tuple[bool, Optional[str]]:
         """Validate Python syntax using ast.parse. Returns (is_valid, error_message)"""
