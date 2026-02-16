@@ -15,6 +15,7 @@ def mock_project(tmp_path):
 - [ ] Task 2
 """)
     (tmp_path / "NIA_PROMPT.md").write_text("# Prompt")
+    (tmp_path / "AGENTS.md").write_text("# Agents")
     return tmp_path
 
 def test_loop_can_be_stopped(mock_project):

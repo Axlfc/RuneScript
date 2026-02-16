@@ -143,6 +143,9 @@ NIA_ITERATION_PROMPT = """
 === CURRENT PLAN ===
 {plan}
 
+=== AGENT GUIDELINES (AGENTS.md) ===
+{agents_rules}
+
 === CURRENT CONTEXT (FILES) ===
 {context}
 
@@ -223,7 +226,7 @@ CRITICAL: If using JSON, escape all special characters properly:
 GENERATE COMPLETE, PRODUCTION-READY CODE NOW.
 """
 
-def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, plan: str, context: str, task_description: str, ram_context: str = "") -> str:
+def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, plan: str, context: str, task_description: str, ram_context: str = "", agents_rules: str = "") -> str:
     """
     Generates the full prompt for a nIA iteration, ensuring all dynamic content
     is safely escaped for f-string/format curly braces.
@@ -245,6 +248,7 @@ def get_nia_iteration_prompt(prompt: str, test_instructions: str, spec: str, pla
         test_instructions=safe_escape(test_instructions),
         spec=safe_escape(spec),
         plan=safe_escape(plan),
+        agents_rules=safe_escape(agents_rules),
         context=safe_escape(context),
         task_description=safe_escape(task_description),
         ram_context=ram_context # Already escaped by PromptFilter

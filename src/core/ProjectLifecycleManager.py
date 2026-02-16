@@ -637,8 +637,31 @@ class ProjectLifecycleManager:
             rendered_prompt = template.render(**prompt_data)
             (path / "NIA_PROMPT.md").write_text(rendered_prompt, encoding='utf-8')
 
+            # 5.5. Create AGENTS.md
+            self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 4.5: Creating AGENTS.md...")
+            agents_template = env.get_template("AGENTS.md.jinja2")
+
+            # Try to extract project name from spec_content
+            project_name_match = re.search(r"# SPEC:\s*(.+)", spec_content)
+            project_name = project_name_match.group(1).strip() if project_name_match else "New Project"
+
+            # Extract language from spec_content
+            language_match = re.search(r"- Language:\s*(.+)", spec_content)
+            language = language_match.group(1).strip() if language_match else "Python"
+
+            agents_data = {
+                "project_name": project_name,
+                "tech_stack_name": tech_config.get("display_name", tech_key.replace("_", " ").title()),
+                "project_description": prompt,
+                "test_command": tech_config.get("test_command", "python -m pytest").replace("{python}", "python").replace("{test_file}", "[test_file]"),
+                "language": language
+            }
+
+            rendered_agents = agents_template.render(**agents_data)
+            (path / "AGENTS.md").write_text(rendered_agents, encoding='utf-8')
+
             # Initial Commit
-            git_manager.create_checkpoint("Initial nIA project setup")
+            git_manager.create_checkpoint("Initial nIA project setup (including AGENTS.md)")
 
             # 6. Launch nIA Loop
             self.controller.safe_ui_call(self.controller.ui_manager.log_output, "Phase 5: Launching nIA Autonomous Loop...")
