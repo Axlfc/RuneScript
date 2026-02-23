@@ -61,7 +61,28 @@
 
 ---
 
-## 4. RESUMEN ARQUITECTÓNICO PARA IMPLEMENTACIÓN
+## 4. CAPAS DE ESCALA (Invariantes de "Mega Máximo Senior")
+*Para proyectos de alta complejidad (Platform Scale), nIA añade estas capas automáticas:*
+
+### A. Invariante de Accesibilidad (A11y):
+- nIA rechaza cualquier componente UI que no cumpla con estándares mínimos de accesibilidad (WCAG 2.1).
+- **Check automático:** Uso de `aria-labels`, roles semánticos y contraste de color. Si el componente no es navegable por teclado, el test funcional *debe* fallar.
+
+### B. Invariante de Rendimiento (Performance Budgets):
+- Cada iteración del Modo Agent mide el impacto en el peso del proyecto.
+- **Lógica:** Si un nuevo componente incrementa el bundle size por encima de un umbral predefinido (ej: 50kb para un giny/widget), nIA dispara una fase de refactorización obligatoria para optimizar imports o lógica.
+
+### C. Invariante de Privacidad y Sanitización:
+- Especialmente crítico para módulos tipo ERP o Chat.
+- **Comportamiento:** nIA detecta patrones de "Sensitive Data" (PII, API Keys, contraseñas en duro) y bloquea la escritura del archivo si no se han usado variables de entorno o sistemas de sanitización definidos en el `SPEC.md`.
+
+### D. Protocolo de Resolución de Dependencias:
+- nIA no añade librerías ciegamente.
+- **Lógica:** Antes de un `pip install` o `npm install`, verifica vulnerabilidades conocidas (CVE) y conflictos de versiones. Si hay un conflicto, nIA genera un "Dependency Conflict Report" en el Modo Parlar antes de proceder.
+
+---
+
+## 5. RESUMEN ARQUITECTÓNICO PARA IMPLEMENTACIÓN
 Para que otro agente implemente esto, debe considerar a nIA como una **Máquina de Estados Finita** impulsada por **Contratos de Calidad**:
 1. **Input:** Requerimiento natural.
 2. **State 1 (Parlar):** Acuerdo de especificación.
