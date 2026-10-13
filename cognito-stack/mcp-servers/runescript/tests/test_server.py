@@ -44,7 +44,21 @@ async def test_list_tools():
     assert "execute_script" in tool_names
     assert "validate_syntax" in tool_names
     assert "list_templates" in tool_names
-    assert len(tool_names) == 4
+    assert "fs_read_file" in tool_names
+    assert "fs_write_file" in tool_names
+    assert "fs_list_directory" in tool_names
+    assert "fs_apply_diff" in tool_names
+    assert "fs_file_exists" in tool_names
+    assert "run_tests" in tool_names
+    assert "git_status" in tool_names
+    assert "git_diff" in tool_names
+    assert "git_branch_create" in tool_names
+    assert "git_checkout" in tool_names
+    assert "git_add" in tool_names
+    assert "git_commit" in tool_names
+    assert "git_push" in tool_names
+    assert "git_open_pr" in tool_names
+    assert len(tool_names) == 18
 
 async def test_call_generate_script_success(mock_wrapper):
     """Test a successful call to the 'generate_script' tool."""
