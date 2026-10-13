@@ -1,3 +1,4 @@
-mcp>=1.0.0
+# Pin mcp to 1.x series (>=1.30.0,<2.0.0) because mcp 2.x introduces breaking API changes (Server.__init__, server.run, FastMCP->MCPServer)
+mcp>=1.30.0,<2.0.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
