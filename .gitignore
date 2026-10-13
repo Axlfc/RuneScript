@@ -12,3 +12,4 @@ env/
 venv/
 .nia/security/
 *.jsonl
+*.log
