@@ -17,6 +17,7 @@ class AIAgentOrchestrator:
         self.ai_agent = None
         self.generation_stop_event = threading.Event()
         self.current_thread = None
+        self.pending_autonomous_prompt = None
 
     @staticmethod
     def _build_metadata_prompt(user_prompt: str) -> str:
@@ -120,11 +121,9 @@ USER OBJECTIVE:
             # Initialize AI agent
             self._initialize_ai_agent(parsed_metadata)
 
-            # Start autonomous development if agent initialized successfully
-            if self.ai_agent:
-                self.ai_agent.start_autonomous_development(prompt)
-
-            # Let controller know we're good
+            # Finalize the bootstrap project on Tk's main thread before the
+            # autonomous worker starts mutating the same files.
+            self.pending_autonomous_prompt = prompt
             self.controller.ai_response_queue.put(("success", parsed_metadata))
 
         except Exception as e:
@@ -132,6 +131,16 @@ USER OBJECTIVE:
             self.controller.ai_response_queue.put(("error", str(e)))
         finally:
             self.current_thread = None
+
+    def start_initialized_autonomous_agent(self):
+        """Start the initialized autonomous agent after bootstrap finalization."""
+        if not self.ai_agent or not self.pending_autonomous_prompt:
+            return False
+
+        prompt = self.pending_autonomous_prompt
+        self.pending_autonomous_prompt = None
+        self.ai_agent.start_autonomous_development(prompt)
+        return True
 
     def _initialize_ai_agent(self, parsed_metadata: Dict[str, Any]) -> None:
         """Initialize the AI agent with project metadata."""
