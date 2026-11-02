@@ -1,3 +1,5 @@
+import queue
+import threading
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as tb
@@ -5,13 +7,19 @@ from ttkbootstrap.constants import *
 from src.utils.event_system import EventSystem, Events
 from datetime import datetime
 
+
 class TabbedConsole(tb.Frame):
     """
     Tabbed Console component for Errors, Warnings, All Logs, Git, and Issues.
+
+    Tk widgets must only be touched from the Tk main thread. Background workers
+    enqueue log entries and the main thread drains them periodically.
     """
     def __init__(self, parent):
         super().__init__(parent)
         self.event_system = EventSystem.get_instance()
+        self._main_thread_id = threading.get_ident()
+        self._log_queue = queue.Queue()
 
         # Header with expand toggle
         header = tb.Frame(self)
@@ -52,6 +60,10 @@ class TabbedConsole(tb.Frame):
 
         self._setup_event_listeners()
 
+        # Schedule this once from the Tk thread; subsequent calls are also made
+        # by Tk, so worker threads never need to call widget.after/configure.
+        self.after(50, self._drain_log_queue)
+
     def _setup_event_listeners(self):
         self.event_system.subscribe(Events.LOG_MESSAGE, self.log_all)
         self.event_system.subscribe("log_error", lambda m: self.log_category('🔴 Errors', m, 'error'))
@@ -74,6 +86,13 @@ class TabbedConsole(tb.Frame):
             self.log_category('🐛 Issues', message, 'info')
 
     def log_category(self, category, message, tag='info'):
+        if threading.get_ident() != self._main_thread_id:
+            self._log_queue.put((category, message, tag))
+            return
+
+        self._append_log_category(category, message, tag)
+
+    def _append_log_category(self, category, message, tag='info'):
         if category in self.log_widgets:
             widget = self.log_widgets[category]
             widget.configure(state=NORMAL)
@@ -82,6 +101,16 @@ class TabbedConsole(tb.Frame):
             widget.insert(END, message + "\n", tag)
             widget.see(END)
             widget.configure(state=DISABLED)
+
+    def _drain_log_queue(self):
+        try:
+            while True:
+                category, message, tag = self._log_queue.get_nowait()
+                self._append_log_category(category, message, tag)
+        except queue.Empty:
+            pass
+
+        self.after(50, self._drain_log_queue)
 
     def clear(self):
         for widget in self.log_widgets.values():
