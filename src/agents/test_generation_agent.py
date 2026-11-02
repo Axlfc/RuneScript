@@ -1,7 +1,6 @@
 ﻿import logging
 from typing import Dict, List
 
-from src.models.tdd_manager import TDDStage
 from src.utils.parser_utils import AIResponseParser
 
 
@@ -54,16 +53,11 @@ class TestGenerationAgent:
             module = test.get("module", "test_misc.py")
             test_code = test.get("content") or self._generate_red_test(name, description)
 
-            cycle_id = self.tdd.start_cycle(name)
-            self.tdd.add_test_content(cycle_id, test_code)
-            self.tdd.set_stage(cycle_id, TDDStage.RED)
-
             valid_tests.append({
                 "name": name,
                 "description": description,
                 "module": module,
-                "content": test_code,
-                "cycle_id": cycle_id
+                "content": test_code
             })
 
         return valid_tests
