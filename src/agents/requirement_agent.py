@@ -16,9 +16,19 @@ class RequirementAgent:
             as_context=True
         )
 
+        bootstrap = getattr(self.agent, "bootstrap_metadata", {}) or {}
+        project_name = bootstrap.get("project_name") or self.agent._generate_project_name()
+
         context = {
             "requirements": requirements,
-            "project_name": self.agent._generate_project_name(),
+            "project_name": project_name,
+            "bootstrap_metadata": {
+                "project_name": bootstrap.get("project_name"),
+                "project_description": bootstrap.get("project_description"),
+                "key_features": bootstrap.get("key_features", []),
+                "project_tasks": bootstrap.get("project_tasks", []),
+                "validation_notes": bootstrap.get("validation_notes", []),
+            },
             "retrieved_context": related_chunks
         }
         ai_response = self.agent.process_prompt_with_ai("requirement_analysis", context)
