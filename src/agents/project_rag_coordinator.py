@@ -17,16 +17,23 @@ class ProjectRAGCoordinator:
         if self.state is None:
             logging.warning(
                 "ProjectRAGCoordinator was initialized without a state manager. Some logging will be skipped.")
-        self.sentence_transformer = SentenceTransformer('all-MiniLM-L6-v2')
+        self._sentence_transformer = None
 
         # Initialize empty index if it doesn't exist
         if not os.path.exists(os.path.join(self.vector_store_path, "index.faiss")):
             self._create_empty_index()
 
+    @property
+    def sentence_transformer(self):
+        """Load the embedding model only when embeddings are needed."""
+        if self._sentence_transformer is None:
+            self._sentence_transformer = SentenceTransformer('all-MiniLM-L6-v2')
+        return self._sentence_transformer
+
     def _create_empty_index(self):
         """Create an empty FAISS index."""
         import faiss
-        dimension = self.sentence_transformer.get_sentence_embedding_dimension()
+        dimension = 384  # all-MiniLM-L6-v2 embedding size
         index = faiss.IndexFlatL2(dimension)
         faiss.write_index(index, os.path.join(self.vector_store_path, "index.faiss"))
 
