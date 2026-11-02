@@ -662,7 +662,7 @@ class AutonomousProjectAgent:
                 if not isinstance(raw_path, str):
                     continue
 
-                path = raw_path.strip().replace("\\\\", "/")
+                path = raw_path.strip().replace(chr(92), "/")
                 if not path:
                     continue
 
@@ -834,18 +834,23 @@ class AutonomousProjectAgent:
             if not backlog:
                 backlog = ["Implement and verify the requested project functionality"]
 
-            raw_goal_budget = os.getenv("RUNESCRIPT_AUTONOMOUS_MAX_GOALS", "3")
-            try:
-                goal_budget = max(1, int(raw_goal_budget))
-            except ValueError:
-                logging.warning(
-                    "Invalid RUNESCRIPT_AUTONOMOUS_MAX_GOALS=%r; using 3",
-                    raw_goal_budget
-                )
-                goal_budget = 3
+            raw_goal_budget = os.getenv("RUNESCRIPT_AUTONOMOUS_MAX_GOALS", "").strip()
+            if raw_goal_budget:
+                try:
+                    goal_budget = max(1, int(raw_goal_budget))
+                except ValueError:
+                    logging.warning(
+                        "Invalid RUNESCRIPT_AUTONOMOUS_MAX_GOALS=%r; using full backlog",
+                        raw_goal_budget
+                    )
+                    goal_budget = len(backlog)
+            else:
+                # One-prompt autonomous mode: process the complete bootstrap
+                # backlog unless the operator explicitly configures a cap.
+                goal_budget = len(backlog)
 
             max_goals = min(goal_budget, len(backlog))
-            max_attempts_per_goal = 2
+            max_attempts_per_goal = 3
             goal_index = 0
             iteration_count = 0
             attempts_for_goal = 0
@@ -860,7 +865,8 @@ class AutonomousProjectAgent:
                     f"Goal {goal_index + 1}/{len(backlog)}: "
                     f"{self.current_iteration_goal}"
                 )
-                self.state.log_task(goal_label)
+                if attempts_for_goal == 1:
+                    self.state.log_task(goal_label)
                 self._update_development_journal(
                     (
                         f"Working on backlog goal {goal_index + 1}/{len(backlog)} "
