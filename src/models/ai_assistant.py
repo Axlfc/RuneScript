@@ -24,6 +24,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from src.controllers.parameters import read_config_parameter
 from src.core.exceptions import QuotaExhaustedError
+from src.models.anthropic_config import create_anthropic_client, load_anthropic_settings
 
 # AÃ±ade tu .venv/Lib/site-packages al path si no estÃ¡ ya
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -323,19 +324,18 @@ def initialize_claude_client():
 
 
 def initialize_real_claude_client():
-    load_dotenv()
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    return anthropic.Anthropic(api_key=api_key)
+    return create_anthropic_client()
 
 
 def process_claude_chat(client, prompt, system_prompt=None):
     try:
         messages = [{"role": "user", "content": prompt}]
+        _, _, model = load_anthropic_settings()
         response = client.messages.create(
-            model="qwen3-coder",  # o el modelo que tengas en Ollama
+            model=model,
             messages=messages,
             system=system_prompt or "",
-            max_tokens=1000,
+            max_tokens=4096,
             temperature=0.7
         )
         return response.content[0].text
@@ -350,13 +350,14 @@ def initialize_ollama_client():
     pass
 
 
-def chat_loop_claude(prompt, client, system_prompt, session_id):
+def chat_loop_claude(prompt, client, system_prompt, session_id, error_to_stderr=False):
     response_text = process_claude_chat(client, prompt, system_prompt)
     if response_text.startswith("Error:"):
-        print(f"An error occurred: {response_text}")
-    else:
-        print(response_text)
+        print(response_text, file=sys.stderr if error_to_stderr else sys.stdout)
+        return False
+    print(response_text)
     add_message(session_id, {"role": "assistant", "content": response_text})
+    return True
 
 
 def process_ollama_chat(prompt, system_prompt, ollama_url, model_name):
@@ -550,6 +551,7 @@ class ResilientLLMClient:
 
     def _detect_available_models(self):
         """Detect which models have API keys configured."""
+        load_anthropic_settings()
         available = []
         for model in self.MODELS:
             if os.getenv(model['env_var']):
@@ -680,7 +682,7 @@ class AIAssistant:
                 client = initialize_gemini30_client()
                 chat_loop_gemini30(prompt, client, current_system, session_id)
             elif self.provider == "claude":
-                client = initialize_claude_client()
+                client = initialize_real_claude_client()
                 chat_loop_claude(prompt, client, current_system, session_id)
             elif self.provider == "ollama":
                 chat_loop_ollama(prompt, current_system, session_id)
@@ -752,8 +754,13 @@ def main():
         client = initialize_gemini30_client()
         chat_loop_gemini30(user_input, client, system_prompt, session_id)
     elif selected_llm_server_provider == "claude":
-        client = initialize_claude_client()
-        chat_loop_claude(user_input, client, system_prompt, session_id)
+        try:
+            client = initialize_real_claude_client()
+            if not chat_loop_claude(user_input, client, system_prompt, session_id, error_to_stderr=True):
+                sys.exit(1)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
     elif selected_llm_server_provider == "ollama":
         chat_loop_ollama(user_input, system_prompt, session_id)
     elif selected_llm_server_provider == "euriai":

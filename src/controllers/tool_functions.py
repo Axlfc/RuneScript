@@ -43,6 +43,7 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 from tkhtmlview import HTMLLabel
 from src.controllers.parameters import read_config_parameter, write_config_parameter
+from src.models.anthropic_config import load_anthropic_settings, save_anthropic_settings
 from src.window.LlamaCppServerManager import LlamaCppServerManager
 from src.window.PromptLookup import PromptLookup, PromptInterpreter
 
@@ -112,13 +113,14 @@ def open_ai_server_settings_window():
         server_url_entry.delete(0, END)
         server_url_entry.insert(0, server_url)
         api_key_entry.delete(0, END)
-        api_key_entry.insert(0, api_key)
+        api_key_entry.configure(placeholder_text="Leave blank to keep current key" if selected_server == "claude" else "")
+        if selected_server != "claude":
+            api_key_entry.insert(0, api_key)
         if selected_server in [
             "lmstudio",
             "ollama",
             "openai",
             "llama-cpp-python",
-            "claude",
             "gemini",
         ]:
             server_url_entry.grid()
@@ -147,6 +149,17 @@ def open_ai_server_settings_window():
         else:
             ollama_model_label.grid_remove()
             ollama_model_frame.grid_remove()
+
+        if selected_server == "claude":
+            anthropic_workspace_label.grid(row=3, column=0, sticky="w", padx=10, pady=10)
+            anthropic_workspace_entry.grid(row=3, column=1, sticky="ew", padx=10, pady=10)
+            anthropic_model_label.grid(row=4, column=0, sticky="w", padx=10, pady=10)
+            anthropic_model_entry.grid(row=4, column=1, sticky="ew", padx=10, pady=10)
+        else:
+            anthropic_workspace_label.grid_remove()
+            anthropic_workspace_entry.grid_remove()
+            anthropic_model_label.grid_remove()
+            anthropic_model_entry.grid_remove()
 
     def load_server_details():
         try:
@@ -202,6 +215,22 @@ def open_ai_server_settings_window():
         selected = selected_server.get()
         new_api_key = api_key_entry.get()
         api_key_field = api_keys.get(selected)
+        if selected == "claude":
+            try:
+                save_anthropic_settings(new_api_key, anthropic_workspace_entry.get(), anthropic_model_entry.get())
+            except (ValueError, OSError) as exc:
+                messagebox.showerror("Anthropic settings", str(exc))
+                return
+            for name, value in (
+                ("last_selected_llm_server_provider", "claude"),
+                ("server_url", "https://api.anthropic.com"),
+                ("api_key", "ANTHROPIC_API_KEY"),
+            ):
+                if not write_config_parameter(f"options.network_settings.{name}", value):
+                    messagebox.showerror("Anthropic settings", "Could not save the selected provider. Check data/user_config.json.")
+                    return
+            settings_window.destroy()
+            return
         if not new_api_key:
             env_api_key = get_env_variable(api_key_field)
             if env_api_key:
@@ -265,6 +294,14 @@ def open_ai_server_settings_window():
     api_key_label.grid(row=2, column=0, sticky="w", padx=10, pady=10)
     api_key_entry = customtkinter.CTkEntry(settings_window, width=200, show="*")
     api_key_entry.grid(row=2, column=1, sticky="ew", padx=10, pady=10)
+
+    _, workspace_id, anthropic_model = load_anthropic_settings()
+    anthropic_workspace_label = customtkinter.CTkLabel(settings_window, text="Anthropic Workspace ID (optional):")
+    anthropic_workspace_entry = customtkinter.CTkEntry(settings_window, width=200, placeholder_text="wrkspc_... (if required)")
+    anthropic_workspace_entry.insert(0, workspace_id)
+    anthropic_model_label = customtkinter.CTkLabel(settings_window, text="Anthropic model:")
+    anthropic_model_entry = customtkinter.CTkEntry(settings_window, width=200)
+    anthropic_model_entry.insert(0, anthropic_model)
 
     euriai_model_label = customtkinter.CTkLabel(settings_window, text="EuriaAI Model:")
     euriai_models = ["qwen/qwen3-32b", "deepseek-r1-distill-llama-70b", "gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.5-flash-lite-preview-06-17", "gemini-embedding-001", "gemini-3-pro-image-preview", "groq/compound", "groq/compound-mini", "llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-guard-4-12b", "gpt-5-nano-2025-08-07", "gpt-5-mini-2025-08-07", "gpt-4.1-nano", "gpt-4.1-mini", "openai/gpt-oss-20b", "openai/gpt-oss-120b", "text-embedding-3-small", "togethercomputer/m2-bert-80M-32k-retrieval"]

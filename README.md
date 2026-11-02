@@ -123,6 +123,25 @@ Install AI models, dependencies, and configure as detailed in our [documentation
 
 ## **Running RuneScript**
 
+### Claude for Projects and autonomous development
+
+Open **Tools → AI Assistant Options → AI Assistant Options** (or press
+`Ctrl+Alt+O`), select `claude`,
+and enter your Anthropic API key, workspace ID (`wrkspc_...`) and model ID.
+The workspace ID is required for keys that are not scoped to a workspace; a
+workspace-scoped key can leave it blank. Leave the key field blank when saving
+to keep an existing key. The model defaults to `claude-sonnet-4-6` and can be
+changed to a model available to your account. Select `ollama` for local models.
+
+The settings are stored in the ignored `.env` file in the RuneScript root.
+The key is stored there as plaintext, so keep the file private and never commit
+or share it. Alternatively set `ANTHROPIC_API_KEY`, optional
+`ANTHROPIC_WORKSPACE_ID`, and optional `ANTHROPIC_MODEL` in the environment
+before starting RuneScript; environment values take precedence over `.env`.
+The project interpreter must have the packages in `requirements.txt` installed.
+An Anthropic API key, model access, and available API credit are needed for a
+live test. A Claude subscription alone does not supply API access.
+
 ### **Setup the AI Assistant**
 
 1. Download your preferred `.gguf` model for local use:
