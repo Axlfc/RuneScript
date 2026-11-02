@@ -147,6 +147,9 @@ USER OBJECTIVE:
         try:
             self.controller.ui_manager.log_output("Initializing AI agent...")
             self.ai_agent = AutonomousProjectAgent(self.controller.current_project, ide_instance=self.controller)
+            # Preserve the authoritative bootstrap contract throughout all
+            # autonomous stages so the agent cannot drift away from HAIS.
+            self.ai_agent.bootstrap_metadata = parsed_metadata
             self.ai_agent.state.register_observer(self.handle_state_event)
 
             # Load initial files into AI agent state
