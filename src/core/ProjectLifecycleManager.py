@@ -275,20 +275,40 @@ class ProjectLifecycleManager:
             f.write("5. Refactor code\n")
 
     def _run_initial_tests(self, project_path: str):
-        """Run initial tests if present in the project"""
-        # Check if pytest is available and if there are test files
-        test_dir = os.path.join(project_path, 'tests')
-        if os.path.exists(test_dir) and os.listdir(test_dir):
-            self.controller.ui_manager.log_output("Running initial tests...")
-            try:
-                success, stdout, stderr = run_pytest(project_path)
-                if success:
-                    self.controller.ui_manager.log_output("Initial tests passed successfully!")
-                else:
-                    self.controller.ui_manager.log_output(f"Initial tests failed:\n{stderr}")
-            except Exception as e:
-                logging.error(f"Failed to run initial tests: {e}")
-                self.controller.ui_manager.log_output(f"Error running initial tests: {e}")
+        """Run bootstrap tests only when real test modules already exist."""
+        test_dir = os.path.join(project_path, "tests")
+        if not os.path.isdir(test_dir):
+            return
+
+        test_files = []
+        for root, _, files in os.walk(test_dir):
+            for filename in files:
+                if filename.startswith("test_") and filename.endswith(".py"):
+                    test_files.append(os.path.join(root, filename))
+
+        if not test_files:
+            self.controller.ui_manager.log_output(
+                "No bootstrap tests exist yet; initial test run skipped."
+            )
+            return
+
+        self.controller.ui_manager.log_output("Running initial tests...")
+        try:
+            success, stdout, stderr = run_pytest(project_path)
+            if success:
+                self.controller.ui_manager.log_output(
+                    "Initial tests passed successfully!"
+                )
+            else:
+                details = stderr or stdout
+                self.controller.ui_manager.log_output(
+                    f"Initial tests failed:\n{details}"
+                )
+        except Exception as e:
+            logging.error(f"Failed to run initial tests: {e}")
+            self.controller.ui_manager.log_output(
+                f"Error running initial tests: {e}"
+            )
 
     def handle_generation_failure(self, error_message="AI generation failed. Please try again."):
         """Handle AI generation failure and update UI"""
