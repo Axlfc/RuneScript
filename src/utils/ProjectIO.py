@@ -11,27 +11,44 @@ class ProjectIO:
         self.log = log_function
 
     def create_structure(self, project_path, metadata=None, log_fn=None):
-        """Create project directory structure"""
+        """Create directories without turning file paths into directories."""
         log_fn = log_fn or self.log
 
-        # Ensure basic directories exist
-        directories = [
-            "",  # Project root
-            "src",
-            "tests",
-            "docs"
-        ]
+        directories = {"", "src", "tests", "docs"}
 
-        # Add directories from metadata if available
+        def add_structure_entry(entry):
+            if not isinstance(entry, str):
+                return
+
+            normalized = entry.strip().replace("\\", "/")
+            if not normalized:
+                return
+
+            # Explicit trailing slash means a directory. Otherwise, entries
+            # with a filename extension contribute only their parent directory.
+            if normalized.endswith("/"):
+                directories.add(normalized.rstrip("/"))
+                return
+
+            basename = os.path.basename(normalized)
+            _, extension = os.path.splitext(basename)
+            if extension:
+                parent = os.path.dirname(normalized)
+                if parent:
+                    directories.add(parent)
+            else:
+                directories.add(normalized)
+
         if metadata and "project_structure" in metadata:
-            if isinstance(metadata["project_structure"], list):
-                directories.extend(metadata["project_structure"])
-            elif isinstance(metadata["project_structure"], dict):
-                for dir_name in metadata["project_structure"].keys():
-                    directories.append(dir_name)
+            structure = metadata["project_structure"]
+            if isinstance(structure, list):
+                for entry in structure:
+                    add_structure_entry(entry)
+            elif isinstance(structure, dict):
+                for entry in structure.keys():
+                    add_structure_entry(entry)
 
-        # Create directories
-        for directory in directories:
+        for directory in sorted(directories):
             dir_path = os.path.join(project_path, directory)
             os.makedirs(dir_path, exist_ok=True)
             log_fn(f"Created directory: {dir_path}")
