@@ -337,7 +337,16 @@ def process_claude_chat(client, prompt, system_prompt=None):
             system=system_prompt or "",
             max_tokens=4096
         )
-        return response.content[0].text
+        text_parts = [
+            block.text for block in response.content
+            if getattr(block, "type", None) == "text" and getattr(block, "text", None)
+        ]
+        if not text_parts:
+            return (
+                "Error: Claude returned no text content "
+                f"(stop_reason={getattr(response, 'stop_reason', 'unknown')})."
+            )
+        return "\\n".join(text_parts)
     except anthropic.APIError as e:
         return f"Error: Claude API request failed. Details: {str(e)}"
     except Exception as e:
