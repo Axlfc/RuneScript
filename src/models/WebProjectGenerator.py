@@ -55,23 +55,9 @@ class WebProjectGenerator:
             return False
 
     def _is_web_project(self, metadata: Dict[str, Any], prompt: str) -> bool:
-        """Determine if this is a web project based on metadata and prompt"""
-        # Check metadata for web indicators
-        if metadata.get("project_type", "").lower() in ["web", "website", "html", "frontend"]:
-            return True
-
-        # Check if any web technologies are mentioned in key_features
-        web_techs = ["html", "css", "js", "javascript", "web", "website", "responsive"]
-        for feature in metadata.get("key_features", []):
-            if any(tech in feature.lower() for tech in web_techs):
-                return True
-
-        # Check raw prompt for web indicators
-        web_keywords = ["html", "website", "webpage", "web page", "site", "css", "javascript"]
-        if any(keyword in prompt.lower() for keyword in web_keywords):
-            return True
-
-        return False
+        """Generate the legacy web scaffold only for an explicitly web project."""
+        explicit_type = str(metadata.get("project_type", "")).strip().lower()
+        return explicit_type in {"web", "website", "html", "frontend", "landing_page"}
 
     def _generate_html_file(self, web_root: str, metadata: Dict[str, Any], prompt: str) -> None:
         """Generate the main HTML file"""
