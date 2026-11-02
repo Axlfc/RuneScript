@@ -71,9 +71,11 @@ class AutonomousProjectAgent:
         self.validation_agent = ValidationAgent(self)
 
         # Development artifacts
+        self.bootstrap_metadata = {}
         self.project_scope = None
         self.architecture = None
         self.tests = []
+        self.current_iteration_goal = None
 
         # Feedback integration
         self.feedback_buffer = None
@@ -643,12 +645,12 @@ class AutonomousProjectAgent:
             logging.error(f"Failed to update README status: {e}")
 
     def _create_structure_from_architecture(self, architecture):
-        """Create directory structure based on architecture definition"""
+        """Create architecture paths without confusing files and directories."""
         task_id = None
         try:
             task_id = self.create_subtask(
-                "create_structure",
-                "Create initial project structure",
+                f"create_structure_{uuid.uuid4().hex[:8]}",
+                "Create/update project structure",
                 context={"architecture": architecture}
             )
             self.start_subtask(task_id)
@@ -656,31 +658,45 @@ class AutonomousProjectAgent:
             created_dirs = []
             created_files = []
 
-            for path in architecture.get("directory_structure", []):
+            for raw_path in architecture.get("directory_structure", []):
+                if not isinstance(raw_path, str):
+                    continue
+
+                path = raw_path.strip().replace("\\\\", "/")
+                if not path:
+                    continue
+
                 full_path = os.path.join(self.project_path, path)
-                if path.endswith('/'):
-                    os.makedirs(full_path, exist_ok=True)
+                basename = os.path.basename(path.rstrip("/"))
+                _, extension = os.path.splitext(basename)
+                is_directory = path.endswith("/") or not extension
+
+                if is_directory:
+                    os.makedirs(full_path.rstrip("/"), exist_ok=True)
                     created_dirs.append(path)
                     self.state.log_task(f"Created directory: {path}")
-                else:
-                    # It's a file, create an empty file or placeholder
-                    dirname = os.path.dirname(full_path)
-                    if dirname:
-                        os.makedirs(dirname, exist_ok=True)
+                    continue
 
-                    # Only create if it doesn't exist
-                    if not os.path.exists(full_path):
-                        with open(full_path, 'w', encoding='utf-8') as f:
-                            if path.endswith('.md'):
-                                f.write(f"# {os.path.basename(path).replace('.md', '')}\n\nPlaceholder content.\n")
-                            elif path.endswith('.py'):
-                                f.write(f"# {os.path.basename(path)}\n# Placeholder file\n\n")
-                            elif path.endswith('.html'):
-                                f.write(
-                                    f"<!DOCTYPE html>\n<html>\n<head>\n    <title>Placeholder</title>\n</head>\n<body>\n    <h1>Placeholder</h1>\n</body>\n</html>")
+                dirname = os.path.dirname(full_path)
+                if dirname:
+                    os.makedirs(dirname, exist_ok=True)
 
-                        created_files.append(path)
-                        self.state.log_task(f"Created file: {path}")
+                if not os.path.exists(full_path):
+                    with open(full_path, "w", encoding="utf-8") as handle:
+                        if path.endswith(".md"):
+                            handle.write(
+                                f"# {os.path.basename(path).replace('.md', '')}\n\n"
+                                "Placeholder content.\n"
+                            )
+                        elif path.endswith(".py"):
+                            handle.write(f"# {os.path.basename(path)}\n")
+                        elif path.endswith(".html"):
+                            handle.write(
+                                "<!DOCTYPE html>\n<html><body></body></html>\n"
+                            )
+
+                    created_files.append(path)
+                    self.state.log_task(f"Created file: {path}")
 
             self.complete_subtask(task_id, {
                 "created_directories": created_dirs,
@@ -787,7 +803,7 @@ class AutonomousProjectAgent:
             content += f"## Development Statistics\n\n"
             content += f"- Files created: {len(self.state.state['code_files'])}\n"
             content += f"- Tasks completed: {len(self.state.state['completed_tasks'])}\n"
-            content += f"- Development time: {len(self.state.state['completed_tasks']) * 2} minutes (simulated)\n"
+            content += "- Validation evidence is recorded in project_state.json and DEVLOG.md\n"
 
             with open(readme_path, 'w', encoding='utf-8') as f:
                 f.write(content)
@@ -795,201 +811,301 @@ class AutonomousProjectAgent:
             logging.error(f"Failed to create final documentation: {e}")
 
     def _development_workflow(self, initial_requirements: str, init_task_id: str):
+        final_message = "Autonomous development stopped before completion."
         try:
-            # Phase 1: Requirement Analysis
             self.current_phase = "requirement_analysis"
-            self._update_readme_status("ðŸ” Analyzing requirements...")
-            self._update_development_journal("Starting requirement analysis", "Requirement Analysis")
+            self._update_readme_status("Analyzing requirements...")
+            self._update_development_journal(
+                "Starting requirement analysis",
+                "Requirement Analysis"
+            )
 
             self.project_scope = self.requirement_agent.analyze(initial_requirements)
             self.rag.embed_current_vault()
-            feedback = self.project_scope
             self.state.log_task("Analyzed Requirements")
+            self.complete_subtask(init_task_id, {"project_scope": self.project_scope})
             self._update_development_journal(
-                f"Project scope defined:\n```json\n{json.dumps(self.project_scope, indent=2)}\n```")
-            self._update_readme_status("âœ… Requirements analyzed")
+                f"Project scope defined:\n```json\n"
+                f"{json.dumps(self.project_scope, indent=2)}\n```"
+            )
+            self._update_readme_status("Requirements analyzed")
 
-            time.sleep(1)
+            backlog = list((self.bootstrap_metadata or {}).get("project_tasks", []))
+            if not backlog:
+                backlog = ["Implement and verify the requested project functionality"]
 
+            raw_goal_budget = os.getenv("RUNESCRIPT_AUTONOMOUS_MAX_GOALS", "3")
+            try:
+                goal_budget = max(1, int(raw_goal_budget))
+            except ValueError:
+                logging.warning(
+                    "Invalid RUNESCRIPT_AUTONOMOUS_MAX_GOALS=%r; using 3",
+                    raw_goal_budget
+                )
+                goal_budget = 3
+
+            max_goals = min(goal_budget, len(backlog))
+            max_attempts_per_goal = 2
+            goal_index = 0
             iteration_count = 0
-            max_iterations = 3
+            attempts_for_goal = 0
+            blocked = False
 
-            while iteration_count < max_iterations:
+            while goal_index < max_goals:
                 iteration_count += 1
-                self._update_development_journal(f"Starting iteration {iteration_count}/{max_iterations}",
-                                                 f"Iteration {iteration_count}")
+                self.current_iteration_goal = backlog[goal_index]
+                attempts_for_goal += 1
 
-                # Phase 2: Architecture Design
+                goal_label = (
+                    f"Goal {goal_index + 1}/{len(backlog)}: "
+                    f"{self.current_iteration_goal}"
+                )
+                self.state.log_task(goal_label)
+                self._update_development_journal(
+                    (
+                        f"Working on backlog goal {goal_index + 1}/{len(backlog)} "
+                        f"(attempt {attempts_for_goal}/{max_attempts_per_goal}):\n"
+                        f"{self.current_iteration_goal}"
+                    ),
+                    f"Iteration {iteration_count}"
+                )
+
+                # Architecture is scoped to the current backlog goal and the
+                # authoritative project scope, never to an invented project.
                 self.current_phase = "architecture_design"
-                self._update_readme_status("ðŸ“ Designing architecture...")
-
-                if random.random() < 0.7:
-                    self._inject_creative_thought("architecture")
-
-                context = {
-                    "project_scope": feedback,
-                    "default_structure": ["src/", "tests/", "docs/", "README.md"]
+                self._update_readme_status(
+                    f"Designing architecture for goal {goal_index + 1}..."
+                )
+                architecture_context = {
+                    "project_scope": self.project_scope,
+                    "iteration_goal": self.current_iteration_goal,
                 }
                 if self.feedback_buffer:
-                    context["previous_feedback"] = self.feedback_buffer
+                    architecture_context["previous_feedback"] = self.feedback_buffer
 
-                self.architecture = self.architecture_agent.design(context)
+                self.architecture = self.architecture_agent.design(architecture_context)
                 self._create_structure_from_architecture(self.architecture)
                 self.rag.embed_current_vault()
-                self.state.log_task("Designed Architecture")
                 self._update_development_journal(
-                    f"Architecture design:\n```json\n{json.dumps(self.architecture, indent=2)}\n```")
-                self._update_readme_status("âœ… Architecture designed")
+                    f"Architecture design:\n```json\n"
+                    f"{json.dumps(self.architecture, indent=2)}\n```"
+                )
 
-                # Phase 3: Test-Driven Development (RED)
+                # RED: generate tests for this exact goal. Do not disable tests
+                # simply because the system also contains a web frontend.
                 self.current_phase = "test_driven_development"
-                self._update_readme_status("ðŸ§ª Generating tests...")
-
-                if random.random() < 0.5:
-                    self._inject_creative_thought("testing")
-
-                test_context = {"architecture": self.architecture}
-                if self.feedback_buffer:
-                    test_context["previous_feedback"] = self.feedback_buffer
-
-                self.tests = self.test_generation_agent.generate_tests(test_context)
+                self._update_readme_status(
+                    f"Generating tests for goal {goal_index + 1}..."
+                )
+                self.tests = self.test_generation_agent.generate_tests(self.architecture)
 
                 for test in self.tests:
-                    test_name = test.get('name')
-                    test_module = test.get('module', 'test_unknown.py')
-                    test_content = test.get('content', '')
+                    test_name = test.get("name")
+                    test_module = test.get("module", "test_unknown.py")
+                    test_content = test.get("content", "")
 
-                    cycle_id = self.tdd.start_cycle(test_name)
-                    test['cycle_id'] = cycle_id
+                    cycle_id = test.get("cycle_id") or self.tdd.start_cycle(test_name)
+                    test["cycle_id"] = cycle_id
                     self.tdd.set_stage(cycle_id, TDDStage.RED)
                     self.tdd.add_test_content(cycle_id, test_content)
 
-                    test_path = os.path.join(self.project_path, 'tests', test_module)
+                    test_path = os.path.join(self.project_path, "tests", test_module)
                     os.makedirs(os.path.dirname(test_path), exist_ok=True)
-                    with open(test_path, 'w', encoding='utf-8') as f:
-                        f.write(test_content)
-
-                    self.save_checkpoint()
+                    with open(test_path, "w", encoding="utf-8") as handle:
+                        handle.write(test_content)
 
                     self.rag.log_ai_response("tdd_red", test_content)
                     self.state.log_task(f"Created RED test: {test_name}")
 
-                # Confirm RED state (tests fail)
-                red_failed = not self.testing_framework.run_tests()
-                if red_failed:
-                    self._update_development_journal("Red phase confirmed: tests fail as expected.")
+                if not self.tests:
+                    self.feedback_buffer = {
+                        "success": False,
+                        "needs_refinement": True,
+                        "iteration_goal": self.current_iteration_goal,
+                        "test_errors": "No tests were generated for a non-static project goal."
+                    }
+                    self.state.log_error(
+                        f"No tests generated for goal: {self.current_iteration_goal}"
+                    )
+                    if attempts_for_goal >= max_attempts_per_goal:
+                        blocked = True
+                        break
+                    continue
+
+                red_is_failing = not self.testing_framework.run_tests()
+                if red_is_failing:
+                    self._update_development_journal(
+                        "RED phase confirmed: generated tests currently fail."
+                    )
                 else:
-                    self._update_development_journal("Warning: RED tests unexpectedly passed!", "âš ï¸ TDD Violation")
+                    self._update_development_journal(
+                        "RED tests already pass; implementation must preserve them.",
+                        "TDD Observation"
+                    )
 
-                self._update_readme_status("âœ… Tests generated")
-
-                # Phase 4: Implementation (GREEN)
+                # GREEN / repair: implementation receives project identity,
+                # architecture, existing files and the previous pytest failure.
                 self.current_phase = "implementation"
-                self._update_readme_status("âš™ï¸ Implementing features...")
-
-                if random.random() < 0.8:
-                    self._inject_creative_thought("implementation")
-
-                impl_context = {"tests": self.tests}
-                if self.feedback_buffer:
-                    impl_context["previous_feedback"] = self.feedback_buffer
-
-                implementation_results = self.feature_implementation_agent.implement_features(self.tests)
+                self._update_readme_status(
+                    f"Implementing goal {goal_index + 1}..."
+                )
+                implementation_results = (
+                    self.feature_implementation_agent.implement_features(self.tests)
+                )
 
                 for mod in implementation_results.get("implemented_modules", []):
-                    filename = mod.get("filename", "unknown.py")
-                    content = mod.get("content", "# Empty file")
-
-                    self.state.add_code_file(filename, content)
-                    self.save_checkpoint()
-                    self.state.log_task(f"Implemented: {filename}")
-
-                # Update GREEN stage for each test
-                for test in self.tests:
-                    cycle_id = test.get('cycle_id')
-                    filename = test.get("module", "unknown.py")
-                    impl_code = next((m.get("content") for m in implementation_results.get("implemented_modules", [])
-                                      if m.get("filename") == filename), None)
-                    if cycle_id and impl_code:
-                        self.tdd.set_stage(cycle_id, TDDStage.GREEN)
-                        self.tdd.add_implementation(cycle_id, impl_code)
-
-                self.rag.embed_current_vault()
-                self._update_readme_status("âœ… Features implemented")
-
-                # Phase 5: Refactoring (conditional)
-                self.current_phase = "refactoring"
-                self._update_readme_status("ðŸ”§ Evaluating need for refactoring...")
-
-                if random.random() < 0.3:
-                    self._inject_creative_thought("refactoring")
-
-                for test in self.tests:
-                    cycle_id = test.get("cycle_id")
-                    if not cycle_id:
+                    if not isinstance(mod, dict):
+                        continue
+                    filename = mod.get("filename")
+                    content = mod.get("content")
+                    if not filename or not isinstance(content, str):
                         continue
 
-                    needs_refactor, reason = self.tdd.should_refactor(cycle_id)
-                    if needs_refactor:
-                        self._update_development_journal(f"Refactoring triggered for {test['name']}:\n{reason}")
-                        self.tdd.set_stage(cycle_id, TDDStage.REFACTOR)
-                        self.refactoring_agent.refactor_code({"cycle_id": cycle_id})
-                        self.save_checkpoint()
-                    else:
-                        self._update_development_journal(f"No refactoring needed for {test['name']}")
+                    self.state.add_code_file(filename, content)
+                    self.state.log_task(f"Implemented: {filename}")
 
-                    self.tdd.complete_cycle(cycle_id)
+                self.save_checkpoint()
+                self.rag.embed_current_vault()
 
-                self._update_readme_status("âœ… Code refactored")
-
-                # Phase 6: Validation
+                # Validation decides whether we advance the backlog. A failing
+                # goal is repaired in place rather than moving to unrelated work.
                 self.current_phase = "validation"
-                self._update_readme_status("âœ… Validating code...")
-
+                self._update_readme_status(
+                    f"Validating goal {goal_index + 1}..."
+                )
                 success = self.testing_framework.run_tests()
-                self.state.add_test_result(f"iteration_{iteration_count}_validation", success)
+                diagnostics = dict(self.testing_framework.last_result)
+                self.state.add_test_result(
+                    f"goal_{goal_index + 1}_attempt_{attempts_for_goal}",
+                    diagnostics
+                )
                 self.save_checkpoint()
 
-                if not success and iteration_count < max_iterations:
-                    self._update_development_journal("Tests failed, need to fix implementation!", "Validation Failed")
-                    self._update_readme_status("âŒ Tests failed, fixing issues...")
-                    feedback = {"success": success, "needs_refinement": True}
-                    self.feedback_buffer = feedback
-                else:
-                    feedback = {"success": success}
+                if success:
+                    self.state.complete_task(goal_label)
+                    self._update_development_journal(
+                        (
+                            f"Goal {goal_index + 1} validated successfully. "
+                            "Advancing to the next backlog goal."
+                        ),
+                        "Validation Passed"
+                    )
+                    for test in self.tests:
+                        cycle_id = test.get("cycle_id")
+                        if cycle_id:
+                            try:
+                                self.tdd.set_stage(cycle_id, TDDStage.GREEN)
+                                self.tdd.complete_cycle(cycle_id)
+                            except Exception as exc:
+                                logging.warning(
+                                    "Could not finalize TDD cycle %s: %s",
+                                    cycle_id,
+                                    exc
+                                )
+
+                    goal_index += 1
+                    attempts_for_goal = 0
                     self.feedback_buffer = None
+                    continue
 
-                self._update_development_journal(f"Completed iteration {iteration_count} with success: {success}")
+                stdout_tail = diagnostics.get("stdout", "")[-12000:]
+                stderr_tail = diagnostics.get("stderr", "")[-12000:]
+                self.feedback_buffer = {
+                    "success": False,
+                    "needs_refinement": True,
+                    "iteration_goal": self.current_iteration_goal,
+                    "pytest_returncode": diagnostics.get("returncode"),
+                    "test_output": stdout_tail,
+                    "test_errors": stderr_tail,
+                }
+                self._update_development_journal(
+                    (
+                        f"Validation failed for goal {goal_index + 1}. "
+                        "The same goal will be repaired using the pytest diagnostics.\n\n"
+                        f"STDOUT:\n{stdout_tail}\n\nSTDERR:\n{stderr_tail}"
+                    ),
+                    "Validation Failed"
+                )
+                self._update_readme_status(
+                    f"Validation failed for goal {goal_index + 1}; repairing..."
+                )
 
-                if random.random() < 0.4:
-                    self._add_spontaneous_improvement()
-                    self.save_checkpoint()
+                if attempts_for_goal >= max_attempts_per_goal:
+                    blocked = True
+                    self.state.log_error(
+                        (
+                            f"Goal {goal_index + 1} failed validation after "
+                            f"{max_attempts_per_goal} attempts: "
+                            f"{self.current_iteration_goal}"
+                        )
+                    )
+                    break
 
-                time.sleep(1)
+            self.current_iteration_goal = None
 
-            self.current_phase = "completed"
-            self._update_readme_status("ðŸŽ‰ Project development completed!")
-            self._update_development_journal("Autonomous project development completed.", "Project Completion")
-            self._create_final_documentation()
-            self.rag.embed_current_vault()
-            self.state.export_state(os.path.join(self.project_path, "project_state.json"))
-            logging.info("Autonomous project development completed.")
+            if blocked:
+                self.current_phase = "failed"
+                self._update_readme_status(
+                    "Autonomous development stopped on a validation failure."
+                )
+                final_message = (
+                    "Autonomous development stopped: a backlog goal still fails "
+                    "validation after the repair limit."
+                )
+                logging.error(final_message)
+            elif goal_index >= len(backlog):
+                self.current_phase = "completed"
+                self._update_readme_status(
+                    "Project development completed and validated."
+                )
+                self._update_development_journal(
+                    "All backlog goals completed with validation evidence.",
+                    "Project Completion"
+                )
+                self._create_final_documentation()
+                final_message = "Autonomous development completed and verified."
+                logging.info(final_message)
+            else:
+                self.current_phase = "incomplete"
+                self._update_readme_status(
+                    (
+                        f"Validated {goal_index}/{len(backlog)} backlog goals; "
+                        "configured autonomous goal budget reached."
+                    )
+                )
+                final_message = (
+                    f"Autonomous development remains incomplete: validated "
+                    f"{goal_index}/{len(backlog)} backlog goals. "
+                    "Increase RUNESCRIPT_AUTONOMOUS_MAX_GOALS to continue more "
+                    "goals in one run."
+                )
+                logging.warning(final_message)
+
+            self.state.export_state(
+                os.path.join(self.project_path, "project_state.json")
+            )
 
         except Exception as e:
             error_msg = f"Autonomous development failed: {e}"
-            logging.error(error_msg)
+            logging.error(error_msg, exc_info=True)
             self.state.log_error(error_msg)
             self.current_phase = "error"
-            self._update_readme_status(f"âŒ Development error: {str(e)[:50]}...")
-            self.state.export_state(os.path.join(self.project_path, "project_state_error.json"))
+            final_message = error_msg
+            self._update_readme_status(
+                f"Development error: {str(e)[:120]}"
+            )
+            self.state.export_state(
+                os.path.join(self.project_path, "project_state_error.json")
+            )
 
-        # Final vault sync
-        self.rag.embed_current_vault()
+        try:
+            self.rag.embed_current_vault()
+        except Exception as exc:
+            logging.warning("Final RAG sync failed: %s", exc)
 
-        # ðŸ”“ FIX: Re-enable prompt input at the end of dev
-        if hasattr(self, 'ide_instance') and self.ide_instance:
+        if hasattr(self, "ide_instance") and self.ide_instance:
             if hasattr(self.ide_instance, "ai_response_queue"):
-                self.ide_instance.ai_response_queue.put(("completed", "Autonomous development finished"))
+                self.ide_instance.ai_response_queue.put(("completed", final_message))
 
     def save_checkpoint(self):
         """Persist current agent state for crash recovery with file-level error tracking."""
