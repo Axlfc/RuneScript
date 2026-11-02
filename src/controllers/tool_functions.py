@@ -1466,7 +1466,7 @@ def open_ai_assistant_window(session_id=None):
             parts.append(script_content)
 
         # Add the user's current input
-        parts.append(f"User: {ai_command}")
+        parts.append(ai_command)
 
         # Get optimized history (limited to last 3 messages)
         history = history_manager.get_history()
