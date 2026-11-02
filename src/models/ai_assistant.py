@@ -335,8 +335,7 @@ def process_claude_chat(client, prompt, system_prompt=None):
             model=model,
             messages=messages,
             system=system_prompt or "",
-            max_tokens=4096,
-            temperature=0.7
+            max_tokens=4096
         )
         return response.content[0].text
     except anthropic.APIError as e:
