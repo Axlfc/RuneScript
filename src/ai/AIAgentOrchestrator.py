@@ -37,7 +37,7 @@ RESPONSE CONTRACT:
 - Do not use Markdown fences.
 - Do not add explanations before or after the JSON.
 - Use double quotes for every JSON key and string.
-- initial_files MUST be an empty object {} in this bootstrap response.
+- initial_files MUST be an empty object {{}} in this bootstrap response.
 - Do NOT inline source files, markdown documents, status files, or other generated artifacts here.
 - RuneScript's later autonomous stages are responsible for creating and modifying files.
 - project_tasks and planned_features must contain concrete executable work items.
