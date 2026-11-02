@@ -17,6 +17,8 @@ dependencies = [
     "colorama>=0.4.6",
     "structlog>=24.0.0",
     "openai>=1.12.0",
+    "anthropic",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
