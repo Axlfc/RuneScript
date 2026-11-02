@@ -22,3 +22,4 @@ faiss-cpu
 langchain-community
 PyPDF2
 pyperclip
+tiktoken
