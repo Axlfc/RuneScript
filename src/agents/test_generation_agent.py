@@ -13,12 +13,22 @@ class TestGenerationAgent:
     def generate_tests(self, architecture: Dict) -> List[Dict]:
         logging.info("Generating RED-phase test cases")
 
-        # Skip tests if project looks purely visual
-        if any(k in str(architecture).lower() for k in ["html", "css", "web", "landing", "portfolio"]):
-            logging.info("Skipping test generation â€” visual/static project.")
+        # Only skip tests when the architecture explicitly declares a
+        # design-only/static project. Merely containing frontend, web, SSE or
+        # WebSocket components must never disable TDD for a full-stack system.
+        project_type = str(architecture.get("project_type", "")).strip().lower()
+        testing_framework = str(architecture.get("testing_framework", "")).strip().lower()
+        if project_type in {"design_only", "static_visual"} and testing_framework in {"", "none", "manual"}:
+            logging.info("Skipping test generation for explicitly design-only/static project.")
             return []
 
-        context = {"architecture": architecture}
+        context = {
+            "architecture": architecture,
+            "project_scope": getattr(self.agent, "project_scope", None),
+            "bootstrap_metadata": getattr(self.agent, "bootstrap_metadata", {}) or {},
+            "iteration_goal": getattr(self.agent, "current_iteration_goal", None),
+            "previous_feedback": getattr(self.agent, "feedback_buffer", None),
+        }
         related_chunks = self.agent.get_relevant_rag_context(
             f"What kinds of tests are common for systems like: {architecture.get('project_name')}"
         )
