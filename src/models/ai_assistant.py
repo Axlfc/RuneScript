@@ -327,31 +327,76 @@ def initialize_real_claude_client():
     return create_anthropic_client()
 
 
-def process_claude_chat(client, prompt, system_prompt=None):
+def _get_anthropic_max_tokens():
+    """Return a sane configurable output budget for Anthropic responses."""
+    raw_value = os.getenv("ANTHROPIC_MAX_TOKENS", "8192").strip()
     try:
-        messages = [{"role": "user", "content": prompt}]
-        _, _, model = load_anthropic_settings()
-        response = client.messages.create(
-            model=model,
-            messages=messages,
-            system=system_prompt or "",
-            max_tokens=4096
+        value = int(raw_value)
+    except ValueError:
+        logging.warning(
+            "Invalid ANTHROPIC_MAX_TOKENS=%r; falling back to 8192.",
+            raw_value
         )
-        text_parts = [
-            block.text for block in response.content
-            if getattr(block, "type", None) == "text" and getattr(block, "text", None)
-        ]
-        if not text_parts:
-            return (
-                "Error: Claude returned no text content "
-                f"(stop_reason={getattr(response, 'stop_reason', 'unknown')})."
+        value = 8192
+
+    return max(1024, min(value, 32768))
+
+
+def process_claude_chat(client, prompt, system_prompt=None):
+    messages = [{"role": "user", "content": prompt}]
+    _, _, model = load_anthropic_settings()
+    initial_max_tokens = _get_anthropic_max_tokens()
+    token_budgets = [initial_max_tokens]
+
+    # If Claude hits the configured output ceiling, retry once with a larger
+    # budget. Never pass a truncated partial response to downstream JSON parsers.
+    expanded_budget = min(initial_max_tokens * 2, 32768)
+    if expanded_budget > initial_max_tokens:
+        token_budgets.append(expanded_budget)
+
+    try:
+        for attempt, max_tokens in enumerate(token_budgets, start=1):
+            response = client.messages.create(
+                model=model,
+                messages=messages,
+                system=system_prompt or "",
+                max_tokens=max_tokens
             )
-        return "\n".join(text_parts)
+
+            text_parts = [
+                block.text for block in response.content
+                if getattr(block, "type", None) == "text" and getattr(block, "text", None)
+            ]
+            stop_reason = getattr(response, "stop_reason", "unknown")
+
+            if not text_parts:
+                return (
+                    "Error: Claude returned no text content "
+                    f"(stop_reason={stop_reason})."
+                )
+
+            response_text = "\n".join(text_parts)
+
+            if stop_reason != "max_tokens":
+                return response_text
+
+            logging.warning(
+                "Claude response hit max_tokens=%s on attempt %s/%s; "
+                "discarding the truncated output.",
+                max_tokens,
+                attempt,
+                len(token_budgets),
+            )
+
+        return (
+            "Error: Claude response was truncated after reaching the maximum "
+            f"output budget ({token_budgets[-1]} tokens). Reduce the requested "
+            "payload or increase ANTHROPIC_MAX_TOKENS if the selected model allows it."
+        )
     except anthropic.APIError as e:
         return f"Error: Claude API request failed. Details: {str(e)}"
     except Exception as e:
         return f"Error: An unexpected error occurred. Details: {str(e)}"
-
 
 def initialize_ollama_client():
     # No specific client initialization needed for basic HTTP requests
