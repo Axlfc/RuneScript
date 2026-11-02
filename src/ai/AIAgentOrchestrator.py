@@ -177,19 +177,26 @@ USER OBJECTIVE:
             raise
 
     def handle_state_event(self, event_type, data):
-        """Handle state events from the autonomous agent."""
+        """Handle autonomous state events without touching Tk from worker threads."""
         if not self.controller.current_project:
             logging.debug("No project loaded.")
             return
 
-        if event_type == "file_created":
-            self.controller.ui_manager.log_output(f"File created: {data.get('filename', 'unknown')}")
-            self.controller.ui_manager.file_manager.populate_tree_view()
-        elif event_type == "file_updated":
-            self.controller.ui_manager.log_output(f"File updated: {data.get('filename', 'unknown')}")
-            # Refresh the file in editor if it's currently open
-            if hasattr(self.controller.ui_manager.file_manager, "refresh_current_file"):
-                self.controller.ui_manager.file_manager.refresh_current_file()
+        if event_type not in ("file_created", "file_updated"):
+            return
+
+        if isinstance(data, dict):
+            filename = data.get("filename") or data.get("path") or "unknown"
+        else:
+            filename = str(data) if data is not None else "unknown"
+
+        action = "File created" if event_type == "file_created" else "File updated"
+        self.controller.ui_manager.log_output(f"{action}: {filename}")
+
+        # State observers run in autonomous worker threads. Queue the actual
+        # widget refresh for IDEController.poll_queue(), which runs in Tk.
+        if hasattr(self.controller, "ai_response_queue"):
+            self.controller.ai_response_queue.put((event_type, filename))
 
     def continue_autonomous_workflow(self, metadata: Dict[str, Any]):
         """Continue the workflow based on AI feedback and project state."""
