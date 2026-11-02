@@ -1442,8 +1442,13 @@ def open_ai_assistant_window(session_id=None):
             if not self.history:
                 return ""
 
-            # Only consider the last 3 messages
-            last_messages = self.history[-3:]
+            # Do not feed subprocess/API errors back into the model as conversation.
+            usable = [
+                msg for msg in self.history
+                if not (msg.get("role") == "ai" and
+                        str(msg.get("content", "")).lstrip().startswith("Error:"))
+            ]
+            last_messages = usable[-3:]
             history_messages = [
                 f"{msg['role'].title()}: {msg['content']}" for msg in last_messages
             ]
@@ -1542,13 +1547,6 @@ def open_ai_assistant_window(session_id=None):
 
             # Actualizar la interfaz de usuario
             update_ui_display(ai_command)
-
-            # Agregar el contexto relevante si está disponible
-            if relevant_docs:
-                context_text = "\n\nRelevant context:\n" + "\n---\n".join(
-                    f"{doc['content']}" for doc in relevant_docs
-                )
-                combined_command += context_text
 
             entry.delete(0, END)
             entry.configure(state="disabled")
