@@ -91,15 +91,24 @@ class IDEController(ThemedWindow):
             logging.warning("safe_ui_call skipped: root window no longer exists.")
 
     def poll_queue(self):
-        """Poll the AI response queue for updates"""
+        """Poll the AI response queue for updates on Tk's main thread."""
         try:
             while not self.ai_response_queue.empty():
                 status, data = self.ai_response_queue.get_nowait()
+
                 if status == "success":
-                    self.root.after(0, lambda d=data: self.project_manager.finalize_project_generation(d))
+                    self.project_manager.finalize_project_generation(data)
                 elif status == "error":
-                    self.root.after(0,
-                                    lambda msg=data: self.project_manager.handle_generation_failure(error_message=msg))
+                    self.project_manager.handle_generation_failure(error_message=data)
+                elif status in ("file_created", "file_updated"):
+                    if hasattr(self.ui_manager, "file_manager") and self.ui_manager.file_manager:
+                        self.ui_manager.file_manager.populate_tree_view()
+                        if status == "file_updated" and hasattr(
+                            self.ui_manager.file_manager, "refresh_current_file"
+                        ):
+                            self.ui_manager.file_manager.refresh_current_file()
+                elif status == "completed":
+                    self.ui_manager.log_output(str(data))
         except queue.Empty:
             pass
         finally:
