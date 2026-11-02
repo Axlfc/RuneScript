@@ -285,7 +285,7 @@ def open_ai_server_settings_window():
     customtkinter.CTkButton(settings_window, text=localization_data["save"], command=save_ai_server_settings).grid(
         row=5, column=0, columnspan=2, pady=20
     )
-    selected_server.trace("w", lambda *args: toggle_display(selected_server.get()))
+    selected_server.trace_add("write", lambda *args: toggle_display(selected_server.get()))
     toggle_display(selected_server.get())
     settings_window.columnconfigure(1, weight=1)
     settings_window.mainloop()

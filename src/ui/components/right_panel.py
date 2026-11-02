@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-from ttkbootstrap.scrolled import ScrolledFrame
+from ttkbootstrap import ScrolledFrame
 from src.utils.event_system import EventSystem, Events
 
 class RightPanel(tb.Frame):
