@@ -2,6 +2,7 @@
 
 from src.controllers.parameters import read_config_parameter
 from src.utils.file_helpers import enrich_context_with_relevant_files, detect_relevant_files
+from src.utils.parser_utils import AIResponseParser
 from src.agents.project_rag_coordinator import ProjectRAGCoordinator
 from src.core.state_management import StateManagementSystem
 from src.core.dependency_manager import DependencyManagementUnit
@@ -25,6 +26,7 @@ import subprocess
 import logging
 import queue
 import os
+import sys
 
 
 class AutonomousProjectAgent:
@@ -36,7 +38,7 @@ class AutonomousProjectAgent:
             state=self.state,
             log_fn=self._update_development_journal
         )
-        self.rag = ProjectRAGCoordinator(self.project_path, use_ollama=True, state=self.state)
+        self.rag = ProjectRAGCoordinator(self.project_path, use_ollama=False, state=self.state)
         self.tdd = TDDManager(self.project_path)
         self.task_queue = queue.Queue()
         self.result_queue = queue.Queue()
@@ -56,7 +58,7 @@ class AutonomousProjectAgent:
         self.setup_logging()
 
         # Improved components
-        self.state = StateManagementSystem(self.project_path)  # Pass project_path
+        # Keep the same state instance shared by SubtaskManager and RAG.
         self.dependency_manager = DependencyManagementUnit(self.project_path)
         self.testing_framework = AutomatedTestingFramework(self.project_path)
 
@@ -275,6 +277,95 @@ class AutonomousProjectAgent:
             if depth == 0:
                 self.recursion_depth = 0
 
+    @staticmethod
+    def _build_stage_prompt(stage: str, context: Dict, is_meta_prompt: bool = False) -> str:
+        """Build the strict machine-readable contract expected from each AI stage."""
+        contracts = {
+            "requirement_analysis": {
+                "type": "object",
+                "shape": {
+                    "project_name": "string",
+                    "description": "string",
+                    "key_features": ["string"],
+                    "constraints": ["string"],
+                    "success_criteria": ["string"],
+                    "requires_decomposition": False,
+                    "subtasks": []
+                }
+            },
+            "architecture_design": {
+                "type": "object",
+                "shape": {
+                    "project_name": "string",
+                    "architecture_summary": "string",
+                    "directory_structure": ["relative/path/or/directory/"],
+                    "initial_modules": ["string"],
+                    "testing_framework": "string"
+                }
+            },
+            "test_generation": {
+                "type": "array",
+                "shape": [{
+                    "name": "test_descriptive_name",
+                    "description": "what the test proves",
+                    "module": "test_module.py",
+                    "content": "complete executable test source"
+                }]
+            },
+            "feature_implementation": {
+                "type": "object",
+                "shape": {
+                    "implemented_modules": [{
+                        "filename": "relative/path.py",
+                        "content": "complete file contents"
+                    }],
+                    "test_coverage": {}
+                }
+            },
+            "code_refactoring": {
+                "type": "object",
+                "shape": {
+                    "refactored_modules": [{
+                        "filename": "relative/path.py",
+                        "content": "complete file contents"
+                    }],
+                    "notes": ["string"]
+                }
+            }
+        }
+
+        base_stage = stage
+        for known_stage in contracts:
+            if stage.startswith(known_stage):
+                base_stage = known_stage
+                break
+
+        contract = contracts.get(base_stage, {
+            "type": "object",
+            "shape": {
+                "result": {},
+                "requires_decomposition": False,
+                "subtasks": []
+            }
+        })
+
+        payload = {
+            "stage": stage,
+            "context": context,
+            "meta_prompt": is_meta_prompt
+        }
+
+        return (
+            "You are an execution stage inside RuneScript's autonomous project agent.\n"
+            "Return ONLY valid JSON. No Markdown fences, commentary, or prose outside JSON.\n"
+            "Use double quotes for all JSON keys and strings. "
+            "Do not claim you lack repository access; RuneScript owns execution and supplies context.\n"
+            f"Expected top-level type: {contract['type']}\n"
+            f"Expected shape/example: {json.dumps(contract['shape'], ensure_ascii=False)}\n"
+            "When returning file contents, return complete source strings.\n"
+            f"INPUT: {json.dumps(payload, ensure_ascii=False, default=str)}"
+        )
+
     def process_prompt_with_ai(self, stage: str, context: Dict, is_meta_prompt=False) -> Optional[str]:
         """
         Process AI prompt for a specific development stage, with meta-prompting.
@@ -305,7 +396,7 @@ class AutonomousProjectAgent:
                     )
             self._update_development_journal(f"Starting to process: {stage}", f"AI Processing - {stage}")
 
-            combined_input = json.dumps({"stage": stage, "context": context, "meta_prompt": is_meta_prompt})
+            combined_input = self._build_stage_prompt(stage, context, is_meta_prompt)
             ai_script_path = "src/models/ai_assistant.py"
             interpreter_path = read_config_parameter("options.project_settings.current_interpreter")
             command = [interpreter_path, ai_script_path, combined_input]
@@ -352,8 +443,8 @@ class AutonomousProjectAgent:
             full_stdout = ''.join(stdout_chunks).strip()
             full_stderr = ''.join(stderr_chunks).strip()
 
-            if process.returncode != 0 or full_stderr:
-                error_msg = f"AI Assistant Error: {full_stderr}"
+            if process.returncode != 0:
+                error_msg = f"AI Assistant Error: {full_stderr or 'non-zero exit without stderr'}"
                 logging.error(error_msg)
 
                 if subtask_id:
@@ -363,22 +454,22 @@ class AutonomousProjectAgent:
 
                 return None
 
-            # Attempt to extract valid JSON from AI output
-            try:
-                json_start = full_stdout.index('{')
-                json_end = full_stdout.rindex('}') + 1
-                json_blob = full_stdout[json_start:json_end]
-                json.loads(json_blob)  # Verify validity
-            except (ValueError, json.JSONDecodeError) as e:
-                error_msg = f"Failed to parse JSON from AI response: {e}"
+            if full_stderr:
+                logging.warning(f"AI Assistant stderr (non-fatal): {full_stderr}")
+
+            parsed_response = AIResponseParser.parse_ai_response(full_stdout)
+            if parsed_response is None:
+                error_msg = "Failed to parse structured JSON from AI response."
                 logging.error(error_msg)
 
                 if subtask_id:
                     self.fail_subtask(subtask_id, error_msg)
                 else:
-                    self.state.log_error("AI response not in valid JSON format.")
+                    self.state.log_error(error_msg)
 
                 return None
+
+            json_blob = json.dumps(parsed_response, ensure_ascii=False)
 
             # Mark task complete and log summary
             if subtask_id:
@@ -1177,4 +1268,3 @@ class AutonomousProjectAgent:
             "total_files": len(self.state.state["code_files"]),
             "errors": len(self.state.state["errors"])
         }
-
