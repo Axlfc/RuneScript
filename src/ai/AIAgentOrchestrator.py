@@ -37,8 +37,9 @@ RESPONSE CONTRACT:
 - Do not use Markdown fences.
 - Do not add explanations before or after the JSON.
 - Use double quotes for every JSON key and string.
-- Keep initial_files as an object mapping relative file paths to complete file contents.
-- If no initial file should be created yet, use an empty object.
+- initial_files MUST be an empty object {} in this bootstrap response.
+- Do NOT inline source files, markdown documents, status files, or other generated artifacts here.
+- RuneScript's later autonomous stages are responsible for creating and modifying files.
 - project_tasks and planned_features must contain concrete executable work items.
 - Do not claim you lack repository or terminal access. This stage only prepares metadata;
   RuneScript's autonomous agent performs the subsequent project work.
@@ -50,7 +51,7 @@ Required shape:
   "project_structure": ["relative/path"],
   "key_features": ["string"],
   "project_tasks": ["string"],
-  "implemented_features": ["string"],
+  "implemented_features": [],
   "planned_features": ["string"],
   "feature_priorities": {{
     "high": ["string"],
