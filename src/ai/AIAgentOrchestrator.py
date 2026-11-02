@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import threading
 from typing import Dict, Any, Optional
 
@@ -18,11 +18,60 @@ class AIAgentOrchestrator:
         self.generation_stop_event = threading.Event()
         self.current_thread = None
 
+    @staticmethod
+    def _build_metadata_prompt(user_prompt: str) -> str:
+        """
+        Convert a free-form project request into the strict metadata contract
+        consumed by AIResponseParser and AutonomousProjectAgent.
+
+        The initial LLM call is a specification/bootstrap stage. It must not
+        answer the user's request conversationally because the next stage
+        requires machine-readable project metadata.
+        """
+        return f"""
+You are the project bootstrap stage of RuneScript's autonomous project generator.
+Transform the USER OBJECTIVE below into project metadata for the autonomous agent.
+
+RESPONSE CONTRACT:
+- Return ONLY one valid JSON object.
+- Do not use Markdown fences.
+- Do not add explanations before or after the JSON.
+- Use double quotes for every JSON key and string.
+- Keep initial_files as an object mapping relative file paths to complete file contents.
+- If no initial file should be created yet, use an empty object.
+- project_tasks and planned_features must contain concrete executable work items.
+- Do not claim you lack repository or terminal access. This stage only prepares metadata;
+  RuneScript's autonomous agent performs the subsequent project work.
+
+Required shape:
+{{
+  "project_name": "string",
+  "project_description": "string",
+  "project_structure": ["relative/path"],
+  "key_features": ["string"],
+  "project_tasks": ["string"],
+  "implemented_features": ["string"],
+  "planned_features": ["string"],
+  "feature_priorities": {{
+    "high": ["string"],
+    "medium": ["string"],
+    "low": ["string"]
+  }},
+  "validation_notes": ["string"],
+  "initial_files": {{}},
+  "next_steps": ["string"]
+}}
+
+USER OBJECTIVE:
+{user_prompt}
+""".strip()
+
     def process_prompt_with_ai(self, combined_input: str) -> Optional[str]:
-        """Process prompt with AI and return response"""
+        """Process prompt with AI and return response."""
         try:
             ai_script_path = "src/models/ai_assistant.py"
-            result = run_ai_prompt(ai_script_path, combined_input)
+            metadata_prompt = self._build_metadata_prompt(combined_input)
+            result = run_ai_prompt(ai_script_path, metadata_prompt)
             print("PROCESS_PROMPT_WITH_AI:\t", result)
             return result
         except Exception as e:
@@ -31,7 +80,7 @@ class AIAgentOrchestrator:
             return None
 
     def threaded_ai_generation(self, prompt: str):
-        """Run AI generation logic in a separate thread and enqueue results"""
+        """Run AI generation logic in a separate thread and enqueue results."""
         self.current_thread = threading.current_thread()
         self.generation_stop_event.clear()
 
@@ -53,8 +102,18 @@ class AIAgentOrchestrator:
             # Parse AI response
             self.controller.ui_manager.log_output("Parsing AI response...")
             parsed_metadata = AIResponseParser.parse_ai_response(ai_response)
-            if not parsed_metadata:
+            if not isinstance(parsed_metadata, dict):
                 self.controller.ai_response_queue.put(("error", "Failed to parse AI metadata."))
+                return
+
+            required_fields = ("project_name", "project_description", "project_tasks")
+            missing_fields = [field for field in required_fields if field not in parsed_metadata]
+            if missing_fields:
+                logging.error("AI metadata missing required fields: %s", ", ".join(missing_fields))
+                self.controller.ai_response_queue.put((
+                    "error",
+                    f"AI metadata missing required fields: {', '.join(missing_fields)}"
+                ))
                 return
 
             # Initialize AI agent
@@ -74,7 +133,7 @@ class AIAgentOrchestrator:
             self.current_thread = None
 
     def _initialize_ai_agent(self, parsed_metadata: Dict[str, Any]) -> None:
-        """Initialize the AI agent with project metadata"""
+        """Initialize the AI agent with project metadata."""
         try:
             self.controller.ui_manager.log_output("Initializing AI agent...")
             self.ai_agent = AutonomousProjectAgent(self.controller.current_project, ide_instance=self.controller)
@@ -118,7 +177,7 @@ class AIAgentOrchestrator:
             raise
 
     def handle_state_event(self, event_type, data):
-        """Handle state events from the autonomous agent"""
+        """Handle state events from the autonomous agent."""
         if not self.controller.current_project:
             logging.debug("No project loaded.")
             return
@@ -133,7 +192,7 @@ class AIAgentOrchestrator:
                 self.controller.ui_manager.file_manager.refresh_current_file()
 
     def continue_autonomous_workflow(self, metadata: Dict[str, Any]):
-        """Continue the workflow based on AI feedback and project state"""
+        """Continue the workflow based on AI feedback and project state."""
         if not metadata.get("next_steps"):
             self.controller.ui_manager.log_output("Project development is complete.")
             return
@@ -156,7 +215,7 @@ class AIAgentOrchestrator:
             self.controller.ui_manager.log_output("No further steps provided by AI.")
 
     def stop_generation(self):
-        """Stop the current generation process"""
+        """Stop the current generation process."""
         if self.current_thread and self.current_thread.is_alive():
             self.generation_stop_event.set()
             self.controller.ui_manager.log_output("Stopping AI generation process...")
