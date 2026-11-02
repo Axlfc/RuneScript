@@ -12,3 +12,6 @@ env/
 venv/
 .nia/security/
 *.jsonl
+data/user_config.json
+git_cli.log
+logs/
