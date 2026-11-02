@@ -130,8 +130,15 @@ class ProjectLifecycleManager:
             self._run_initial_tests(project_path)
 
             self.controller.ui_manager.log_output(
-                f"Project generated successfully at {project_path}!"
+                f"Project bootstrap finalized successfully at {project_path}."
             )
+
+            # Only now hand control to the autonomous worker so it cannot race
+            # bootstrap file creation/documentation on the same project tree.
+            if hasattr(self.controller, "ai_orchestrator"):
+                started = self.controller.ai_orchestrator.start_initialized_autonomous_agent()
+                if started:
+                    self.controller.ui_manager.log_output("Autonomous development started.")
 
         except Exception as e:
             logging.error(f"Project finalization error: {e}")
