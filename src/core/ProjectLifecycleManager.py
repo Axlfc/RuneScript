@@ -99,7 +99,7 @@ class ProjectLifecycleManager:
                 project_path = self.controller.current_project
 
             # Create the project structure
-            ProjectIO.create_structure(project_path, parsed_metadata, self.controller.ui_manager.log_output)
+            ProjectIO(self.controller.ui_manager.log_output).create_structure(project_path, parsed_metadata)
 
             # Generate web project files if it appears to be a web project
             raw_prompt = self.controller.ui_manager.prompt_entry.get()
