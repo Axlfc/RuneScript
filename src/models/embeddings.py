@@ -3,7 +3,15 @@ from transformers import AutoTokenizer, AutoModel
 import torch
 import sys
 
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+_model = None
+
+
+def get_model():
+    """Initialize the embedding model on first use, not during imports."""
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    return _model
 
 
 def get_embeddings(sentences):
@@ -20,7 +28,7 @@ def get_embeddings(sentences):
     ""\" """
     if isinstance(sentences, str):
         sentences = [sentences]
-    embeddings = model.encode(sentences)
+    embeddings = get_model().encode(sentences)
     return embeddings
 
 
