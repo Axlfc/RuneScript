@@ -18,9 +18,14 @@ class WebProjectGenerator:
         Returns True if successful, False otherwise.
         """
         try:
+            # Check before creating anything: non-web projects must not be
+            # polluted with an empty legacy web scaffold.
+            if not self._is_web_project(metadata, prompt):
+                self.log_output("Project not identified as explicit web project. Skipping web file generation.")
+                return False
+
             self.log_output("Generating web project structure...")
 
-            # Create web directories
             web_root = os.path.join(self.project_path, "web")
             css_dir = os.path.join(web_root, "css")
             js_dir = os.path.join(web_root, "js")
@@ -30,12 +35,6 @@ class WebProjectGenerator:
             os.makedirs(css_dir, exist_ok=True)
             os.makedirs(js_dir, exist_ok=True)
             os.makedirs(img_dir, exist_ok=True)
-
-            # Check if project type is web-related
-            is_web_project = self._is_web_project(metadata, prompt)
-            if not is_web_project:
-                self.log_output("Project not identified as web project. Skipping web file generation.")
-                return False
 
             # Generate base files
             self._generate_html_file(web_root, metadata, prompt)
