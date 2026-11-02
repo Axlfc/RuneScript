@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import threading
+import queue
 import requests
 import hashlib
 import markdown
@@ -516,6 +517,7 @@ def open_ai_assistant_window(session_id=None):
     ai_assistant_window = ThemedWindow()
     ai_assistant_window.title("AI Assistant")
     ai_assistant_window.geometry("1000x800")
+    ai_output_queue = queue.Queue()
 
     menu_bar = Menu(ai_assistant_window)
     ai_assistant_window.configure(menu=menu_bar)
@@ -1269,42 +1271,44 @@ def open_ai_assistant_window(session_id=None):
             entry.delete(0, END)
 
     def stream_output(process, history_manager):
-        print("STREAM OUTPUT TRIGGERED")
-        global current_session, original_md_content
-        ai_response_buffer = ""
+        """Read subprocess output off-thread; never access Tk widgets here."""
         try:
+            chunks = []
             while True:
                 char = process.stdout.read(1)
                 if char:
-                    ai_response_buffer += char
-                    # Do not insert char into output_text here
+                    chunks.append(char)
                 elif process.poll() is not None:
                     break
+            ai_output_queue.put(("response", "".join(chunks), history_manager))
+        except Exception as exc:
+            ai_output_queue.put(("error", str(exc), history_manager))
 
-            # After the AI response is fully received
-            if ai_response_buffer:
-                # Extract content between <output> and </output> tags or use the entire response
-                output_content = extract_output_content(ai_response_buffer)
-
-                # Add AI's response to history
-                history_manager.add_message("ai", output_content)
-
-                # Add message to current session
-                current_session.add_message("ai", output_content)
-
-                # Update UI
-                output_text.insert(END, f"AI: {output_content}\n", "ai")
-                append_to_vault(f"AI: {output_content}")
-                original_md_content += f"\nAI: {output_content}\n"
-
-                # Add TTS here
-                # if tts_enabled_var.get():
-                    # tts_manager.say(output_content)
-
-        except Exception as e:
-            output_text.insert(END, f"Error: {e}\n", "error")
-        finally:
-            on_processing_complete()
+    def drain_ai_output_queue():
+        """Process queued results on Tk's main event-loop thread."""
+        try:
+            while True:
+                kind, payload, history_manager = ai_output_queue.get_nowait()
+                try:
+                    if kind == "error":
+                        output_text.insert(END, f"Error: {payload}\\n", "error")
+                    elif payload:
+                        output_content = extract_output_content(payload)
+                        history_manager.add_message("ai", output_content)
+                        if current_session:
+                            current_session.add_message("ai", output_content)
+                        output_text.insert(END, f"AI: {output_content}\\n", "ai")
+                        append_to_vault(f"AI: {output_content}")
+                        global original_md_content
+                        original_md_content += f"\\nAI: {output_content}\\n"
+                except Exception as exc:
+                    output_text.insert(END, f"Error: {exc}\\n", "error")
+                finally:
+                    on_processing_complete()
+        except queue.Empty:
+            pass
+        if ai_assistant_window.winfo_exists():
+            ai_assistant_window.after(50, drain_ai_output_queue)
 
     def extract_output_content(text):
         """Extract only the content within <output> tags, or return the entire message if tags are absent."""
@@ -2223,6 +2227,7 @@ def open_ai_assistant_window(session_id=None):
     sessions_list.bind("<Button-3>", handle_session_click)
     sessions_list.bind("<<ListboxSelect>>", on_session_select)
     initialize_ai_assistant_window()
+    ai_assistant_window.after(50, drain_ai_output_queue)
     ai_assistant_window.mainloop()
 
     def on_ai_assistant_window_close():
