@@ -1291,18 +1291,18 @@ def open_ai_assistant_window(session_id=None):
                 kind, payload, history_manager = ai_output_queue.get_nowait()
                 try:
                     if kind == "error":
-                        output_text.insert(END, f"Error: {payload}\\n", "error")
+                        output_text.insert(END, f"Error: {payload}\n", "error")
                     elif payload:
                         output_content = extract_output_content(payload)
                         history_manager.add_message("ai", output_content)
                         if current_session:
                             current_session.add_message("ai", output_content)
-                        output_text.insert(END, f"AI: {output_content}\\n", "ai")
+                        output_text.insert(END, f"AI: {output_content}\n", "ai")
                         append_to_vault(f"AI: {output_content}")
                         global original_md_content
-                        original_md_content += f"\\nAI: {output_content}\\n"
+                        original_md_content += f"\nAI: {output_content}\n"
                 except Exception as exc:
-                    output_text.insert(END, f"Error: {exc}\\n", "error")
+                    output_text.insert(END, f"Error: {exc}\n", "error")
                 finally:
                     on_processing_complete()
         except queue.Empty:
@@ -1561,6 +1561,10 @@ def open_ai_assistant_window(session_id=None):
                 selected_agent_var = "Assistant"
                 selected_agent = selected_agent_var
 
+            # Diagnostic metadata only: never print prompts, API keys or document contents.
+            print(f"AI dispatch: agent={selected_agent!s}, prompt_chars={len(combined_command)}, "
+                  f"history_chars={len(history_manager.get_history())}, "
+                  f"script_chars={len(script_content)}, rag_docs={len(relevant_docs)}")
             command = create_ai_command(ai_script_path, combined_command, selected_agent)
             process_ai_command(command)
         else:
