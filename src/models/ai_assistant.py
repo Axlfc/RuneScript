@@ -346,7 +346,7 @@ def process_claude_chat(client, prompt, system_prompt=None):
                 "Error: Claude returned no text content "
                 f"(stop_reason={getattr(response, 'stop_reason', 'unknown')})."
             )
-        return "\\n".join(text_parts)
+        return "\n".join(text_parts)
     except anthropic.APIError as e:
         return f"Error: Claude API request failed. Details: {str(e)}"
     except Exception as e:
